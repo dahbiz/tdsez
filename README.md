@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="250" alt="TDSE-ⵣ Logo">
+  <img src="docs/assets/logo.png" width="250" alt="TDSE-ⵣ Logo">
 </p>
 
 <h1 align="center">TDSE-ⵣ</h1>
@@ -22,9 +22,7 @@ We are currently in the final stages of preparing the **TDSE-ⵣ** codebase for 
 Keep an eye on this repository—the initial release will be available very shortly.
 
 ## 🤝 Collaboration
-We believe that breakthroughs in ultrafast quantum physics are best achieved through open, collaborative research. 
-
-**We are currently welcoming early-stage collaborations.** If your work involves strong-field physics, quantum dynamics, or high-performance computing, we would love to hear from you. We are looking for partners interested in:
+We believe that breakthroughs in ultrafast quantum physics, and science in general, are best achieved through open, collaborative research. We welcome early-stage collaborations. If your work involves strong-field physics, quantum dynamics, or high-performance computing, we are happy to collaborate with you.
 
 * **Scientific validation:** Testing the framework against specific atomic or molecular systems.
 * **Performance optimisation:** Collaborating on hardware-specific scaling (GPU/HPC clusters).
