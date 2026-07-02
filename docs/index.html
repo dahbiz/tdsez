@@ -14,16 +14,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   
-  <!-- KaTeX for LaTeX math rendering -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0Y0xlF" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha382-+VBt12ab9qozKD9q8pW7j8F1s8KfQ/2e7rFt2E5H5F2xV5bF0y2X5X5X5X5X5X5" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBt12ab9qozKD9q8pW7j8F1s8KfQ/2e7rFt2E5H5F2xV5bF0y2X5X5X5X5X5X5" crossorigin="anonymous"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       renderMathInElement(document.body, {
         delimiters: [
           {left: '$$', right: '$$', display: true},
-          {left: '$', right: '$', display: false},
+          {left: '$', right: '$', display: false},c
           {left: '\\(', right: '\\)', display: false},
           {left: '\\[', right: '\\]', display: true}
         ],
@@ -62,7 +61,6 @@
     <section class="hero">
       <div class="hero-glow" aria-hidden="true"></div>
       
-      <!-- Animated laser beams background -->
       <div class="laser-beams" aria-hidden="true">
         <div class="laser laser-1"></div>
         <div class="laser laser-2"></div>
@@ -71,7 +69,6 @@
         <div class="laser-wave laser-wave-1"></div>
         <div class="laser-wave laser-wave-2"></div>
       </div>
-      <!-- End laser beams -->
       
       <div class="container hero-inner">
         <div class="hero-text">
@@ -80,14 +77,14 @@
           <p class="hero-lead">
             TDSE-ⵣ is a high-performance framework for simulating the time-dependent
             Schrödinger equation in strong laser fields. Built for atomic, molecular,
-            and solid-state systems with attosecond resolution and MPI scalability.
+            and heterostructure systems with attosecond resolution and MPI scalability.
           </p>
           <div class="hero-cta">
             <a class="btn btn-primary" href="docs/installation.html">Get Started</a>
             <a class="btn btn-secondary" href="https://github.kcl.ac.uk/Atto-King-s/TDSEZ" target="_blank" rel="noopener">View on GitHub</a>
           </div>
           <div class="hero-stats">
-            <div><strong>Parallel</strong><span>MPI + OpenMP</span></div>
+            <div><strong>Parallel</strong><span>MPI + GPU</span></div>
             <div><strong>Verified</strong><span>WKB ±0.13%</span></div>
           </div>
         </div>
@@ -111,6 +108,52 @@
       </div>
     </section>
 
+
+
+
+    <section class="section gallery-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>3D Dynamics for Dihydrogen Cation Ground State</h2>
+      <p>Example of High-performance simulations of molecular dynamics under selected strong laser field waveforms.</p>
+    </div>
+
+    <div class="gallery-grid">
+      <div class="video-item">
+        <div class="video-frame">
+          <video src="h2p/lici.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <span class="video-label">CHIRPED-ROT</span>
+      </div>
+
+      <div class="video-item">
+        <div class="video-frame">
+          <video src="h2p/lissajous.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <span class="video-label">Lissajous</span>
+      </div>
+
+      <div class="video-item">
+        <div class="video-frame">
+          <video src="h2p/sawtooth.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <span class="video-label">Sawtooth</span>
+      </div>
+
+      <div class="video-item">
+        <div class="video-frame">
+          <video src="h2p/trefoil.mp4" autoplay loop muted playsinline preload="auto"></video>
+        </div>
+        <span class="video-label">Trefoil</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+
+    
 
     <section class="section">
       <div class="container">
@@ -145,9 +188,6 @@ FinalTime = 331.0</code></pre>
         </div>
       </div>
     </section>
-
-
-
 
     <section class="section cta-section">
       <div class="container">

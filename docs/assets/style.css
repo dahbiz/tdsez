@@ -125,9 +125,17 @@ img {
 }
 
 .brand-logo {
-  width: 52px;
-  height: 52px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
+  /* Enhance the logo */
+  filter: saturate(1.4) brightness(1.1) contrast(1.1);
+  transition: filter 0.3s ease;
+}
+
+/* Optional: Make it pop slightly more on hover */
+.brand:hover .brand-logo {
+  filter: saturate(1.6) brightness(1.2) contrast(1.15);
 }
 
 .main-nav {
@@ -1060,3 +1068,63 @@ code .val { color: #79c0ff; }
   }
 }
 
+
+/* ──────────────────────────────────────────────
+   Dynamics Gallery
+   ────────────────────────────────────────────── */
+.gallery-section {
+  padding: 40px 0 80px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.video-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.video-frame {
+  width: 100%;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-frame video {
+  width: 100%;
+  height: 100%;
+  /* This ensures the video fills the frame and centers its own internal content */
+  object-fit: cover; 
+  object-position: center center;
+  /* This applies the 4.0x zoom centered on the middle */
+  transform: scale(4.0);
+  transform-origin: center center;
+}
+
+.video-label {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+@media (max-width: 768px) {
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
