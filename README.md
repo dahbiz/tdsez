@@ -16,12 +16,12 @@
 
 ---
 
-## 🚀 Status: Coming Soon
+## Status: Coming Soon
 We are currently in the final stages of preparing the **TDSE-ⵣ** codebase for public release. We are refining documentation, benchmarking performance, and polishing the API to ensure a world-class experience for the scientific community. 
 
 Keep an eye on this repository—the initial release will be available very shortly.
 
-## 🤝 Collaboration
+## Collaboration
 We believe that breakthroughs in ultrafast quantum physics, and science in general, are best achieved through open, collaborative research. We welcome early-stage collaborations. If your work involves strong-field physics, quantum dynamics, or high-performance computing, we are happy to collaborate with you.
 
 * **Scientific validation:** Testing the framework against specific atomic or molecular systems.
