@@ -34,5 +34,5 @@ If you are interested in exploring a potential collaboration before the official
 ---
 
 <p align="center">
-  <em>Developed by Dr. Zakaria Dahbi at the AttoKings Research Group</em>
+  <em>Developed by Dr. Zakaria Dahbi at the AttoKings Research Group. Supervised by Dr. Amelle Zaïr</em>
 </p>
