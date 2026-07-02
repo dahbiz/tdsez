@@ -133,6 +133,20 @@ img {
   transition: filter 0.3s ease;
 }
 
+@media (max-width: 1024px) {
+  .brand-logo {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-logo {
+    width: 48px;
+    height: 48px;
+  }
+}
+
 /* Optional: Make it pop slightly more on hover */
 .brand:hover .brand-logo {
   filter: saturate(1.6) brightness(1.2) contrast(1.15);
@@ -855,14 +869,51 @@ code .val { color: #79c0ff; }
   color: var(--text-secondary);
 }
 
-/* Responsive */
+/* ── Responsive: iPad landscape / small desktop ── */
 @media (max-width: 1024px) {
-  .hero-inner {
-    grid-template-columns: 1fr;
+  .container {
+    padding: 0 20px;
+  }
+
+  .hero {
+    padding: 72px 0 56px;
   }
 
   .hero h1 {
     font-size: 2.6rem;
+  }
+
+  .hero .accent {
+    font-size: inherit;
+  }
+
+  .hero-lead {
+    font-size: 1.08rem;
+  }
+
+  .hero-stats {
+    gap: 20px;
+  }
+
+  .terminal-body {
+    font-size: 0.78rem;
+    padding: 16px 16px 20px;
+  }
+
+  .section {
+    padding: 64px 0;
+  }
+
+  .section-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .section-header p {
+    font-size: 1rem;
+  }
+
+  .code-window {
+    max-width: 100%;
   }
 
   .feature-grid,
@@ -884,8 +935,117 @@ code .val { color: #79c0ff; }
     border-bottom: 1px solid var(--border);
     padding-bottom: 20px;
   }
+
+  .hero-inner {
+    grid-template-columns: 1fr;
+  }
+
+  /* Gallery: 2 columns on iPad */
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 100%;
+  }
+
+  .cta-card {
+    padding: 40px 24px;
+  }
+
+  .cta-card h2 {
+    font-size: 1.6rem;
+  }
 }
 
+/* ── Responsive: iPad portrait ── */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .hero {
+    padding: 48px 0 40px;
+  }
+
+  .hero h1 {
+    font-size: 2rem;
+  }
+
+  .hero-lead {
+    font-size: 0.98rem;
+    margin-bottom: 24px;
+  }
+
+  .hero-cta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .btn {
+    text-align: center;
+    justify-content: center;
+    padding: 14px 20px;
+  }
+
+  .hero-stats {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .hero-stats div {
+    flex: 1 1 120px;
+  }
+
+  .section {
+    padding: 48px 0;
+  }
+
+  .section-header {
+    margin-bottom: 40px;
+  }
+
+  .section-header h2 {
+    font-size: 1.6rem;
+  }
+
+  /* Stack hero on mobile — text above terminal */
+  .hero-inner {
+    grid-template-columns: 1fr;
+  }
+
+  /* Gallery: 2 columns */
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .code-window {
+    margin: 0 -16px;
+    border-radius: 0;
+  }
+
+  .code-header {
+    padding: 8px 14px;
+  }
+
+  pre {
+    padding: 16px;
+  }
+
+  .cta-section {
+    padding: 48px 0 64px;
+  }
+
+  .cta-card {
+    padding: 32px 20px;
+  }
+
+  .cta-card h2 {
+    font-size: 1.4rem;
+  }
+}
+
+/* ── Responsive: small phone ── */
 @media (max-width: 640px) {
   .main-nav {
     display: none;
@@ -934,6 +1094,41 @@ code .val { color: #79c0ff; }
   .footer-inner {
     flex-direction: column;
     text-align: center;
+  }
+}
+
+/* ── Responsive: very small phone ── */
+@media (max-width: 400px) {
+  .hero {
+    padding: 36px 0 32px;
+  }
+
+  .hero h1 {
+    font-size: 1.65rem;
+    letter-spacing: -0.02em;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 5px 10px;
+    margin-bottom: 16px;
+  }
+
+  .hero-cta .btn {
+    font-size: 0.9rem;
+    padding: 12px 16px;
+  }
+
+  .section-header h2 {
+    font-size: 1.35rem;
+  }
+
+  .gallery-grid {
+    gap: 10px;
+  }
+
+  .code-window {
+    margin: 0 -8px;
   }
 }
 
