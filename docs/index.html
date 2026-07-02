@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TDSE-ⵣ — High-Performance Attosecond TDSE Solver</title>
-  <meta name="description" content="TDSE-ⵣ is a high-performance C++ framework for simulating attosecond time-dependent Schrödinger equation dynamics, built on PETSc, SLEPc and PETIGA.">
+  <meta name="description" content="TDSE-ⵣ is a high-performance C++ framework for simulating the time-dependent Schrödinger equation in strong laser fields. Built for atomic, molecular, and heterostructure systems with MPI scalability and GPU acceleration.">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="manifest" href="assets/manifest.json">
   <meta name="theme-color" content="#7c3aed">
@@ -16,7 +16,7 @@
   
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0Y0xlF" crossorigin="anonymous"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBt12ab9qozKD9q8pW7j8F1s8KfQ/2e7rFt2E5H5F2xV5bF0y2X5X5X5X5X5X5" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBt12ab9qozKD9q8pW7j8F1s8KfQ/2e7rFt2E5H5F2xV5bF0y2X5X5X5X5X5" crossorigin="anonymous"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       renderMathInElement(document.body, {
@@ -72,7 +72,7 @@
       
       <div class="container hero-inner">
         <div class="hero-text">
-          <div class="badge">C++17 · MPI · PETSc · SLEPc · PETIGA · GPU (CUDA/HIP)</div>
+          <div class="badge">C/C++17 · MPI · GPU (CUDA/HIP)</div>
           <h1>Attosecond quantum dynamics,<br><span class="accent">at scale.</span></h1>
           <p class="hero-lead">
             TDSE-ⵣ is a high-performance framework for simulating the time-dependent
@@ -108,10 +108,7 @@
       </div>
     </section>
 
-
-
-
-  <section class="section gallery-section">
+    <section class="section gallery-section">
   <div class="container">
     <div class="section-header">
       <h2>3D Dynamics for Dihydrogen Cation Ground State</h2>
@@ -119,41 +116,62 @@
     </div>
 
     <div class="gallery-grid">
+      <!-- LICI -->
       <div class="video-item">
         <div class="video-frame">
           <video src="h2p/lici.mp4" autoplay loop muted playsinline preload="auto"></video>
         </div>
         <span class="video-label">Chirped-rot</span>
+        <div class="waveform-card">
+          <img src="assets/wf_lici.png" alt="Chirped-rotating pulse waveform - Ex and Ez components" class="waveform-plot">
+          <img src="assets/traf_lici.png" alt="Chirped-rotating pulse trajectory - Ex vs Ez" class="waveform-trajectory">
+          <div class="waveform-params">XZ chirped-rotating pulse · 10 cycles · ω = 0.057 a.u. (800 nm) · |E| = 0.107 a.u.</div>
+        </div>
       </div>
 
+      <!-- Orthogonal Two-Color -->
       <div class="video-item">
         <div class="video-frame">
           <video src="h2p/lissajous.mp4" autoplay loop muted playsinline preload="auto"></video>
         </div>
-        <span class="video-label">Lissajous</span>
+        <span class="video-label">Orthogonal Two-Color</span>
+        <div class="waveform-card">
+          <img src="assets/wf_liss.png" alt="OTC waveform - Ex and Ey components" class="waveform-plot">
+          <img src="assets/traf_liss.png" alt="OTC trajectory - Ex vs Ey" class="waveform-trajectory">
+          <div class="waveform-params">OTC · 10 cycles · A_ω = A_2ω = 0.077 a.u. · |E| = 0.107 a.u.</div>
+        </div>
       </div>
 
+      <!-- SAWTOOTH -->
       <div class="video-item">
         <div class="video-frame">
           <video src="h2p/sawtooth.mp4" autoplay loop muted playsinline preload="auto"></video>
         </div>
         <span class="video-label">Sawtooth</span>
+        <div class="waveform-card">
+          <img src="assets/wf_saw.png" alt="Sawtooth OTC waveform - Ex and Ey components" class="waveform-plot">
+          <img src="assets/traf_saw.png" alt="Sawtooth OTC trajectory - Ex vs Ey" class="waveform-trajectory">
+          <div class="waveform-params">Sawtooth OTC · 10 cycles · A_ω = A_2ω = 0.086 a.u. · |E| = 0.107 a.u.</div>
+        </div>
       </div>
 
+      <!-- TREFOIL -->
       <div class="video-item">
         <div class="video-frame">
           <video src="h2p/trefoil.mp4" autoplay loop muted playsinline preload="auto"></video>
         </div>
         <span class="video-label">Trefoil</span>
+        <div class="waveform-card">
+          <img src="assets/wf_tre.png" alt="Counter-rotating trefoil waveform - Ex and Ey components" class="waveform-plot">
+          <img src="assets/traf_tre.png" alt="Counter-rotating trefoil trajectory - Ex vs Ey" class="waveform-trajectory">
+          <div class="waveform-params">Counter-rotating · 10 cycles · A_ω = A_2ω = 0.054 a.u. · |E| = 0.107 a.u.</div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
 
-
-
-    
 
     <section class="section">
       <div class="container">

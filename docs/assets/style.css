@@ -1295,8 +1295,229 @@ code .val { color: #79c0ff; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center center;
-  /* Reduced zoom from 3.5 to 2.0 to make content clearer */
-  transform: scale(2.0);
+  object-position: 55% center;
+  /* Zoomed in 7x, shifted left */
+  transform: scale(7.0);
   transform-origin: center center;
+}
+
+.video-label {
+  display: block;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.waveform-card {
+  background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(124, 58, 237, 0.02) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+
+
+/* === Waveform plot cards (static 2D plots) === */
+.waveform-plot {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.waveform-card .waveform-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+}
+
+.waveform-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.waveform-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brand-1);
+  margin-bottom: 10px;
+  opacity: 0.8;
+}
+
+.waveform-svg {
+  width: 100%;
+  height: auto;
+  max-width: 320px;
+  display: block;
+  margin: 0 auto 10px;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.15));
+}
+
+.waveform-params {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.6;
+  font-family: 'JetBrains Mono', Menlo, Monaco, monospace;
+  letter-spacing: 0.02em;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 6px;
+}
+
+.waveform-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.waveform-card:hover {
+  border-color: rgba(124, 58, 237, 0.3);
+  box-shadow: var(--shadow), 0 0 0 1px rgba(124, 58, 237, 0.1);
+}
+
+.waveform-card::after {
+  content: '⛶ Click to zoom & rotate';
+  display: block;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--brand-1);
+  opacity: 0.6;
+  margin-top: 4px;
+  transition: opacity 0.2s;
+}
+
+.waveform-card:hover::after {
+  opacity: 1;
+  display: none;
+}
+
+.waveform-plot {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.waveform-trajectory-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.waveform-trajectory {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.waveform-card:hover .waveform-trajectory {
+  border-color: rgba(124, 58, 237, 0.5);
+}
+
+/* Fullscreen waveform overlay */
+.wf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.wf-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.wf-close {
+  position: absolute;
+  top: -48px;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10001;
+}
+
+.wf-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  transform: rotate(90deg);
+}
+
+.wf-canvas {
+  background: linear-gradient(135deg, #0a0f14, #111827);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+  max-width: 100%;
+  max-height: 80vh;
+}
+
+.wf-canvas:active {
+  cursor: grabbing;
+}
+
+.wf-info {
+  position: absolute;
+  bottom: -56px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wf-title {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+.wf-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-mono);
 }
