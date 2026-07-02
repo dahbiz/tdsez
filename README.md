@@ -29,10 +29,10 @@ We believe that breakthroughs in ultrafast quantum physics, and science in gener
 * **Performance optimisation:** Collaborating on hardware-specific scaling (GPU/HPC clusters).
 * **Feature Expansion:** Developing new observables, pulse shapes, or potential definitions.
 
-If you are interested in exploring a potential collaboration before the official release, please reach out to us at [www.attokings.com](https://www.attokings.com) or email us at [zakaria.dahbi@kcl.ac.uk](zakaria.dahbi@kcl.ac.uk) to get in touch with us.
+If you are interested in exploring a potential collaboration before the official release, please reach out to us at [www.attokings.com](https://www.attokings.com) or email us at [zakaria.dahbi@kcl.ac.uk](zakaria.dahbi@kcl.ac.uk) to get in touch with .
 
 ---
 
 <p align="center">
-  <em>Developed by Dr. Zakaria Dahbi at the AttoKings Research Group. Supervised by Dr. Amelle Zaïr</em>
+  <em>Developed at the AttoKings Research Group. </em>
 </p>
