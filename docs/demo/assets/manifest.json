@@ -1,0 +1,16 @@
+{
+  "name": "TDSE-ⵣ — Attosecond Quantum Dynamics",
+  "short_name": "TDSE-ⵣ",
+  "description": "High-performance C++ framework for simulating attosecond time-dependent Schrödinger equation dynamics.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "assets/favicon.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }
+  ]
+}

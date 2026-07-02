@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TDSE-ⵣ — High-Performance Attosecond TDSE Solver</title>
+  <meta name="description" content="TDSE-ⵣ is a high-performance C++ framework for simulating attosecond time-dependent Schrödinger equation dynamics, built on PETSc, SLEPc and PETIGA.">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="manifest" href="assets/manifest.json">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="msapplication-TileColor" content="#7c3aed">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- KaTeX for LaTeX math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0Y0xlF" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha382-+VBt12ab9qozKD9q8pW7j8F1s8KfQ/2e7rFt2E5H5F2xV5bF0y2X5X5X5X5X5X5" crossorigin="anonymous"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+      });
+    });
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="TDSE-ⵣ home">
+        <img class="brand-logo" src="assets/logo.png" alt="">
+        <span class="brand-name">TDSE-ⵣ</span>
+      </a>
+      <nav class="main-nav" id="mainNav">
+        <a href="docs/installation.html">Install</a>
+        <a href="docs/usage.html">Usage</a>
+        <a href="docs/example.html">Example</a>
+        <a href="docs/api.html">API</a>
+        <a href="docs/hpc.html">HPC</a>
+        <a href="https://github.kcl.ac.uk/Atto-King-s/TDSEZ" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      
+      <!-- Animated laser beams background -->
+      <div class="laser-beams" aria-hidden="true">
+        <div class="laser laser-1"></div>
+        <div class="laser laser-2"></div>
+        <div class="laser laser-3"></div>
+        <div class="laser laser-4"></div>
+        <div class="laser-wave laser-wave-1"></div>
+        <div class="laser-wave laser-wave-2"></div>
+      </div>
+      <!-- End laser beams -->
+      
+      <div class="container hero-inner">
+        <div class="hero-text">
+          <div class="badge">C++17 · MPI · PETSc · SLEPc · PETIGA · GPU (CUDA/HIP)</div>
+          <h1>Attosecond quantum dynamics,<br><span class="accent">at scale.</span></h1>
+          <p class="hero-lead">
+            TDSE-ⵣ is a high-performance framework for simulating the time-dependent
+            Schrödinger equation in strong laser fields. Built for atomic, molecular,
+            and solid-state systems with attosecond resolution and MPI scalability.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="docs/installation.html">Get Started</a>
+            <a class="btn btn-secondary" href="https://github.kcl.ac.uk/Atto-King-s/TDSEZ" target="_blank" rel="noopener">View on GitHub</a>
+          </div>
+          <div class="hero-stats">
+            <div><strong>Parallel</strong><span>MPI + OpenMP</span></div>
+            <div><strong>Verified</strong><span>WKB ±0.13%</span></div>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="terminal">
+            <div class="terminal-header">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+              <span class="terminal-title">bash</span>
+            </div>
+            <pre class="terminal-body"><code><span class="prompt">$</span> git clone https://github.kcl.ac.uk/Atto-King-s/TDSEZ.git
+<span class="prompt">$</span> cd TDSEZ
+<span class="prompt">$</span> cmake -B build
+<span class="prompt">$</span> cmake --build build -j
+<span class="prompt">$</span> mpirun -np 4 ./build/tdsez -inp examples/model.inp
+<span class="prompt">$</span> mpirun -np 4 ./build/tdsez -inp examples/model.inp \
+<span class="prompt">   </span>  -vec_type cuda -mat_type aijcusparse  <span style="color:#6b7280"># GPU mode</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <h2>Two-line input, HPC-grade output</h2>
+          <p>Configure potentials, pulses, and observables through a concise parameter file.</p>
+        </div>
+        <div class="code-window">
+          <div class="code-header">
+            <span class="code-label">examples/model.inp</span>
+            <button class="copy-btn" data-target="exampleInput" aria-label="Copy to clipboard">Copy</button>
+          </div>
+          <pre id="exampleInput"><code class="language-ini"># Domain and basis
+Dimension = 1
+LMin = -120.0
+LMax =  120.0
+NSplines = 600
+SplineDegree = 5
+
+# 1D soft-Coulomb atom
+Mass = 1.0
+Potential = -1.0 / sqrt(x^2 + 1.0)
+
+# 3-cycle 800 nm pulse
+Ampx = 0.05
+Omegax = 0.056954
+LaserX = Ampx*cos(Omegax*t)*sin(pi*t/331.0)^2
+
+# Time propagation
+TimeStep = 0.05
+FinalTime = 331.0</code></pre>
+        </div>
+      </div>
+    </section>
+
+
+
+
+    <section class="section cta-section">
+      <div class="container">
+        <div class="cta-card">
+          <h2>Ready to simulate attosecond dynamics?</h2>
+          <p>Clone the repository, run the benchmark suite, and start exploring ultrafast quantum physics.</p>
+          <div class="cta-actions">
+            <a class="btn btn-primary" href="https://github.kcl.ac.uk/Atto-King-s/TDSEZ" target="_blank" rel="noopener">Clone on GitHub</a>
+            <a class="btn btn-secondary" href="docs/installation.html">Read the Docs</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <img class="footer-logo" src="assets/logo.png" alt="">
+        <span>TDSE-ⵣ</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.kcl.ac.uk/Atto-King-s/TDSEZ" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.attokings.com" target="_blank" rel="noopener">AttoKings</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/main.js"></script>
+</body>
+</html>
