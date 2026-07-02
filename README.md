@@ -22,7 +22,7 @@ We are currently in the final stages of preparing the **TDSE-ⵣ** codebase for 
 Keep an eye on this repository—the initial release will be available very shortly.
 
 ## Collaboration
-We believe that breakthroughs in ultrafast quantum physics, and science in general, are best achieved through open, collaborative research. We welcome early-stage collaborations. If your work involves strong-field physics, quantum dynamics, or high-performance computing, we are happy to collaborate with you.
+We believe that breakthroughs in ultrafast quantum physics, and science in general, are best achieved through open, collaborative research. We welcome early-stage collaborations. If your work involves strong-field physics, quantum dynamics, or high-performance computing, we are happy to collaborate on (but not limited to): 
 
 * **Scientific validation:** Testing the framework against specific atomic or molecular systems.
 * **Performance optimisation:** Collaborating on hardware-specific scaling (GPU/HPC clusters).
