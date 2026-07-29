@@ -1,0 +1,52 @@
+# TDSEZ 3D vs qprop 3D benchmark — matched single-H soft-Coulomb, linear x-pol, AU.
+# Same physics as qprop bench_h1d (3D -1/sqrt(r^2+1.44), I_p=0.254).
+# Laser LaserX = E(t) = -dA/dt, A(t)=(E0/omega)*sin^2(omega*t/(2*nc))*sin(omega*t).
+Verbose           = 0
+Dimension         = 3
+Domain            = -25.0, 25.0, -25.0, 25.0, -25.0, 25.0
+SplineDegree      = 7
+NQuadratures      = 10
+KnotSequence      = uniform
+NSplines          = 100
+Mass              = 1.0
+Planck            = 1.0
+Charge            = 1.0
+
+UseDirectSolve    = 0
+TargetEigenvalue  = -0.3
+NBoundStates      = 3
+NBoundStatesSave  = 1
+
+# 3D single-H soft-Coulomb, a^2 = 1.44  (matches qprop 3D scalarpot)
+Potential            = -1.0 / sqrt(x*x + y*y + z*z + 1.44)
+PotentialDerivativeX = x / (x*x + y*y + z*z + 1.44)^1.5
+PotentialDerivativeY = y / (x*x + y*y + z*z + 1.44)^1.5
+PotentialDerivativeZ = z / (x*x + y*y + z*z + 1.44)^1.5
+
+Ampx              = 0.0
+Ampy              = 0.0
+Ampz              = 0.0
+Omegax           = 0.057
+Omegay           = 0.0
+Omegaz           = 0.0
+CEPx             = 0.0
+CEPy             = 0.0
+CEPz             = 0.0
+Polarization     = x
+# E(t) = -dA/dt, E0=0.0534, nc=4 ; TDSEZ integrates to A (velocity gauge)
+LaserX           = -0.0534 * ( (1.0/4.0)*sin(0.057*t/4.0)*sin(0.057*t) + sin(0.057*t/(2.0*4.0))*sin(0.057*t/(2.0*4.0)) * cos(0.057*t) )
+LaserY           = 0.0
+LaserZ           = 0.0
+EnvelopeType     = custom
+
+TimeStep         = 0.25
+FinalTime        = 470.0
+EnablePropagation = 1
+EnableCAP        = 0
+OutputStrideWFS  = 100000
+TSurff           = 1
+SurffNk          = 50
+SurffKmax        = 1.5
+OutputStrideSurff = 1
+SurffCouplingSign = 1.0
+SurffRadius      = 0.0

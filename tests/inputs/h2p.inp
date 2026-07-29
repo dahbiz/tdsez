@@ -1,0 +1,45 @@
+# 1D TDSEZ regression input for tests/test_basic.py (Test1DReader).
+# Small grid + short propagation so the run is fast but still exercises the
+# full eigensolve + propagation + HDF5 output path.
+Verbose           = 0
+Dimension         = 1
+Domain            = -20.0, 20.0
+SplineDegree      = 5
+NQuadratures      = 8
+KnotSequence      = uniform
+NSplines          = 60
+Mass              = 1.0
+Planck            = 1.0
+Charge            = 1.0
+
+UseDirectSolve    = 0
+TargetEigenvalue  = -1
+NBoundStates      = 3
+NBoundStatesSave  = 1
+
+Potential            = -1 / sqrt((x + 1.0)^2 + 1.44) - 1 / sqrt((x - 1.0)^2 + 1.44)
+PotentialDerivativeX = (x - 1.0) / ((x - 1.0)^2 + 1.44)^1.5 + (x + 1.0) / ((x + 1.0)^2 + 1.44)^1.5
+PotentialDerivativeY = 0
+PotentialDerivativeZ = 0
+
+Ampz              = 0.0
+Ampz              = 0.0
+Ampz              = 0.0
+Omegax            = 0.05655
+Omegay            = 0.0
+Omegaz            = 0.0
+CEPx              = 0.0
+CEPy              = 0.0
+CEPz              = 0.0
+Polarization      = x
+LaserX            = ((t < 2*pi/Omegax) ? (t*Omegax/(2*pi)) : ((t < 18*pi/Omegax) ? 1.0 : ((t <= 20*pi/Omegax) ? (10.0 - t*Omegax/(2*pi)) : 0.0))) * Ampx * cos(Omegax*t + CEPx)
+LaserY            = 0.0
+LaserZ            = 0.0
+
+TimeStep          = 0.5
+FinalTime         = 10.0
+EnablePropagation = 1
+EnableCAP         = 0
+OutputStrideWFS   = 1000
+EnvelopeType      = custom
+

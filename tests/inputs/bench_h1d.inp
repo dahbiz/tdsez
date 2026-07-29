@@ -1,0 +1,56 @@
+# TDSEZ vs qprop t-SURFF benchmark — matched single-Hydrogen, linear x-polarisation.
+# Laser here is the ELECTRIC FIELD E(t) = -dA/dt, chosen so that TDSEZ's
+# internal vector potential A = -int E dt equals qprop's A(t):
+#   A(t) = (E0/omega) * sin^2(omega*t/(2*nc)) * sin(omega*t)
+#   E(t) = -E0 * [ (1/nc) sin(omega*t/nc) sin(omega*t)
+#                 + sin^2(omega*t/(2*nc)) cos(omega*t) ]
+# Velocity-gauge, AU units (hbar^2/2m = 1/2).
+Verbose           = 0
+Dimension         = 1
+Domain            = -60.0, 60.0
+SplineDegree      = 7
+NQuadratures      = 10
+KnotSequence      = uniform
+NSplines          = 400
+Mass              = 1.0
+Planck            = 1.0
+Charge            = 1.0
+
+UseDirectSolve    = 0
+TargetEigenvalue  = -0.5
+NBoundStates      = 3
+NBoundStatesSave  = 1
+
+# single-H soft-Coulomb, a^2 = 1.44  (matches qprop edited scalarpot -1/sqrt(r^2+1.44))
+Potential            = -1.0 / sqrt(x*x + 1.44)
+PotentialDerivativeX = x / (x*x + 1.44)^1.5
+PotentialDerivativeY = 0
+PotentialDerivativeZ = 0
+
+Ampx              = 0.0
+Ampy             = 0.0
+Ampz             = 0.0
+Omegax           = 0.057
+Omegay           = 0.0
+Omegaz           = 0.0
+CEPx             = 0.0
+CEPy             = 0.0
+CEPz             = 0.0
+Polarization     = x
+# E(t) = -dA/dt with E0=0.0534, nc=4 ; LaserX is the FIELD (TDSEZ integrates to A)
+LaserX           = -0.0534 * ( (1.0/4.0)*sin(0.057*t/4.0)*sin(0.057*t) + sin(0.057*t/(2.0*4.0))*sin(0.057*t/(2.0*4.0)) * cos(0.057*t) )
+LaserY           = 0.0
+LaserZ           = 0.0
+EnvelopeType     = custom
+
+TimeStep         = 0.25
+FinalTime        = 740.0
+EnablePropagation = 1
+EnableCAP        = 0
+OutputStrideWFS  = 100000
+TSurff           = 1
+SurffNk          = 80
+SurffKmax        = 1.5
+OutputStrideSurff = 1
+SurffCouplingSign = 1.0
+SurffRadius      = 0.0

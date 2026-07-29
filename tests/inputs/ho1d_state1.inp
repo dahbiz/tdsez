@@ -1,0 +1,26 @@
+# 1D Harmonic Oscillator, m=1, omega=0.2  (smooth, well-conditioned)
+# TDSEZ units (hbar^2/2m = 1/2, hbar=1, m=1):
+#   H = -(1/2) d^2/dx^2 + (1/2) m w^2 x^2
+#   E_n = (n + 1/2) * w = (n+1/2)*0.2  ->  E0=0.1, E1=0.3, E2=0.5  (a.u.)
+# VALIDATION: start propagation/psi0 from the 1st excited state (index 1).
+Verbose           = 0
+Dimension         = 1
+Domain            = -20.0, 20.0
+SplineDegree      = 5
+NQuadratures      = 8
+KnotSequence      = uniform
+NSplines          = 80
+Planck            = 1.0
+Charge            = 1.0
+Mass              = 1.0
+MassIsConstant    = 1
+Potential         = 0.5 * 1.0 * 0.2 * 0.2 * x * x
+PotentialDerivativeX = 0.2 * 0.2 * x
+UseDirectSolve    = 0
+TargetEigenvalue  = 0.0
+NBoundStates      = 5
+NBoundStatesSave  = 1
+InitialState      = state:1
+EnablePropagation = 0
+EnableCAP         = 0
+Polarization      = x

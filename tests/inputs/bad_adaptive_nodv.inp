@@ -1,0 +1,20 @@
+Verbose           = 0
+Dimension         = 1
+Domain            = -20.0, 20.0
+SplineDegree      = 5
+NQuadratures      = 8
+KnotSequence      = adaptive
+NSplines          = 80
+Planck            = 1.0
+Charge            = 1.0
+Mass              = 1.0
+MassIsConstant    = 1
+Potential         = 0.5 * 1.0 * 0.2 * 0.2 * x * x
+
+UseDirectSolve    = 0
+TargetEigenvalue  = 0.0
+NBoundStates      = 3
+NBoundStatesSave  = 0
+EnablePropagation = 0
+EnableCAP         = 0
+Polarization      = x

@@ -1,0 +1,104 @@
+# ============================================================================
+#  TDSEZ — gitignore
+#  High-Performance TDSE Solver (PETSc/SLEPc/PETIGA)
+# ============================================================================
+
+# ---- Build artifacts -------------------------------------------------------
+build/
+*.o
+*.s
+*.lo
+*.lai
+*.a
+*.la
+*.so
+*.dylib
+*.dll
+*.lib
+
+# ---- IDE / Editor files ----------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+*.project
+*.classpath
+*.settings/
+
+# ---- OS / Version control --------------------------------------------------
+*.orig
+*.rej
+*.patch
+
+# ---- Python / pytest -------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---- CMake cache ------------------------------------------------------------
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles/
+Makefile
+cmake_check_build_system.cmake
+*.cmake.in
+
+# ---- HDF5 / simulation output data -----------------------------------------
+*.h5
+*.hdf5
+*.bin
+*.npy
+
+# ---- Static output directory (generated solver output) ---------------------
+static/TDM_*
+static/EigenData_*
+static/Dx_*
+static/Dy_*
+static/Dz_*
+static/drec_resolved_*
+static/dij_select_*
+static/States_*
+static/EigenEnergies_*
+static/psi_*
+static/*.bin
+static/*.npy
+static/*.h5
+
+# ---- Generated CSV reports -------------------------------------------------
+static/drec_resolved_*.csv
+static/dij_select_*.csv
+static/TDMInfo_*.inp.txt
+
+# ---- Generated .txt reports (TDM, drec output) ----------------------------
+static/TDM_*_*.txt
+static/drec_resolved_*.txt
+
+# ---- Test output / waveform data ------------------------------------------
+static/waveform_*_data.txt
+docs/h2p/waveform_*_data.txt
+
+# ---- Test input data (keep .inp, remove generated outputs) -----------------
+td/
+
+# ---- Website / docs duplicates (generated from docs/) ---------------------
+website/
+
+# ---- Source-level generated files ------------------------------------------
+src/tdsez_version.h.in
+src/tdsez_version.h
+
+# ---- Misc ------------------------------------------------------------------
+*.log
+*.out
+run.log
+*.tar.gz
+*.zip
