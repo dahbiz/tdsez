@@ -1,40 +1,55 @@
-# TDSE-ⵣ — Attosecond Quantum Dynamics at Scale
+<p align="center">
+  <img src="docs/brand/logo.png" width="220" alt="TDSE-Z logo">
+</p>
 
-High-performance time-dependent Schrodinger equation solver using B-spline / isogeometric analysis (IGA). Solves the TDSE in 1D, 2D, and 3D with MPI parallelism and optional GPU acceleration.
+<h1 align="center">TDSE-Z — Attosecond Quantum Dynamics, at Scale</h1>
+
+<p align="center">
+  <strong>C++17</strong> &middot; <strong>MPI</strong> &middot; <strong>PETSc</strong> &middot; <strong>SLEPc</strong> &middot; <strong>PetIGA</strong> &middot; <strong>CUDA</strong>
+</p>
+
+<p align="center">
+  A high-performance C++ framework for solving the time-dependent Schrödinger equation
+  in strong laser fields — atomic, molecular and solid-state systems resolved to the
+  attosecond, scaled across MPI clusters and GPUs.
+</p>
+
+<p align="center">
+  <a href="https://dahbiz.github.io/tdsez/">Website</a> &middot;
+  <a href="https://dahbiz.github.io/tdsez/gallery.html">Gallery</a> &middot;
+  <a href="https://dahbiz.github.io/tdsez/docs/">Documentation</a>
+</p>
+
+---
 
 ## Quick Start
 
 ```bash
-# 1. Set up environment
-export PETSC_DIR=/path/to/petsc
-
-# 2. Build
+# 1. Build (PETSc/SLEPc/PetIGA must be installed and discoverable)
 mkdir build && cd build
-cmake .. -DPETSC_DIR=$PETSC_DIR
+cmake ..
 make -j$(nproc)
 
-# 3. Run
+# 2. Run
 mpirun -np 4 ./tdsez -inp tests/inputs/ho1d.inp
 ```
 
-Full documentation: [docs/README.md](docs/README.md) — complete input file reference, examples, and API.
-
 ## What It Does
 
-TDSE-ⵣ solves the time-dependent Schrodinger equation for single-particle quantum systems:
+TDSE-Z solves the time-dependent Schrödinger equation for single-particle quantum systems:
 
-- **Static spectrum** — compute bound-state eigenvalues and eigenstates
-- **Time propagation** — evolve an initial state with laser fields
-- **Dipole matrix** — transition dipole elements $d_{ij} = \langle\psi_i|x|\psi_j\rangle$
+- **Static spectrum** — bound-state eigenvalues and eigenstates
+- **Time propagation** — evolve an initial state under arbitrary laser fields
+- **Dipole matrix** — transition elements $d_{ij} = \langle\psi_i|x|\psi_j\rangle$
 - **Population tracking** — time-dependent bound-state occupations
 - **Current / autocorrelation** — time-dependent observables
-- **t-SURFF** — photoelectron energy spectra via surface-flux method
+- **t-SURFF** — photoelectron energy spectra via the surface-flux method
 - **Absorbing boundary (CAP)** — open-system dynamics
 
 ## Key Features
 
 - B-spline basis functions via PetIGA for high-accuracy spatial discretisation
-- SLEPc eigensolvers (SLEPc EPS/PEP) for eigenvalue problems
+- SLEPc eigensolvers (EPS/PEP) for eigenvalue problems
 - PETSc time-stepping (TS) for propagation
 - MPI parallelism across multiple nodes
 - CUDA GPU offload for matrix operations (auto-detected)
@@ -44,52 +59,54 @@ TDSE-ⵣ solves the time-dependent Schrodinger equation for single-particle quan
 ## Repository Structure
 
 ```
-├── CMakeLists.txt          # Build configuration
-├── LICENSE                 # MIT License (AttoKings Research Group)
-├── .gitignore
-├── .editorconfig
-├── README.md               # This file
+├── CMakeLists.txt            Build configuration
+├── LICENSE                   MIT License
+├── README.md                 This file
+├── Doxyfile                  Doxygen config
 ├── cmake/
-│   └── banner.cmake        # CMake config banner
-├── docs/
-│   ├── README.md           # Complete user documentation (750+ lines)
-│   └── assets/             # Logo, favicon, demo assets
+│   └── banner.cmake          CMake config banner
+├── docs/                     GitHub Pages website
+│   ├── index.html            Landing page
+│   ├── gallery.html          Simulation gallery
+│   ├── docs/                 User documentation (5 sections)
+│   ├── brand/                Logo, favicon, hero assets
+│   └── gallery/              Gallery media (waveforms, trajectories, video)
 ├── include/
-│   ├── tdsez_internal.hpp  # Internal interfaces, formatting helpers
-│   └── debug.hpp           # Debug utilities
+│   └── tdsez_internal.hpp    Internal interfaces, formatting helpers
 ├── src/
-│   ├── tdsez.cpp           # Main entry point
-│   ├── parser.cpp          # Input file parser
-│   ├── core.cpp            # Core solver (assemble, solve, output)
-│   ├── core_knots.cpp      # Knot sequence generators
-│   ├── manager.cpp         # Propagation state management
-│   ├── monitor.cpp         # Time-stepping callbacks
-│   ├── propagator.cpp      # Propagator engine
-│   ├── assembler.cpp       # Hamiltonian assembly
-│   ├── assembler_class.cpp # Assembler class
-│   ├── assembly/assembly.cpp # Low-level assembly routines
-│   ├── diagnostics.cpp     # Dipole, current, gauge checks
-│   ├── drecprocessor.cpp   # Dipole recombination processor
-│   ├── tdmprocessor.cpp    # Dipole matrix post-processor
-│   ├── tdmselect.cpp       # Selective dipole element calculator
-│   ├── debug.cpp           # Debug utilities
-│   └── TDSE-Z_logo.txt     # ASCII-art banner
+│   ├── tdsez.cpp             Main entry point
+│   ├── parser.cpp            Input file parser
+│   ├── core.cpp              Core solver (assemble, solve, output)
+│   ├── core_knots.cpp        Knot sequence generators
+│   ├── assembler.cpp         Hamiltonian assembly
+│   ├── assembler_class.cpp   Assembler class
+│   ├── assembly/             Low-level assembly routines
+│   ├── manager.cpp           Propagation state management
+│   ├── monitor.cpp           Time-stepping callbacks
+│   ├── propagator.cpp        Propagator engine
+│   ├── diagnostics.cpp       Dipole, current, gauge checks
+│   ├── drecprocessor.cpp     Dipole recombination processor
+│   ├── tdmprocessor.cpp      Dipole matrix post-processor
+│   ├── tdmselect.cpp         Selective dipole element calculator
+│   └── TDSE-Z_logo.txt       ASCII-art banner
 └── tests/
-    ├── README.md           # Test suite documentation
-    ├── test_tdsez.py       # Validation tests (pytest)
-    ├── check_asmbench.py   # Assembler benchmarks
-    └── inputs/             # 23 test input files
+    ├── test_tdsez.py         Validation tests (pytest)
+    ├── conftest.py           Test configuration fixtures
+    └── inputs/               Test input files (.inp)
 ```
 
-## Documentation
+## Tests
 
-| File | Content |
-|------|---------|
-| [docs/README.md](docs/README.md) | **Complete user guide** — all input file keys, examples, output format, CLI flags |
-| tests/README.md | Validation test suite overview |
-| [tests/inputs/](tests/inputs/) | 23 ready-to-run input examples |
+```bash
+# From the build directory
+cd build && make test          # builds + runs pytest with 5 MPI procs
 
-The input file reference in `docs/README.md` covers every parameter with descriptions, valid values, and usage examples.
+# Or directly
+pytest tests/ -v -s
+```
+
+The suite validates eigenvalue convergence, propagation, and observables against
+analytical references (1D/2D/3D harmonic oscillators). See [tests/README.md](tests/README.md).
 
 ## Dependencies
 
@@ -98,25 +115,27 @@ The input file reference in `docs/README.md` covers every parameter with descrip
 | PETSc 3.x | Portable, Extensible Toolkit for Scientific Computation |
 | SLEPc | Scalable Library for Eigenvalue Problem Computations |
 | PetIGA | Isogeometric Analysis with PETSc |
-| muparser | Fast C++ expression parser |
+| muParser | Fast C++ expression parser |
 | CMake 3.15+ | Build system |
-| MPI (OpenMPI/MPICH/etc.) | Distributed parallelism |
+| MPI (OpenMPI/MPICH) | Distributed parallelism |
+| CUDA (optional) | GPU acceleration |
+| HDF5 | Simulation output |
 | Python 3 + pytest + numpy + h5py | Tests (optional) |
 
 ## Citing
 
-If you use TDSE-ⵣ in your research, please cite:
+If you use TDSE-Z in your research, please cite:
 
-> TDSE-ⵣ — Time-Dependent Schrodinger Equation Solver (B-spline / IGA)
-> Dr. Zakaria Dahbi, AttoKings Research Group
-> Attosecond Quantum Physics Lab, King's College London, UK
+> TDSE-Z — Time-Dependent Schrödinger Equation Solver (B-spline / IGA)
+> Dr. Zakaria Dahbi, Attosecond Quantum Physics Lab, King's College London, UK
 
 ## License
 
-MIT License — Copyright (c) 2024–2026 AttoKings Research Group.
+MIT License — Copyright (c) 2024–2026 Dr. Zakaria Dahbi.
 See [LICENSE](LICENSE) for details.
 
 ## Contact
 
 - **Research:** [www.attokings.com](https://www.attokings.com)
 - **Email:** zakaria.dahbi@kcl.ac.uk
+- **GitHub:** [dahbiz/tdsez](https://github.com/dahbiz/tdsez)
