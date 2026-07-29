@@ -96,6 +96,9 @@ website/
 src/tdsez_version.h.in
 src/tdsez_version.h
 
+# ---- Dev folder (future-push implementations, not tracked) -----------------
+dev/
+
 # ---- Misc ------------------------------------------------------------------
 *.log
 *.out
