@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en" data-theme="attosecond">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TDSE-ⵣ — Documentation</title>
+  <meta name="description" content="TDSE-ⵣ documentation: build, run, and configure the high-performance attosecond TDSE solver." />
+  <link rel="icon" type="image/png" href="../brand/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root,
+    [data-theme="attosecond"] {
+      --bg-base: #05050a;
+      --bg-elev: #0a0a12;
+      --text-base: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --primary: #00f0ff;
+      --primary-rgb: 0, 240, 255;
+      --secondary: #8a2be2;
+      --secondary-rgb: 138, 43, 226;
+      --border-glass: rgba(255, 255, 255, 0.08);
+      --bg-glass: rgba(10, 10, 15, 0.4);
+      --glow: 0 0 24px rgba(0, 240, 255, 0.35);
+      --stroke-transparent: rgba(255, 255, 255, 0.14);
+    }
+    [data-theme="quantum"] {
+      --bg-base: #0a0014;
+      --bg-elev: #12001f;
+      --text-base: #fafafa;
+      --text-muted: #b9a7e6;
+      --primary: #ffd700;
+      --primary-rgb: 255, 215, 0;
+      --secondary: #ff00ff;
+      --secondary-rgb: 255, 0, 255;
+      --border-glass: rgba(255, 215, 0, 0.15);
+      --bg-glass: rgba(15, 0, 25, 0.5);
+      --glow: 0 0 24px rgba(255, 215, 0, 0.25);
+      --stroke-transparent: rgba(255, 215, 0, 0.22);
+    }
+    [data-theme="mono"] {
+      --bg-base: #000000;
+      --bg-elev: #0c0c0c;
+      --text-base: #ffffff;
+      --text-muted: #8a8a8a;
+      --primary: #ffffff;
+      --primary-rgb: 255, 255, 255;
+      --secondary: #4d4d4d;
+      --secondary-rgb: 77, 77, 77;
+      --border-glass: rgba(255, 255, 255, 0.2);
+      --bg-glass: rgba(20, 20, 20, 0.6);
+      --glow: 0 0 0px transparent;
+      --stroke-transparent: rgba(255, 255, 255, 0.22);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-base);
+      font-family: "Manrope", sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .glass {
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+    }
+
+    /* === NAV === */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 50;
+      transition: padding 0.5s, background 0.5s;
+      padding: 1.25rem 0;
+    }
+    nav.scrolled {
+      padding: 0.75rem 0;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-glass);
+    }
+    .nav-inner {
+      max-width: 72rem;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.25rem;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: var(--text-base);
+    }
+    .nav-brand img { height: 2.25rem; width: 2.25rem; object-fit: contain; }
+    .nav-brand-text {
+      font-family: "Unbounded", sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      font-size: 1.125rem;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .nav-links a:hover { color: var(--text-base); }
+    .theme-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: 9999px;
+      padding: 0.5rem 0.75rem;
+      color: var(--text-base);
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      cursor: pointer;
+      transition: box-shadow 0.3s;
+    }
+    .theme-btn:hover { box-shadow: var(--glow); }
+    .theme-btn svg { color: var(--primary); }
+
+    /* === LAYOUT WITH SIDEBAR === */
+    .doc-layout {
+      display: flex;
+      max-width: 72rem;
+      margin: 0 auto;
+      gap: 3rem;
+      padding: 8rem 1.25rem 5rem;
+    }
+    .doc-sidebar {
+      flex: 0 0 14rem;
+      position: sticky;
+      top: 7rem;
+      align-self: flex-start;
+      max-height: calc(100vh - 8rem);
+      overflow-y: auto;
+    }
+    .doc-sidebar-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: var(--primary);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-glass);
+    }
+    .doc-sidebar nav { display: flex; flex-direction: column; gap: 0.125rem; }
+    .doc-sidebar a {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.5rem 0.75rem;
+      border-left: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      line-height: 1.4;
+    }
+    .doc-sidebar a:hover {
+      color: var(--text-base);
+      border-left-color: var(--border-glass);
+    }
+    .doc-sidebar a.active {
+      color: var(--primary);
+      border-left-color: var(--primary);
+      background: rgba(var(--primary-rgb), 0.06);
+    }
+    .doc-content {
+      flex: 1 1 0%;
+      min-width: 0;
+    }
+
+    /* === MAIN === */
+    main {
+      max-width: 56rem;
+      margin: 0 auto;
+      padding: 8rem 1.25rem 5rem;
+    }
+
+    .doc-header {
+      margin-bottom: 3rem;
+    }
+    .doc-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    .doc-title {
+      font-family: "Unbounded", sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      font-size: 2.5rem;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+    .doc-subtitle {
+      color: var(--text-muted);
+      font-size: 1.0625rem;
+      line-height: 1.7;
+      max-width: 42rem;
+    }
+
+    /* === SECTION === */
+    .doc-section {
+      margin-bottom: 4rem;
+    }
+    .doc-section h2 {
+      font-family: "Unbounded", sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-glass);
+    }
+    .doc-section p {
+      color: var(--text-muted);
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+    }
+    .doc-section code.inline {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.875em;
+      color: var(--primary);
+      background: rgba(var(--primary-rgb), 0.08);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+    }
+
+    /* === APPLE TERMINAL WINDOW === */
+    .terminal {
+      background: #0d1117;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.3);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 2rem;
+    }
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot.red    { background: #ff5f56; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green  { background: #27c93f; }
+    .terminal-title {
+      margin-left: 0.5rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #8b949e;
+    }
+    .terminal-body {
+      margin: 0;
+      padding: 1.25rem 1.5rem 1.5rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: #e6edf3;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .terminal-body .prompt {
+      color: #27c93f;
+      margin-right: 0.5rem;
+      user-select: none;
+    }
+    .terminal-body .comment {
+      color: #6b7280;
+    }
+    .terminal-body .flag {
+      color: var(--primary);
+    }
+    .terminal-body .path {
+      color: #79c0ff;
+    }
+
+    /* === CODE WINDOW (input file) === */
+    .code-window {
+      background: #0d1117;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-glass);
+      margin-bottom: 2rem;
+    }
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .code-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.78rem;
+      color: #8b949e;
+    }
+    .copy-btn {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      background: transparent;
+      border: 1px solid var(--border-glass);
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .copy-btn:hover {
+      background: rgba(var(--primary-rgb), 0.1);
+      border-color: var(--primary);
+    }
+    .code-window pre {
+      margin: 0;
+      padding: 1.25rem 1.5rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: #e6edf3;
+      overflow-x: auto;
+    }
+    .code-window .comment { color: #6b7280; }
+    .code-window .key { color: #79c0ff; }
+    .code-window .val { color: #ffa657; }
+
+    /* === BACK LINK === */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-decoration: none;
+      margin-bottom: 3rem;
+      transition: color 0.3s;
+    }
+    .back-link:hover { color: var(--primary); }
+
+    /* === FOOTER === */
+    footer {
+      border-top: 1px solid var(--border-glass);
+      padding: 3rem 1.25rem;
+      text-align: center;
+    }
+    .footer-inner {
+      max-width: 72rem;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+    }
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+    .footer-links a:hover { color: var(--primary); }
+    .footer-copy {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 768px) {
+      .doc-layout { flex-direction: column; gap: 0; padding: 7rem 1rem 4rem; }
+      .doc-sidebar { position: relative; top: 0; flex: 0 0 auto; max-height: none; margin-bottom: 2rem; display: none; }
+      .doc-title { font-size: 1.75rem; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- NAV -->
+  <nav>
+    <div class="nav-inner">
+      <a class="nav-brand" href="../index.html">
+        <img src="../brand/logo.png" alt="">
+        <span class="nav-brand-text">TDSE-ⵣ</span>
+      </a>
+      <div class="nav-links">
+        <a href="../gallery.html">Gallery</a>
+        <a href="https://dahbiz.github.io/zkit" target="_blank" rel="noopener">Zkit</a>
+      </div>
+      <button class="theme-btn" id="themeSwitch" aria-label="Switch theme">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/>
+          <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/>
+          <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>
+          <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/>
+          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.504 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <div class="doc-layout">
+    <aside class="doc-sidebar">
+      <div class="doc-sidebar-label">Contents</div>
+      <nav>
+        <a href="#sec-clone">1. Clone &amp; Build</a>
+        <a href="#sec-run">2. Run a Simulation</a>
+        <a href="#sec-input">3. Input File</a>
+        <a href="#sec-mpi">4. MPI Notes</a>
+        <a href="#sec-flags">5. Common CLI Flags</a>
+      </nav>
+    </aside>
+    <div class="doc-content">
+      <a href="../index.html" class="back-link">← Back to TDSE-ⵣ</a>
+
+      <div class="doc-header">
+        <div class="doc-label">/ Documentation</div>
+        <h1 class="doc-title">Build &amp; Run</h1>
+        <p class="doc-subtitle">
+          TDSE-ⵣ is a C++17 framework built on PETSc/SLEPc with IGA B-spline discretization.
+          Clone, compile, and launch your first simulation in under a minute.
+        </p>
+      </div>
+
+    <!-- BUILD SECTION -->
+    <section class="doc-section" id="sec-clone">
+      <h2>1. Clone &amp; Build</h2>
+      <p>
+        TDSE-ⵣ requires PETSc (with or without CUDA) and SLEPc. The build system uses CMake.
+        After cloning, configure and compile with the commands below.
+      </p>
+
+      <div class="terminal">
+        <div class="terminal-header">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="terminal-title">bash — TDSEZ</span>
+        </div>
+        <pre class="terminal-body"><span class="prompt">$</span> git clone https://github.com/dahbiz/tdsez.git
+<span class="prompt">$</span> cd TDSEZ
+<span class="prompt">$</span> cmake -B build <span class="comment"># -DPETSC_DIR=... -DSLEPC_DIR=... if not in PATH</span>
+<span class="prompt">$</span> cmake --build build -j$(nproc)
+<span class="prompt">$</span><span class="comment">  # → produces build/tdsez</span></pre>
+      </div>
+    </section>
+
+    <!-- RUN SECTION -->
+    <section class="doc-section" id="sec-run">
+      <h2>2. Run a Simulation</h2>
+      <p>
+        Each simulation is driven by a plain-text input file (<code class="inline">.inp</code>)
+        declaring the domain, potential, laser field, and propagation parameters.
+        Run the solver in serial or parallel with MPI.
+      </p>
+
+      <div class="terminal">
+        <div class="terminal-header">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="terminal-title">bash — TDSEZ/build</span>
+        </div>
+        <pre class="terminal-body"><span class="prompt">$</span> ./tdsez <span class="flag">-inp</span> <span class="path">examples/model.inp</span>
+<span class="prompt">$</span> mpirun <span class="flag">-np</span> 4 ./tdsez <span class="flag">-inp</span> <span class="path">examples/model.inp</span>
+<span class="prompt">$</span><span class="comment">  # GPU mode (PETSc built with --with-cuda=1):</span>
+<span class="prompt">$</span> mpirun <span class="flag">-np</span> 4 ./tdsez <span class="flag">-inp</span> <span class="path">examples/model.inp</span> \
+    <span class="flag">-vec_type</span> cuda <span class="flag">-mat_type</span> aijcusparse
+<span class="prompt">$</span><span class="comment">  # Eigenvalues only (no propagation):</span>
+<span class="prompt">$</span> ./tdsez <span class="flag">-inp</span> <span class="path">examples/model.inp</span> <span class="flag">-ts_max_steps</span> 0</pre>
+      </div>
+    </section>
+
+    <!-- INPUT FILE SECTION -->
+    <section class="doc-section" id="sec-input">
+      <h2>3. Input File</h2>
+      <p>
+        A minimal 1D soft-Coulomb atom driven by a 3-cycle 800&nbsp;nm pulse.
+        Two lines of potential, one line of laser — that's all TDSE-ⵣ needs to run.
+      </p>
+
+      <div class="code-window">
+        <div class="code-header">
+          <span class="code-label">examples/model.inp</span>
+          <button class="copy-btn" data-target="exampleInput" aria-label="Copy to clipboard">Copy</button>
+        </div>
+        <pre id="exampleInput"><span class="comment"># Domain and basis</span>
+<span class="key">Dimension</span>    = <span class="val">1</span>
+<span class="key">LMin</span>         = <span class="val">-120.0</span>
+<span class="key">LMax</span>         =  <span class="val">120.0</span>
+<span class="key">NSplines</span>     = <span class="val">600</span>
+<span class="key">SplineDegree</span> = <span class="val">5</span>
+
+<span class="comment"># 1D soft-Coulomb atom</span>
+<span class="key">Mass</span>         = <span class="val">1.0</span>
+<span class="key">Potential</span>    = <span class="val">-1.0 / sqrt(x^2 + 1.0)</span>
+
+<span class="comment"># 3-cycle 800 nm pulse</span>
+<span class="key">Ampx</span>        = <span class="val">0.05</span>
+<span class="key">Omegax</span>      = <span class="val">0.056954</span>
+<span class="key">LaserX</span>      = <span class="val">Ampx*cos(Omegax*t)*sin(pi*t/331.0)^2</span>
+
+<span class="comment"># Time propagation</span>
+<span class="key">TimeStep</span>    = <span class="val">0.05</span>
+<span class="key">FinalTime</span>   = <span class="val">331.0</span></pre>
+      </div>
+    </section>
+
+    <!-- MPI NOTE -->
+    <section class="doc-section" id="sec-mpi">
+      <h2>4. MPI Notes</h2>
+      <p>
+        With OpenMPI 5.x, <code class="inline">mpirun -np 1</code> defaults to
+        <code class="inline">--bind-to core</code>, pinning the process to a single physical core.
+        This causes an 8&ndash;10&times; slowdown because PETSc/SLEPc internal BLAS threads
+        compete for one core. Fix it with:
+      </p>
+      <div class="terminal">
+        <div class="terminal-header">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="terminal-title">bash</span>
+        </div>
+        <pre class="terminal-body"><span class="prompt">$</span> mpirun <span class="flag">--bind-to</span> none <span class="flag">-np</span> 1 ./tdsez <span class="flag">-inp</span> <span class="path">model.inp</span>
+<span class="prompt">$</span><span class="comment">  # or equivalently:</span>
+<span class="prompt">$</span> mpirun <span class="flag">--oversubscribe</span> <span class="flag">-np</span> 1 ./tdsez <span class="flag">-inp</span> <span class="path">model.inp</span></pre>
+      </div>
+    </section>
+
+    <!-- CL FLAGS -->
+    <section class="doc-section" id="sec-flags">
+      <h2>5. Common CLI Flags</h2>
+      <p>
+        All flags can be passed on the command line and override input-file values.
+      </p>
+      <div class="terminal">
+        <div class="terminal-header">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="terminal-title">bash</span>
+        </div>
+        <pre class="terminal-body"><span class="prompt">$</span> ./tdsez <span class="flag">-inp</span> <span class="path">file.inp</span>      <span class="comment"># specify input file</span>
+<span class="prompt">$</span> ./tdsez <span class="flag">-ts_max_steps</span> 0    <span class="comment"># eigenvalues only, no propagation</span>
+<span class="prompt">$</span> ./tdsez <span class="flag">-vec_type</span> cuda      <span class="comment"># GPU vectors</span>
+<span class="prompt">$</span> ./tdsez <span class="flag">-mat_type</span> aijcusparse <span class="comment"># GPU matrices</span>
+<span class="prompt">$</span> ./tdsez <span class="flag">-use_gpu_aware_mpi</span> 0 <span class="comment"># non-GPU-aware MPI workaround</span>
+<span class="prompt">$</span> ./tdsez <span class="flag">-help</span>               <span class="comment"># full PETSc options dump</span></pre>
+      </div>
+    </section>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="../index.html">Home</a>
+        <a href="https://github.com/dahbiz/tdsez" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://www.attokings.com" target="_blank" rel="noopener">AttoKings Lab</a>
+      </div>
+      <div class="footer-copy">Mr QUBIT</div>
+    </div>
+  </footer>
+
+  <script>
+    // Nav shrink
+    const nav = document.querySelector('nav');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 24) nav.classList.add('scrolled');
+      else nav.classList.remove('scrolled');
+    }, { passive: true });
+
+    // Theme switcher
+    const themes = ['attosecond', 'quantum', 'mono'];
+    let currentTheme = 0;
+    document.getElementById('themeSwitch').addEventListener('click', () => {
+      currentTheme = (currentTheme + 1) % themes.length;
+      document.documentElement.setAttribute('data-theme', themes[currentTheme]);
+    });
+
+    // Scroll-spy: highlight active sidebar link
+    const sections = document.querySelectorAll('.doc-section[id]');
+    const sidebarLinks = document.querySelectorAll('.doc-sidebar a');
+    const spyObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          sidebarLinks.forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+          });
+        }
+      });
+    }, { rootMargin: '-20% 0px -60% 0px' });
+    sections.forEach(s => spyObserver.observe(s));
+
+    // Copy button
+    document.querySelector('.copy-btn').addEventListener('click', function() {
+      const target = document.getElementById(this.dataset.target);
+      if (target) {
+        const text = target.innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          const orig = this.textContent;
+          this.textContent = 'Copied';
+          setTimeout(() => this.textContent = orig, 2000);
+        });
+      }
+    });
+  </script>
+</body>
+</html>

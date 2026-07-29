@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en" data-theme="attosecond">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#05050a" />
+    <meta name="description" content="TDSE-ⵣ Gallery — 3D dynamics for dihydrogen cation ground state under selected strong laser field waveforms." />
+    <link rel="icon" type="image/png" href="brand/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <title>TDSE-ⵣ — Gallery</title>
+    <style>
+:root {
+  --radius: 0.5rem;
+}
+
+/* ---------- THEME: Attosecond Pulse (default) ---------- */
+:root,
+[data-theme="attosecond"] {
+  --bg-base: #05050a;
+  --bg-elev: #0a0a12;
+  --text-base: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --primary: #00f0ff;
+  --primary-rgb: 0, 240, 255;
+  --secondary: #8a2be2;
+  --secondary-rgb: 138, 43, 226;
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --bg-glass: rgba(10, 10, 15, 0.4);
+  --glow: 0 0 24px rgba(0, 240, 255, 0.35);
+  --stroke-transparent: rgba(255, 255, 255, 0.14);
+}
+
+/* ---------- THEME: Quantum Void ---------- */
+[data-theme="quantum"] {
+  --bg-base: #0a0014;
+  --bg-elev: #12001f;
+  --text-base: #fafafa;
+  --text-muted: #b9a7e6;
+  --primary: #ffd700;
+  --primary-rgb: 255, 215, 0;
+  --secondary: #ff00ff;
+  --secondary-rgb: 255, 0, 255;
+  --border-glass: rgba(255, 215, 0, 0.15);
+  --bg-glass: rgba(15, 0, 25, 0.5);
+  --glow: 0 0 24px rgba(255, 215, 0, 0.25);
+  --stroke-transparent: rgba(255, 215, 0, 0.22);
+}
+
+/* ---------- THEME: Monochrome Monolith ---------- */
+[data-theme="mono"] {
+  --bg-base: #000000;
+  --bg-elev: #0c0c0c;
+  --text-base: #ffffff;
+  --text-muted: #8a8a8a;
+  --primary: #ffffff;
+  --primary-rgb: 255, 255, 255;
+  --secondary: #4d4d4d;
+  --secondary-rgb: 77, 77, 77;
+  --border-glass: rgba(255, 255, 255, 0.2);
+  --bg-glass: rgba(20, 20, 20, 0.6);
+  --glow: 0 0 0px transparent;
+  --stroke-transparent: rgba(255, 255, 255, 0.22);
+}
+
+/* ---------- THEME: Fluorescent Red ---------- */
+[data-theme="fluored"] {
+  --bg-base: #0a0000;
+  --bg-elev: #140000;
+  --text-base: #fff0f0;
+  --text-muted: #cc6666;
+  --primary: #ff003c;
+  --primary-rgb: 255, 0, 60;
+  --secondary: #ff6b00;
+  --secondary-rgb: 255, 107, 0;
+  --border-glass: rgba(255, 0, 60, 0.2);
+  --bg-glass: rgba(20, 0, 5, 0.5);
+  --glow: 0 0 28px rgba(255, 0, 60, 0.5);
+  --stroke-transparent: rgba(255, 0, 60, 0.25);
+}
+
+* {
+  border-color: var(--border-glass);
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-base);
+  color: var(--text-base);
+  font-family: "Manrope", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.6s ease, color 0.6s ease;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--bg-base);
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb {
+  background: var(--secondary);
+  border-radius: 999px;
+}
+
+.font-display { font-family: "Unbounded", sans-serif; }
+.font-body { font-family: "Manrope", sans-serif; }
+.font-mono { font-family: "JetBrains Mono", monospace; }
+
+/* ---------- Glassmorphism ---------- */
+.glass {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- Noise overlay ---------- */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox=%270 0 256 256%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27n%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.85%27 numOctaves=%274%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url%28%23n%29%27/%3E%3C/svg%3E");
+}
+
+/* ---------- Link underline expansion ---------- */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 1px;
+  width: 0;
+  background: var(--primary);
+  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.link-underline:hover::after { width: 100%; }
+
+/* ---------- Layout helpers ---------- */
+.fixed { position: fixed; }
+.absolute { position: absolute; }
+.relative { position: relative; }
+.top-0 { top: 0px; }
+.inset-x-0 { left: 0px; right: 0px; }
+.inset-0 { inset: 0px; }
+.-z-10 { z-index: -10; }
+.z-10 { z-index: 10; }
+.z-50 { z-index: 50; }
+.z-60 { z-index: 60; }
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+.hidden { display: none; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+.gap-8 { gap: 2rem; }
+.gap-1\.5 { gap: 0.375rem; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-row { flex-direction: row; }
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.uppercase { text-transform: uppercase; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+.font-semibold { font-weight: 600; }
+.tracking-widest { letter-spacing: 0.1em; }
+.tracking-tight { letter-spacing: -0.025em; }
+.tracking-tighter { letter-spacing: -0.05em; }
+.tracking-\[0\.3em\] { letter-spacing: 0.3em; }
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-base { font-size: 1rem; line-height: 1.5rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+.text-5xl { font-size: 3rem; line-height: 1; }
+.text-\[10px\] { font-size: 10px; }
+.text-\[var\(--text-base\)\] { color: var(--text-base); }
+.text-\[var\(--text-muted\)\] { color: var(--text-muted); }
+.text-\[var\(--primary\)\] { color: var(--primary); }
+.bg-\[var\(--bg-base\)\] { background-color: var(--bg-base); }
+.bg-\[var\(--primary\)\] { background-color: var(--primary); }
+.bg-transparent { background-color: transparent; }
+.bg-black { background-color: #000; }
+.border { border-width: 1px; }
+.border-t { border-top-width: 1px; }
+.border-\[var\(--border-glass\)\] { border-color: var(--border-glass); }
+.rounded-full { border-radius: 9999px; }
+.rounded-xl { border-radius: 0.75rem; }
+.rounded-2xl { border-radius: 1rem; }
+.rounded-3xl { border-radius: 1.5rem; }
+.rounded-lg { border-radius: 0.5rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.px-7 { padding-left: 1.75rem; padding-right: 1.75rem; }
+.px-10 { padding-left: 2.5rem; padding-right: 2.5rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-5 { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+.py-10 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+.py-28 { padding-top: 7rem; padding-bottom: 7rem; }
+.pt-3 { padding-top: 0.75rem; }
+.pt-12 { padding-top: 3rem; }
+.pt-32 { padding-top: 8rem; }
+.pb-3 { padding-bottom: 0.75rem; }
+.pb-10 { padding-bottom: 2.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-16 { margin-bottom: 4rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-6 { margin-top: 1.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.max-w-2xl { max-width: 42rem; }
+.max-w-6xl { max-width: 72rem; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.h-8 { height: 2rem; }
+.h-9 { height: 2.25rem; }
+.h-2 { height: 0.5rem; }
+.w-2 { width: 0.5rem; }
+.w-9 { width: 2.25rem; }
+.h-auto { height: auto; }
+.h-fit { height: fit-content; }
+.object-contain { object-fit: contain; }
+.object-cover { object-fit: cover; }
+.aspect-square { aspect-ratio: 1 / 1; }
+.overflow-hidden { overflow: hidden; }
+.overflow-x-hidden { overflow-x: hidden; }
+.transition { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+.transition-\[padding\2c background\] { transition-property: padding,background; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+.transition-\[transform\2c border-color\2c box-shadow\] { transition-property: transform,border-color,box-shadow; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+.transition-colors { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+.transition-shadow { transition-property: box-shadow; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+.transition-transform { transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+.duration-300 { transition-duration: 300ms; }
+.duration-500 { transition-duration: 500ms; }
+.hover\:text-\[var\(--text-base\)\]:hover { color: var(--text-base); }
+.hover\:text-\[var\(--primary\)\]:hover { color: var(--primary); }
+.hover\:border-\[var\(--primary\)\]:hover { border-color: var(--primary); }
+.hover\:shadow-\[var\(--glow\)\]:hover { --tw-shadow-color: var(--glow); box-shadow: var(--glow); }
+.hover\:-translate-y-2:hover { transform: translateY(-0.5rem); }
+.hover\:rotate-90:hover { transform: rotate(90deg); }
+.group:hover .group-hover\:rotate-90 { transform: rotate(90deg); }
+.shadow-\[var\(--glow\)\] { --tw-shadow-color: var(--glow); box-shadow: var(--glow); }
+.leading-relaxed { line-height: 1.625; }
+.cursor-pointer { cursor: pointer; }
+.backdrop-blur-sm { backdrop-filter: blur(4px); }
+.bg-white\/5 { background-color: rgb(255 255 255 / 0.05); }
+
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+@media (min-width: 640px) { .sm\:flex { display: flex; } .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 768px) { .md\:flex { display: flex; } .md\:px-10 { padding-left: 2.5rem; padding-right: 2.5rem; } .md\:py-40 { padding-top: 10rem; padding-bottom: 10rem; } .md\:flex-row { flex-direction: row; } .md\:items-center { align-items: center; } .md\:justify-between { justify-content: space-between; } .md\:text-5xl { font-size: 3rem; line-height: 1; } }
+@media (min-width: 1024px) { .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.h-2\.w-2 { height: 0.5rem; width: 0.5rem; }
+.rounded-full { border-radius: 9999px; }
+.transition-transform { transition-property: transform; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }
+.duration-300 { transition-duration: 300ms; }
+
+img, video { max-width: 100%; height: auto; display: block; vertical-align: middle; }
+img, svg, video, canvas { display: block; vertical-align: middle; }
+a { color: inherit; text-decoration: inherit; }
+button { cursor: pointer; font-family: inherit; }
+
+/* Large-screen scaling */
+@media (min-width: 1280px) {
+  .font-display { font-size: 1.05em; }
+}
+@media (min-width: 1536px) {
+  .font-display { font-size: 1.1em; }
+  .max-w-6xl { max-width: 80rem; }
+}
+    </style>
+</head>
+<body>
+    <div class="relative min-h-screen bg-[var(--bg-base)] text-[var(--text-base)] overflow-x-hidden">
+    <div class="noise-overlay" aria-hidden="true"></div>
+    <header class="fixed top-0 inset-x-0 z-50" style="opacity: 1; transform: none;">
+    <nav class="mx-auto flex items-center justify-between px-5 md:px-10 transition-[padding,background] duration-500 py-5 bg-transparent">
+      <a href="index.html" class="flex items-center gap-3 group">
+        <img alt="TDSE-ⵣ" class="h-9 w-9 object-contain transition-transform duration-500 group-hover:rotate-90" src="brand/logo.png">
+        <span class="font-display text-lg font-extrabold tracking-tight text-[var(--text-base)]">TDSE-ⵣ</span>
+      </a>
+      <div class="hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-widest">
+        <a href="docs/index.html" class="link-underline text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300 font-bold">Documentation</a>
+        <a href="gallery.html" class="link-underline text-[var(--text-base)] transition-colors duration-300 font-bold" style="color: var(--primary);">Gallery</a>
+        <a href="https://dahbiz.github.io/zkit" target="_blank" rel="noopener noreferrer" class="link-underline text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300 font-bold">Zkit</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <button aria-label="Switch theme" data-testid="theme-switch" class="flex items-center gap-2 rounded-full glass px-3 py-2 text-[var(--text-base)] hover:shadow-[var(--glow)] transition-shadow duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--primary);">
+              <path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"></path>
+              <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+              <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+              <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+              <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+            </svg>
+            <span class="hidden sm:flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-full transition-transform duration-300" style="background: rgb(0, 240, 255); transform: scale(1.6); box-shadow: rgb(0, 240, 255) 0px 0px 8px;"></span>
+              <span class="h-2 w-2 rounded-full transition-transform duration-300" style="background: rgb(255, 215, 0); transform: scale(1); box-shadow: none;"></span>
+              <span class="h-2 w-2 rounded-full transition-transform duration-300" style="background: rgb(255, 255, 255); transform: scale(1); box-shadow: none;"></span>
+              <span class="h-2 w-2 rounded-full transition-transform duration-300" style="background: rgb(255, 0, 60); transform: scale(1); box-shadow: none;"></span>
+            </span>
+          </button>
+        </div>
+        <a href="https://github.com/dahbiz/tdsez" target="_blank" rel="noopener noreferrer" class="hidden sm:flex items-center gap-2 rounded-full glass px-4 py-2 font-mono text-xs uppercase tracking-widest text-[var(--text-base)] hover:shadow-[var(--glow)] transition-shadow duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>
+            <path d="M9 18c-4.51 2-5-2-7-2"></path>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </nav>
+    </header>
+
+    <main class="pt-32">
+    <section id="gallery" class="relative z-10 px-5 md:px-10 py-28 md:py-40">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-2xl mb-16">
+          <span class="font-mono text-xs uppercase tracking-[0.3em] text-[var(--primary)]">/ Gallery</span>
+          <h2 class="mt-4 font-display text-4xl md:text-5xl font-extrabold tracking-tighter text-[var(--text-base)]">3D Dynamics for Dihydrogen Cation Ground State</h2>
+          <p class="mt-6 font-body text-base text-[var(--text-muted)] leading-relaxed">Example of high-performance simulations of molecular dynamics under selected strong laser field waveforms.</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <!-- LICI -->
+          <div class="group">
+            <div class="glass rounded-3xl p-4 transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-2 hover:border-[var(--primary)] hover:shadow-[var(--glow)]">
+              <div class="overflow-hidden rounded-xl bg-black aspect-square flex items-center justify-center">
+                <video src="gallery/lici.mp4" autoplay loop muted playsinline preload="auto" class="w-full h-full object-cover" style="object-position: 55% center; transform: scale(7.0); transform-origin: center center;"></video>
+              </div>
+              <span class="block text-center font-display text-sm font-bold tracking-tight text-[var(--text-base)] mt-4 mb-3">Chirped-rot</span>
+              <img src="gallery/wf_lici.png" alt="Chirped-rotating pulse waveform — Ex and Ez components" class="w-full h-auto rounded-lg mb-3">
+              <img src="gallery/traf_lici.png" alt="Chirped-rotating pulse trajectory — Ex vs Ez" class="w-full h-auto rounded-lg border border-[var(--border-glass)]">
+              <p class="font-mono text-[10px] text-[var(--text-muted)] text-center leading-relaxed border-t border-[var(--border-glass)] pt-3 mt-3">XZ chirped-rotating &middot; 10 cycles &middot; &omega; = 0.057 a.u. (800 nm) &middot; |E| = 0.107 a.u.</p>
+            </div>
+          </div>
+          <!-- LISSAJOUS -->
+          <div class="group">
+            <div class="glass rounded-3xl p-4 transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-2 hover:border-[var(--primary)] hover:shadow-[var(--glow)]">
+              <div class="overflow-hidden rounded-xl bg-black aspect-square flex items-center justify-center">
+                <video src="gallery/lissajous.mp4" autoplay loop muted playsinline preload="auto" class="w-full h-full object-cover" style="object-position: 55% center; transform: scale(7.0); transform-origin: center center;"></video>
+              </div>
+              <span class="block text-center font-display text-sm font-bold tracking-tight text-[var(--text-base)] mt-4 mb-3">Orthogonal Two-Color</span>
+              <img src="gallery/wf_liss.png" alt="OTC waveform — Ex and Ey components" class="w-full h-auto rounded-lg mb-3">
+              <img src="gallery/traf_liss.png" alt="OTC trajectory — Ex vs Ey" class="w-full h-auto rounded-lg border border-[var(--border-glass)]">
+              <p class="font-mono text-[10px] text-[var(--text-muted)] text-center leading-relaxed border-t border-[var(--border-glass)] pt-3 mt-3">OTC &middot; 10 cycles &middot; A_&omega; = A_2&omega; = 0.077 a.u. &middot; |E| = 0.107 a.u.</p>
+            </div>
+          </div>
+          <!-- SAWTOOTH -->
+          <div class="group">
+            <div class="glass rounded-3xl p-4 transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-2 hover:border-[var(--primary)] hover:shadow-[var(--glow)]">
+              <div class="overflow-hidden rounded-xl bg-black aspect-square flex items-center justify-center">
+                <video src="gallery/sawtooth.mp4" autoplay loop muted playsinline preload="auto" class="w-full h-full object-cover" style="object-position: 55% center; transform: scale(7.0); transform-origin: center center;"></video>
+              </div>
+              <span class="block text-center font-display text-sm font-bold tracking-tight text-[var(--text-base)] mt-4 mb-3">Sawtooth</span>
+              <img src="gallery/wf_saw.png" alt="Sawtooth OTC waveform — Ex and Ey components" class="w-full h-auto rounded-lg mb-3">
+              <img src="gallery/traf_saw.png" alt="Sawtooth OTC trajectory — Ex vs Ey" class="w-full h-auto rounded-lg border border-[var(--border-glass)]">
+              <p class="font-mono text-[10px] text-[var(--text-muted)] text-center leading-relaxed border-t border-[var(--border-glass)] pt-3 mt-3">Sawtooth OTC &middot; 10 cycles &middot; A_&omega; = A_2&omega; = 0.086 a.u. &middot; |E| = 0.107 a.u.</p>
+            </div>
+          </div>
+          <!-- TREFOIL -->
+          <div class="group">
+            <div class="glass rounded-3xl p-4 transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-2 hover:border-[var(--primary)] hover:shadow-[var(--glow)]">
+              <div class="overflow-hidden rounded-xl bg-black aspect-square flex items-center justify-center">
+                <video src="gallery/trefoil.mp4" autoplay loop muted playsinline preload="auto" class="w-full h-full object-cover" style="object-position: 55% center; transform: scale(7.0); transform-origin: center center;"></video>
+              </div>
+              <span class="block text-center font-display text-sm font-bold tracking-tight text-[var(--text-base)] mt-4 mb-3">Trefoil</span>
+              <img src="gallery/wf_tre.png" alt="Counter-rotating trefoil waveform — Ex and Ey components" class="w-full h-auto rounded-lg mb-3">
+              <img src="gallery/traf_tre.png" alt="Counter-rotating trefoil trajectory — Ex vs Ey" class="w-full h-auto rounded-lg border border-[var(--border-glass)]">
+              <p class="font-mono text-[10px] text-[var(--text-muted)] text-center leading-relaxed border-t border-[var(--border-glass)] pt-3 mt-3">Counter-rotating &middot; 10 cycles &middot; A_&omega; = A_2&omega; = 0.054 a.u. &middot; |E| = 0.107 a.u.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    </main>
+
+    <footer class="relative z-10 border-t border-[var(--border-glass)] px-5 md:px-10 pt-12 pb-10">
+      <div class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+        <div class="flex items-center gap-3">
+          <img alt="" class="h-8 w-8 object-contain" src="brand/logo.png">
+          <span class="font-display font-extrabold tracking-tight text-[var(--text-base)]">TDSE-ⵣ</span>
+        </div>
+        <div class="flex flex-wrap gap-x-8 gap-y-3 font-mono text-xs uppercase tracking-widest">
+          <a href="index.html" class="text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300">Home</a>
+          <a href="https://github.com/dahbiz/tdsez" target="_blank" rel="noopener noreferrer" class="text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300">GitHub</a>
+          <a href="https://www.attokings.com" target="_blank" rel="noopener noreferrer" class="text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300">AttoKings Lab</a>
+          <a href="https://dahbiz.github.io/zkit" target="_blank" rel="noopener noreferrer" class="text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300">Zkit</a>
+        </div>
+      </div>
+      <div class="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 font-mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
+        <span>&copy; 2026 Mr QUBIT</span>
+        <span>Built for ultrafast quantum science</span>
+      </div>
+    </footer>
+    </div>
+
+    <script>
+    (function() {
+      var themes = ['attosecond', 'quantum', 'mono', 'fluored'];
+      var current = 0;
+      var btn = document.querySelector('[data-testid="theme-switch"]');
+      if (!btn) return;
+      var dots = btn.querySelectorAll('span.h-2');
+      btn.addEventListener('click', function() {
+        current = (current + 1) % themes.length;
+        document.documentElement.setAttribute('data-theme', themes[current]);
+        for (var i = 0; i < dots.length; i++) {
+          if (i === current) {
+            dots[i].style.transform = 'scale(1.6)';
+            var bg = dots[i].style.background;
+            dots[i].style.boxShadow = bg + ' 0px 0px 8px';
+          } else {
+            dots[i].style.transform = 'scale(1)';
+            dots[i].style.boxShadow = 'none';
+          }
+        }
+      });
+    })();
+    </script>
+</body>
+</html>
