@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TDSE-ⵣ — Documentation</title>
+  <title>TDSE-ⵣ — Laser Field</title>
   <link rel="icon" type="image/png" href="../brand/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,35 +77,139 @@
     <div class="doc-content">
       <div class="doc-header">
         <div class="doc-label">/ Documentation</div>
-        <h1 class="doc-title">TDSE-Z Documentation</h1>
+        <h1 class="doc-title">Laser Field</h1>
       </div>
 <div itemprop="articleBody">
              
   <section >
-<h1>TDSE-Z: Time-Dependent Schrödinger Equation Solver</h1>
-<p>TDSE-Z is a finite-element solver for the time-dependent Schrödinger equation in 1D, 2D, and 3D. It uses PETSc/SLEPc for linear algebra and eigensolvers, with PetIGA for isogeometric analysis (B-spline basis functions).</p>
-<section >
-<h2>Key Features</h2>
-<ul >
-<li><p><strong>Finite-Element Method</strong>: High-order B-spline basis (degree 1-14), arbitrary spatial dimensions</p></li>
-<li><p><strong>PETSc/SLEPc Backend</strong>: Scalable linear algebra, Krylov solvers, and eigensolvers</p></li>
-<li><p><strong>Isogeometric Analysis</strong>: IGA via PetIGA for C1-continuous basis functions</p></li>
-<li><p><strong>Time Propagation</strong>: Crank-Nicolson implicit time-stepper (unitary, second-order)</p></li>
-<li><p><strong>Complex Arithmetic</strong>: Full complex-field support for quantum observables</p></li>
-<li><p><strong>GPU Acceleration</strong>: CUDA-enabled PETSc for large-scale wavefunction propagation</p></li>
-<li><p><strong>HDF5 Output</strong>: Ring-buffered time-series observables and wavefunction snapshots</p></li>
-<li><p><strong>Position-Dependent Mass</strong>: muParser expressions for M(x,y,z) with quantum correction terms</p></li>
-<li><p><strong>Flexible Potentials</strong>: muParser expressions with analytic or numerical derivatives</p></li>
-</ul>
+<h1>laser-field</h1>
 </section>
 <section >
-<h2>Solver Architecture</h2>
-<p>The solver operates in two phases:</p>
-<ol >
-<li><p><strong>Eigensolver Phase</strong> (optional): SLEPc EPS to compute bound states. Eigenstates are stored for use as initial states.</p></li>
-<li><p><strong>Time Propagation Phase</strong>: PETSc TS with Crank-Nicolson (θ = 0.5). The residual at each step:</p>
-<blockquote>
-<div><p>F = iM · ψ̇ − H · ψ − E(t)·D · ψ</p>
+<h1>Laser Field</h1>
+<p>Polarization, envelopes, CEP, and field expressions.</p>
+<section >
+<h2>Polarization</h2>
+<table >
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 15.0%" />
+<col style="width: 10.0%" />
+<col style="width: 35.0%" />
+</colgroup>
+<thead>
+<tr ><th ><p>Key</p></th>
+<th ><p>Type</p></th>
+<th ><p>Default</p></th>
+<th ><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr ><td><p>Polarization / LaserPolarization / DriverPolarization</p></td>
+<td><p>string</p></td>
+<td><p>–</p></td>
+<td><p>Polarization axes: <code ><span >x</span></code>, <code ><span >y</span></code>, <code ><span >z</span></code>, <code ><span >xy</span></code>, <code ><span >xz</span></code>, <code ><span >yz</span></code>, <code ><span >xyz</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section >
+<h2>Field Expression</h2>
+<p>The field E(t) is specified via muParser expressions. Two modes:</p>
+<ul >
+<li><p><strong>Scalar form</strong>: <code ><span >Laser</span> <span >=</span> <span >Amplitude*cos(Omega*t)*sin(pi*t/PulseDuration)^2</span></code>
+– single envelope for all axes</p></li>
+<li><p><strong>Per-axis form</strong>: <code ><span >LaserX</span> <span >=</span> <span >...</span></code>, <code ><span >LaserY</span> <span >=</span> <span >...</span></code>, <code ><span >LaserZ</span> <span >=</span> <span >...</span></code>
+– overrides scalar form when set</p></li>
+</ul>
+<table >
+<colgroup>
+<col style="width: 35.0%" />
+<col style="width: 15.0%" />
+<col style="width: 15.0%" />
+<col style="width: 35.0%" />
+</colgroup>
+<thead>
+<tr ><th ><p>Key</p></th>
+<th ><p>Type</p></th>
+<th ><p>Default</p></th>
+<th ><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr ><td><p>Laser</p></td>
+<td><p>muParser</p></td>
+<td><p>0.0</p></td>
+<td><p>Unified field E(t) for scalar form</p></td>
+</tr>
+<tr ><td><p>LaserX / LaserY / LaserZ / DriverX / DriverY / DriverZ</p></td>
+<td><p>muParser</p></td>
+<td><p>0.0</p></td>
+<td><p>Per-axis field E_i(t). Overrides scalar Laser when set</p></td>
+</tr>
+<tr ><td><p>Amplitude</p></td>
+<td><p>real</p></td>
+<td><p>0.0</p></td>
+<td><p>Peak field strength (scalar)</p></td>
+</tr>
+<tr ><td><p>Omega / Omegax, Omegay, Omegaz</p></td>
+<td><p>real</p></td>
+<td><p>0.056954</p></td>
+<td><p>Carrier frequency (omega=0.056954 approx 800 nm)</p></td>
+</tr>
+<tr ><td><p>Phase / CEPx, CEPy, CEPz</p></td>
+<td><p>real</p></td>
+<td><p>0.0</p></td>
+<td><p>Carrier-envelope phase (radians)</p></td>
+</tr>
+<tr ><td><p>Ampx, Ampy, Ampz</p></td>
+<td><p>real</p></td>
+<td><p>0.0</p></td>
+<td><p>Per-axis peak amplitude</p></td>
+</tr>
+<tr ><td><p>PulseDuration</p></td>
+<td><p>real</p></td>
+<td><p>0.0</p></td>
+<td><p>Pulse FWHM duration in a.u.</p></td>
+</tr>
+<tr ><td><p>PulseCenter</p></td>
+<td><p>real</p></td>
+<td><p>0.0</p></td>
+<td><p>Pulse center time</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section >
+<h2>Envelope</h2>
+<table >
+<colgroup>
+<col style="width: 27.8%" />
+<col style="width: 16.7%" />
+<col style="width: 16.7%" />
+<col style="width: 38.9%" />
+</colgroup>
+<thead>
+<tr ><th ><p>Key</p></th>
+<th ><p>Type</p></th>
+<th ><p>Default</p></th>
+<th ><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr ><td><p>EnvelopeType</p></td>
+<td><p>string</p></td>
+<td><p><code ><span >custom</span></code></p></td>
+<td><p>Pre-built envelope form or custom expression</p></td>
+</tr>
+<tr ><td><p>Envelope</p></td>
+<td><p>muParser</p></td>
+<td><p>–</p></td>
+<td><p>Custom envelope F(t) expression</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
     </div>
   </div>
   <footer>

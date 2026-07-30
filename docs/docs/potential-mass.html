@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TDSE-ⵣ — Documentation</title>
+  <title>TDSE-ⵣ — Potential & Mass</title>
   <link rel="icon" type="image/png" href="../brand/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,35 +77,140 @@
     <div class="doc-content">
       <div class="doc-header">
         <div class="doc-label">/ Documentation</div>
-        <h1 class="doc-title">TDSE-Z Documentation</h1>
+        <h1 class="doc-title">Potential & Mass</h1>
       </div>
 <div itemprop="articleBody">
              
   <section >
-<h1>TDSE-Z: Time-Dependent Schrödinger Equation Solver</h1>
-<p>TDSE-Z is a finite-element solver for the time-dependent Schrödinger equation in 1D, 2D, and 3D. It uses PETSc/SLEPc for linear algebra and eigensolvers, with PetIGA for isogeometric analysis (B-spline basis functions).</p>
-<section >
-<h2>Key Features</h2>
-<ul >
-<li><p><strong>Finite-Element Method</strong>: High-order B-spline basis (degree 1-14), arbitrary spatial dimensions</p></li>
-<li><p><strong>PETSc/SLEPc Backend</strong>: Scalable linear algebra, Krylov solvers, and eigensolvers</p></li>
-<li><p><strong>Isogeometric Analysis</strong>: IGA via PetIGA for C1-continuous basis functions</p></li>
-<li><p><strong>Time Propagation</strong>: Crank-Nicolson implicit time-stepper (unitary, second-order)</p></li>
-<li><p><strong>Complex Arithmetic</strong>: Full complex-field support for quantum observables</p></li>
-<li><p><strong>GPU Acceleration</strong>: CUDA-enabled PETSc for large-scale wavefunction propagation</p></li>
-<li><p><strong>HDF5 Output</strong>: Ring-buffered time-series observables and wavefunction snapshots</p></li>
-<li><p><strong>Position-Dependent Mass</strong>: muParser expressions for M(x,y,z) with quantum correction terms</p></li>
-<li><p><strong>Flexible Potentials</strong>: muParser expressions with analytic or numerical derivatives</p></li>
-</ul>
+<h1>potential-mass</h1>
 </section>
 <section >
-<h2>Solver Architecture</h2>
-<p>The solver operates in two phases:</p>
-<ol >
-<li><p><strong>Eigensolver Phase</strong> (optional): SLEPc EPS to compute bound states. Eigenstates are stored for use as initial states.</p></li>
-<li><p><strong>Time Propagation Phase</strong>: PETSc TS with Crank-Nicolson (θ = 0.5). The residual at each step:</p>
-<blockquote>
-<div><p>F = iM · ψ̇ − H · ψ − E(t)·D · ψ</p>
+<h1>Potential &amp; Mass</h1>
+<p>muParser expressions, position-dependent mass, and constants.</p>
+<section >
+<h2>Potential</h2>
+<table >
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 15.0%" />
+<col style="width: 15.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr ><th ><p>Key</p></th>
+<th ><p>Type</p></th>
+<th ><p>Default</p></th>
+<th ><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr ><td><p>Potential</p></td>
+<td><p>muParser</p></td>
+<td><p><code ><span >0.0</span></code></p></td>
+<td><p>Scalar potential V(x,y,z). MuParser expressions using <code ><span >x</span></code>, <code ><span >y</span></code>, <code ><span >z</span></code></p></td>
+</tr>
+<tr ><td><p>PotentialDerivativeX / Y / Z</p></td>
+<td><p>muParser</p></td>
+<td><p><code ><span >0.0</span></code></p></td>
+<td><p>Analytic dV/dx, dV/dy, dV/dz. Auto-computed numerically if omitted</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section >
+<h2>Mass</h2>
+<table >
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 15.0%" />
+<col style="width: 15.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr ><th ><p>Key</p></th>
+<th ><p>Type</p></th>
+<th ><p>Default</p></th>
+<th ><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr ><td><p>Mass</p></td>
+<td><p>muParser</p></td>
+<td><p><code ><span >1.0</span></code></p></td>
+<td><p>Position-dependent mass M(x,y,z). Use <code ><span >1.0</span></code> for constant mass</p></td>
+</tr>
+<tr ><td><p>invMassX / Y / Z</p></td>
+<td><p>muParser</p></td>
+<td><p><code ><span >0.0</span></code></p></td>
+<td><p>Gradients of 1/m</p></td>
+</tr>
+<tr ><td><p>MassIsConstant</p></td>
+<td><p>bool</p></td>
+<td><p>auto</p></td>
+<td><p>Set to <code ><span >1</span></code> for constant mass. Disables quantum-correction terms,
+speeding assembly</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section >
+<h2>Physical Constants</h2>
+<table >
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 15.0%" />
+<col style="width: 10.0%" />
+<col style="width: 45.0%" />
+</colgroup>
+<thead>
+<tr ><th ><p>Key</p></th>
+<th ><p>Type</p></th>
+<th ><p>Default</p></th>
+<th ><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr ><td><p>Hbar / Planck</p></td>
+<td><p>real</p></td>
+<td><p>1.0</p></td>
+<td><p>Reduced Planck constant (atomic units)</p></td>
+</tr>
+<tr ><td><p>Charge / ParticleCharge</p></td>
+<td><p>real</p></td>
+<td><p>1.0</p></td>
+<td><p>Particle charge</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section >
+<h2>Custom Variables</h2>
+<table >
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 15.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr ><th ><p>Key</p></th>
+<th ><p>Type</p></th>
+<th ><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr ><td><p>Variables</p></td>
+<td><p>string</p></td>
+<td><p>User-defined muParser constants. Format:
+<code ><span >V0=1.2,</span> <span >w=0.5</span></code>. Available in ALL expressions including
+Potential, Laser, Mass.</p></td>
+</tr>
+</tbody>
+</table>
+<p>All scalar input parameters are automatically defined as muParser constants
+(e.g., Amplitude, Omega, TimeStep, LMin). No need to redefine them in
+Variables.</p>
+</section>
+</section>
     </div>
   </div>
   <footer>

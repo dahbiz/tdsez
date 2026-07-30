@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TDSE-ⵣ — Documentation</title>
+  <title>TDSE-ⵣ — Observables</title>
   <link rel="icon" type="image/png" href="../brand/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -77,35 +77,53 @@
     <div class="doc-content">
       <div class="doc-header">
         <div class="doc-label">/ Documentation</div>
-        <h1 class="doc-title">TDSE-Z Documentation</h1>
+        <h1 class="doc-title">Observables</h1>
       </div>
 <div itemprop="articleBody">
              
   <section >
-<h1>TDSE-Z: Time-Dependent Schrödinger Equation Solver</h1>
-<p>TDSE-Z is a finite-element solver for the time-dependent Schrödinger equation in 1D, 2D, and 3D. It uses PETSc/SLEPc for linear algebra and eigensolvers, with PetIGA for isogeometric analysis (B-spline basis functions).</p>
+<h1>observables</h1>
+</section>
 <section >
-<h2>Key Features</h2>
+<h1>Observables</h1>
+<p>Dipole moment, energy decomposition, current decomposition, autocorrelation,
+Berry phase.</p>
+<section >
+<h2>Dipole Moment</h2>
+<p><code ><span >d(t)</span> <span >=</span> <span >q</span> <span >*</span> <span >&lt;psi(t)|r|psi&gt;</span></code>. Units: charge * length (e * a_0). The Fourier
+transform of d(t) gives the absorption spectrum.</p>
+</section>
+<section >
+<h2>Energy Decomposition</h2>
+<p><code ><span >E_total</span> <span >=</span> <span >&lt;psi|K|psi&gt;</span> <span >+</span> <span >&lt;psi|V|psi&gt;</span> <span >+</span> <span >&lt;psi|H&gt;</span> <span >+</span> <span >E(t)</span> <span >*</span> <span >d(t)</span></code></p>
 <ul >
-<li><p><strong>Finite-Element Method</strong>: High-order B-spline basis (degree 1-14), arbitrary spatial dimensions</p></li>
-<li><p><strong>PETSc/SLEPc Backend</strong>: Scalable linear algebra, Krylov solvers, and eigensolvers</p></li>
-<li><p><strong>Isogeometric Analysis</strong>: IGA via PetIGA for C1-continuous basis functions</p></li>
-<li><p><strong>Time Propagation</strong>: Crank-Nicolson implicit time-stepper (unitary, second-order)</p></li>
-<li><p><strong>Complex Arithmetic</strong>: Full complex-field support for quantum observables</p></li>
-<li><p><strong>GPU Acceleration</strong>: CUDA-enabled PETSc for large-scale wavefunction propagation</p></li>
-<li><p><strong>HDF5 Output</strong>: Ring-buffered time-series observables and wavefunction snapshots</p></li>
-<li><p><strong>Position-Dependent Mass</strong>: muParser expressions for M(x,y,z) with quantum correction terms</p></li>
-<li><p><strong>Flexible Potentials</strong>: muParser expressions with analytic or numerical derivatives</p></li>
+<li><p><strong>K</strong> = -1/2 * nabla^2/m(r) – kinetic energy operator</p></li>
+<li><p><strong>V</strong> – potential energy</p></li>
+<li><p><strong>&lt;psi|H|psi&gt;</strong> – bare Hamiltonian expectation</p></li>
+<li><p><strong>E(t)*d(t)</strong> – interaction energy (length gauge)</p></li>
 </ul>
 </section>
 <section >
-<h2>Solver Architecture</h2>
-<p>The solver operates in two phases:</p>
-<ol >
-<li><p><strong>Eigensolver Phase</strong> (optional): SLEPc EPS to compute bound states. Eigenstates are stored for use as initial states.</p></li>
-<li><p><strong>Time Propagation Phase</strong>: PETSc TS with Crank-Nicolson (θ = 0.5). The residual at each step:</p>
-<blockquote>
-<div><p>F = iM · ψ̇ − H · ψ − E(t)·D · ψ</p>
+<h2>Current Decomposition</h2>
+<p>The velocity-gauge current <code ><span >J</span> <span >=</span> <span >&lt;psi|v|psi&gt;</span></code> decomposes into three parts:</p>
+<ul >
+<li><p><strong>Intra-band</strong>: sum_n |c_n|^2 * v_nn – current within each occupied state</p></li>
+<li><p><strong>Inter-band</strong>: sum_{m!=n} c_m* c_n * v_mn – current from state coherences</p></li>
+<li><p><strong>Bound-continuum</strong>: J_total - J_intra - J_inter – continuum components</p></li>
+</ul>
+<p>This decomposition distinguishes semiconductor-like (inter-band driven) from
+atomic-like (direct field ejection) ionization.</p>
+</section>
+<section >
+<h2>Autocorrelation</h2>
+<p><code ><span >A(t)</span> <span >=</span> <span >&lt;psi(0)|psi(t)&gt;</span></code>. |A(t)|^2 gives the survival probability. The Fourier
+transform of A(t) gives the energy spectrum.</p>
+</section>
+<section >
+<h2>Berry Phase</h2>
+<p>For circularly polarized fields, the accumulated geometric phase:</p>
+<div ><div ><pre><span></span><span >Gamma</span><span >(</span><span >t</span><span >)</span> <span >=</span> <span >sum_steps</span> <span >-</span><span >arg</span><span >(</span> <span >sum_n</span> <span >c_n</span><span >*</span><span >(</span><span >t</span><span >-</span><span >dt</span><span >)</span> <span >*</span> <span >c_n</span><span >(</span><span >t</span><span >)</span> <span >)</span>
+</pre>
     </div>
   </div>
   <footer>
