@@ -1,0 +1,569 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Observables &mdash; TDSE-Z 0.1.0 documentation</title>
+      
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b0e5de26" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}})</script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}}</script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="_static/custom.js?v=3ae78d1c"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Physics Conventions" href="Physics-Conventions.html" />
+    <link rel="prev" title="HDF5 Output Schema" href="HDF5-Output.html" />
+ 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            TDSE-Z
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview &amp; Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#solver-workflow">Solver Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#file-structure">File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#residual-assembly">Residual Assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#auto-detection">Auto-Detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build Targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#execution-modes">Execution Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#output-directory-structure">Output Directory Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#performance-note">Performance Note</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Input-File.html">Input File</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#format">Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#muparser">muParser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#file-structure">File Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Input-File.html#parameter-reference">Parameter Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#global-settings">Global Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#domain-and-grid">Domain and Grid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#potential-and-mass">Potential and Mass</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-surface-flux">t-SURFF (Surface Flux)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#lz-diagonalization">Lz Diagonalization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension">Dimension</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#spatial-bounds">Spatial Bounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh Resolution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Potential-Mass.html">Potential &amp; Mass</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#potential">Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#mass">Mass</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#physical-constants">Physical Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#custom-variables">Custom Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#common-propagation-scenarios">Common Propagation Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Output-Control.html">Output Control</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#observable-selection">Observable Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#other-output-settings">Other Output Settings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#initialstate-selector">InitialState Selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#format-reference">Format Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#example-superpositions">Example Superpositions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#d-systems">1D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic Oscillator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-ionization">1D Atomic Ionization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-superposition-quantum-beating">1D Superposition — Quantum Beating</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-photoionization-t-surff">2D Atomic Photoionization — t-SURFF</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#id2">3D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-multi-center-potential-xyz-polarization">3D Multi-Center Potential — XYZ Polarization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#known-physics-benchmarks">Known Physics Benchmarks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#usage">Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#output">Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id1">Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#options">Options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id2">Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#filtering">Filtering</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#save-dipole-operators">Save Dipole Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#input-file">Input File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#storage">Storage</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#gpu-configuration">GPU Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#gpu-aware-mpi">GPU-Aware MPI</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#unknown-input-key-fatal-error">Unknown Input Key Fatal Error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#dimension-must-be-1-2-or-3">Dimension Must Be 1, 2 or 3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#splinedegree-must-be-in-1-14">SplineDegree Must Be in [1,14]</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#initial-state-index-converged-eigenstates">Initial State Index &gt;= Converged Eigenstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#x-slowdown-with-mpirun">8-10x Slowdown with mpirun</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-tip">Performance Tip</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#ring-buffer">Ring Buffer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#time-evolution-data">Time Evolution Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipole-table">Dipole Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energy-table">Energy Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#current-table">Current Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#population-table">Population Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Observables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dipole-moment">Dipole Moment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#energy-decomposition">Energy Decomposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#acceleration">Acceleration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#current-decomposition">Current Decomposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#berry-phase">Berry Phase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#populations">Populations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#convention-reference">Convention Reference</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TDSE-Z</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Observables</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/Observables.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="observables">
+<h1>Observables<a class="headerlink" href="#observables" title="Link to this heading"></a></h1>
+<p>Per-step diagnostics computed in the TS monitors and streamed to HDF5. All
+expectation values use the PETSc mass matrix <span class="math notranslate nohighlight">\(M\)</span> as the inner-product
+metric: <span class="math notranslate nohighlight">\(\langle \psi | \phi \rangle_M = \psi^\dagger M \phi\)</span>.</p>
+<section id="dipole-moment">
+<h2>Dipole Moment<a class="headerlink" href="#dipole-moment" title="Link to this heading"></a></h2>
+<div class="math notranslate nohighlight">
+\begin{equation}
+d_x(t) = q \langle \psi(t) | x | \psi(t) \rangle
+\end{equation}</div><p>where <span class="math notranslate nohighlight">\(q\)</span> is the particle charge and <span class="math notranslate nohighlight">\(x\)</span> is the position operator.
+The dipole is computed via <code class="docutils literal notranslate"><span class="pre">MatMult(Dx(),</span> <span class="pre">psi,</span> <span class="pre">tmp)</span></code> followed by <code class="docutils literal notranslate"><span class="pre">VecDot(psi,</span> <span class="pre">tmp)</span></code> — a
+single matrix-vector product and inner product at each time step.</p>
+<p>Units: charge * length (e * <span class="math notranslate nohighlight">\(a_0\)</span>). The Fourier transform of <span class="math notranslate nohighlight">\(d_x(t)\)</span>
+gives the absorption spectrum.</p>
+</section>
+<section id="energy-decomposition">
+<h2>Energy Decomposition<a class="headerlink" href="#energy-decomposition" title="Link to this heading"></a></h2>
+<p>The code stores five energy quantities per timestep. The total energy is the sum
+of the bare Hamiltonian expectation and the interaction energy:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + E(t)\, d_x(t)
+\end{equation}</div><p>where <span class="math notranslate nohighlight">\(H_0 = K + V\)</span> is the field-free Hamiltonian, <span class="math notranslate nohighlight">\(E(t)\)</span> is the
+laser electric field amplitude, and <span class="math notranslate nohighlight">\(d_x(t)\)</span> is the dipole moment.</p>
+<p>Additionally, kinetic and potential energy are stored separately:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+E_{\text{kin}}(t) = \langle \psi(t) | K | \psi(t) \rangle, \qquad
+E_{\text{pot}}(t) = \langle \psi(t) | V | \psi(t) \rangle
+\end{equation}</div><p>The HDF5 <code class="docutils literal notranslate"><span class="pre">energy</span></code> table stores these as columns:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="header">
+<th><p>t</p></th>
+<th><p>E_kin</p></th>
+<th><p>E_pot</p></th>
+<th><p>E_int</p></th>
+<th><p>E_tot</p></th>
+<th><p>1/m_avg</p></th>
+<th><p>norm²</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><p>time</p></td>
+<td><p>kinetic</p></td>
+<td><p>potential</p></td>
+<td><p>interaction</p></td>
+<td><p>total</p></td>
+<td><p>inv mass</p></td>
+<td><p>norm²</p></td>
+</tr>
+</tbody>
+</table><p>The <code class="docutils literal notranslate"><span class="pre">1/m_avg</span></code> column stores <span class="math notranslate nohighlight">\(\langle \psi | m(\mathbf{r})^{-1} | \psi
+\rangle\)</span>, the expectation value of the inverse mass, which is useful for
+diagnosing mass-profile effects.</p>
+</section>
+<section id="acceleration">
+<h2>Acceleration<a class="headerlink" href="#acceleration" title="Link to this heading"></a></h2>
+<p>Acceleration is computed from the Ehrenfest theorem:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+a_x(t) = \langle \psi(t) | -\nabla_x V | \psi(t) \rangle - \frac{q\,E(t)}{m_{\text{avg}}}
+\end{equation}</div><p>The first term <span class="math notranslate nohighlight">\(\langle \psi | -\nabla V | \psi \rangle\)</span> is the force from
+the potential gradient. The second term subtracts the external field contribution
+scaled by the average inverse mass. This decomposition separates internal forces
+from the driving field.</p>
+</section>
+<section id="current-decomposition">
+<h2>Current Decomposition<a class="headerlink" href="#current-decomposition" title="Link to this heading"></a></h2>
+<p>The velocity-gauge current is measured by contracting the state with the
+velocity operator <span class="math notranslate nohighlight">\(\mathbf{v} = m(\mathbf{r})^{-1}\mathbf{p}\)</span>. In 2D and
+3D the current is decomposed into three parts using the projection coefficients</p>
+<div class="math notranslate nohighlight">
+\[c_n(t) = \langle \phi_n | M | \psi(t) \rangle\]</div>
+<p>where <span class="math notranslate nohighlight">\(|\phi_n\rangle\)</span> are the bound eigenstates computed by the
+eigensolver. The density matrix in the bound-state basis is
+<span class="math notranslate nohighlight">\(\rho_{mn} = c_m^*(t) c_n(t)\)</span>.</p>
+<ul>
+<li><p><strong>Intra-band</strong>:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+J_{\text{intra}} = \sum_n |c_n|^2\, v_{nn}
+\end{equation}</div><p>Current flowing within each individual eigenstate (diagonal density matrix
+elements).</p>
+</li>
+<li><p><strong>Inter-band</strong>:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+J_{\text{inter}} = \sum_{m \neq n} c_m^* c_n\, v_{mn}
+\end{equation}</div><p>Current from quantum coherences between different eigenstates (off-diagonal
+elements).</p>
+</li>
+<li><p><strong>Bound-continuum</strong>:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+J_{\text{bc}} = J_{\text{total}} - J_{\text{intra}} - J_{\text{inter}}
+\end{equation}</div><p>The remainder — current not accounted for by bound-state contributions,
+originating from the continuum part of the wavefunction.</p>
+</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">current</span></code> table stores 11 columns:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="header">
+<th><p>t</p></th>
+<th><p>Lz</p></th>
+<th><p>dGamma</p></th>
+<th><p>Jx_tot</p></th>
+<th><p>Jy_tot</p></th>
+<th><p>Jx_intra</p></th>
+<th><p>Jy_intra</p></th>
+<th><p>Jx_inter</p></th>
+<th><p>Jy_inter</p></th>
+<th><p>Jx_bc</p></th>
+<th><p>Jy_bc</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><p>time</p></td>
+<td><p>Lz exp</p></td>
+<td><p>dGamma</p></td>
+<td><p>Jx total</p></td>
+<td><p>Jy total</p></td>
+<td><p>Jx intra</p></td>
+<td><p>Jy intra</p></td>
+<td><p>Jx inter</p></td>
+<td><p>Jy inter</p></td>
+<td><p>Jx bc</p></td>
+<td><p>Jy bc</p></td>
+</tr>
+</tbody>
+</table><p>where <span class="math notranslate nohighlight">\(L_z = \langle \psi | L_z | \psi \rangle\)</span> is the angular momentum
+expectation, and <span class="math notranslate nohighlight">\(d\Gamma\)</span> is the geometric phase increment per step
+(described below).</p>
+<p>This decomposition distinguishes semiconductor-like (inter-band driven) from
+atomic-like (direct field ejection) ionization.</p>
+</section>
+<section id="autocorrelation">
+<h2>Autocorrelation<a class="headerlink" href="#autocorrelation" title="Link to this heading"></a></h2>
+<div class="math notranslate nohighlight">
+\begin{equation}
+A(t) = \langle \psi(0) | M | \psi(t) \rangle
+\end{equation}</div><p><span class="math notranslate nohighlight">\(|A(t)|^2\)</span> gives the survival probability (probability of finding the
+system still in the initial state). The Fourier transform of <span class="math notranslate nohighlight">\(A(t)\)</span> yields
+the energy spectrum (photoelectron spectrum in the long-time limit).</p>
+<p>The HDF5 <code class="docutils literal notranslate"><span class="pre">autocorrelation</span></code> table stores three columns:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="header">
+<th><p>t</p></th>
+<th><p>Re A(t)</p></th>
+<th><p>Im A(t)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><p>time</p></td>
+<td><p>real part</p></td>
+<td><p>imag part</p></td>
+</tr>
+</tbody>
+</table><p>The autocorrelation is computed as <code class="docutils literal notranslate"><span class="pre">VecDot(tmpVec[0],</span> <span class="pre">psi0())</span></code> where
+<code class="docutils literal notranslate"><span class="pre">tmpVec[0]</span> <span class="pre">=</span> <span class="pre">M</span> <span class="pre">*</span> <span class="pre">psi(t)</span></code>, i.e. the mass-weighted inner product.</p>
+</section>
+<section id="berry-phase">
+<h2>Berry Phase<a class="headerlink" href="#berry-phase" title="Link to this heading"></a></h2>
+<p>The accumulated geometric (Berry) phase is computed from consecutive time-step
+overlaps:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+\Delta\Gamma(t) = -\arg\Bigl( \langle \psi(t-\Delta t) | M | \psi(t) \rangle \Bigr)
+\end{equation}</div><div class="math notranslate nohighlight">
+\begin{equation}
+\Gamma(t) = \sum_{t'=0}^{t} \Delta\Gamma(t')
+\end{equation}</div><p>The geometric phase increment <span class="math notranslate nohighlight">\(\Delta\Gamma\)</span> is written to the <code class="docutils literal notranslate"><span class="pre">current</span></code>
+table as <code class="docutils literal notranslate"><span class="pre">dGamma</span></code>; the running total is stored in <code class="docutils literal notranslate"><span class="pre">manager.BerryPhase</span></code> and
+survives across HDF5 flushes.</p>
+<p>For circularly polarized fields, this accumulates the phase associated with the
+rotating field geometry. A non-zero Berry phase indicates the state has acquired
+a geometric phase beyond the dynamical phase <span class="math notranslate nohighlight">\(\exp(-iEt/\hbar)\)</span>.</p>
+</section>
+<section id="populations">
+<h2>Populations<a class="headerlink" href="#populations" title="Link to this heading"></a></h2>
+<p>The population of each bound eigenstate is:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+P_n(t) = |c_n(t)|^2 = \bigl| \langle \phi_n | M | \psi(t) \rangle \bigr|^2
+\end{equation}</div><p>The <code class="docutils literal notranslate"><span class="pre">population</span></code> table stores columns <code class="docutils literal notranslate"><span class="pre">[t,</span> <span class="pre">P_0,</span> <span class="pre">P_1,</span> <span class="pre">...,</span> <span class="pre">P_{N-1}]</span></code> where
+N is the number of converged eigenstates. The sum <span class="math notranslate nohighlight">\(\sum_n P_n(t)\)</span> gives
+the bound-state population; the complement <span class="math notranslate nohighlight">\(1 - \sum_n P_n\)</span> is the
+continuum (ionized) fraction.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="HDF5-Output.html" class="btn btn-neutral float-left" title="HDF5 Output Schema" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Physics-Conventions.html" class="btn btn-neutral float-right" title="Physics Conventions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dr. Zakaria Dahbi.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+<script>
+window.addEventListener('load', function() {
+  var d = document;
+  // Remove all inline style attributes from RTD elements
+  var selectors = [
+    '.wy-nav-side', '.wy-side-nav-search', '.wy-side-scroll',
+    '.wy-nav-content-wrap', '.wy-nav-content',
+    '.wy-menu-vertical li.current > a',
+    '.wy-menu-vertical a', '.wy-menu-vertical header', '.wy-menu-vertical p.caption',
+    '.wy-breadcrumbs', '.wy-breadcrumbs-aside', '.wy-breadcrumbs li',
+    '.wy-nav-top', '.rst-content', '.rst-content h1', '.rst-content h2', '.rst-content h3', '.rst-content h4',
+    '.rst-content p', '.rst-content a', '.rst-content li',
+    'code', 'tt', 'pre',
+    'table th', 'table td', 'table tr',
+    'hr', 'blockquote', 'img',
+    '.rst-footer-buttons', '.rst-footer-buttons a',
+    '.admonition', '.note', '.warning', '.tip', '.hint', '.caution', '.danger', '.error', '.seealso', '.important',
+    '.admonition-title', '.note > .admonition-title', '.warning > .admonition-title'
+  ];
+  for (var i = 0; i < selectors.length; i++) {
+    var els = d.querySelectorAll(selectors[i]);
+    for (var j = 0; j < els.length; j++) {
+      els[j].removeAttribute('style');
+    }
+  }
+  // Also remove from body
+  d.body.removeAttribute('style');
+  // Force light theme via JS to beat any remaining overrides
+  var overrides = [
+    ['body', 'background', '#ffffff'],
+    ['body', 'color', '#2d3748'],
+    ['.wy-nav-side', 'background', '#f8f9fb'],
+    ['.wy-nav-side', 'color', '#2d3748'],
+    ['.wy-side-nav-search', 'background', '#f8f9fb'],
+    ['.wy-side-nav-search > a', 'color', '#1a202c'],
+    ['.wy-menu-vertical li.current > a', 'background', 'rgba(37,99,235,0.08)'],
+    ['.wy-menu-vertical li.current > a', 'color', '#2563eb'],
+    ['.wy-menu-vertical a', 'color', '#2d3748'],
+    ['.wy-menu-vertical a:hover', 'color', '#1a202c'],
+    ['.wy-nav-content-wrap', 'background', '#ffffff'],
+    ['.rst-content', 'color', '#2d3748'],
+    ['.rst-content > h1', 'color', '#1a202c'],
+    ['.rst-content h2', 'color', '#1a202c'],
+    ['.rst-content > h1:first-child', 'border-bottom', '2px solid #e2e6ec'],
+    ['.rst-content h2', 'border-bottom', '1px solid #e2e6ec'],
+    ['.rst-content p', 'color', '#2d3748'],
+    ['.rst-content a', 'color', '#2563eb'],
+    ['code', 'color', '#e05544'],
+    ['code', 'background', '#f6f8fa'],
+    ['pre', 'background', '#f6f8fa'],
+    ['pre', 'color', '#2d3748'],
+    ['table th', 'background', '#f1f3f6'],
+    ['table th', 'color', '#1a202c'],
+    ['table td', 'color', '#2d3748'],
+    ['hr', 'background', '#e2e6ec'],
+    ['blockquote', 'background', '#f8f9fb'],
+    ['blockquote', 'color', '#718096'],
+    ['.wy-breadcrumbs', 'color', '#718096'],
+    ['.wy-nav-top', 'background', '#f8f9fb']
+  ];
+  for (var i = 0; i < overrides.length; i++) {
+    var el = d.querySelector(overrides[i][0]);
+    if (el) el.style[overrides[i][1]] = overrides[i][2];
+  }
+});
+</script>
+
+</body>
+</html>

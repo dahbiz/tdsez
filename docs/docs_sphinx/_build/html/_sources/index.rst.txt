@@ -10,9 +10,8 @@ Key Features
 - **PETSc/SLEPc Backend**: Scalable linear algebra, Krylov solvers, and eigensolvers
 - **Isogeometric Analysis**: IGA via PetIGA for C1-continuous basis functions
 - **Time Propagation**: Crank-Nicolson implicit time-stepper (unitary, second-order)
-- **Complex Arithmetic**: Full complex-field support for quantum observables
-- **GPU Acceleration**: CUDA-enabled PETSc for large-scale wavefunction propagation
-- **HDF5 Output**: Ring-buffered time-series observables and wavefunction snapshots
+-  **Complex Arithmetic**: Full complex-field support for quantum observables
+-  **HDF5 Output**: Ring-buffered time-series observables and wavefunction snapshots
 - **Position-Dependent Mass**: muParser expressions for M(x,y,z) with quantum correction terms
 - **Flexible Potentials**: muParser expressions with analytic or numerical derivatives
 
@@ -24,9 +23,23 @@ The solver operates in two phases:
 1. **Eigensolver Phase** (optional): SLEPc EPS to compute bound states. Eigenstates are stored for use as initial states.
 2. **Time Propagation Phase**: PETSc TS with Crank-Nicolson (θ = 0.5). The residual at each step:
 
-    F = iM · ψ̇ − H · ψ − E(t)·D · ψ
+.. math::
+   :nowrap:
 
-The Hamiltonian: H = −½∇²/m(r) + V(r) + CAP
+   \begin{equation}
+   F = iM \frac{\partial \psi}{\partial t} - H\psi - E(t)D\psi = 0
+   \end{equation}
+
+The Hamiltonian in BenDaniel–Duke form (for spatially varying mass):
+
+.. math::
+   :nowrap:
+
+   \begin{equation}
+   H = -\frac{1}{2} \nabla \cdot \left( \frac{1}{m(\mathbf{r})} \nabla \right) + V(\mathbf{r}) + \text{CAP}
+   \end{equation}
+
+For uniform mass :math:`m(\mathbf{r}) = m_0` this reduces to :math:`-\frac{1}{2m_0}\nabla^2`. The divergence term properly accounts for the gradient of the inverse mass, ensuring the correct quantum momentum operator in the position-dependent mass formalism.
 
 Input files are plain-text ``key = value`` format. muParser expressions are used for potentials, laser fields, mass, and custom variables. All scalar input parameters are automatically defined as muParser constants.
 
@@ -53,25 +66,25 @@ Documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :hidden:
 
-   overview
-   build
-   run
-   input-file
-   grid-domain
-   potential-mass
-   eigensolver
-   time-propagation
-   laser-field
-   boundary-conditions
-   knot-sequences
-   output-control
-   initial-state
-   hdf5-output
-   post-processing
-   cli-flags
-   mpi-notes
-   observables
-   physics-conventions
-   troubleshooting
+   Overview
+   Compilation
+   Input-File
+   Grid-Domain
+   Potential-Mass
+   Laser-Field
+   Eigensolver
+   Time-Propagation
+   Output-Control
+   Initial-State
+   Examples
+   Post-Processing
+   CLI-Flags
+   MPI-Notes
+   Troubleshooting
+   Boundary-Conditions
+   Knot-Sequences
+   HDF5-Output
+   Observables
+   Physics-Conventions

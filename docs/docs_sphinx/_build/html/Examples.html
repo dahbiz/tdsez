@@ -1,0 +1,648 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Examples &mdash; TDSE-Z 0.1.0 documentation</title>
+      
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b0e5de26" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}})</script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}}</script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="_static/custom.js?v=3ae78d1c"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Post-Processing" href="Post-Processing.html" />
+    <link rel="prev" title="Initial State" href="Initial-State.html" />
+ 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            TDSE-Z
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview &amp; Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#solver-workflow">Solver Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#file-structure">File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#residual-assembly">Residual Assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#auto-detection">Auto-Detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build Targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#execution-modes">Execution Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#output-directory-structure">Output Directory Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#performance-note">Performance Note</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Input-File.html">Input File</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#format">Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#muparser">muParser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#file-structure">File Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Input-File.html#parameter-reference">Parameter Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#global-settings">Global Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#domain-and-grid">Domain and Grid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#potential-and-mass">Potential and Mass</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-surface-flux">t-SURFF (Surface Flux)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#lz-diagonalization">Lz Diagonalization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension">Dimension</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#spatial-bounds">Spatial Bounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh Resolution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Potential-Mass.html">Potential &amp; Mass</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#potential">Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#mass">Mass</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#physical-constants">Physical Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#custom-variables">Custom Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#common-propagation-scenarios">Common Propagation Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Output-Control.html">Output Control</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#observable-selection">Observable Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#other-output-settings">Other Output Settings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#initialstate-selector">InitialState Selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#format-reference">Format Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#example-superpositions">Example Superpositions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#d-systems">1D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#harmonic-oscillator">Harmonic Oscillator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-atomic-ionization">1D Atomic Ionization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-superposition-quantum-beating">1D Superposition — Quantum Beating</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id1">2D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-atomic-photoionization-t-surff">2D Atomic Photoionization — t-SURFF</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">3D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#d-multi-center-potential-xyz-polarization">3D Multi-Center Potential — XYZ Polarization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#known-physics-benchmarks">Known Physics Benchmarks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#usage">Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#output">Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id1">Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#options">Options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id2">Output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#filtering">Filtering</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#save-dipole-operators">Save Dipole Operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#input-file">Input File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#storage">Storage</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#gpu-configuration">GPU Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#gpu-aware-mpi">GPU-Aware MPI</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#unknown-input-key-fatal-error">Unknown Input Key Fatal Error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#dimension-must-be-1-2-or-3">Dimension Must Be 1, 2 or 3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#splinedegree-must-be-in-1-14">SplineDegree Must Be in [1,14]</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#initial-state-index-converged-eigenstates">Initial State Index &gt;= Converged Eigenstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#x-slowdown-with-mpirun">8-10x Slowdown with mpirun</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-tip">Performance Tip</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#ring-buffer">Ring Buffer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#time-evolution-data">Time Evolution Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipole-table">Dipole Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energy-table">Energy Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#current-table">Current Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#population-table">Population Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole-moment">Dipole Moment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#energy-decomposition">Energy Decomposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#current-decomposition">Current Decomposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#berry-phase">Berry Phase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#convention-reference">Convention Reference</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TDSE-Z</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Examples</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/Examples.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h1>
+<p>Reference input files for well-known physics systems demonstrating the core
+capabilities of TDSE-Z.</p>
+<div class="toctree-wrapper compound">
+</div>
+<section id="d-systems">
+<h2>1D Systems<a class="headerlink" href="#d-systems" title="Link to this heading"></a></h2>
+<section id="harmonic-oscillator">
+<h3>Harmonic Oscillator<a class="headerlink" href="#harmonic-oscillator" title="Link to this heading"></a></h3>
+<p>File: <code class="docutils literal notranslate"><span class="pre">inps/harmonic_oscillator_1d.prm</span></code></p>
+<p>A bound-state-only computation for the 1D harmonic oscillator:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+V(x) = \frac{1}{2} k x^2, \quad k = 1.0
+\end{equation}</div><p><strong>What it demonstrates:</strong>
+- Ground-state eigensolver (<code class="docutils literal notranslate"><span class="pre">EnablePropagation</span> <span class="pre">=</span> <span class="pre">0</span></code>)
+- Uniform B-spline grid with degree 3
+- Extraction of eigenvalues and eigenstates
+- Verification against analytical solution</p>
+<p><strong>Exact solutions for reference:</strong></p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+E_n = \left(n + \frac{1}{2}\right) \omega = n + 0.5
+\end{equation}</div><div class="math notranslate nohighlight">
+\begin{equation}
+\psi_n(x) = \left(\frac{\alpha}{\pi}\right)^{1/4} \frac{1}{\sqrt{2^n n!}} H_n(\sqrt{\alpha}\,x) \, e^{-\alpha x^2/2}
+\end{equation}</div><p>where <span class="math notranslate nohighlight">\(\alpha = \omega = 1.0\)</span>, <span class="math notranslate nohighlight">\(H_n\)</span> is the Hermite polynomial of
+degree <span class="math notranslate nohighlight">\(n\)</span>.</p>
+<p><strong>Key parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Domain</span> <span class="pre">=</span> <span class="pre">[-10,</span> <span class="pre">10]</span></code> — sufficient to capture the exponential tails</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SplineDegree</span> <span class="pre">=</span> <span class="pre">3</span></code>, <code class="docutils literal notranslate"><span class="pre">Nelements</span> <span class="pre">=</span> <span class="pre">200</span></code> — fine grid for accurate eigenvalues</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NBoundStates</span> <span class="pre">=</span> <span class="pre">5</span></code> — compute first 5 eigenstates</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TargetEigenvalue</span> <span class="pre">=</span> <span class="pre">0.5</span></code> — start search near ground state</p></li>
+</ul>
+<p>Run: <code class="docutils literal notranslate"><span class="pre">./tdsez</span> <span class="pre">-inp</span> <span class="pre">inps/harmonic_oscillator_1d.prm</span></code></p>
+<p>Results in <code class="docutils literal notranslate"><span class="pre">static/EigenData_1d.prm.h5</span></code>: eigenvalues, eigenstates, energy
+spectrum.</p>
+<p>—</p>
+</section>
+<section id="d-atomic-ionization">
+<h3>1D Atomic Ionization<a class="headerlink" href="#d-atomic-ionization" title="Link to this heading"></a></h3>
+<p>File: <code class="docutils literal notranslate"><span class="pre">inps/atom_laser_1d.prm</span></code></p>
+<p>A hydrogen-like atom driven by a Gaussian-envelope laser pulse at 800 nm:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+V(x) = -\frac{\alpha}{|x| + \beta}, \quad \alpha = 1.0,\; \beta = 0.5
+\end{equation}</div><p><strong>What it demonstrates:</strong>
+- Time-dependent propagation with field-ionization
+- Complex absorbing potential (CAP) to absorb outgoing electron flux
+- Population decay from ground state
+- Dipole emission spectrum
+- Autocorrelation function and survival probability</p>
+<p><strong>Laser parameters:</strong></p>
+<ul class="simple">
+<li><p>Wavelength: <span class="math notranslate nohighlight">\(\lambda = 800\,\text{nm}\)</span> → <span class="math notranslate nohighlight">\(\omega = 0.056954\)</span> a.u.</p></li>
+<li><p>Intensity: <span class="math notranslate nohighlight">\(I \approx 2.2 \times 10^{13}\,\text{W/cm}^2\)</span> (<code class="docutils literal notranslate"><span class="pre">Amplitude</span> <span class="pre">=</span> <span class="pre">0.04</span></code>)</p></li>
+<li><p>Pulse duration (FWHM): 6 fs = 247 a.u.</p></li>
+<li><p>CEP (carrier-envelope phase): 0</p></li>
+</ul>
+<p><strong>Expected behavior:</strong></p>
+<ul class="simple">
+<li><p>Ground-state population <span class="math notranslate nohighlight">\(P_0(t)\)</span> decays as the atom ionizes</p></li>
+<li><p>Autocorrelation <span class="math notranslate nohighlight">\(|A(t)|^2\)</span> drops from 1 to near 0 as electron escapes</p></li>
+<li><p>Dipole spectrum shows ionization continuum</p></li>
+<li><p>CAP at <code class="docutils literal notranslate"><span class="pre">CAPKmin</span> <span class="pre">=</span> <span class="pre">15.0</span></code> absorbs electrons beyond <span class="math notranslate nohighlight">\(|x| = 15\)</span></p></li>
+</ul>
+<p><strong>Key parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">CAPKmin</span> <span class="pre">=</span> <span class="pre">15.0</span></code>, <code class="docutils literal notranslate"><span class="pre">Gamma</span> <span class="pre">=</span> <span class="pre">10.0</span></code> — absorbing boundary</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span> <span class="pre">=</span> <span class="pre">all</span></code> — all diagnostics enabled</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TimeStep</span> <span class="pre">=</span> <span class="pre">0.02</span></code>, <code class="docutils literal notranslate"><span class="pre">FinalTime</span> <span class="pre">=</span> <span class="pre">300.0</span></code> — propagate for ~7 fs</p></li>
+</ul>
+<p>Run: <code class="docutils literal notranslate"><span class="pre">./tdsez</span> <span class="pre">-inp</span> <span class="pre">inps/atom_laser_1d.prm</span></code></p>
+<p>Results in <code class="docutils literal notranslate"><span class="pre">td/TimeEvolutionData_atom_laser_1d.h5</span></code>: dipole, population,
+energy, current, autocorrelation tables.</p>
+<p>—</p>
+</section>
+<section id="d-superposition-quantum-beating">
+<h3>1D Superposition — Quantum Beating<a class="headerlink" href="#d-superposition-quantum-beating" title="Link to this heading"></a></h3>
+<p>File: <code class="docutils literal notranslate"><span class="pre">inps/superposition_1d.prm</span></code></p>
+<p>A coherent superposition of the ground state (n=0) and first excited state
+(n=1) in a 1D potential:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+V(x) = \frac{1}{2} k x^2, \quad k = 4.0
+\end{equation}</div><p>The superposition is:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+|\psi(0)\rangle = 0.6\,|\psi_0\rangle + 0.8\,|\psi_1\rangle
+\end{equation}</div><p><strong>What it demonstrates:</strong>
+- Superposition initial state (<code class="docutils literal notranslate"><span class="pre">InitialState</span> <span class="pre">=</span> <span class="pre">&quot;sup:</span> <span class="pre">0.6*0</span> <span class="pre">+</span> <span class="pre">0.8*1&quot;</span></code>)
+- Quantum beating — oscillating dipole at the transition frequency
+- Zero laser field — free evolution of the superposition
+- Population oscillation between states
+- Wavefunction snapshots (WFS)</p>
+<p><strong>Expected behavior:</strong></p>
+<p>The dipole moment oscillates at:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+\omega_{01} = \frac{E_1 - E_0}{\hbar} = \omega = 2.0
+\end{equation}</div><p>The population of each state oscillates as:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+P_0(t) = |c_0|^2 = 0.36, \qquad P_1(t) = |c_1|^2 = 0.64
+\end{equation}</div><p>For a pure harmonic oscillator these are constant (degenerate spacing), but
+any anharmonicity in the potential causes population exchange.</p>
+<p><strong>Key parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">InitialState</span> <span class="pre">=</span> <span class="pre">&quot;sup:</span> <span class="pre">0.6*0</span> <span class="pre">+</span> <span class="pre">0.8*1&quot;</span></code> — superposition of n=0 and n=1</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NormalizeInitialState</span> <span class="pre">=</span> <span class="pre">1</span></code> — normalize after assembly</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Amplitude</span> <span class="pre">=</span> <span class="pre">0.0</span></code> — no driving field, free evolution</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OutputStrideWFS</span> <span class="pre">=</span> <span class="pre">20</span></code> — save wavefunction snapshots</p></li>
+</ul>
+<p>Run: <code class="docutils literal notranslate"><span class="pre">./tdsez</span> <span class="pre">-inp</span> <span class="pre">inps/superposition_1d.prm</span></code></p>
+</section>
+</section>
+<section id="id1">
+<h2>2D Systems<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="d-circularly-polarized-field-berry-phase">
+<h3>2D Circularly Polarized Field — Berry Phase<a class="headerlink" href="#d-circularly-polarized-field-berry-phase" title="Link to this heading"></a></h3>
+<p>File: <code class="docutils literal notranslate"><span class="pre">inps/harmonic_2d_circular.prm</span></code></p>
+<p>A 2D harmonic oscillator driven by circularly polarized light:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+V(x,y) = \frac{1}{2}(x^2 + y^2)
+\end{equation}</div><p>with laser field:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+E_x(t) = E_0 \sin(\omega t), \qquad E_y(t) = E_0 \sin(\omega t + \pi/2)
+\end{equation}</div><p><strong>What it demonstrates:</strong>
+- Circular polarization (<code class="docutils literal notranslate"><span class="pre">Polarization</span> <span class="pre">=</span> <span class="pre">xy</span></code>)
+- Berry phase accumulation in a time-dependent field
+- Angular momentum <span class="math notranslate nohighlight">\(L_z\)</span> expectation value
+- Degenerate state splitting (<code class="docutils literal notranslate"><span class="pre">EnableLzDiag</span> <span class="pre">=</span> <span class="pre">1</span></code>)
+- Full current decomposition in 2D</p>
+<p><strong>Expected behavior:</strong></p>
+<p>The Berry phase <span class="math notranslate nohighlight">\(\Gamma(t)\)</span> accumulates linearly for a pure circularly
+polarized field. The angular momentum <span class="math notranslate nohighlight">\(\langle L_z \rangle\)</span> oscillates
+as the electron is driven in a circular orbit. The current decomposition
+shows dominant inter-band current from the circular driving.</p>
+<p><strong>Key parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Polarization</span> <span class="pre">=</span> <span class="pre">xy</span></code>, <code class="docutils literal notranslate"><span class="pre">Ampx</span> <span class="pre">=</span> <span class="pre">0.03</span></code>, <code class="docutils literal notranslate"><span class="pre">Ampy</span> <span class="pre">=</span> <span class="pre">0.03</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CEPy</span> <span class="pre">=</span> <span class="pre">1.570796</span></code> (<code class="docutils literal notranslate"><span class="pre">\pi/2</span></code>) — 90° phase shift for circular polarization</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">EnableLzDiag</span> <span class="pre">=</span> <span class="pre">1</span></code> — diagonalize <span class="math notranslate nohighlight">\(L_z^2\)</span> within degenerate shells</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span> <span class="pre">=</span> <span class="pre">all</span></code></p></li>
+</ul>
+<p>Run: <code class="docutils literal notranslate"><span class="pre">./tdsez</span> <span class="pre">-inp</span> <span class="pre">inps/harmonic_2d_circular.prm</span></code></p>
+</section>
+<section id="d-atomic-photoionization-t-surff">
+<h3>2D Atomic Photoionization — t-SURFF<a class="headerlink" href="#d-atomic-photoionization-t-surff" title="Link to this heading"></a></h3>
+<p>File: <code class="docutils literal notranslate"><span class="pre">inps/atomic_photoion_2d.prm</span></code></p>
+<p>A hydrogen-like atom in 2D driven by a linearly polarized laser, with
+t-SURFF (time-dependent surface flux) for photoelectron momentum spectrum:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+V(r) = -\frac{1}{r + \beta}, \quad \beta = 0.5,\; r = \sqrt{x^2 + y^2}
+\end{equation}</div><p><strong>What it demonstrates:</strong>
+- 2D soft-core Coulomb potential
+- t-SURFF method for computing photoelectron momentum distribution
+- Angular integration of the momentum spectrum
+- Ionization yield and energy spectrum</p>
+<p><strong>t-SURFF theory:</strong></p>
+<p>The photoelectron momentum distribution is:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+P(\mathbf{k}) = \frac{1}{(2\pi)^d} \left| \int_0^\infty dt \int_{\partial \Omega} d\mathbf{S} \cdot \left( \psi(\mathbf{r},t) \nabla e^{-i\mathbf{k}\cdot\mathbf{r}} - e^{-i\mathbf{k}\cdot\mathbf{r}} \nabla \psi(\mathbf{r},t) \right) \right|^2
+\end{equation}</div><p>where <span class="math notranslate nohighlight">\(\partial \Omega\)</span> is the integration surface (a circle in 2D,
+sphere in 3D) of radius <span class="math notranslate nohighlight">\(R_{\text{surf}}\)</span>.</p>
+<p><strong>Expected behavior:</strong></p>
+<ul class="simple">
+<li><p>Photoelectron spectrum peaks near <span class="math notranslate nohighlight">\(k \approx \sqrt{2(E_{\text{photon}} - I_p)}\)</span>
+where <span class="math notranslate nohighlight">\(I_p \approx 0.5\)</span> a.u. is the ionization potential</p></li>
+<li><p>Angular distribution shows dipole pattern along the polarization axis</p></li>
+<li><p>Ionization yield increases with laser amplitude</p></li>
+</ul>
+<p><strong>Key parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">CAPKmin</span> <span class="pre">=</span> <span class="pre">25.0</span></code>, <code class="docutils literal notranslate"><span class="pre">Gamma</span> <span class="pre">=</span> <span class="pre">5.0</span></code> — absorbing potential</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TSurff</span> <span class="pre">=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">SurffNk</span> <span class="pre">=</span> <span class="pre">80</span></code>, <code class="docutils literal notranslate"><span class="pre">SurffKmax</span> <span class="pre">=</span> <span class="pre">4.0</span></code> — t-SURFF resolution</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SurffRadius</span> <span class="pre">=</span> <span class="pre">0.0</span></code> — use boundary of domain as integration surface</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Amplitude</span> <span class="pre">=</span> <span class="pre">0.06</span></code>, <code class="docutils literal notranslate"><span class="pre">Omega</span> <span class="pre">=</span> <span class="pre">0.056954</span></code> — stronger field than 1D example</p></li>
+</ul>
+<p>Run: <code class="docutils literal notranslate"><span class="pre">./tdsez</span> <span class="pre">-inp</span> <span class="pre">inps/atomic_photoion_2d.prm</span></code></p>
+</section>
+</section>
+<section id="id2">
+<h2>3D Systems<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="d-multi-center-potential-xyz-polarization">
+<h3>3D Multi-Center Potential — XYZ Polarization<a class="headerlink" href="#d-multi-center-potential-xyz-polarization" title="Link to this heading"></a></h3>
+<p>File: <code class="docutils literal notranslate"><span class="pre">inps/multi_center_3d.prm</span></code></p>
+<p>A full 3D propagation through a double-well (multi-center) potential with
+XYZ laser polarization and t-SURFF:</p>
+<div class="math notranslate nohighlight">
+\begin{equation}
+V(\mathbf{r}) = \frac{1}{2} r^2 - V_0 \exp\left(-\frac{r^2}{R_0^2}\right)
+\end{equation}</div><p><strong>What it demonstrates:</strong>
+- Full 3D propagation (<code class="docutils literal notranslate"><span class="pre">Dimension</span> <span class="pre">=</span> <span class="pre">3</span></code>)
+- Multi-center potential with adaptive knot sequence
+- XYZ laser polarization — all three dipole components
+- t-SURFF for 3D photoelectron momentum distribution
+- Adaptive mesh refinement (<code class="docutils literal notranslate"><span class="pre">KnotSequence</span> <span class="pre">=</span> <span class="pre">adaptive</span></code>)</p>
+<p><strong>Expected behavior:</strong></p>
+<p>The double-well potential creates a bonding and anti-bonding ground state.
+The XYZ laser drives transitions between these states and ionization. The
+adaptive knot sequence refines the grid near the centers of the wells where
+the wavefunction has structure.</p>
+<p><strong>Key parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Dimension</span> <span class="pre">=</span> <span class="pre">3</span></code>, <code class="docutils literal notranslate"><span class="pre">Domain</span> <span class="pre">=</span> <span class="pre">[-25,</span> <span class="pre">25],</span> <span class="pre">[-20,</span> <span class="pre">20],</span> <span class="pre">[-20,</span> <span class="pre">20]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">KnotSequence</span> <span class="pre">=</span> <span class="pre">adaptive</span></code>, <code class="docutils literal notranslate"><span class="pre">AdaptiveKappa</span> <span class="pre">=</span> <span class="pre">1.0</span></code>, <code class="docutils literal notranslate"><span class="pre">AdaptivePower</span> <span class="pre">=</span> <span class="pre">2.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Polarization</span> <span class="pre">=</span> <span class="pre">xyz</span></code> — all three field components</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TSurff</span> <span class="pre">=</span> <span class="pre">1</span></code> — t-SURFF for 3D momentum spectrum</p></li>
+</ul>
+<p>Run: <code class="docutils literal notranslate"><span class="pre">./tdsez</span> <span class="pre">-np</span> <span class="pre">8</span> <span class="pre">./tdsez</span> <span class="pre">-inp</span> <span class="pre">inps/multi_center_3d.prm</span></code> (recommended:
+multiple MPI ranks for 3D)</p>
+</section>
+</section>
+<section id="known-physics-benchmarks">
+<h2>Known Physics Benchmarks<a class="headerlink" href="#known-physics-benchmarks" title="Link to this heading"></a></h2>
+<p>The following table summarizes the analytical results available for testing
+the solver accuracy.</p>
+<table class="docutils align-default">
+<colgroup>
+<col />
+<col />
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>System</p></th>
+<th class="head"><p>Dimension</p></th>
+<th class="head"><p>Energy</p></th>
+<th class="head"><p>Wavefunction / Spectrum</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Harmonic Oscillator</p></td>
+<td><p>1D</p></td>
+<td><p><span class="math notranslate nohighlight">\(E_n = (n+1/2)\omega\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\psi_n(x) = (\alpha/\pi)^{1/4} H_n(\sqrt{\alpha}x) e^{-\alpha x^2/2}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>Hydrogen (half-line)</p></td>
+<td><p>1D</p></td>
+<td><p><span class="math notranslate nohighlight">\(E_0 = -0.5\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\psi_0(x) = 2 e^{-x}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>Hydrogenic atom</p></td>
+<td><p>1D/2D/3D</p></td>
+<td><p><span class="math notranslate nohighlight">\(E_0 = -\alpha^2/(2n^2)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\psi_0(r) \propto e^{-\alpha r/n}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>Infinite well</p></td>
+<td><p>1D</p></td>
+<td><p><span class="math notranslate nohighlight">\(E_n = n^2\pi^2/(2mL^2)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\psi_n(x) = \sqrt{2/L} \sin(n\pi x/L)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>2D Circular oscillator</p></td>
+<td><p>2D</p></td>
+<td><p><span class="math notranslate nohighlight">\(E_n = (n_x + n_y + 1)\omega\)</span></p></td>
+<td><p>Separable in x,y coordinates</p></td>
+</tr>
+</tbody>
+</table>
+<p>Verification procedure:</p>
+<ol class="arabic simple">
+<li><p>Run the example with sufficient grid resolution</p></li>
+<li><p>Compare computed eigenvalues against the exact formula</p></li>
+<li><p>Check wavefunction norm conservation during propagation</p></li>
+<li><p>Verify dipole spectrum peak positions match transition energies</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Initial-State.html" class="btn btn-neutral float-left" title="Initial State" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Post-Processing.html" class="btn btn-neutral float-right" title="Post-Processing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dr. Zakaria Dahbi.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+<script>
+window.addEventListener('load', function() {
+  var d = document;
+  // Remove all inline style attributes from RTD elements
+  var selectors = [
+    '.wy-nav-side', '.wy-side-nav-search', '.wy-side-scroll',
+    '.wy-nav-content-wrap', '.wy-nav-content',
+    '.wy-menu-vertical li.current > a',
+    '.wy-menu-vertical a', '.wy-menu-vertical header', '.wy-menu-vertical p.caption',
+    '.wy-breadcrumbs', '.wy-breadcrumbs-aside', '.wy-breadcrumbs li',
+    '.wy-nav-top', '.rst-content', '.rst-content h1', '.rst-content h2', '.rst-content h3', '.rst-content h4',
+    '.rst-content p', '.rst-content a', '.rst-content li',
+    'code', 'tt', 'pre',
+    'table th', 'table td', 'table tr',
+    'hr', 'blockquote', 'img',
+    '.rst-footer-buttons', '.rst-footer-buttons a',
+    '.admonition', '.note', '.warning', '.tip', '.hint', '.caution', '.danger', '.error', '.seealso', '.important',
+    '.admonition-title', '.note > .admonition-title', '.warning > .admonition-title'
+  ];
+  for (var i = 0; i < selectors.length; i++) {
+    var els = d.querySelectorAll(selectors[i]);
+    for (var j = 0; j < els.length; j++) {
+      els[j].removeAttribute('style');
+    }
+  }
+  // Also remove from body
+  d.body.removeAttribute('style');
+  // Force light theme via JS to beat any remaining overrides
+  var overrides = [
+    ['body', 'background', '#ffffff'],
+    ['body', 'color', '#2d3748'],
+    ['.wy-nav-side', 'background', '#f8f9fb'],
+    ['.wy-nav-side', 'color', '#2d3748'],
+    ['.wy-side-nav-search', 'background', '#f8f9fb'],
+    ['.wy-side-nav-search > a', 'color', '#1a202c'],
+    ['.wy-menu-vertical li.current > a', 'background', 'rgba(37,99,235,0.08)'],
+    ['.wy-menu-vertical li.current > a', 'color', '#2563eb'],
+    ['.wy-menu-vertical a', 'color', '#2d3748'],
+    ['.wy-menu-vertical a:hover', 'color', '#1a202c'],
+    ['.wy-nav-content-wrap', 'background', '#ffffff'],
+    ['.rst-content', 'color', '#2d3748'],
+    ['.rst-content > h1', 'color', '#1a202c'],
+    ['.rst-content h2', 'color', '#1a202c'],
+    ['.rst-content > h1:first-child', 'border-bottom', '2px solid #e2e6ec'],
+    ['.rst-content h2', 'border-bottom', '1px solid #e2e6ec'],
+    ['.rst-content p', 'color', '#2d3748'],
+    ['.rst-content a', 'color', '#2563eb'],
+    ['code', 'color', '#e05544'],
+    ['code', 'background', '#f6f8fa'],
+    ['pre', 'background', '#f6f8fa'],
+    ['pre', 'color', '#2d3748'],
+    ['table th', 'background', '#f1f3f6'],
+    ['table th', 'color', '#1a202c'],
+    ['table td', 'color', '#2d3748'],
+    ['hr', 'background', '#e2e6ec'],
+    ['blockquote', 'background', '#f8f9fb'],
+    ['blockquote', 'color', '#718096'],
+    ['.wy-breadcrumbs', 'color', '#718096'],
+    ['.wy-nav-top', 'background', '#f8f9fb']
+  ];
+  for (var i = 0; i < overrides.length; i++) {
+    var el = d.querySelector(overrides[i][0]);
+    if (el) el.style[overrides[i][1]] = overrides[i][2];
+  }
+});
+</script>
+
+</body>
+</html>
