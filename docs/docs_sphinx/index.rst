@@ -90,3 +90,12 @@ Documentation
    HDF5-Output
    Observables
    Physics-Conventions
+
+Citation
+--------
+
+If you use TDSE-Z in your research, please cite:
+
+   Dahbi, Zakaria, and Amelle Zaïr. “Unified Strong-Field Dynamics Simulations
+   from Atoms to Heterostructures.” *arXiv preprint* arXiv:2608.18472 (2026).
+   `arXiv:2608.18472 <https://arxiv.org/abs/2608.18472>`_.

@@ -124,8 +124,12 @@ the Actions tab with `workflow_dispatch`.
 
 If you use TDSE-Z in your research, please cite:
 
-> TDSE-Z — Time-Dependent Schrödinger Equation Solver (B-spline / IGA)
-> Dr. Zakaria Dahbi, Attosecond Quantum Physics Lab, King's College London, UK
+> Dahbi, Zakaria, and Amelle Zaïr. “Unified Strong-Field Dynamics Simulations
+> from Atoms to Heterostructures.” *arXiv preprint* arXiv:2608.18472 (2026).
+> [arXiv:2608.18472](https://arxiv.org/abs/2608.18472)
+
+The same metadata is available in [`CITATION.cff`](CITATION.cff), which GitHub
+uses to display the repository's “Cite this repository” information.
 
 ## License
 
