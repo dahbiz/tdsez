@@ -65,19 +65,18 @@ jobs:
           cp docs/index.html _site/index.html
           cp -R docs/brand _site/brand
 
-          # User guide: /docs/docs_sphinx/_build/html/
-          sphinx-build -W -b html docs/docs_sphinx _site/docs/docs_sphinx/_build/html
+          # User guide: /docs/
+          sphinx-build -W -b html docs/docs_sphinx _site/docs
 
-          # Keep /docs/ as a stable entry point for the generated guide.
-          cat > _site/docs/index.html <<'EOF'
-          <!doctype html>
-          <html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=docs_sphinx/_build/html/index.html"><title>TDSE-ⵣ Documentation</title></head>
-          <body><p>Opening the <a href="docs_sphinx/_build/html/index.html">TDSE-ⵣ documentation</a>…</p></body></html>
-          EOF
-
-          # C++ API reference: /docs/doxygen/html/
+          # C++ API reference: /api/
           doxygen Doxyfile
-          cp -R docs/doxygen _site/docs/
+          mkdir -p _site/api
+          cp -R docs/doxygen/html _site/api/
+
+          # Fail the job if either public documentation entry point is missing.
+          test -f _site/index.html
+          test -f _site/docs/index.html
+          test -f _site/api/html/index.html
 
           # GitHub Pages must serve files beginning with an underscore.
           touch _site/.nojekyll
