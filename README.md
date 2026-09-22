@@ -5,13 +5,13 @@
 <h1 align="center">TDSE-Z — Attosecond Quantum Dynamics, at Scale</h1>
 
 <p align="center">
-  <strong>C++17</strong> &middot; <strong>MPI</strong> &middot; <strong>PETSc</strong> &middot; <strong>SLEPc</strong> &middot; <strong>PetIGA</strong> &middot; <strong>CUDA</strong>
+  <strong>C++17</strong> &middot; <strong>MPI</strong> &middot; <strong>PETSc</strong> &middot; <strong>SLEPc</strong> &middot; <strong>PetIGA</strong>
 </p>
 
 <p align="center">
   A high-performance C++ framework for solving the time-dependent Schrödinger equation
   in strong laser fields — atomic, molecular and solid-state systems resolved to the
-  attosecond, scaled across MPI clusters and GPUs.
+  attosecond, scaled across MPI clusters.
 </p>
 
 <p align="center">
@@ -42,7 +42,6 @@ TDSE-Z solves the time-dependent Schrödinger equation for single-particle quant
 - **Dipole matrix** — transition elements $d_{ij} = \langle\psi_i|x|\psi_j\rangle$
 - **Population tracking** — time-dependent bound-state occupations
 - **Current / autocorrelation** — time-dependent observables
-- **t-SURFF** — photoelectron energy spectra via the surface-flux method
 - **Absorbing boundary (CAP)** — open-system dynamics
 
 ## Code Layout
@@ -65,7 +64,6 @@ declarations. Individual class headers can be included separately.
 - SLEPc eigensolvers (EPS/PEP) for eigenvalue problems
 - PETSc time-stepping (TS) for propagation
 - MPI parallelism across multiple nodes
-- CUDA GPU offload for matrix operations (auto-detected)
 - HDF5 output with full provenance metadata
 - muParser for user-defined potentials, laser fields, and mass profiles
 
@@ -92,7 +90,6 @@ analytical references (1D/2D/3D harmonic oscillators). See [tests/README.md](tes
 | muParser | Fast C++ expression parser |
 | CMake 3.15+ | Build system |
 | MPI (OpenMPI/MPICH) | Distributed parallelism |
-| CUDA (optional) | GPU acceleration |
 | HDF5 | Simulation output |
 | Python 3 + pytest + numpy + h5py | Tests (optional) |
 
@@ -131,10 +128,17 @@ If you use TDSE-Z in your research, please cite:
 The same metadata is available in [`CITATION.cff`](CITATION.cff), which GitHub
 uses to display the repository's “Cite this repository” information.
 
-## License
+## License & Commercial Use
 
-MIT License — Copyright (c) 2024–2026 Dr. Zakaria Dahbi.
-See [LICENSE](LICENSE) for details.
+This software is released under the **PolyForm Noncommercial License 1.0.0**.
+
+* **Academic & Non-Commercial Use:** Free to use, modify, and distribute for
+  non-commercial research and educational purposes.
+* **Commercial Use:** For-profit companies or commercial projects require a
+  separate commercial license. Please contact [zdahbi@outlook.es](mailto:zdahbi@outlook.es).
+
+See [LICENSE](LICENSE) and the [full PolyForm terms](https://polyformproject.org/licenses/noncommercial/1.0.0)
+for details.
 
 ## Contact
 

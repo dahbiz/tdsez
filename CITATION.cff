@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use TDSE-Z in your research, please cite this work."
+title: "Unified Strong-Field Dynamics Simulations from Atoms to Heterostructures"
+type: software
+authors:
+  - family-names: Dahbi
+    given-names: Zakaria
+  - family-names: Zaïr
+    given-names: Amelle
+year: 2026
+version: "1.0.0"
+repository-code: "https://github.com/dahbiz/tdsez"
+url: "https://arxiv.org/abs/2608.18472"
+identifiers:
+  - type: arxiv
+    value: "2608.18472"
+
+# BibTeX export:
+# @article{dahbi2026unified,
+#   title={Unified Strong-Field Dynamics Simulations from Atoms to Heterostructures},
+#   author={Dahbi, Zakaria and Za{\~A}{\NG}r, Amelle},
+#   journal={arXiv preprint arXiv:2608.18472},
+#   year={2026}
+# }

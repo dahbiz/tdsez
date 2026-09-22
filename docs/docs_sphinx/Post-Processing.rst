@@ -13,7 +13,7 @@ with::
 This writes ``static/EigenData_file.inp.h5`` (including ``psi_0``, ``psi_1``,
 and later states) and ``static/Dx_file.inp.bin``. The tools below operate on
 the x dipole operator. They currently have CPU numerical regression coverage
-for a one-dimensional harmonic oscillator; GPU and continuum results remain
+for a one-dimensional harmonic oscillator; continuum results remain
 unvalidated.
 
 tdmprocessor
@@ -26,8 +26,6 @@ Compute the full transition dipole matrix
 
 The outputs are ``static/TDM_Dx_file.inp.npy`` (complex matrix),
 ``static/EigenEnergies_file.inp.npy``, and ``static/States_file.inp.npy``.
-``-gpu`` requests a single CUDA device and requires a compatible PETSc build
-and working driver.
 
 tdmselect
 ---------
@@ -35,13 +33,12 @@ tdmselect
 Compute one row of the transition dipole matrix for states whose energy is
 strictly above ``Ethr``::
 
-    ./tdmselect file.inp -i 0 -Ethr 0.2 [-w0 0.05655] [-gpu]
+    ./tdmselect file.inp -i 0 -Ethr 0.2 [-w0 0.05655]
 
 ``-i`` is the bra state index. The output is
 ``static/dij_select_file.inp_i0.csv``. It includes each selected state energy,
 complex dipole, squared magnitude, and density-of-states estimate. ``-w0``
-sets the reference frequency used for the ``x`` column. ``-gpu`` requests a
-single CUDA device.
+sets the reference frequency used for the ``x`` column.
 
 drecprocessor
 -------------

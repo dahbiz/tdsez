@@ -27,7 +27,7 @@ tdsez.cpp (main entry)
   ├── TDSEZParser  — key=value input parsing (muParser expressions)
   ├── TDSEZCore    — IGA setup, knot generation, TISE solve (SLEPc EPS)
   ├── TDSEZAssembler — builds H, M, K, V, Dx, Dy, Dz, VelX/Y/Z, dVdx/dy/dz, CAP, Lz
-  ├── TDSEZManager — runtime: operator management, observables, HDF5 buffers, t-SURFF
+  ├── TDSEZManager — runtime: operator management, observables, HDF5 buffers
   └── TDSEZPropagator — PETSc TS driver (Crank-Nicolson theta=0.5)
 ```
 
@@ -44,7 +44,6 @@ tdsez.cpp (main entry)
 - Position-dependent mass: `Mass(x,y,z)` with full quantum corrections
 - Laser field: Gaussian-envelope carrier or user-defined `Laser(t)` / `LaserX(t)`, `LaserY(t)`, `LaserZ(t)` expressions
 - Complex absorbing potential (CAP) for outgoing-wave boundary conditions
-- t-SURFF: time-dependent surface-flux photoelectron momentum spectrum
 - Length-gauge (dipole) interaction: `E(t)·D`
 - Velocity-gauge currents: intra-band, inter-band, bound-continuum decomposition
 - Berry phase accumulation for circular polarization
@@ -233,7 +232,6 @@ E_i(t) = LaserX(t)   // User-defined expression in variable t
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `PhysicsOutput` / `OutputQuantities` | string | `"all"` | Declarative enable list: comma-separated list of `dipole,population,energy,current,autocorrelation,wfs,tsurff`. Any not listed are OFF (their per-step computations are skipped entirely). `"all"` or empty = everything enabled. |
 | `OutputStrideTS` | int | 0 | Output stride (in steps) for time-series diagnostics. 0 = disabled |
 | `OutputStrideWFS` | int | 100 | Output stride (in steps) for wavefunction snapshots. 0 = disabled |
 | `OutputStrideAC` | int | 0 | Output stride (in steps) for autocorrelation diagnostics. 0 = disabled |
@@ -249,19 +247,6 @@ E_i(t) = LaserX(t)   // User-defined expression in variable t
 | `SaveDipoleAxes` | string | "" | Which axes to save: `"x"`, `"xy"`, `"xyz"`, `"all"`, `"none"`. CLI override via `-save_dipole` |
 
 Dipole operators are saved to `static/Dx_<input>.bin` (and Dy, Dz for multi-axis runs). Loadable with `MatLoad` in PETSc.
-
-### 4.10 t-SURFF (Photoelectron Momentum Spectrum)
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `TSurff` | bool | 0 | Enable t-SURFF photoelectron spectrum computation |
-| `SurffNk` | int | 40 | Momentum grid points per axis in [-SurffKmax, SurffKmax] |
-| `SurffKmax` | real | 2.0 | Momentum cutoff in atomic units |
-| `OutputStrideSurff` | int | 1 | Fold boundary flux into b(k) every N accepted steps (1 = exact at every step) |
-| `SurffCouplingSign` | real | +1.0 | Sign of the k−A(t) coupling in t-SURFF. Change to -1.0 if your field couples as +q·E·r |
-| `SurffRadius` | real | 0.0 | If >0, restrict t-SURFF faces to the shell \|r\| > SurffRadius (a.u.) |
-
-t-SURFF output goes to `td/surff_<input>.h5` containing `kaxis` (1D), `pes` (3D momentum spectrum), and metadata (`Nk`, `Kmax`, `Dim`, `Stride`).
 
 ### 4.11 Initial State
 
@@ -283,12 +268,6 @@ t-SURFF output goes to `td/surff_<input>.h5` containing `kaxis` (1D), `pes` (3D 
 
 When enabled, degenerate states are re-orthogonalized in the Lz² eigenbasis, assigning quantum numbers (n_r, m) and providing a clean mapping between energy levels and angular momentum.
 
-### 4.13 GPU Acceleration
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `EnableGPU` | bool | 0 | Enable GPU acceleration via PETSc CUDA. See CLI flag `-enable_gpu` below |
-
 ### 4.14 Miscellaneous
 
 | Key | Type | Default | Description |
@@ -302,7 +281,6 @@ When enabled, degenerate states are re-orthogonalized in the Lz² eigenbasis, as
 | Flag | Description | Example |
 |------|-------------|---------|
 | `-inp <file>` | Input parameter file (default: `tdse.prm`) | `-inp inps/harmonic_1d.prm` |
-| `-enable_gpu <0|1>` | Enable GPU acceleration | `-enable_gpu 1` |
 | `-save_dipole <axes>` | Save dipole operator axes at runtime | `-save_dipole xyz` |
 | `-mat_type <type>` | PETSc matrix type for IGA matrices | `-mat_type mpiaij` |
 | `-vec_type <type>` | PETSc vector type for IGA vectors | `-vec_type mpi` |
@@ -419,16 +397,6 @@ HDF5 multi-timestep dataset storing ⟨ψ(0)\|ψ(t)⟩. Only written at `OutputS
 - `SplineDegree` — B-spline degree (int)
 - `nfuncs` — Number of basis functions (int) = knot_count - degree
 
-### 6.5 t-SURFF (`td/surff_<input>.h5`)
-
-**Datasets:**
-- `kaxis` — Momentum axis (1D, float64)
-- `pes` — Photoelectron momentum spectrum (3D, float64)
-- `Nk`, `Kmax`, `Dim`, `Stride` — Metadata (scalar)
-
-When `TSURFF_FACE_SPLIT` environment variable is set to 1:
-- `pes_xfaces`, `pes_yfaces`, `pes_zfaces` — Per-face-family PES
-
 ### 6.6 Dipole Operator Save
 
 PETSc binary files: `static/Dx_<input>.bin`, `static/Dy_<input>.bin`, `static/Dz_<input>.bin`. Load with:
@@ -462,7 +430,6 @@ See `inps/harmonic_2d_circular.prm`.
 
 ### Example: 3D Multi-Center Potential
 
-Full 3D propagation through a multi-center potential with XYZ polarization and t-SURFF photoelectron spectrum.
 
 See `inps/multi_center_3d.prm`.
 

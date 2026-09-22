@@ -204,7 +204,6 @@ Autocorrelation
 
 :math:`|A(t)|^2` gives the survival probability (probability of finding the
 system still in the initial state). The Fourier transform of :math:`A(t)` yields
-the energy spectrum (photoelectron spectrum in the long-time limit).
 
 The HDF5 ``autocorrelation`` table stores three columns:
 

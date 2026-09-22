@@ -6,7 +6,7 @@ CMake configuration, dependencies, build targets, execution modes, and output st
 Dependencies
 ------------
 
-Requires PETSc (with or without CUDA), SLEPc, PetIGA, MPI, OpenBLAS, muParser.
+Requires PETSc, SLEPc, PetIGA, MPI, OpenBLAS, muParser.
 
 Build Steps
 -----------
@@ -17,14 +17,14 @@ Build Steps
     export PETSC_DIR=/path/to/petsc
     cd fused-version
     mkdir build && cd build
-    cmake .. # auto-detects PETSc/CUDA/O3/march
+    cmake .. # auto-detects PETSc/O3/march
     make -j $(nproc)
     # -> produces build/tdsez, build/tdmprocessor, build/tdmselect, build/drecprocessor
 
 Auto-Detection
 --------------
 
-The build **auto-detects** PETSc's optimisation flags (-O3, -march, -mtune), CUDA arch,
+The build **auto-detects** PETSc's optimisation flags (-O3, -march, -mtune),
 and OpenMP settings. TDSEZ inherits the same ABI and CPU target automatically -- no
 manual flag tuning needed.
 
@@ -60,20 +60,6 @@ Execution Modes
 ::
 
     $ mpirun --bind-to none -np 4 ./tdsez -inp inps/model.prm
-
-**GPU Mode**
-
-Requires PETSc built with ``--with-cuda=1``.
-
-::
-
-    $ mpirun --bind-to none -np 4 ./tdsez -inp model.prm   \\
-      -vec_type cuda -mat_type aijcusparse
-
-.. note::
-
-   Non-GPU-aware MPI: If your MPI installation is not GPU-aware, add
-   ``-use_gpu_aware_mpi 0`` to avoid hangs.
 
 **Eigenmode Only**
 
