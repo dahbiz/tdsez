@@ -7,9 +7,23 @@
 //  symbol.
 // ============================================================================
 
+/**
+ * @file assembler_class.cpp
+ * @brief Out-of-line definitions for TDSEZAssembler and matrix-timing helpers.
+ *        Assembles CAP, Hamiltonian, mass, dipole, velocity, and gradient
+ *        operators per polarization and dimension.
+ * @author TDSEZ Project
+ */
+
 #include "tdsez_internal.hpp"
 
-// General function to create, assemble, and time a matrix
+/// @brief Create, assemble, and time a single IGA matrix using the
+///        PetIGA form-matrix callback mechanism.
+/// @param iga    IGA context.
+/// @param M      Pointer to the output Mat (created internally).
+/// @param form   IGAFormMatrix callback for the operator.
+/// @param name   Label for timing output.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZAssembleMatrixTimed(IGA iga, Mat *M, IGAFormMatrix form, const char *name)
 {
     PetscLogDouble t0, t1;
@@ -24,6 +38,14 @@ PetscErrorCode TDSEZAssembleMatrixTimed(IGA iga, Mat *M, IGAFormMatrix form, con
 }
 
 
+/// @brief Batch-create and assemble multiple IGA matrices in a single
+///        element loop using a TDSEZPhysicsKernel callback, with timing.
+/// @param iga    IGA context.
+/// @param n      Number of matrices to assemble (1–12).
+/// @param mats   Array of pointers to Mat (pre-zeroed, created internally).
+/// @param form   Physics kernel callback for multi-operator assembly.
+/// @param name   Label for timing output.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZAssembleMatBatchTimed(
     IGA                  iga,
     PetscInt             n,
@@ -68,6 +90,14 @@ PetscErrorCode TDSEZAssembleMatBatchTimed(
 
 
 
+/// @brief Construct the TDSEZAssembler. Assembles all operators needed for
+///        propagation and diagnostics: CAP, Hamiltonian (H), mass (M),
+///        kinetic (K), potential (V), dipole (Dx/Dy/Dz), velocity
+///        (VelX/VelY/VelZ), gradient (dVdx/dVdy/dVdz), mass-dist (Md),
+///        and angular momentum (Lz) — each only for the active polarization
+///        and dimension. Throws std::runtime_error on incompatible
+///        polarization/dimension combinations.
+/// @param iga  IGA context reference for matrix creation.
 TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
 {
     // Read polarization direction
@@ -80,8 +110,6 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
     PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
 
 
-    // TDSEZAssembleMatrixTimed(iga, &K, TDSEZFormKinetic, "Kinetic Term");
-    // TDSEZAssembleMatrixTimed(iga, &V, TDSEZFormPotential, "Potential Term");
     if (TDSEZParser::EnableCAP)
     {
         TDSEZAssembleMatrixTimed(iga, &CAP, TDSEZformCap, "Absorbing CAP");
@@ -120,7 +148,6 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
             "  ══════════════════════════════════════════════════════════════════════\n");
     }
 
-    // TDSEZAssembleMatrixTimed(iga, &Md, TDSEZFormMassDist, "Mass Distribution");
 
     if (dim == 2 && TDSEZParser::EnableLzDiag)
     {

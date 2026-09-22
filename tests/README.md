@@ -2,7 +2,9 @@
 
 ## Overview
 
-This directory contains the automated test suite for the TDSE-Z solver.
+This directory contains serial parser-validation checks and MPI regression
+tests for the TDSE-Z solver. Generated input files are written to a temporary
+directory; checked-in files under `inputs/` are used as read-only fixtures.
 
 ## Structure
 
@@ -13,14 +15,27 @@ This directory contains the automated test suite for the TDSE-Z solver.
 ## Running
 
 ```bash
-# Run all tests
-pytest tests/
+# Run all tests (from the build directory)
+cd build && make test
 
-# Run with verbose output
-pytest tests/ -v
+# Run with verbose output (from the source root)
+pytest tests/ -v -s
 
 # Run specific test
-pytest tests/test_tdsez.py -v -k "test_ho1d"
+pytest tests/test_tdsez.py -v -s -k "test_ho1d"
+```
+
+`make test` runs the serial C++ parser validation test before the MPI physics
+suite. Run only the parser test with `cmake --build build --target unit-test`.
+For an isolated build, set `TDSEZ_BINARY` to the absolute path of its `tdsez`
+executable when running pytest directly.
+
+### Dependencies
+
+Install the Python dependencies before running tests:
+
+```bash
+pip install pytest h5py scipy zkit-lib
 ```
 
 ## Input Files

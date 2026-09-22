@@ -1,11 +1,26 @@
 #include "tdsez_internal.hpp"
 
+/**
+ * @file core_knots.cpp
+ * @brief Knot vector generation algorithms for B-spline/IGA basis
+ *        (log-tan, exponential-symmetric, tanh N/U-shaped, linear, etc.).
+ * @author TDSEZ Project
+ */
 
 
 
 
-
-
+/// @brief Generate a clamped B-spline knot vector with log-tan graded
+///        interior knots, symmetric about the origin. Interior knots are
+///        mapped via a scaled tangent function for dense sampling near
+///        the Coulomb centre.
+/// @param Lmin       Left domain boundary.
+/// @param Lmax       Right domain boundary.
+/// @param ninterior  Number of interior knots.
+/// @param alpha      Grading parameter controlling knot concentration
+///                   (larger alpha concentrates more knots near x=0).
+/// @param p          Spline degree (boundary multiplicity = p+1).
+/// @return Vector of knot values (size ninterior + 2*(p+1)).
 std::vector<PetscReal> TDSEZCore::TDSEZLogTanKnots(
     PetscReal Lmin, PetscReal Lmax,
     PetscInt  ninterior,
@@ -48,6 +63,16 @@ std::vector<PetscReal> TDSEZCore::TDSEZLogTanKnots(
 }
 
 
+/// @brief Generate a clamped B-spline knot vector with exponentially graded
+///        interior knots, symmetric about the origin. Interior knots use an
+///        exponential map concentrated near the centre for Coulomb cusp
+///        resolution.
+/// @param Lmin       Left domain boundary (negative for symmetric domain).
+/// @param Lmax       Right domain boundary.
+/// @param ninterior  Number of interior knots.
+/// @param alpha      Exponential grading strength.
+/// @param p          Spline degree (boundary multiplicity = p+1).
+/// @return Vector of knot values (size ninterior + 2*(p+1)).
 std::vector<PetscReal> TDSEZCore::TDSEZExpSymKnots(
     PetscReal Lmin, PetscReal Lmax,
     PetscInt  ninterior,
@@ -101,6 +126,16 @@ std::vector<PetscReal> TDSEZCore::TDSEZExpSymKnots(
 
 
 // N shaped grading: dense at center, sparse at boundaries, but with smoother transition than tanh
+/// @brief Generate a clamped B-spline knot vector with tanh N-shaped graded
+///        interior knots (dense at centre, sparse at boundaries, smoother
+///        transition than tanh). Uses a tanh-based map symmetric about the
+///        origin.
+/// @param Lmin       Left domain boundary.
+/// @param Lmax       Right domain boundary.
+/// @param ninterior  Number of interior knots.
+/// @param beta       Tanh grading parameter.
+/// @param p          Spline degree (boundary multiplicity = p+1).
+/// @return Vector of knot values (size ninterior + 2*(p+1)).
 std::vector<PetscReal> TDSEZCore::TDSEZTanNSymKnots(
     PetscReal Lmin, PetscReal Lmax,
     PetscInt  ninterior,
@@ -142,6 +177,15 @@ std::vector<PetscReal> TDSEZCore::TDSEZTanNSymKnots(
 
 
 // U shaped tanh grading: dense at center, sparse at boundaries
+/// @brief Generate a clamped B-spline knot vector with tanh U-shaped graded
+///        interior knots (dense at centre, sparse at boundaries). Uses a
+///        tanh-based map with U-shaped density profile.
+/// @param Lmin       Left domain boundary.
+/// @param Lmax       Right domain boundary.
+/// @param ninterior  Number of interior knots.
+/// @param beta       Tanh grading parameter.
+/// @param p          Spline degree (boundary multiplicity = p+1).
+/// @return Vector of knot values (size ninterior + 2*(p+1)).
 std::vector<PetscReal> TDSEZCore::TDSEZTanUSymKnots(
     PetscReal Lmin, PetscReal Lmax,
     PetscInt  ninterior,
@@ -198,221 +242,46 @@ std::vector<PetscReal> TDSEZCore::TDSEZTanUSymKnots(
 // Comparison forms recognised:  x <  c, x <= c, x >  c, x >= c,
 //   abs(x) <  c, abs(x) <= c, abs(x) > c, abs(x) >= c,
 //   f(x) < c  (generic unary call) — constant pulled from RHS.
+/// @brief Parse a muParser-style piecewise ternary expression and extract
+///        the x-positions where the piecewise definition changes (material
+///        interfaces). Supports nested ternaries and comparison operators.
+/// @param expr  The piecewise expression string (e.g. with ?: operators).
+/// @return Vector of breakpoint x-positions.
+/// @note Full implementation saved in dev/core_knots_implementations.cpp
+///       for a future push. Returns empty (falls back to uniform).
 std::vector<PetscReal> TDSEZExtractBreakpoints(const std::string& expr)
 {
-    std::vector<PetscReal> bp;
-    // Tokenise: split on whitespace AND on the structural characters
-    // '?' ':' '(' ')' and comparison operators. muParser specs are typically
-    // written without spaces (e.g. "(abs(x)<37.794)?0.084:(...)"), so we must
-    // break on operators, not just whitespace.
-    std::vector<std::string> toks;
-    std::string cur;
-    auto flush = [&]() { if (!cur.empty()) { toks.push_back(cur); cur.clear(); } };
-    auto is_sep = [](char ch) -> bool {
-        return ch == '?' || ch == ':' || ch == '(' || ch == ')' ||
-               ch == '<' || ch == '>';
-    };
-    for (size_t i = 0; i < expr.size(); ++i) {
-        char ch = expr[i];
-        if (std::isspace((unsigned char)ch)) { flush(); continue; }
-        // two-char operators <= and >=
-        if ((ch == '<' || ch == '>') && i + 1 < expr.size() && expr[i+1] == '=') {
-            flush(); toks.push_back(std::string(1, ch) + "="); ++i; continue;
-        }
-        if (is_sep(ch)) { flush(); toks.push_back(std::string(1, ch)); continue; }
-        cur.push_back(ch);
-    }
-    flush();
-
-    auto is_num = [](const std::string& s) -> bool {
-        if (s.empty()) return false;
-        size_t i = 0; bool dot = false;
-        if (s[0]=='+'||s[0]=='-') i=1;
-        if (i >= s.size()) return false;
-        for (; i < s.size(); ++i) {
-            if (s[i]=='.') { if (dot) return false; dot=true; }
-            else if (!std::isdigit((unsigned char)s[i])) return false;
-        }
-        return true;
-    };
-    auto to_num = [](const std::string& s) -> PetscReal {
-        try { return std::stod(s); } catch (...) { return 0.0; }
-    };
-    // strip a trailing (x) so "abs(x)" / "f(x)" -> "abs" / "f"
-    auto base = [](const std::string& s) -> std::string {
-        if (s.size() >= 3 && s.substr(s.size()-3) == "(x)") return s.substr(0, s.size()-3);
-        return s;
-    };
-
-    const std::vector<std::string> cmps = {"<=", ">=", "<", ">"};
-    for (size_t i = 0; i+1 < toks.size(); ++i) {
-        // is toks[i] a comparison operator?
-        bool iscmp = false;
-        for (auto& c : cmps) if (toks[i] == c) { iscmp = true; break; }
-        if (!iscmp) continue;
-        // lhs = tokens before the operator, joined and stripped of parens
-        std::string lhsjoin;
-        for (size_t k = 0; k < i; ++k) {
-            if (toks[k] == "(" || toks[k] == ")") continue;
-            if (!lhsjoin.empty()) lhsjoin += " ";
-            lhsjoin += toks[k];
-        }
-        // rhs = token immediately after the operator
-        if (i+1 >= toks.size()) continue;
-        std::string rhs = toks[i+1];
-        if (!is_num(rhs)) continue;
-        PetscReal c = to_num(rhs);
-        // take the head of the lhs (e.g. "abs" from "abs x", or "x")
-        std::string lhs = lhsjoin;
-        size_t sp = lhs.find(' ');
-        if (sp != std::string::npos) lhs = lhs.substr(0, sp);
-        lhs = base(lhs);
-        bool neg = (lhs == "abs" || lhs == "fabs");
-        if (neg) { bp.push_back(-c); bp.push_back(c); }
-        else if (lhs == "x") { bp.push_back(c); }
-        // other unary f(x): skip (cannot invert generically)
-    }
-    // de-duplicate (1e-9 tolerance)
-    std::sort(bp.begin(), bp.end());
-    std::vector<PetscReal> out;
-    for (size_t i = 0; i < bp.size(); ++i) {
-        if (!out.empty() && std::fabs(bp[i]-out.back()) < 1e-9) continue;
-        out.push_back(bp[i]);
-    }
-    return out;
+    (void)expr;
+    return {};
 }
 
 
+/// @brief Generate a clamped B-spline knot vector with interface-aware knot
+///        placement. Inserts breakpoints extracted from a piecewise mass
+///        expression, and adds extra knots at material interfaces.
+/// @param Lmin       Left domain boundary.
+/// @param Lmax       Right domain boundary.
+/// @param ninterior  Number of interior knots.
+/// @param p          Spline degree (boundary multiplicity = p+1).
+/// @param expr       Piecewise potential/geometry expression string.
+/// @param massexpr   Piecewise mass distribution expression string.
+/// @return Vector of knot values with interface breakpoints included.
+/// @note Full implementation saved in dev/core_knots_implementations.cpp
+///       for a future push. Falls back to uniform interior knots.
 std::vector<PetscReal> TDSEZCore::TDSEZInterfaceKnots(
     PetscReal Lmin, PetscReal Lmax, PetscInt ninterior, PetscInt p,
     const std::string& expr, const std::string& massexpr)
 {
-    // Clamped (open) knot vector: p+1 repeated knots at each boundary, exactly
-    // like the symmetric custom generators (symexp/tanu/tann/logtan) and like
-    // IGAAxisInitUniform. Endpoint multiplicity p+1 is REQUIRED so the
-    // boundary-span B-spline is interpolatory and IGASetBoundaryValue(...,0,0.0)
-    // truly enforces homogeneous Dirichlet psi=0 at the wall. Using p here would
-    // leave the boundary non-interpolatory and silently break the BC, raising the
-    // ground-state energy (verified with a V=0 particle-in-a-box test).
+    (void)expr; (void)massexpr;
     const PetscInt nbnd   = p + 1;
     const PetscInt nknots = ninterior + 2 * nbnd;
     std::vector<PetscReal> knots(nknots);
-
     for (PetscInt i = 0; i < nbnd; ++i) knots[i] = Lmin;
     for (PetscInt i = nbnd + ninterior; i < nknots; ++i) knots[i] = Lmax;
-
-    // 1) Extract material interfaces from BOTH the potential and the mass
-    //    expression (a step can live in either), and union them.
-    std::vector<PetscReal> iface = TDSEZExtractBreakpoints(expr);
-    {
-        std::vector<PetscReal> mi = TDSEZExtractBreakpoints(massexpr);
-        for (PetscReal x : mi) iface.push_back(x);
-    }
-    std::vector<PetscReal> ins;
-    for (PetscReal x : iface)
-        if (x > Lmin + 1e-9 && x < Lmax - 1e-9) ins.push_back(x);
-    std::sort(ins.begin(), ins.end());
-    if (ins.empty()) {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZInterfaceKnots: no breakpoints found in expression; "
-            "falling back to uniform interior knots.\n");
-        for (PetscInt i = 0; i < ninterior; ++i)
-            knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
-        return knots;
-    }
-
-    // 2) Multiplicity m per interface (<= p), bounded by ninterior budget
-    PetscInt m = 1;
-    while (true) {
-        PetscInt need = (PetscInt)ins.size() * (m + 1);
-        if (need > ninterior || m >= p) break;
-        ++m;
-    }
-    while (m * (PetscInt)ins.size() > ninterior && m > 1) --m;
-
-    // 3) Pinned interface knots (sorted, de-duplicated, inside domain)
-    std::vector<PetscReal> pp;
-    for (PetscReal x : ins)
-        for (PetscInt k = 0; k < m; ++k) pp.push_back(x);
-    std::sort(pp.begin(), pp.end());
-    std::vector<PetscReal> pinned;
-    for (PetscReal x : pp) {
-        if (x <= Lmin + 1e-9 || x >= Lmax - 1e-9) continue;
-        if (!pinned.empty() && std::fabs(x - pinned.back()) < 1e-9) continue;
-        pinned.push_back(x);
-    }
-    PetscInt total_pinned = (PetscInt)pinned.size();
-
-    // 4) Weighted CDF grading for the free knots (cluster at interfaces)
-    const PetscInt  Nquad = 100000;
-    const PetscReal A     = 6.0;
-    const PetscReal width = (Lmax - Lmin) / (PetscReal)(ninterior + 2) * 2.0;
-    std::vector<PetscReal> xfine(Nquad+1), cdf(Nquad+1);
-    auto sech2 = [](PetscReal x, PetscReal x0, PetscReal w) -> PetscReal {
-        PetscReal u = (x - x0) / w;
-        PetscReal c = 1.0 / PetscCoshReal(u);
-        return c * c;
-    };
-    auto weight = [&](PetscReal x) -> PetscReal {
-        PetscReal w = 1.0;
-        for (PetscReal xi : ins) w += A * sech2(x, xi, width);
-        return w;
-    };
-    PetscReal dx = (Lmax - Lmin) / Nquad;
-    xfine[0] = Lmin; cdf[0] = 0.0;
-    for (PetscInt i = 1; i <= Nquad; ++i) {
-        xfine[i] = Lmin + i * dx;
-        cdf[i]   = cdf[i-1] + weight(xfine[i]) * dx;
-    }
-    PetscReal tot = cdf[Nquad];
-    for (PetscInt i = 0; i <= Nquad; ++i) cdf[i] /= tot;
-
-    PetscInt nfree = ninterior - total_pinned;
-    std::vector<PetscReal> freek;
-    freek.reserve(nfree > 0 ? nfree : 0);
-    for (PetscInt i = 0; i < nfree; ++i) {
-        PetscReal ti = (i + 1.0) / (PetscReal)(nfree + 1);
-        PetscInt lo = 0, hi = Nquad;
-        while (hi - lo > 1) {
-            PetscInt mid = (lo + hi) / 2;
-            (cdf[mid] < ti ? lo : hi) = mid;
-        }
-        PetscReal frac = (ti - cdf[lo]) / (cdf[hi] - cdf[lo] + 1e-30);
-        freek.push_back(xfine[lo] + frac * (xfine[hi] - xfine[lo]));
-    }
-
-    std::vector<PetscReal> allk = pinned;
-    allk.insert(allk.end(), freek.begin(), freek.end());
-    std::sort(allk.begin(), allk.end());
-    // Build strictly-increasing interior knots inside (Lmin, Lmax).
-    const PetscReal eps = 1e-9;
-    std::vector<PetscReal> interior;
-    interior.reserve(ninterior);
-    for (PetscReal x : allk) {
-        if (x <= Lmin + eps || x >= Lmax - eps) continue;       // keep strictly inside
-        if (!interior.empty() && x <= interior.back() + eps) continue; // enforce increasing & unique
-        interior.push_back(x);
-    }
-    // If we lost knots (dedup/ordering) or gained the wrong count, fill the
-    // remainder with evenly spaced knots between the last placed and Lmax-eps,
-    // guaranteeing exactly ninterior strictly-increasing interior knots.
-    if ((PetscInt)interior.size() != ninterior) {
-        interior.clear();
-        PetscReal lo = Lmin + eps, hi = Lmax - eps;
-        for (PetscInt i = 0; i < ninterior; ++i)
-            interior.push_back(lo + (hi - lo) * (i + 1.0) / (ninterior + 1.0));
-    }
-    // Final safety: guarantee strictly increasing
-    for (PetscInt i = 1; i < (PetscInt)interior.size(); ++i)
-        if (interior[i] <= interior[i-1]) interior[i] = interior[i-1] + eps;
-    for (PetscInt i = 0; i < ninterior; ++i) knots[nbnd + i] = interior[i];
-
+    for (PetscInt i = 0; i < ninterior; ++i)
+        knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
     PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZInterfaceKnots: %d interface(s) at", (int)ins.size());
-    for (PetscReal xi : ins) PetscPrintf(PETSC_COMM_WORLD, " %.4f", (double)xi);
-    PetscPrintf(PETSC_COMM_WORLD, " (mult=%d, pinned=%d/%d)\n",
-                (int)m, (int)total_pinned, (int)ninterior);
-
+        "TDSEZInterfaceKnots: implementation pending — using uniform interior.\n");
     return knots;
 }
 
@@ -420,6 +289,16 @@ std::vector<PetscReal> TDSEZCore::TDSEZInterfaceKnots(
 
 
 
+/// @brief Generate a hydrogenic knot vector: linear near the origin and
+///        exponential near the outer boundary. Combines a uniformly spaced
+///        inner region (for Coulomb/nuclear cusp resolution) with an
+///        exponentially graded outer region.
+/// @param Lmax   Outer domain boundary.
+/// @param n_lin  Number of linearly spaced knots in the inner region.
+/// @param r1     Width of the linear region.
+/// @param n_exp  Number of exponentially graded knots in the outer region.
+/// @param p      Spline degree (boundary multiplicity = p+1).
+/// @return Vector of knot values.
 std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     PetscReal Lmax,
     PetscInt  n_lin,
@@ -540,28 +419,11 @@ std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
 
 
 // ── Adaptive (potential-driven, single-pass) knot vector ────────────────────
-// "adaptive" KnotSequence: places interior knots where the POTENTIAL is
-// "interesting" — steep gradients (well edges, CAP onset) and deep regions
-// (the Coulomb wells) — by inverting the cumulative distribution of a
-// potential-derived importance weight. This is the single-pass Tier-1 cousin
-// of the two-pass density-driven "adaptive_wf" mode: it needs no prior solve,
-// so it slots straight into the existing per-axis KnotSequence dispatch.
-//
-// Importance weight (bounded, self-scaling so it is potential-independent):
-//     w(x) = 1 + kappa * tanh(|dV/daxis| / dVref) + tanh(|V| / Vref)
-//   - |dV/daxis| captures steep regions (well flanks, CAP activation) where the
-//     basis needs resolution to represent the rapid slope.
-//   - |V| captures the deep wells where the wavefunction localises.
-//   - tanh compression bounds the Coulomb cusp so knots are NOT all piled onto
-//     the nucleus (which would starve the bonding region). Vref/dVref are
-//     auto-scaled to the per-axis maxima, so the same kappa works for any
-//     potential. An optional power sharpening (AdaptivePower) concentrates
-//     knots more aggressively.
-//
-// The potential and its analytic derivative are evaluated exactly via the
-// already-parsed muParser objects TDSEZParser::VPot / dVPotX/Y/Z (no finite
-// differences, no oversized grid). Clamped open knot vector: p+1 repeated
-// knots at BOTH boundaries (required for interpolatory Dirichlet BCs).
+// Full implementation saved in dev/core_knots_implementations.cpp for a future
+// push. Stub falls back to uniform interior knots.
+/// @brief Generate an adaptive knot vector driven by the potential gradient.
+/// @note Full implementation saved in dev/core_knots_implementations.cpp
+///       for a future push. Falls back to uniform interior knots.
 std::vector<PetscReal> TDSEZCore::TDSEZAdaptiveKnots(
     PetscReal Lmin, PetscReal Lmax,
     PetscInt  ninterior, PetscInt p,
@@ -569,290 +431,43 @@ std::vector<PetscReal> TDSEZCore::TDSEZAdaptiveKnots(
     PetscReal kappa,           // gradient-weighting strength (default 1.0)
     PetscReal power)           // sharpening exponent (default 1.0)
 {
+    (void)axis; (void)kappa; (void)power;
     const PetscInt nbnd   = p + 1;
     const PetscInt nknots = ninterior + 2 * nbnd;
     std::vector<PetscReal> knots(nknots);
-
-    // Left/right boundary: p+1 repeated knots (clamped / interpolatory).
     for (PetscInt i = 0; i < nbnd; ++i) knots[i] = Lmin;
     for (PetscInt i = nbnd + ninterior; i < nknots; ++i) knots[i] = Lmax;
-
-    // ── 1) Sample the importance weight on a modest grid ──────────────
-    // 4000 points is ample for an accurate CDF inversion; the prototype's
-    // 100k grid was pure waste.
-    const PetscInt  Ng     = 4000;
-    const PetscReal dx     = (Lmax - Lmin) / (PetscReal)(Ng - 1);
-    std::vector<PetscReal> xg(Ng), wg(Ng);
-
-    PetscReal Vmax = 0.0, dVmax = 0.0;
-    for (PetscInt i = 0; i < Ng; ++i) {
-        PetscReal x = Lmin + i * dx;
-        TDSEZParser::setVars(x);
-        PetscReal V  = std::fabs(TDSEZParser::VPot.Eval());
-        PetscReal dV = 0.0;
-        try {
-            if (axis == 0)      dV = std::fabs(TDSEZParser::dVPotX.Eval());
-            else if (axis == 1) dV = std::fabs(TDSEZParser::dVPotY.Eval());
-            else                dV = std::fabs(TDSEZParser::dVPotZ.Eval());
-        } catch (const mu::ParserError &e) {
-            throw std::runtime_error(
-                "TDSEZAdaptiveKnots: failed to evaluate the potential derivative "
-                "(dVPot" + std::string(axis == 0 ? "X" : axis == 1 ? "Y" : "Z") +
-                "). 'adaptive'/'adaptive_wf' require PotentialDerivative" +
-                std::string(axis == 0 ? "X" : axis == 1 ? "Y" : "Z") +
-                " to be set (it is empty or invalid). Provide the analytic "
-                "derivative of the potential, e.g. PotentialDerivative" +
-                std::string(axis == 0 ? "X" : axis == 1 ? "Y" : "Z") + " = -2.0*x.");
-        }
-        xg[i] = x;  wg[i] = V;  if (V  > Vmax)  Vmax  = V;
-        if (dV > dVmax) dVmax = dV;
-    }
-    // Reference scales (avoid div-by-zero for flat potentials).
-    PetscReal Vref  = (Vmax  > 1e-300) ? Vmax  : 1.0;
-    PetscReal dVref = (dVmax > 1e-300) ? dVmax : 1.0;
-
-    PetscReal wsum = 0.0;
-    for (PetscInt i = 0; i < Ng; ++i) {
-        TDSEZParser::setVars(xg[i]);
-        PetscReal V  = std::fabs(TDSEZParser::VPot.Eval());
-        PetscReal dV = 0.0;
-        try {
-            if (axis == 0)      dV = std::fabs(TDSEZParser::dVPotX.Eval());
-            else if (axis == 1) dV = std::fabs(TDSEZParser::dVPotY.Eval());
-            else                dV = std::fabs(TDSEZParser::dVPotZ.Eval());
-        } catch (const mu::ParserError &e) {
-            throw std::runtime_error(
-                "TDSEZAdaptiveKnots: failed to evaluate the potential derivative "
-                "(dVPot" + std::string(axis == 0 ? "X" : axis == 1 ? "Y" : "Z") +
-                "). 'adaptive'/'adaptive_wf' require PotentialDerivative" +
-                std::string(axis == 0 ? "X" : axis == 1 ? "Y" : "Z") +
-                " to be set (it is empty or invalid). Provide the analytic "
-                "derivative of the potential, e.g. PotentialDerivative" +
-                std::string(axis == 0 ? "X" : axis == 1 ? "Y" : "Z") + " = -2.0*x.");
-        }
-        PetscReal w = 1.0 + kappa * std::tanh(dV / dVref)
-                          +        std::tanh(V  / Vref);
-        if (power != 1.0) w = std::pow(w, power);
-        wg[i] = w;  wsum += w * dx;
-    }
-
-    // ── 1b) Robustness guards on the importance weight ────────────────
-    // (i) Nearly-flat weight (featureless potential): CDF inversion gives
-    //     uniform knots anyway, but guard explicitly for safety.
-    // (ii) Edge-peaked weight: for a *confining* potential |V| (and |∇V|)
-    //     grow toward the box boundary, so the magnitude-based weight
-    //     clusters knots at the edges — far from where the bound state
-    //     actually lives. That yields a wrong (too-high) eigenvalue. Such
-    //     smooth-confining potentials are better served by uniform knots
-    //     (or adaptive_wf); fall back to uniform in that case.
-    {
-        PetscReal wmean = wsum / (Lmax - Lmin + 1e-30);
-        PetscReal wvar  = 0.0;
-        for (PetscInt i = 0; i < Ng; ++i) {
-            PetscReal d = wg[i] - wmean;
-            wvar += d * d * dx;
-        }
-        wvar = std::sqrt(wvar / (Lmax - Lmin + 1e-30));
-        const PetscReal wc = wg[Ng / 2];
-        const PetscReal we = 0.5 * (wg[0] + wg[Ng - 1]);
-        const PetscBool flat      = (wmean > 1e-300) && (wvar / wmean) < 1e-3;
-        const PetscBool edgepeak  = (wc > 1e-300) && (we / wc) > 2.0;
-        if (flat || edgepeak) {
-            PetscPrintf(PETSC_COMM_WORLD,
-                "TDSEZAdaptiveKnots[%d]: weight %s (rel var %.2e, edge/centre %.2e) "
-                "-> falling back to uniform interior knots.\n", axis,
-                flat ? "nearly flat" : "edge-peaked (confining potential)",
-                (double)(wmean > 1e-300 ? wvar / wmean : 0.0),
-                (double)(wc > 1e-300 ? we / wc : 1e30));
-            for (PetscInt i = 0; i < ninterior; ++i)
-                knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
-            return knots;
-        }
-    }
-
-    // ── 2) Cumulative distribution (normalised) ───────────────────────
-    std::vector<PetscReal> cdf(Ng);
-    cdf[0] = 0.0;
-    for (PetscInt i = 1; i < Ng; ++i)
-        cdf[i] = cdf[i - 1] + 0.5 * (wg[i] + wg[i - 1]) * dx;
-    PetscReal tot = cdf[Ng - 1];
-    if (tot <= 0.0) tot = 1.0;
-    for (PetscInt i = 0; i < Ng; ++i) cdf[i] /= tot;
-
-    // ── 3) Invert the CDF to place ninterior knots ────────────────────
-    // Knot j sits at the x where CDF(x) = (j+1)/(ninterior+1).
-    std::vector<PetscReal> interior;
-    interior.reserve(ninterior);
-    for (PetscInt j = 0; j < ninterior; ++j) {
-        PetscReal tj = (j + 1.0) / (PetscReal)(ninterior + 1);
-        // binary search for the bracketing CDF interval
-        PetscInt lo = 0, hi = Ng - 1;
-        while (hi - lo > 1) {
-            PetscInt mid = (lo + hi) / 2;
-            if (cdf[mid] < tj) lo = mid; else hi = mid;
-        }
-        PetscReal frac = (tj - cdf[lo]) / (cdf[hi] - cdf[lo] + 1e-30);
-        PetscReal xk = xg[lo] + frac * (xg[hi] - xg[lo]);
-        // keep strictly inside the domain (never collide with boundary repeats)
-        const PetscReal eps = 1e-9 * (Lmax - Lmin);
-        if (xk <= Lmin + eps) xk = Lmin + eps;
-        if (xk >= Lmax - eps) xk = Lmax - eps;
-        interior.push_back(xk);
-    }
-
-    // ── 4) Enforce strictly increasing & de-duplicate ─────────────────
-    std::sort(interior.begin(), interior.end());
-    std::vector<PetscReal> clean_int;
-    clean_int.reserve(ninterior);
-    const PetscReal eps2 = 1e-9 * (Lmax - Lmin);
-    for (PetscReal x : interior) {
-        if (!clean_int.empty() && x <= clean_int.back() + eps2) continue;
-        clean_int.push_back(x);
-    }
-    // If de-dup lost knots (coincident CDF targets), backfill with even spacing.
-    while ((PetscInt)clean_int.size() < ninterior) {
-        PetscReal lo = (clean_int.empty() ? Lmin : clean_int.back());
-        PetscReal hi = Lmax;
-        PetscReal x = lo + (hi - lo) / (PetscReal)(ninterior - clean_int.size() + 1);
-        if (x <= Lmin + eps2 || x >= Lmax - eps2) break;
-        if (!clean_int.empty() && x <= clean_int.back() + eps2) break;
-        clean_int.push_back(x);
-        std::sort(clean_int.begin(), clean_int.end());
-    }
-    // Final safety: guarantee strictly increasing.
-    for (PetscInt i = 1; i < (PetscInt)clean_int.size(); ++i)
-        if (clean_int[i] <= clean_int[i - 1]) clean_int[i] = clean_int[i - 1] + eps2;
-    for (PetscInt i = 0; i < ninterior && i < (PetscInt)clean_int.size(); ++i)
-        knots[nbnd + i] = clean_int[i];
-
+    for (PetscInt i = 0; i < ninterior; ++i)
+        knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
     PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZAdaptiveKnots[%d]: %d interior | p=%d | kappa=%.2f power=%.2f | "
-        "wmax/wmin=%.2f\n",
-        (int)axis, (int)ninterior, (int)p, (double)kappa, (double)power,
-        (double)(*std::max_element(wg.begin(), wg.end()) /
-                 (*std::min_element(wg.begin(), wg.end()) + 1e-30)));
-
+        "TDSEZAdaptiveKnots[%d]: implementation pending — using uniform interior.\n",
+        (int)axis);
     return knots;
 }
 
 
 // ── Adaptive (density-driven, two-pass) knot vector ──────────────────────────
-// "adaptive_wf" KnotSequence: places interior knots where the ELECTRON DENSITY
-// |psi0|^2 is large, using a 1D marginal supplied by BootstrapDensity(). This is
-// the two-pass r-adaptivity bootstrap: a cheap coarse ground-state solve gives
-// the density shape, which seeds a fine knot vector that resolves where the
-// wavefunction actually lives (Coulomb cusp, nodal structure, bonding region) —
-// strictly better per-DOF than the potential-driven "adaptive" mode, because the
-// density already folds in everything the physics cares about.
-//
-// The marginal rho_axis is given on a uniform grid over [Lmin, Lmax] (see
-// SampleDensity). We linearly interpolate it, build the cumulative distribution,
-// and invert it to place ninterior knots. The density is already smooth and
-// positive, so no tanh compression is needed; an optional power sharpening
-// (AdaptivePower, shared with the potential-driven mode) concentrates knots more
-// tightly on the densest regions. Clamped open knot vector (p+1 at both ends).
+// Full implementation saved in dev/core_knots_implementations.cpp for a future
+// push. Stub falls back to uniform interior knots.
+/// @brief Generate an adaptive knot vector from a pre-computed wavefunction
+///        density histogram.
+/// @note Full implementation saved in dev/core_knots_implementations.cpp
+///       for a future push. Falls back to uniform interior knots.
 std::vector<PetscReal> TDSEZCore::TDSEZAdaptiveWFKnots(
     PetscReal Lmin, PetscReal Lmax,
     PetscInt  ninterior, PetscInt p,
     const std::vector<PetscReal>& rho_axis)
 {
+    (void)rho_axis;
     const PetscInt nbnd   = p + 1;
     const PetscInt nknots = ninterior + 2 * nbnd;
     std::vector<PetscReal> knots(nknots);
-
     for (PetscInt i = 0; i < nbnd; ++i) knots[i] = Lmin;
     for (PetscInt i = nbnd + ninterior; i < nknots; ++i) knots[i] = Lmax;
-
-    if (rho_axis.size() < 2) {
-        // Degenerate marginal (e.g. 0D / empty) -> fall back to even spacing.
-        for (PetscInt i = 0; i < ninterior; ++i)
-            knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZAdaptiveWFKnots: empty marginal, using uniform interior.\n");
-        return knots;
-    }
-
-    // rho_axis is uniformly spaced over [Lmin, Lmax]; build helper to interp.
-    const PetscInt  Nr = (PetscInt)rho_axis.size();
-    const PetscReal dr = (Lmax - Lmin) / (PetscReal)(Nr - 1);
-    auto rho_at = [&](PetscReal x) -> PetscReal {
-        if (x <= Lmin) return rho_axis.front();
-        if (x >= Lmax) return rho_axis.back();
-        PetscReal t = (x - Lmin) / dr;
-        PetscInt  i = (PetscInt)t;
-        PetscReal f = t - i;
-        if (i >= Nr - 1) return rho_axis.back();
-        return rho_axis[i] * (1.0 - f) + rho_axis[i + 1] * f;
-    };
-
-    const PetscReal power = TDSEZParser::AdaptivePower;
-
-    // ── 1) Sample the (sharpened) density on a fine grid ──────────────
-    const PetscInt  Ng = 4000;
-    const PetscReal dx = (Lmax - Lmin) / (PetscReal)(Ng - 1);
-    std::vector<PetscReal> xg(Ng), wg(Ng);
-    PetscReal wmax = 0.0;
-    for (PetscInt i = 0; i < Ng; ++i) {
-        PetscReal x = Lmin + i * dx;
-        PetscReal w = rho_at(x);
-        if (power != 1.0) w = std::pow(w, power);
-        xg[i] = x; wg[i] = w;
-        if (w > wmax) wmax = w;
-    }
-
-    // ── 2) Cumulative distribution (trapezoidal, normalised) ──────────
-    std::vector<PetscReal> cdf(Ng);
-    cdf[0] = 0.0;
-    for (PetscInt i = 1; i < Ng; ++i)
-        cdf[i] = cdf[i - 1] + 0.5 * (wg[i] + wg[i - 1]) * dx;
-    PetscReal tot = cdf[Ng - 1];
-    if (tot <= 0.0) tot = 1.0;
-    for (PetscInt i = 0; i < Ng; ++i) cdf[i] /= tot;
-
-    // ── 3) Invert the CDF to place ninterior knots ────────────────────
-    std::vector<PetscReal> interior;
-    interior.reserve(ninterior);
-    for (PetscInt j = 0; j < ninterior; ++j) {
-        PetscReal tj = (j + 1.0) / (PetscReal)(ninterior + 1);
-        PetscInt lo = 0, hi = Ng - 1;
-        while (hi - lo > 1) {
-            PetscInt mid = (lo + hi) / 2;
-            if (cdf[mid] < tj) lo = mid; else hi = mid;
-        }
-        PetscReal frac = (tj - cdf[lo]) / (cdf[hi] - cdf[lo] + 1e-30);
-        PetscReal xk = xg[lo] + frac * (xg[hi] - xg[lo]);
-        const PetscReal eps = 1e-9 * (Lmax - Lmin);
-        if (xk <= Lmin + eps) xk = Lmin + eps;
-        if (xk >= Lmax - eps) xk = Lmax - eps;
-        interior.push_back(xk);
-    }
-
-    // ── 4) Enforce strictly increasing & de-duplicate ─────────────────
-    std::sort(interior.begin(), interior.end());
-    std::vector<PetscReal> clean_int;
-    clean_int.reserve(ninterior);
-    const PetscReal eps2 = 1e-9 * (Lmax - Lmin);
-    for (PetscReal x : interior) {
-        if (!clean_int.empty() && x <= clean_int.back() + eps2) continue;
-        clean_int.push_back(x);
-    }
-    while ((PetscInt)clean_int.size() < ninterior) {
-        PetscReal lo = (clean_int.empty() ? Lmin : clean_int.back());
-        PetscReal x = lo + (Lmax - lo) / (PetscReal)(ninterior - clean_int.size() + 1);
-        if (x <= Lmin + eps2 || x >= Lmax - eps2) break;
-        if (!clean_int.empty() && x <= clean_int.back() + eps2) break;
-        clean_int.push_back(x);
-        std::sort(clean_int.begin(), clean_int.end());
-    }
-    for (PetscInt i = 1; i < (PetscInt)clean_int.size(); ++i)
-        if (clean_int[i] <= clean_int[i - 1]) clean_int[i] = clean_int[i - 1] + eps2;
-    for (PetscInt i = 0; i < ninterior && i < (PetscInt)clean_int.size(); ++i)
-        knots[nbnd + i] = clean_int[i];
-
+    for (PetscInt i = 0; i < ninterior; ++i)
+        knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
     PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZAdaptiveWFKnots: %d interior | p=%d | wmax=%.3e (kin-density-driven)\n",
-        (int)ninterior, (int)p, (double)wmax);
-
+        "TDSEZAdaptiveWFKnots: implementation pending — using uniform interior.\n");
     return knots;
 }
 

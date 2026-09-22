@@ -1,8 +1,21 @@
 #include "tdsez_internal.hpp"
 
+/**
+ * @file propagator.cpp
+ * @brief TDSEZPropagator: PETSc TS time-stepping for the TDSE, including
+ *        CAP activation, Crank-Nicolson (TSTHETA θ=0.5) integration, and
+ *        bound-state post-processing (M-orthogonalization, Lz²
+ *        diagonalisation, quantum number assignment).
+ * @author TDSEZ Project
+ */
 
 
 
+/// @brief Construct the TDSEZPropagator. Activates the complex absorbing
+///        potential (CAP) by adding it to the Hamiltonian, creates work
+///        matrices (Ht = copy of H, J_ = sparsity clone of H).
+/// @param manager  Reference to the TDSEZManager owning the operators and
+///                 callback pointers.
 TDSEZPropagator::TDSEZPropagator(TDSEZManager &manager) : tdse_(*manager.getCore()), manager_(manager)
 {
     PetscFunctionBeginUser;
@@ -26,40 +39,13 @@ TDSEZPropagator::TDSEZPropagator(TDSEZManager &manager) : tdse_(*manager.getCore
     PetscFunctionReturnVoid();
 }
 
-// GPU helpers ---------------------------------------------------------------
-static inline PetscBool TDSEZIsCudaVec(const Vec v)
-{
-  VecType t = PETSC_NULLPTR;
-  PetscCall(VecGetType(v, &t));
-  return (std::strcmp(t, VECCUDA) == 0 || std::strcmp(t, VECMPICUDA) == 0);
-}
 
-static inline PetscErrorCode TDSEZMakeVecCuda(Vec *v)
-{
-  PetscFunctionBegin;
-  if (!v || !*v) PetscFunctionReturn(PETSC_SUCCESS);
-  if (TDSEZIsCudaVec(*v)) PetscFunctionReturn(PETSC_SUCCESS);
-
-  Vec gpu = PETSC_NULLPTR;
-  PetscCall(VecDuplicate(*v, &gpu));
-  PetscCall(VecCopy(*v, gpu));
-  PetscCall(VecDestroy(v));
-  *v = gpu;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static inline PetscErrorCode TDSEZMakeMatCuda(Mat *m)
-{
-  PetscFunctionBegin;
-  if (!m || !*m) PetscFunctionReturn(PETSC_SUCCESS);
-  MatType t = PETSC_NULLPTR;
-  PetscCall(MatGetType(*m, &t));
-  if (std::strcmp(t, MATAIJCUSPARSE) == 0) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(MatConvert(*m, MATAIJCUSPARSE, MAT_INPLACE_MATRIX, m));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-// ---------------------------------------------------------------------------
-
+/// @brief Run the time propagation using PETSc TS (TSTHETA with θ=0.5,
+///        i.e. Crank-Nicolson). Configures the TS with the IFunction/
+///        IJacobian callbacks, GMRES linear solver with ILU preconditioner,
+///        attaches HDF5 monitors, and calls TSSolve.
+/// @return PetscErrorCode — PETSC_SUCCESS on success, or a PETSc error
+///         code on invalid time parameters or solver failure.
 PetscErrorCode TDSEZPropagator::Evolve()
 {
     PetscFunctionBeginUser;
@@ -398,6 +384,14 @@ static PetscErrorCode RotateSubspace(
 // ─────────────────────────────────────────────────────────────────────────────
 //  TDSEZOrthogonalizeDegenerates
 // ─────────────────────────────────────────────────────────────────────────────
+/// @brief Orthogonalize degenerate bound states by diagonalising Lz² within
+///        each degenerate energy shell. Performs M-orthogonalization
+///        (double-pass Gram-Schmidt), computes Lz² matrix elements in the
+///        bound-state subspace, diagonalises each degenerate block, rotates
+///        the states into the Lz² eigenbasis, and assigns quantum numbers
+///        (nr, m) plus reordered energies.
+/// @param TDSEZ  Pointer to the TDSEZManager holding bound states and operators.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
 {
     PetscFunctionBeginUser;

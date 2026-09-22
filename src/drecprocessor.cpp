@@ -1,6 +1,14 @@
 // ============================================================================
 //  resolve_drec.cpp  --  exact recombination dipole d_rec(E)
 // ----------------------------------------------------------------------------
+
+/**
+ * @file drecprocessor.cpp
+ * @brief Computes the exact recombination dipole d_rec(E) for a one-open-channel
+ *        scattering problem using a central finite-difference approximation of
+ *        d|psi>/dE and a Wronskian-scaled complex combination of the regular
+ *        and irregular solutions.
+ */
 //  In a 1-open-channel scattering problem the two independent solutions at
 //  energy E are the regular state psi(E) and its energy derivative
 //  dpsi/dE (the irregular solution).  A finite-box eigenstate |j> is an
@@ -46,6 +54,14 @@ static PetscReal g_E0 = 0.0;
 static PetscReal g_W0 = 0.05655;
 
 // ---- direct HDF5 read of 'spectrum' (real parts) -------------------------
+/// Direct HDF5 read of the 'spectrum' dataset (real parts).
+/**
+ * Opens the EigenData HDF5 file and reads the 'spectrum' dataset to extract
+ * the real-valued eigenstate energies.
+ * @param[in]  h5path Path to the HDF5 file.
+ * @param[out] E      Vector of eigenstate energies (real parts).
+ * @return 0 on success.
+ */
 static PetscErrorCode loadSpectrum(const std::string& h5path,
                                    std::vector<PetscReal>& E)
 {
@@ -66,6 +82,17 @@ static PetscErrorCode loadSpectrum(const std::string& h5path,
 }
 
 // ---- load a single psi dataset by index -----------------------------------
+/// Load a single eigenstate psi_j by index from the HDF5 file.
+/**
+ * Opens the HDF5 file, creates a Vec with the layout of Dx, names it
+ * "psi_<j>", and loads the corresponding dataset. Opens/closes the viewer
+ * per call.
+ * @param[in]  Dx     Dipole operator (provides the Vec layout).
+ * @param[in]  h5path Path to the EigenData HDF5 file.
+ * @param[in]  j      State index to load.
+ * @param[out] v      Newly created and loaded Vec (caller owns).
+ * @return 0 on success.
+ */
 static PetscErrorCode loadState(Mat Dx, const std::string& h5path, PetscInt j, Vec* v)
 {
     PetscErrorCode ierr;
@@ -79,11 +106,31 @@ static PetscErrorCode loadState(Mat Dx, const std::string& h5path, PetscInt j, V
     return 0;
 }
 
+/// Main: compute the exact recombination dipole d_rec(E) for one open channel.
+/**
+ * Loads Dx and the sorted eigenstate spectrum, computes the regular dipole
+ * d_j = <psi_0|Dx|psi_j> and the energy-derivative dipole d_w via central
+ * finite differences over neighbouring box eigenstates, then forms the
+ * complex recombination dipole d_rec = d_j + i g (dE/2) d_w and writes it
+ * (with DOS and energy-normalised |d_rec|²) to a CSV.
+ *
+ * @param argc  Number of CLI arguments.
+ * @param argv  CLI argument strings (<stem> [-i <bra>] [-Ethr <E>] [-g <g>] [-gpu]).
+ * @return 0 on success.
+ */
 int main(int argc, char** argv)
 {
     PetscInitialize(&argc, &argv, NULL, NULL);
     PetscErrorCode ierr;
     MPI_Comm comm = PETSC_COMM_WORLD;
+    PetscMPIInt commSize = 0;
+    MPI_Comm_size(comm, &commSize);
+    if (commSize != 1) {
+        PetscPrintf(comm,
+                    "drecprocessor: sequential dipole files require a single MPI rank\n");
+        PetscFinalize();
+        return 2;
+    }
 
     std::string stem = "h2p.inp";
     PetscInt iBra = 0;

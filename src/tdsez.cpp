@@ -1,5 +1,24 @@
 #include "tdsez_internal.hpp"
 
+/**
+ * @file tdsez.cpp
+ * @brief Main entry point for the TDSE-Z solver: parses CLI options,
+ *        assembles operators, solves the TISE, optionally propagates the
+ *        TDSE, and writes HDF5 output.
+ */
+
+/**
+ * @brief Entry point: orchestrates CLI parsing, assembly, eigensolve,
+ *        dipole-matrix save, and time propagation.
+ *
+ * Strips custom CLI flags (-enable_gpu, -save_dipole, -mat_type, -vec_type)
+ * before SLEPc/PETSc initialize, then re-injects -mat_type / -vec_type as
+ * PetIGA -iga_mat_type / -iga_vec_type so device types reach the IGA matrices.
+ *
+ * @param argc  Number of command-line arguments.
+ * @param argv  Command-line argument strings.
+ * @return 0 on success, 1 on uncaught exception.
+ */
 int main(int argc, char *argv[])
 {
     // Filter custom CLI flags before SLEPc/PETSc processes argv.
@@ -59,6 +78,7 @@ int main(int argc, char *argv[])
     // The logo path is resolved against the CWD (mpirun launches with a bare
     // "./tdsez" program name, so the executable dir is NOT reliable) by
     // searching a list of candidate locations.
+    /// Print the TDSE-Z ASCII-art banner and credit line on rank 0.
     {
         PetscMPIInt rank;
         PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
@@ -101,19 +121,17 @@ int main(int argc, char *argv[])
     // Output-formatting helpers live in tdsez_internal.hpp (TDSEZ_fmtSci2 /
     // TDSEZ_fmtAu / TDSEZ_fmtEv) so all translation units share one impl.
 
-    // Re-inject the user's -mat_type / -vec_type as PetIGA's -iga_mat_type /
-    // -iga_vec_type so IGASetFromOptions (called later in core.cpp) routes them
-    // into iga->mattype / iga->vectype — the only types IGACreateMat /
-    // IGACreateVec actually honor. Without this, -mat_type/-vec_type are either
-    // ignored (PetIGA) or, in the old corrupted-argv case, fed an empty value
-    // to PETSc's MatSetFromOptions and crash with "Unknown Mat type given: ".
+    /// Re-inject -mat_type / -vec_type as PetIGA -iga_mat_type / -iga_vec_type.
+    /// This routes them into iga->mattype / iga->vectype — the only types
+    /// IGACreateMat / IGACreateVec honor. Without this, -mat_type/-vec_type
+    /// are ignored by PetIGA or fed an empty value to PETSc's
+    /// MatSetFromOptions, crashing with "Unknown Mat type given: ".
     if (!igaMatType.empty())
         PetscCallAbort(PETSC_COMM_WORLD,
             PetscOptionsSetValue(PETSC_NULLPTR, "-iga_mat_type", igaMatType.c_str()));
     if (!igaVecType.empty())
         PetscCallAbort(PETSC_COMM_WORLD,
             PetscOptionsSetValue(PETSC_NULLPTR, "-iga_vec_type", igaVecType.c_str()));
-
     // Dedicated, clean timing metrics
     PetscLogDouble t_global_start, t_global_end;
     PetscLogDouble t_assemble_start, t_assemble_end;
@@ -122,7 +140,7 @@ int main(int argc, char *argv[])
     PetscLogDouble t_prop_start = 0.0, t_prop_end = 0.0;
     PetscTime(&t_global_start);
 
-    // main workflow
+    /// Main workflow: read input, assemble, solve, and optionally propagate.
     try {
         // READ INPUT PARAMETERS
         std::string input  = IGAGetOptString(PETSC_NULLPTR, "-inp", "tdse.prm");
@@ -132,14 +150,14 @@ int main(int argc, char *argv[])
 
         // 1. Matrix Assembly Timing
         PetscTime(&t_assemble_start);
-        TDSEZ.Assemble();
+        PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Assemble());
         PetscTime(&t_assemble_end);
         // 2. Eigensolver Timing
         PetscTime(&t_solve_start);
-        TDSEZ.Solve();
+        PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Solve());
         PetscTime(&t_solve_end);
 
-        TDSEZ.Output();
+        PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Output());
 
         // Decide whether the dipole operator assembler must be built. It is
         // needed ONLY when (a) a dipole-matrix save was explicitly requested
@@ -209,21 +227,9 @@ int main(int argc, char *argv[])
             }
 
             // Make the states real-valued for the dipole matrix computation
-            MakeStatesReal(manager.boundstates, manager.M());
+            PetscCallAbort(PETSC_COMM_WORLD,
+                           MakeStatesReal(manager.boundstates, manager.M()));
 
-            // if (manager.Lz) {
-            //     Vec tmp;
-            //     PetscCall(VecDuplicate(manager.boundstates[0], &tmp));
-            //     PetscPrintf(PETSC_COMM_WORLD, "\nLz expectation values for bound states:\n");
-            //     for (PetscInt n = 0; n < manager.NPOP; n++)
-            //     {
-            //         PetscCall(MatMult(manager.Lz, manager.boundstates[n], tmp));
-            //         PetscScalar val;
-            //         PetscCall(VecDot(manager.boundstates[n], tmp, &val));
-            //         PetscPrintf(PETSC_COMM_WORLD, "  State %d: <Lz> = %.4f\n", (int)n, PetscRealPart(val));
-            //     }
-            //     PetscCall(VecDestroy(&tmp));
-            // }
             std::string dipPrefix = std::filesystem::path(manager.inputFile).filename().string();
             PetscCall(TDSEZCompUnifiedDipoleMatrix(manager.boundstates, manager.energies, manager.Dx(), manager.Dy(), manager.Dz(), "DipoleMatrix_" + dipPrefix));
             PetscCall(TDSEZPrecomputeMomentumMatrix(&manager));
@@ -233,8 +239,10 @@ int main(int argc, char *argv[])
             PetscCall(manager.SetupSurff());
 
             Vec psi0Local = PETSC_NULLPTR;
-            VecDuplicate(TDSEZ.initialPsi, &psi0Local);
-            VecCopy(TDSEZ.initialPsi, psi0Local);
+            PetscCallAbort(PETSC_COMM_WORLD,
+                           VecDuplicate(TDSEZ.initialPsi, &psi0Local));
+            PetscCallAbort(PETSC_COMM_WORLD,
+                           VecCopy(TDSEZ.initialPsi, psi0Local));
             if (TDSEZParser::EnableGPU) {
               Vec gpupsi = PETSC_NULLPTR;
               PetscCall(VecDuplicate(psi0Local, &gpupsi));
@@ -252,7 +260,7 @@ int main(int argc, char *argv[])
             PetscTime(&t_prop_start);
             manager.outputFilename = "td/TimeEvolutionData_" + dipPrefix + ".h5";
             TDSEZPropagator propagator(manager);
-            propagator.Evolve();
+            PetscCallAbort(PETSC_COMM_WORLD, propagator.Evolve());
             PetscTime(&t_prop_end);
 
             // t-SURFF: finalize accumulators and write the PES to its own HDF5.
@@ -261,7 +269,7 @@ int main(int argc, char *argv[])
             // write HDF5 output (incremental: only records any remaining unflushed rows),
             // then flush and close the persistent handle so the file is always finalized.
             PetscTime(&t_data_write_start);
-            manager.CloseHDF5();
+            PetscCallAbort(PETSC_COMM_WORLD, manager.CloseHDF5());
             PetscTime(&t_data_write_end);
         }
 

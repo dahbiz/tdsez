@@ -11,29 +11,46 @@
 //    - TDSEZCompOperators          (core element loop: IGABeginElement ...)
 //    - TDSEZAssembleMatrixTimed / TDSEZAssembleMatBatchTimed  (timed wrappers)
 //    - TDSEZFormHam / TDSEZFormPhyX  (multi-operator kernels, 1D/2D/3D)
-//    - TDSEZFormHamiltonian, TDSEZFormLz, TDSEZFormKinetic, TDSEZFormPotential,
-//      TDSEZFormMass, TDSEZFormMassDist   (single-operator form kernels)
+//    - TDSEZFormLz, TDSEZFormKinetic, TDSEZFormPotential,
+//      TDSEZFormMassDist   (single-operator form kernels)
 //    - DipoleX/Y/Z, VelocityX/Y/Z, TDSEZformPotentialGradX/Y/Z,
-//      TDSEZformPotentialGrad_old, TDSEZformCap   (form kernels)
-//    - TDSEZGetCoeffs, TDSEZProjState   (initial-state projection assembly)
-//    - ComputeCommutator                    (Lz commutator matrix op)
+//      TDSEZformCap   (form kernels)
 //
 //  NO logic was rewritten vs the prior split files (form_functions.cpp,
 //  physics_kernels.cpp, assembler.cpp, and the assembly parts of
 //  diagnostics.cpp). The split was purely organizational.
 // ============================================================================
 
-#include "tdsez_internal.hpp"
+/**
+ * @file assembly.cpp
+ * @brief All PetIGA form-kernels and the core element-loop assembler for
+ *        TDSEZ: turns physics (potential, mass, dipole, velocity, gradient,
+ *        CAP) into PETSc Mat/Vec objects for 1D/2D/3D B-spline IGA.
+ */
 
 #include "tdsez_internal.hpp"
 
+#include "tdsez_internal.hpp"
 
 
 
 
 
-// Manolopoulos CAP profile
-PetscReal Manolopoulos_CAP_profile(const PetscReal xq, const PetscReal, const PetscReal x_max, const PetscReal ma_kmin) 
+
+/// Manolopoulos complex-absorbing-potential (CAP) profile W(r).
+/**
+ * Evaluates the smooth CAP from Manolopoulos (2002) that vanishes inside the
+ * core region and rises to absorb outgoing flux near the box boundary.
+ * The profile uses precomputed constants c, a, b, delta and the minimum
+ * momentum k_min to set the absorption onset and strength.
+ *
+ * @param[in] xq      Spatial coordinate (signed; |xq| is used).
+ * @param             (unnamed second parameter, reserved).
+ * @param[in] x_max   Outer box boundary.
+ * @param[in] ma_kmin Minimum momentum setting the absorption-region width.
+ * @return CAP strength W(r) (zero inside the core region).
+ */
+PetscReal Manolopoulos_CAP_profile(const PetscReal xq, const PetscReal, const PetscReal x_max, const PetscReal ma_kmin)
 {
     // Constants from Manolopoulos (precompute powers to avoid repeated calls)
     const PetscReal ma_c = 2.62206;
@@ -76,6 +93,12 @@ PetscReal Manolopoulos_CAP_profile(const PetscReal xq, const PetscReal, const Pe
 
 
 
+/// Function-pointer type for a PetIGA physics form-kernel callback.
+/** @param p     Quadrature point with shape-function data.
+ *  @param nmat  Number of operator matrices being assembled.
+ *  @param K     Array of nmat element stiffness matrices (nen×nen each).
+ *  @param ctx   User context passed through from the assembler.
+ *  @return PETSc error code. */
 typedef PetscErrorCode (*TDSEZPhysicsKernel)(
     IGAPoint p,
     PetscInt nmat,
@@ -85,6 +108,21 @@ typedef PetscErrorCode (*TDSEZPhysicsKernel)(
 
     
 
+/// Core element-loop assembler: builds nmat PETSc Mat objects from a physics kernel.
+/**
+ * Iterates over all IGA elements and quadrature points, calling the user
+ * kernel at each point to fill per-element work arrays, then assembling them
+ * into the global matrices. Allocates a contiguous work buffer sized for the
+ * worst-case nen across all dimensions. Performs safe cleanup on error via
+ * goto-cleanup. Matrices are zeroed first (IGA uses ADD_VALUES semantics).
+ *
+ * @param[in]  iga    Isogeometric analysis object.
+ * @param[in]  nmat   Number of matrices to assemble (1..12).
+ * @param[out] mats   Array of nmat matrices to fill.
+ * @param[in]  kernel  Physics form-kernel called per quadrature point.
+ * @param[in]  ctx    User context forwarded to the kernel.
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZCompOperators(
     IGA                iga,
     PetscInt           nmat,
@@ -245,6 +283,20 @@ cleanup:
 //  This is ADDITIVE: it does not change TDSEZCompOperators behaviour. The
 //  production core.cpp call site may opt in by switching to this function.
 // ---------------------------------------------------------------------------
+/// Dirichlet-enforcing variant of TDSEZCompOperators.
+/**
+ * Identical to TDSEZCompOperators except it applies homogeneous Dirichlet
+ * boundary conditions (psi=0 at wall nodes) via IGAElementFixSystem after the
+ * kernel runs. The mass matrix M (slot k==1) is exempt so the generalized
+ * eigenproblem H psi = E M psi stays well-posed.
+ *
+ * @param[in]  iga    Isogeometric analysis object.
+ * @param[in]  nmat   Number of matrices to assemble (1..12).
+ * @param[out] mats   Array of nmat matrices to fill.
+ * @param[in]  kernel Physics form-kernel called per quadrature point.
+ * @param[in]  ctx    User context forwarded to the kernel.
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZCompOperatorsDirichlet(
     IGA                iga,
     PetscInt           nmat,
@@ -398,6 +450,18 @@ cleanup:
 
 
 
+/// Multi-operator form kernel: assembles Hamiltonian H and mass M in one pass.
+/**
+ * Fills M[0] = H = (1/2m) ∇B·∇B + V B B and M[1] = M = B B (L² inner product)
+ * for 1D, 2D, or 3D. Uses a position-dependent inverse mass from
+ * TDSEZParser::MassDist. Stack buffers are used for small nen, heap otherwise.
+ *
+ * @param[in]  p    Quadrature point.
+ * @param[in]  nmat Number of matrices (unused, expected 2).
+ * @param[out] M    Array of element matrices: M[0]=H, M[1]=mass.
+ * @param[in]  ctx  User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZFormHam(
     IGAPoint p,
     PetscInt nmat,
@@ -537,288 +601,19 @@ PetscErrorCode TDSEZFormHam(
 }
 
 
-// X-POLARIZATION: [K, V, Md, X, VelX, dVdx]
-// static inline __attribute__((always_inline))
-// PetscErrorCode TDSEZFormPhyX(
-//     IGAPoint p,
-//     PetscInt nmat,
-//     PetscScalar *M[],
-//     void *ctx)
-// {
-//     PetscFunctionBegin;
-//     PetscInt nen = p->nen;
-//     PetscInt dim = p->dim;
-
-//     PetscReal xyz[3] = {0.0, 0.0, 0.0};
-//     IGAPointFormGeomMap(p, xyz); 
-//     PetscReal x = xyz[0], y = xyz[1], z = xyz[2];
-
-//     const PetscReal w = p->weight[0] * p->detJac[0]; 
-
-
-//     // 0 derivative shape functions
-//     alignas(64) const PetscReal *B;
-//     const PetscReal invMass = (PetscReal) (1.0 / TDSEZParser::MassDist(x, y, z));
-//     const PetscReal coeff = 0.5 * invMass;
-
-
-//     // Mass grad and laplacian terms
-//     auto invMassFunc = [](const std::vector<PetscReal>& xx) {
-//         return 1.0/TDSEZParser::MassDist(xx[0], xx[1], xx[2]);
-//     };
-
-//     if (dim == 1)
-//     {
-//         const PetscReal (*dB)[1];
-//         IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-//         IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-
-//         const PetscReal w = p->weight[0] *   p->detJac[0]; 
-//         PetscReal Vxyz = TDSEZParser::V(x);
-//         PetscReal dVdx = TDSEZParser::dVx(x);
-
-
-//         // Compute physics derivatives
-//         PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x}, 1e-4);
-//         PetscReal f    = invMassFunc({x});
-//         PetscReal fx   = ops.first[0];
-//         PetscReal fxx  = ops.second[0]; 
-//         PetscReal fxxx = ops.third[0];  
-
-
-//         for (PetscInt a = 0; a < nen; ++a) 
-//         {
-//             PetscReal Ba = B[a];
-//             PetscReal dBa_x = dB[a][0];
-
-//             // pointer to the start of row 'a'
-//             PetscScalar *Krow  = &M[0][a * nen];
-//             PetscScalar *Vrow  = &M[1][a * nen];
-//             PetscScalar *Mdrow = &M[2][a * nen];
-//             PetscScalar *Xrow  = &M[3][a * nen];
-//             PetscScalar *Pxrow = &M[4][a * nen];
-//             PetscScalar *dVdxrow = &M[5][a * nen];
-
-//             for (PetscInt b = 0; b < nen; ++b) {
-//                 PetscReal Bb = B[b];
-//                 PetscReal dBb_x = dB[b][0];
-
-//                 Krow[b] += coeff * dBa_x * dBb_x * w;
-//                 Vrow[b] +=  Ba * Bb * Vxyz * w;
-//                 Mdrow[b] += Ba * invMass * Bb * w;
-//                 Xrow[b] += Ba * Bb * x * w;
-//                 Pxrow[b] += -0.5 * PETSC_i * (Ba*dBb_x - dBa_x*Bb) * w;
-
-//                 // for dVdx row, add contribution from mass gradient terms
-//                 // Row 0: -Ba * dVdx * f * Bb
-//                 PetscScalar classical = -Ba * dVdx * f * Bb;
-//                 // Row 1: 2 * Bi * Bj_x * fx^2
-//                 PetscScalar R1 = 2.0 * Ba * dBb_x * (fx * fx);
-//                 // Row 3: f * [ 2 * Bi * Bj_x * fxx + Bi * Bb * fxxx ]
-//                 PetscScalar R3 = f * (2.0 * Ba * dBb_x * fxx + Ba * Bb * fxxx);
-//                 // Row 4: -2 * f * fx * (dBax * dBbx)
-//                 PetscScalar R4 = -2.0 * f * fx * (dBa_x * dBb_x);
-//                 // Row 5: -2 * Bi * Bj_x * (fx*fx + f*fxx)
-//                 PetscScalar R5 = -2.0 * Ba * dBb_x * (fx*fx + f*fxx);
-//                 // Row 6: Bi * Bj * fx * fxx
-//                 PetscScalar R6 = Ba * Bb * (fx * fxx);
-//                 PetscScalar quantum = -0.25 * (R1 + R3 + R4 + R5 + R6);
-//                 dVdxrow[b] += (classical + quantum) * w;
-//             }
-//         }
-//     }
-//     else if (__builtin_expect(dim == 2, 0))
-//     {
-//         const PetscReal (*dB)[2], (*ddB)[2][2];
-//         IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-//         IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-//         IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
-
-//         const PetscReal w = p->weight[0] *   p->detJac[0]; 
-//         PetscReal Vxyz = TDSEZParser::V(x, y);
-//         PetscReal dVdx = TDSEZParser::dVx(x, y);
-
-
-//         // Mass derivatives (assuming dim=2, so 3rd order tensor size is 2^3=8)
-//         PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y}, 1e-4);
-//         PetscReal f    = invMassFunc({x, y});
-//         PetscReal fx   = ops.first[0];
-//         PetscReal fy   = ops.first[1];
-//         PetscReal fxx  = ops.second[0 * 2 + 0];
-//         PetscReal fyy  = ops.second[1 * 2 + 1];
-//         PetscReal fxy  = ops.second[0 * 2 + 1]; // fxy = fyx
-//         PetscReal fxxx = ops.third[(0 * 2 + 0) * 2 + 0];
-//         PetscReal fxyy = ops.third[(0 * 2 + 1) * 2 + 1];
-
-
-
-//         for (PetscInt a = 0; a < nen; ++a) 
-//         {
-//             const PetscReal Ba = B[a];
-//             const PetscReal dBa_x = dB[a][0];
-//             const PetscReal dBa_y = dB[a][1];
-            
-//             PetscScalar *Krow  = &M[0][a * nen];
-//             PetscScalar *Vrow  = &M[1][a * nen];
-//             PetscScalar *Mdrow = &M[2][a * nen];
-//             PetscScalar *Xrow  = &M[3][a * nen];
-//             PetscScalar *Pxrow = &M[4][a * nen];
-//             PetscScalar *dVdxrow = &M[5][a * nen];
-
-//             for (PetscInt b = 0; b < nen; ++b)
-//             {
-//                 const PetscReal Bb = B[b];
-//                 const PetscReal dBb_x = dB[b][0];
-//                 const PetscReal dBb_y = dB[b][1];
-//                 const PetscScalar dBb_xy = ddB[b][0][1];
-
-//                 Krow[b] += coeff * (dBa_x * dBb_x + dBa_y * dBb_y) * w;
-//                 Vrow[b] +=  Ba * Bb * Vxyz * w;
-//                 Mdrow[b] += Ba * invMass * Bb * w;
-//                 Xrow[b] += Ba * Bb * x * w;
-//                 Pxrow[b] += -0.5 * PETSC_i * (Ba*dBb_x - dBa_x*Bb) * w;
-
-//                 // Row 0: -Ba * dVdx * f * Bb
-//                 PetscScalar classical = -Ba * dVdx * f * Bb;
-                
-//                 // Row 1: 2 * Bi * Bj_x * (fx^2 + fy^2)
-//                 PetscScalar R1 = 2.0 * Ba * dBb_x * (fx*fx + fy*fy);
-
-//                 // Row 3: f * ( 4*fy*Bi*Bj_xy + 2*Bi*Bj_x*(fyy+fxx) + Bi*Bj*(fxyy+fxxx) )
-//                 PetscScalar R3 = f * (4.0 * fy * Ba * dBb_xy + 
-//                                       2.0 * Ba * dBb_x * (fyy + fxx) + 
-//                                       Ba * Bb * (fxyy + fxxx));
-
-//                 // Row 4: 2 * f * fx * (Bay*Bby - Bax*Bbx)
-//                 PetscScalar R4 = 2.0 * f * fx * (dBa_y * dBb_y - dBa_x * dBb_x);
-
-//                 // Row 5: 2 * ( Bi*Bby*(fy*fx + f*fxy) - Bi*Bbx*(fx*fx + f*fxx) )
-//                 PetscScalar R5 = 2.0 * (Ba * dBb_y * (fy*fx + f*fxy) - 
-//                                         Ba * dBb_x * (fx*fx + f*fxx));
-
-//                 // Row 6: Bi * Bj * (fy*fxy + fx*fxx)
-//                 PetscScalar R6 = Ba * Bb * (fy * fxy + fx * fxx);
-
-//                 PetscScalar quantum = -0.25 * (R1 + R3 + R4 + R5 + R6);
-
-//                 dVdxrow[b] += (classical + quantum) * w;
-//             }
-//         }
-//     }
-//     else if (dim == 3)
-//     {
-//         const PetscReal (*dB)[3], (*ddB)[3][3];
-        
-//         IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-//         IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-//         IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
-
-//         const PetscReal w = p->weight[0] *   p->detJac[0]; 
-//         const PetscReal V_val = TDSEZParser::V(x, y, z);
-//         const PetscReal dVdx = TDSEZParser::dVx(x, y, z);
-
-
-//         // Derivatives of f (Inverse Mass) - Index mapping: i*dim + j
-//         PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y, z}, 1e-4);
-//         PetscReal f    = invMassFunc({x, y, z});
-//         PetscReal fx = ops.first[0], fy = ops.first[1], fz = ops.first[2];
-        
-//         // 2nd Derivatives
-//         PetscReal fxx = ops.second[0*3 + 0], fyy = ops.second[1*3 + 1], fzz = ops.second[2*3 + 2];
-//         PetscReal fxy = ops.second[0*3 + 1], fxz = ops.second[0*3 + 2], fyz = ops.second[1*3 + 2];
-    
-//         // 3rd Derivatives - Index mapping: (i*dim + j)*dim + k
-//         PetscReal fxxx = ops.third[(0*3 + 0)*3 + 0];
-//         PetscReal fxyy = ops.third[(0*3 + 1)*3 + 1];
-//         PetscReal fxzz = ops.third[(0*3 + 2)*3 + 2];
-    
-//         // Row 5 Components: (f*fx)_i = f_i*f_x + f*f_ix
-//         PetscReal ffx_x = fx*fx + f*fxx;
-//         PetscReal ffx_y = fy*fx + f*fxy;
-//         PetscReal ffx_z = fz*fx + f*fxz;
-
-//         // prefetch 
-//         PetscReal static_dBx[512], static_dBy[512], static_dBz[512];
-//         alignas(64) PetscReal *dBx = static_dBx, *dBy = static_dBy, *dBz = static_dBz;
-//         PetscBool heap_used = PETSC_FALSE;
-//         if (nen > 512) {
-//             PetscMalloc3(nen, &dBx, nen, &dBy, nen, &dBz);
-//             heap_used = PETSC_TRUE;
-//         }
-
-//         for(PetscInt i=0; i<nen; i++) {
-//             dBx[i] = dB[i][0]; dBy[i] = dB[i][1]; dBz[i] = dB[i][2];
-//         }
-
-//         for(PetscInt a=0; a<nen; a++)
-//         {
-//             const PetscReal Ba = B[a];
-//             const PetscReal dBa_x = dBx[a];
-//             const PetscReal dBa_y = dBy[a];
-//             const PetscReal dBa_z = dBz[a];
-//             const PetscReal va   = B[a] * V_val;
-
-//             PetscScalar *Krow  = &M[0][a * nen];
-//             PetscScalar *Vrow  = &M[1][a * nen];
-//             PetscScalar *Mdrow = &M[2][a * nen];
-//             PetscScalar *Xrow  = &M[3][a * nen];
-//             PetscScalar *Pxrow = &M[4][a * nen];
-//             PetscScalar *dVdxrow = &M[5][a * nen];
-
-//             for(PetscInt b=0; b<nen; b++)
-//             {
-//                 const PetscReal Bb = B[b];
-//                 const PetscReal dBb_x = dB[b][0], dBb_y = dB[b][1], dBb_z = dB[b][2];
-//                 const PetscScalar dBb_xy = ddB[b][0][1], dBb_xz = ddB[b][0][2];
-
-//                 Krow[b] +=  coeff * (dBa_x * dBb_x + dBa_y * dBb_y + dBa_z * dBb_z) * w;
-//                 Vrow[b] +=  va * Bb * w;
-//                 Mdrow[b] += Ba * invMass * Bb * w;
-//                 Xrow[b] += Ba * Bb * x * w;
-//                 Pxrow[b] += -0.5 * PETSC_i * (Ba*dBb_x - dBa_x*Bb) * w;
-
-                    
-//                 // Row 0: -Ba * dVdx * f * Bb
-//                 PetscScalar classical = -Ba * dVdx * f * Bb;
-                    
-//                 // Row 1: 2 * Bi * Bj_x * (fx^2 + fy^2 + fz^2)
-//                 PetscScalar row1 = 2.0 * Ba * dBb_x * (fx*fx + fy*fy + fz*fz);
-    
-//                 // Row 2: fz * (4*f*Bi*Bj_xz + Bi*Bj*fxz)
-//                 PetscScalar row2 = fz * (4.0 * f * Ba * dBb_xz + Ba * Bb * fxz);
-    
-//                 // Row 3: f * [4*fy*Bi*Bj_xy + 2*Bi*Bj_x*(fxx+fyy+fzz) + Bi*Bj*(fxxx+fxyy+fxzz)]
-//                 PetscScalar row3 = f * (4.0 * fy * Ba * dBb_xy + 
-//                                         2.0 * Ba * dBb_x * (fxx + fyy + fzz) + 
-//                                         Ba * Bb * (fxxx + fxyy + fxzz));
-    
-//                 // Row 4: 2*f*fx * (Baz*Bbz + Bay*Bby - Bax*Bbx)
-//                 PetscScalar row4 = 2.0 * f * fx * (dBa_z * dBb_z + dBa_y * dBb_y - dBa_x * dBb_x);
-    
-//                 // Row 5: 2 * [ Ba*dBbz*ffx_z + Ba*dBby*ffx_y - Ba*dBbx*ffx_x ]
-//                 PetscScalar row5 = 2.0 * (Ba * dBb_z * ffx_z + Ba * dBb_y * ffx_y - Ba * dBb_x * ffx_x);
-
-//                 // Row 6: Bi * Bj * (fy*fxy + fx*fxx)
-//                 PetscScalar row6 = Ba * Bb * (fy * fxy + fx * fxx);
-    
-//                 PetscScalar quantum = -0.25 * (row1 + row2 + row3 + row4 + row5 + row6);
-    
-//                 dVdxrow[b] += (classical + quantum) * w;
-//             }
-//         }
-
-//         if (heap_used) {
-//             PetscFree3(dBx, dBy, dBz);
-//         }
-//     }
-
-//     return 0;
-// }
-
-
-
-
-// X-POLARIZATION: [K, V, Md, X, VelX, dVdx]
+/// X-polarization multi-operator batch kernel: [K, V, Md, X, VelX, dVdx].
+/**
+ * Assembles six operators in a single quadrature-point pass for x-polarized
+ * runs: kinetic K, potential V, distributed mass Md, dipole X, velocity
+ * VelX, and force dVdx (with variable-mass quantum corrections). Supports
+ * 1D/2D/3D; skips quantum-correction terms when mass is constant.
+ *
+ * @param[in]  p    Quadrature point.
+ * @param[in]  nmat Number of matrices (unused, expected 6).
+ * @param[out] M    Element matrices: K, V, Md, X, VelX, dVdx.
+ * @param[in]  ctx  User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZFormPhyX(
     IGAPoint  p,
     PetscInt  nmat,
@@ -1126,7 +921,7 @@ PetscErrorCode TDSEZFormPhyX(
 
 
 
-// Hamiltonian matrix: ∫ (ħ²/2m) ∇B_i · ∇B_j + V(x) B_i B_j dx
+/// Hamiltonian matrix: ∫ (ħ²/2m) ∇B_i · ∇B_j + V(x) B_i B_j dx
 
 // ============================================================================
 //  SINGLE-OPERATOR FORM KERNELS (were: form_functions.cpp)
@@ -1134,129 +929,16 @@ PetscErrorCode TDSEZFormPhyX(
 
 #include "tdsez_internal.hpp"
 
-PetscErrorCode TDSEZFormHamiltonian(IGAPoint p, PetscScalar*H, void *ctx)
-{
-    PetscFunctionBegin;
-    (void)ctx;
-    PetscInt nen = p->nen;
-    PetscInt dim = p->dim;
-
-    PetscReal xyz[3] = {0.0, 0.0, 0.0};
-    IGAPointFormGeomMap(p, xyz); 
-    PetscReal x = xyz[0];
-    PetscReal y = xyz[1];
-    PetscReal z = xyz[2];
-
-
-    // 0 derivative shape functions
-    const PetscReal *B;
-    const PetscReal invMass = (PetscReal) (1.0 / TDSEZParser::MassDist(x, y, z));
-    // const PetscReal coeff = 0.5 * invMass * TDSEZParser::Hbar * TDSEZParser::Hbar;
-    const PetscReal coeff = 0.5 * invMass;
-
-    // 1st derivative shape functions + Hamiltonian matrix assembly
-    if (dim == 1)
-    {
-        const PetscReal (*dB)[1];
-        IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-        IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-
-        PetscReal Vxyz = TDSEZParser::V(x);
-        for (PetscInt a = 0; a < nen; ++a) 
-        {
-            PetscReal Na = B[a];
-            PetscReal dNa = dB[a][0];
-
-
-            // pointer to the start of row 'a'
-            PetscScalar *Hrow = &H[a * nen];
-
-            #pragma omp simd
-            for (PetscInt b = 0; b < nen; ++b)
-            {
-                PetscReal Nb = B[b];
-                PetscReal dNb = dB[b][0];
-                PetscReal val = coeff * dNa * dNb + Vxyz * Na * Nb;
-                Hrow[b] = val;
-            }
-        }
-
-    }
-    else if (__builtin_expect(dim == 2, 0))
-    {
-        const PetscReal (*dB)[2];
-        IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-        IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-
-        PetscReal Vxyz = TDSEZParser::V(x, y);
-
-        for (PetscInt a = 0; a < nen; ++a) 
-        {
-            const PetscReal NaV = B[a] * Vxyz;
-            const PetscReal dNaxC = dB[a][0] * coeff;
-            const PetscReal dNayC = dB[a][1] * coeff;
-
-
-            // pointer to the start of row 'a'
-            PetscScalar *Hrow = &H[a * nen];
-
-            // enable sim d vectorization
-            #pragma omp simd
-            for (PetscInt b = 0; b < nen; ++b)
-            {
-                Hrow[b] = (dNaxC * dB[b][0]) + (dNayC * dB[b][1]) + (NaV * B[b]);
-            }
-        }
-    }
-    else if (dim == 3)
-    {
-        const PetscReal (*dB)[3];
-        IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-        IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-        const PetscReal V_val = TDSEZParser::V(x, y, z);
-
-        // prefetch 
-        PetscReal static_dBx[512], static_dBy[512], static_dBz[512];
-        alignas(64) PetscReal *dBx = static_dBx, *dBy = static_dBy, *dBz = static_dBz;
-        PetscBool heap_used = PETSC_FALSE;
-        if (nen > 512) {
-            PetscMalloc3(nen, &dBx, nen, &dBy, nen, &dBz);
-            heap_used = PETSC_TRUE;
-        }
-
-        for(PetscInt i=0; i<nen; i++) {
-            dBx[i] = dB[i][0]; dBy[i] = dB[i][1]; dBz[i] = dB[i][2];
-        }
-
-        for(PetscInt a=0; a<nen; a++)
-        {
-            const PetscReal daxC = dBx[a] * coeff;
-            const PetscReal dayC = dBy[a] * coeff;
-            const PetscReal dazC = dBz[a] * coeff;
-            const PetscReal va   = B[a] * V_val;
-            
-            PetscScalar * __restrict__ rowA = &H[a * nen];
-
-            #pragma omp simd
-            for(PetscInt b=0; b<nen; b++)
-            {
-                rowA[b] = (daxC * dBx[b] + dayC * dBy[b] + dazC * dBz[b]) + (va * B[b]);
-            }
-        }
-
-        if (heap_used) {
-            PetscFree3(dBx, dBy, dBz);
-        }
-    }
-
-    PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-
-
-
-
-// Weak form for Lz operator: Lz = -i (x d/dy - y d/dx)
+/// Weak form for the Lz operator: Lz = -i (x d/dy - y d/dx).
+/**
+ * Fills the element matrix for the z-component of angular momentum.
+ * Only defined for 2D; returns a zero matrix for other dimensions.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] L   Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZFormLz(IGAPoint p, PetscScalar *L, void *ctx)
 {
     PetscFunctionBegin;
@@ -1311,7 +993,17 @@ PetscErrorCode TDSEZFormLz(IGAPoint p, PetscScalar *L, void *ctx)
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// computing  mat of K, V, Separately to reuse in analysis
+/// Form kernel for the kinetic-energy matrix K = (1/2m) ∇B_i · ∇B_j.
+/**
+ * Assembles the kinetic operator separately (for analysis/reuse) for 1D,
+ * 2D, or 3D, using a position-dependent inverse mass. Inner loops are
+ * SIMD-annotated where applicable.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] K   Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZFormKinetic(IGAPoint p, PetscScalar*K, void *ctx)
 {
     PetscFunctionBegin;
@@ -1402,6 +1094,15 @@ PetscErrorCode TDSEZFormKinetic(IGAPoint p, PetscScalar*K, void *ctx)
 
 
 
+/// Form kernel for the potential matrix V_ij = V(r) B_i B_j.
+/**
+ * Assembles the potential-energy operator separately for 1D/2D/3D.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] V   Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZFormPotential(IGAPoint p, PetscScalar*V, void *ctx)
 {
     PetscFunctionBegin;
@@ -1441,32 +1142,17 @@ PetscErrorCode TDSEZFormPotential(IGAPoint p, PetscScalar*V, void *ctx)
 
 
 
-// Mass matrix: ∫ Ba * Bb dx
-PetscErrorCode TDSEZFormMass(IGAPoint p, PetscScalar* __restrict__ M, void *ctx) 
-{
-    (void)ctx;
-    const PetscInt nen = p->nen;
-    const PetscReal * __restrict__ B = (const PetscReal *)p->shape[0];
-    alignas(64) PetscReal BB[512]; 
-
-    for (PetscInt i = 0; i < nen; i++) {
-        BB[i] = B[i];
-    }
-
-    for (PetscInt a = 0; a < nen; a++) {   
-        const PetscReal Ba = BB[a];
-        PetscScalar * __restrict__ Mrow = &M[a * nen];
-        #pragma GCC ivdep
-        for (PetscInt b = 0; b < nen; b++) {
-            Mrow[b] = Ba * BB[b];
-        }
-    }
-    return PETSC_SUCCESS;
-}
-
-
-// form mass distribution matrix:  ∫ (1/m(r)) Ba * Bb dr
-PetscErrorCode TDSEZFormMassDist(IGAPoint p, PetscScalar*Md, void *ctx) 
+/// Form kernel for the distributed-mass matrix Md_ij = (1/m(r)) B_i B_j.
+/**
+ * Assembles the position-dependent inverse-mass (L²-weighted) inner product
+ * for use in the generalized eigenproblem and dipole/acceleration observables.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] Md  Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return 0 on success.
+ */
+PetscErrorCode TDSEZFormMassDist(IGAPoint p, PetscScalar*Md, void *ctx)
 {
     (void)ctx;
     PetscInt nen = p->nen;
@@ -1497,7 +1183,10 @@ PetscErrorCode TDSEZFormMassDist(IGAPoint p, PetscScalar*Md, void *ctx)
 
 
 
-PetscErrorCode DipoleX(IGAPoint p, PetscScalar *X, void *ctx) 
+/// Form kernel for the x-dipole operator: X_ij = x B_i B_j.
+/** @param[in] p Quadrature point. @param[out] X Element matrix (nen×nen).
+ *  @param[in] ctx User context (unused). @return 0 on success. */
+PetscErrorCode DipoleX(IGAPoint p, PetscScalar *X, void *ctx)
 {
     (void)ctx;
     PetscInt nen = p->nen;
@@ -1523,6 +1212,9 @@ PetscErrorCode DipoleX(IGAPoint p, PetscScalar *X, void *ctx)
 
 
 
+/// Form kernel for the y-dipole operator: Y_ij = y B_i B_j.
+/** @param[in] p Quadrature point. @param[out] Y Element matrix (nen×nen).
+ *  @param[in] ctx User context (unused). @return 0 on success. */
 PetscErrorCode DipoleY(IGAPoint p, PetscScalar*Y, void *ctx)
 {
     (void)ctx;
@@ -1550,7 +1242,10 @@ PetscErrorCode DipoleY(IGAPoint p, PetscScalar*Y, void *ctx)
 
 
 
-PetscErrorCode DipoleZ(IGAPoint p, PetscScalar*Z, void *ctx) 
+/// Form kernel for the z-dipole operator: Z_ij = z B_i B_j.
+/** @param[in] p Quadrature point. @param[out] Z Element matrix (nen×nen).
+ *  @param[in] ctx User context (unused). @return 0 on success. */
+PetscErrorCode DipoleZ(IGAPoint p, PetscScalar*Z, void *ctx)
 {
     (void)ctx;
     PetscInt nen = p->nen;
@@ -1576,6 +1271,16 @@ PetscErrorCode DipoleZ(IGAPoint p, PetscScalar*Z, void *ctx)
 }
 
 
+/// Form kernel for the x-velocity operator: P_x = -(i/2m)(B_a dB_b - dB_a B_b).
+/**
+ * Anti-symmetric velocity-gauge operator along x, using a position-dependent
+ * inverse mass.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] P   Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode VelocityX(IGAPoint p, PetscScalar *P, void *ctx)
 {
     (void)ctx;
@@ -1609,6 +1314,16 @@ PetscErrorCode VelocityX(IGAPoint p, PetscScalar *P, void *ctx)
 
 
 
+/// Form kernel for the y-velocity operator: P_y = -(i/2m)(B_a dB_b - dB_a B_b).
+/**
+ * Anti-symmetric velocity-gauge operator along y, using a position-dependent
+ * inverse mass.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] P   Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode VelocityY(IGAPoint p, PetscScalar *P, void *ctx)
 {
     (void)ctx;
@@ -1646,6 +1361,16 @@ PetscErrorCode VelocityY(IGAPoint p, PetscScalar *P, void *ctx)
 
 
 
+/// Form kernel for the z-velocity operator: P_z = -(i/2m)(B_a dB_b - dB_a B_b).
+/**
+ * Anti-symmetric velocity-gauge operator along z, using a position-dependent
+ * inverse mass.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] P   Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return PETSc error code.
+ */
 PetscErrorCode VelocityZ(IGAPoint p, PetscScalar *P, void *ctx)
 {
     (void)ctx;
@@ -1681,41 +1406,19 @@ PetscErrorCode VelocityZ(IGAPoint p, PetscScalar *P, void *ctx)
 
 
 
-// momentum matrix: -ihbar∫ Ba * Grad * Bb dx
-PetscErrorCode MomentumBase(IGAPoint p, PetscScalar *P, void *ctx) 
-{
-    // get direction from context
-    PetscInt dir = *(PetscInt*)ctx;
-    PetscInt nen = p->nen;
-
-    const PetscReal *B;
-    const PetscReal (*dB)[3];
-    IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-    IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-    
-    PetscArrayzero(P, nen*nen);
-
-    if (dir < 0 || dir > 2)
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Invalid direction");
-
-    for (PetscInt a = 0; a < nen; a++) 
-    {
-        for (PetscInt b = 0; b < nen; b++) 
-        {
-            P[a * nen + b] =  -PETSC_i * B[a] * dB[b][dir]; 
-        }
-    }
-    return 0;
-}
-
-
-
-
-
-
-
-// momentum matrix: -ihbar∫ Ba * Grad * Bb dx
-PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx) 
+/// Form kernel for the x-force operator dV/dx with variable-mass corrections.
+/**
+ * Computes the Ehrenfest force matrix element <B_a|dV/dx|B_b> plus quantum
+ * corrections from derivatives of the inverse mass (1/m) for 1D, 2D, and 3D.
+ * The classical term is -B_a dV/dx (1/m) B_b; quantum terms involve up to
+ * third-order derivatives of f=1/m.
+ *
+ * @param[in]  p    Quadrature point.
+ * @param[out] dVdr Element matrix (nen×nen).
+ * @param[in]  ctx  User context (unused).
+ * @return 0 on success.
+ */
+PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
 {
     (void)ctx;
     // get direction from context
@@ -1905,7 +1608,18 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
 
 
 
-PetscErrorCode TDSEZformPotentialGradY(IGAPoint p, PetscScalar *dVdr, void *ctx) 
+/// Form kernel for the y-force operator dV/dy with variable-mass corrections.
+/**
+ * Computes the Ehrenfest force matrix element <B_a|dV/dy|B_b> plus quantum
+ * corrections from derivatives of the inverse mass (1/m) for 2D and 3D.
+ * Returns a zero matrix for 1D (dV/dy undefined).
+ *
+ * @param[in]  p    Quadrature point.
+ * @param[out] dVdr Element matrix (nen×nen).
+ * @param[in]  ctx  User context (unused).
+ * @return 0 on success.
+ */
+PetscErrorCode TDSEZformPotentialGradY(IGAPoint p, PetscScalar *dVdr, void *ctx)
 {
     (void)ctx;
     PetscInt nen = p->nen;
@@ -1995,7 +1709,18 @@ PetscErrorCode TDSEZformPotentialGradY(IGAPoint p, PetscScalar *dVdr, void *ctx)
 
 
 
-PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx) 
+/// Form kernel for the z-force operator dV/dz with variable-mass corrections.
+/**
+ * Computes the Ehrenfest force matrix element <B_a|dV/dz|B_b> plus quantum
+ * corrections from derivatives of the inverse mass (1/m). Only defined for
+ * 3D; returns a zero matrix for lower dimensions.
+ *
+ * @param[in]  p    Quadrature point.
+ * @param[out] dVdr Element matrix (nen×nen).
+ * @param[in]  ctx  User context (unused).
+ * @return 0 on success.
+ */
+PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx)
 {
     (void)ctx;
     PetscInt nen = p->nen;
@@ -2082,96 +1807,18 @@ PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx)
 
 
 
-// Dipole matrix: ∫ Ba * dV/dx * Bb dx
-PetscErrorCode TDSEZformPotentialGrad_old(IGAPoint p, PetscScalar*dV, void *ctx) 
-{
-    (void)ctx;
-    PetscInt nen = p->nen;
-    PetscInt dim = p->dim;
-    
-    const PetscReal *B;
-    IGAPointGetShapeFuns(p,0,(const PetscReal**)&B);
-
-    PetscReal x[3] = {0.0,0.0,0.0};          
-    IGAPointFormGeomMap(p, x);       // x[0..dim-1]
-    PetscReal grad[3] = {0.0,0.0,0.0};
-
-#ifdef USE_ANALYTIC
-if(__builtin_expect(dim==1, 1)) grad[0] = TDSEZParser::dV(x[0]);
-else if(__builtin_expect(dim==2, 1)) 
-{
-    PetscReal term = TDSEZParser::dV(x[0], x[1]);
-    grad[0] = term; 
-    grad[1] = term;  
-} 
-else if (__builtin_expect(dim==3, 1))
-{ // dim==3
-    PetscReal term = TDSEZParser::dV(x[0], x[1], x[2]);
-    grad[0] = term;
-    grad[1] = term;
-    grad[2] = term;
-}
-#else
-    PetscReal h = 1e-5;
-    for (PetscInt i=0; i<dim; ++i) 
-    {
-        PetscReal x_plus[3]  = {x[0], x[1], x[2]};
-        PetscReal x_minus[3] = {x[0], x[1], x[2]};
-        PetscReal x_plus2[3] = {x[0], x[1], x[2]};
-        PetscReal x_minus2[3]= {x[0], x[1], x[2]};
-
-        x_plus[i]  += h; x_minus[i] -= h;
-        x_plus2[i] += 2*h; x_minus2[i]-= 2*h;
-
-        // call TDSEZParser::V with explicit components based on dim
-        PetscReal Vpp = 0.0, Vp = 0.0, Vm = 0.0, Vmm = 0.0;
-
-        if(__builtin_expect(dim==1, 1)) 
-        {
-            Vpp = TDSEZParser::V(x_plus2[0]);
-            Vp  = TDSEZParser::V(x_plus[0]);
-            Vm  = TDSEZParser::V(x_minus[0]);
-            Vmm = TDSEZParser::V(x_minus2[0]);
-        } 
-        else if((__builtin_expect(dim==2, 1)))
-        {
-            Vpp = TDSEZParser::V(x_plus2[0], x_plus2[1]);
-            Vp  = TDSEZParser::V(x_plus[0], x_plus[1]);
-            Vm  = TDSEZParser::V(x_minus[0], x_minus[1]);
-            Vmm = TDSEZParser::V(x_minus2[0], x_minus2[1]);
-        }
-        else if ((__builtin_expect(dim==3, 1)))
-        { 
-            Vpp = TDSEZParser::V(x_plus2[0], x_plus2[1], x_plus2[2]);
-            Vp  = TDSEZParser::V(x_plus[0], x_plus[1], x_plus[2]);
-            Vm  = TDSEZParser::V(x_minus[0], x_minus[1], x_minus[2]);
-            Vmm = TDSEZParser::V(x_minus2[0], x_minus2[1], x_minus2[2]);
-        }
-
-        grad[i] = (-Vpp + 8*Vp - 8*Vm + Vmm) / (12*h);
-    }
-#endif
-
-    // assemble dV/dx
-    for (PetscInt a=0; a<nen; ++a) 
-    {
-        for (PetscInt b=a; b<nen; ++b) 
-        {
-
-            PetscReal Nab = B[a]*B[b];
-
-            PetscReal val = 0.0;
-            for (PetscInt i=0; i<dim; ++i) val += Nab * grad[i];
-            dV[a*nen + b] = val;
-            dV[b*nen + a] = val;
-        }
-    }
-
-    return 0;
-}
-
-
-// CAP matrix: ∫ Ba * W(x) * Bb dx
+/// Form kernel for the complex-absorbing-potential (CAP) matrix.
+/**
+ * Computes CAP_ij = -i W(r) B_i B_j where W(r) is the Manolopoulos profile
+ * evaluated at the maximum Cartesian extent of the quadrature point. The CAP
+ * is active only outside an inner radius (90% of the box) and absorbs
+ * outgoing flux near the boundary.
+ *
+ * @param[in]  p   Quadrature point.
+ * @param[out] CAP Element matrix (nen×nen).
+ * @param[in]  ctx User context (unused).
+ * @return 0 on success.
+ */
 PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx)
 {
     (void)ctx;

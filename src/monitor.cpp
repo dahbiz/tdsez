@@ -1,5 +1,23 @@
 #include "tdsez_internal.hpp"
 
+/**
+ * @file monitor.cpp
+ * @brief TS monitor callbacks computing per-step observables (norm, energy,
+ *        dipole, acceleration, populations, currents, Berry phase,
+ *        autocorrelation) and streaming them to HDF5, plus the IFunction /
+ *        IJacobian callbacks for each polarization combination.
+ */
+
+/// IFunction for x-polarized propagation: F = i M psidot - H psi - Ex Dx psi.
+/**
+ * @param[in]  ts      Time-stepper context (unused).
+ * @param[in]  t       Current simulation time.
+ * @param[in]  psi     State vector (unused directly; used via MatMult).
+ * @param[in]  psidot  Time derivative of state (unused directly).
+ * @param[out] F       Residual vector F = i M psidot - H psi - Ex Dx psi.
+ * @param[in]  ctx     TDSEZManager providing H, Dx, M, IFuncVec scratch.
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZIFunctionPolX(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
 {
   (void)ts; (void)psi; (void)psidot;
@@ -17,6 +35,11 @@ PetscErrorCode TDSEZIFunctionPolX(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F
 }
 
 
+/// IFunction for y-polarized propagation: F = i M psidot - H psi - Ey Dy psi.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual = i M psidot - H psi - Ey Dy psi.
+ *  @param[in] ctx TDSEZManager. @return PETSc error code. */
 PetscErrorCode TDSEZIFunctionPolY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
 {
   (void)ts; (void)psi; (void)psidot;
@@ -32,6 +55,11 @@ PetscErrorCode TDSEZIFunctionPolY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F
 }
 
 
+/// IFunction for z-polarized propagation: F = i M psidot - H psi - Ez Dz psi.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual = i M psidot - H psi - Ez Dz psi.
+ *  @param[in] ctx TDSEZManager. @return PETSc error code. */
 PetscErrorCode TDSEZIFunctionPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
 {
   (void)ts; (void)psi; (void)psidot;
@@ -48,6 +76,10 @@ PetscErrorCode TDSEZIFunctionPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F
 
 
 
+/// IFunction for xy-polarized propagation: F = i M psidot - H psi - Ex Dx - Ey Dy.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
 PetscErrorCode TDSEZIFunctionPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
 {
   (void)ts; (void)psi; (void)psidot;
@@ -71,6 +103,10 @@ PetscErrorCode TDSEZIFunctionPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec 
 
 
 
+/// IFunction for xz-polarized propagation: F = i M psidot - H psi - Ex Dx - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
 PetscErrorCode TDSEZIFunctionPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
 {
   (void)ts; (void)psi; (void)psidot;
@@ -92,6 +128,10 @@ PetscErrorCode TDSEZIFunctionPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec 
 }
 
 
+/// IFunction for yz-polarized propagation: F = i M psidot - H psi - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
 PetscErrorCode TDSEZIFunctionPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
 {
   (void)ts; (void)psi; (void)psidot;
@@ -116,6 +156,10 @@ PetscErrorCode TDSEZIFunctionPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec 
 
 
 
+/// IFunction for xyz-polarized propagation: F = i M psidot - H - Ex Dx - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
 PetscErrorCode TDSEZIFunctionPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
 {
   (void)ts; (void)psi; (void)psidot;
@@ -137,45 +181,12 @@ PetscErrorCode TDSEZIFunctionPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec
     PetscCall(VecMAXPY(F, 4, coeffs, TDSEZ->IFuncVec));
     PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-
-
-
-
-// J = a*M - i*(H + E(t)*R)
-PetscErrorCode TDSEZIJacobian(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
-{
-    (void)ts; (void)psi; (void)psidot;
-    PetscFunctionBeginUser;
-
-    PetscErrorCode ierr;
-    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    PetscScalar Et = (PetscScalar)(TDSEZParser::E(t) * TDSEZParser::F(t));
-    PetscScalar ai = a * PETSC_i;  /* coefficient for i*M */
-
-    /* J = -(H + E R) */
-    ierr = MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN);                  CHKERRQ(ierr);
-    ierr = MatAXPY(J, Et, TDSEZ->Dx(), SAME_NONZERO_PATTERN);              CHKERRQ(ierr);
-    ierr = MatScale(J, -1.0); CHKERRQ(ierr);
-
-    /* J += a * i * M */
-    ierr = MatAXPY(J, ai, TDSEZ->M(), SAME_NONZERO_PATTERN);              CHKERRQ(ierr);
-    // ierr = MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY);                 CHKERRQ(ierr);
-    // ierr = MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY);                   CHKERRQ(ierr);
-
-    if (J != P) 
-    {
-        ierr = MatCopy(J, P, SAME_NONZERO_PATTERN);                   CHKERRQ(ierr);
-        // ierr = MatAssemblyBegin(P, MAT_FINAL_ASSEMBLY);               CHKERRQ(ierr);
-        // ierr = MatAssemblyEnd(P, MAT_FINAL_ASSEMBLY);                 CHKERRQ(ierr);
-    }
-
-        PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-
-
-
+/// IJacobian for x-polarized propagation: J = i a M - H - Ex Dx.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
 PetscErrorCode TDSEZIJacobianPolX(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
@@ -196,6 +207,12 @@ PetscErrorCode TDSEZIJacobianPolX(TS ts, PetscReal t, Vec psi, Vec psidot, Petsc
 
 
 
+/// IJacobian for y-polarized propagation: J = i a M - H - Ey Dy.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
 PetscErrorCode TDSEZIJacobianPolY(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
@@ -215,6 +232,12 @@ PetscErrorCode TDSEZIJacobianPolY(TS ts, PetscReal t, Vec psi, Vec psidot, Petsc
 }
 
 
+/// IJacobian for z-polarized propagation: J = i a M - H - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
 PetscErrorCode TDSEZIJacobianPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
@@ -235,6 +258,12 @@ PetscErrorCode TDSEZIJacobianPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, Petsc
 
 
 
+/// IJacobian for xy-polarized propagation: J = i a M - H - Ex Dx - Ey Dy.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
 PetscErrorCode TDSEZIJacobianPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
@@ -255,6 +284,12 @@ PetscErrorCode TDSEZIJacobianPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, Pets
 }
 
 
+/// IJacobian for xz-polarized propagation: J = i a M - H - Ex Dx - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
 PetscErrorCode TDSEZIJacobianPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
@@ -275,6 +310,12 @@ PetscErrorCode TDSEZIJacobianPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pets
 }
 
 
+/// IJacobian for yz-polarized propagation: J = i a M - H - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
 PetscErrorCode TDSEZIJacobianPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
@@ -296,6 +337,12 @@ PetscErrorCode TDSEZIJacobianPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pets
 
 
 
+/// IJacobian for xyz-polarized propagation: J = i a M - H - Ex Dx - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
 PetscErrorCode TDSEZIJacobianPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
@@ -323,6 +370,21 @@ PetscErrorCode TDSEZIJacobianPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pet
 
 // 
 
+/// 1D TS monitor: computes per-step observables and buffers them for HDF5.
+/**
+ * Computes norm, <H>, kinetic/potential/interaction/total energy, x-dipole,
+ * acceleration, populations, and autocorrelation via a fused VecMDot
+ * reduction, writes them into in-memory buffers, and flushes periodically to
+ * HDF5. Also accumulates t-SURFF, writes wavefunction snapshots, and logs
+ * progress.
+ *
+ * @param[in] ts   Time-stepper context.
+ * @param[in] step Current time-step index.
+ * @param[in] t    Current simulation time.
+ * @param[in] psi  Current state vector.
+ * @param[in] ctx  TDSEZManager providing operators and output buffers.
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
 {
     PetscFunctionBeginUser;
@@ -451,7 +513,8 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             PetscInt stride = TDSEZParser::OutputStrideTS;
             if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
                 TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
-                TDSEZ->WriteHDF5(TDSEZ->outputFilename);
+                PetscCallAbort(PETSC_COMM_WORLD,
+                               TDSEZ->WriteHDF5(TDSEZ->outputFilename));
             }
         }
     }
@@ -498,6 +561,20 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 }
 
 
+/// 2D TS monitor: computes per-step observables and buffers them for HDF5.
+/**
+ * Extends the 1D monitor to two Cartesian axes (x, y): computes norm,
+ * energy, dipoles, accelerations, velocity-gauge currents (intra/inter/bc
+ * decomposition), Berry phase from population overlaps, Lz expectation,
+ * populations, and autocorrelation. Buffers results and flushes to HDF5.
+ *
+ * @param[in] ts   Time-stepper context.
+ * @param[in] step Current time-step index.
+ * @param[in] t    Current simulation time.
+ * @param[in] psi  Current state vector.
+ * @param[in] ctx  TDSEZManager providing operators and output buffers.
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
 {
     (void)ts; (void)step; (void)t; (void)psi;
@@ -734,7 +811,8 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             PetscInt stride = TDSEZParser::OutputStrideTS;
             if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
                 TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
-                TDSEZ->WriteHDF5(TDSEZ->outputFilename);
+                PetscCallAbort(PETSC_COMM_WORLD,
+                               TDSEZ->WriteHDF5(TDSEZ->outputFilename));
             }
         }
     }
@@ -775,7 +853,20 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
 
 
-// 3D MONITOR: memory-buffered version
+/// 3D TS monitor: computes per-step observables and buffers them for HDF5.
+/**
+ * Extends the 2D monitor to three Cartesian axes (x, y, z): computes norm,
+ * energy, dipoles, accelerations, velocity-gauge currents (intra/inter/bc
+ * decomposition), Berry phase, Lz expectation, populations, and
+ * autocorrelation. Buffers results and flushes to HDF5.
+ *
+ * @param[in] ts   Time-stepper context.
+ * @param[in] step Current time-step index.
+ * @param[in] t    Current simulation time.
+ * @param[in] psi  Current state vector.
+ * @param[in] ctx  TDSEZManager providing operators and output buffers.
+ * @return PETSc error code.
+ */
 PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
 {
     PetscFunctionBeginUser;
@@ -998,7 +1089,8 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             PetscInt stride = TDSEZParser::OutputStrideTS;
             if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
                 TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
-                TDSEZ->WriteHDF5(TDSEZ->outputFilename);
+                PetscCallAbort(PETSC_COMM_WORLD,
+                               TDSEZ->WriteHDF5(TDSEZ->outputFilename));
             }
         }
 

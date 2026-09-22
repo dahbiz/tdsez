@@ -1,5 +1,17 @@
 #include "tdsez_internal.hpp"
 
+/**
+ * @file manager.cpp
+ * @brief TDSEZManager: propagation orchestration, HDF5 I/O, and polarization
+ *        callback selection.
+ * @author TDSEZ Project
+ */
+
+/// @brief Select the IFunction and IJacobian callbacks matching the
+///        configured polarization (x, y, z, xy, xz, yz, or xyz/all).
+///        Assigns TDSEZIFunctionPtr and TDSEZIJacobianPtr accordingly.
+/// @return PetscErrorCode — PETSC_SUCCESS on success, or SETERRQ for an
+///         unrecognized polarization string.
 PetscErrorCode TDSEZManager::PolarizationSelector()
 {
     PetscFunctionBegin;
@@ -21,6 +33,12 @@ PetscErrorCode TDSEZManager::PolarizationSelector()
 
 
 
+/// @brief Write accumulated time-series data (dipole, population, energy,
+///        current, autocorrelation) from ring buffers to an HDF5 file.
+///        Runs on rank 0 only. Opens the HDF5 file on demand and keeps the
+///        handle open across flushes for incremental writes.
+/// @param filename  Path to the HDF5 output file.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZManager::WriteHDF5(const std::string& filename)
 {
     PetscFunctionBeginUser;
@@ -68,8 +86,11 @@ PetscErrorCode TDSEZManager::WriteHDF5(const std::string& filename)
             if (H5Pset_chunk(dcpl, 2, chunk_dims) < 0) { H5Pclose(dcpl); return -1; }
             if (h5Compress) {
                 // shuffle improves deflate ratio for the interleaved real/imag layout
-                H5Pset_shuffle(dcpl);
-                H5Pset_deflate(dcpl, (unsigned)h5CompressLevel);
+                if (H5Pset_shuffle(dcpl) < 0 ||
+                    H5Pset_deflate(dcpl, (unsigned)h5CompressLevel) < 0) {
+                    H5Pclose(dcpl);
+                    return -1;
+                }
             }
             hid_t fspace = H5Screate_simple(2, curDims, maxdims);
             if (fspace < 0) { H5Pclose(dcpl); return -1; }
@@ -81,7 +102,11 @@ PetscErrorCode TDSEZManager::WriteHDF5(const std::string& filename)
             // Existing dataset -> read current extent (do NOT reopen, fix A).
             hid_t fspace = H5Dget_space(dset);
             if (fspace < 0) { H5Dclose(dset); return -1; }
-            H5Sget_simple_extent_dims(fspace, curDims, NULL);
+            if (H5Sget_simple_extent_dims(fspace, curDims, NULL) < 0) {
+                H5Sclose(fspace);
+                H5Dclose(dset);
+                return -1;
+            }
             H5Sclose(fspace);
         }
         if (dset < 0) return -1;
@@ -118,9 +143,11 @@ PetscErrorCode TDSEZManager::WriteHDF5(const std::string& filename)
             // avoiding re/im interleaving that corrupts the output).
             std::vector<double> realbuf((size_t)len * (size_t)cols);
             for (PetscInt i = 0; i < len * cols; ++i) realbuf[i] = PetscRealPart(p[i]);
-            H5Sselect_hyperslab(filespace, H5S_SELECT_SET, start, NULL, count, NULL);
-            herr_t werr = H5Dwrite(dset, H5T_NATIVE_DOUBLE, memspace, filespace,
-                                   H5P_DEFAULT, realbuf.data());
+            herr_t werr = H5Sselect_hyperslab(filespace, H5S_SELECT_SET,
+                                               start, NULL, count, NULL);
+            if (werr >= 0)
+                werr = H5Dwrite(dset, H5T_NATIVE_DOUBLE, memspace, filespace,
+                                H5P_DEFAULT, realbuf.data());
             H5Sclose(memspace);
             H5Sclose(filespace);
             curDims[0] = newDims[0];
@@ -164,16 +191,18 @@ PetscErrorCode TDSEZManager::WriteHDF5(const std::string& filename)
         overall |= AppendDataset("autocorrelation", acSrc,  3);
     }
 
-    // Update the cursor even on partial success so we never re-write or stall.
-    lastWrittenSteps = recordedSteps;
-
     if (overall < 0) {
         SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB,
                 "HDF5: failed to append datasets to %s", absPath.c_str());
     }
+    lastWrittenSteps = recordedSteps;
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/// @brief Close the HDF5 output file handle, flushing any remaining
+///        unflushed rows. Called after propagation completes to finalize
+///        the time-evolution data file.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZManager::CloseHDF5()
 {
     PetscFunctionBeginUser;
@@ -183,11 +212,12 @@ PetscErrorCode TDSEZManager::CloseHDF5()
         PetscCall(WriteHDF5(outputFilename));
     }
     if (h5File >= 0) {
-        if (H5Fflush(h5File, H5F_SCOPE_GLOBAL) < 0) { /* non-fatal */ }
-        if (H5Fclose(h5File) < 0) {
-            PetscFunctionReturn(PETSC_ERR_FILE_OPEN);
-        }
+        const herr_t flushStatus = H5Fflush(h5File, H5F_SCOPE_GLOBAL);
+        const herr_t closeStatus = H5Fclose(h5File);
         h5File = -1;
+        if (flushStatus < 0 || closeStatus < 0)
+            SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB,
+                    "HDF5: could not flush/close %s", outputFilename.c_str());
     }
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -197,6 +227,13 @@ PetscErrorCode TDSEZManager::CloseHDF5()
 // wavefunction file self-describing: together with the dof coefficients
 // (psi_*/wavefunction) a reader can rebuild the B-spline basis (Cox-de Boor) and
 // evaluate the wavefunction on any spatial grid. Returns 0 on success, <0 on error.
+/// @brief Write the open knot vectors and spline degree attribute into an
+///        already-open HDF5 file, making wavefunction files self-describing.
+/// @param file  Open HDF5 file handle.
+/// @param iga   IGA context containing the axis knot vectors.
+/// @param dim   Spatial dimension.
+/// @param pdeg  Spline degree.
+/// @return 0 on success, <0 on error.
 static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pdeg)
 {
     const char *axis_names[] = {"knots_x", "knots_y", "knots_z"};
@@ -1012,6 +1049,13 @@ PetscErrorCode TDSEZManager::FinalizeSurff()
 
 // ---- TDSEZManager constructor / destructor (out-of-line) ----
 
+/// @brief Construct the TDSEZManager. Aliases matrices from the core and
+///        assembler, allocates work vectors and ring buffers for time-series
+///        output, creates HDF5 viewers (WFS, TIME, AC), ensures the td/
+///        output directory exists, and calls PolarizationSelector().
+/// @param core      Pointer to the TDSEZCore holding IGA, H, M, eigenstates.
+/// @param assembler Pointer to the TDSEZAssembler holding dipole/velocity/
+///                  gradient/CAP/Lz operators.
         TDSEZManager::TDSEZManager(TDSEZCore* core, TDSEZAssembler* assembler) :
         core_(core), assembler_(assembler), m_M(core_->M),
         m_H(core_->H),  m_K(assembler_->K), m_V(assembler_->V), m_Dx(assembler_->Dx), m_Dy(assembler_->Dy),
@@ -1155,6 +1199,11 @@ PetscErrorCode TDSEZManager::FinalizeSurff()
             PolarizationSelector();
         }
 
+/// @brief Destroy the TDSEZManager. Frees work vectors, ring buffers,
+///        and HDF5 viewers. Only destroys matrices the manager owns (Ht);
+///        aliased matrices (CAP, Md, Lz, etc.) are owned by the assembler.
+///        Embeds knot vectors into the WFS file after the collective viewer
+///        is closed (rank 0 only).
         TDSEZManager::~TDSEZManager() 
         {
             // Destroy vectors first

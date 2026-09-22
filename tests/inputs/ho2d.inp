@@ -1,0 +1,26 @@
+# 2D Harmonic Oscillator, m=1, omega=0.2 (both axes), smooth well-conditioned
+# TDSEZ units (hbar^2/2m = 1/2, hbar=1, m=1):
+#   H = -(1/2)(d^2/dx^2 + d^2/dy^2) + (1/2) m w^2 (x^2 + y^2)
+#   E_n = (nx + ny + 1) * w = (n+1)*0.2 -> E0=0.2, E1=0.4, E2=0.6  (a.u.)
+Verbose           = 0
+Dimension         = 2
+Domain            = -20.0, 20.0, -20.0, 20.0
+SplineDegree      = 5
+NQuadratures      = 8
+KnotSequence      = uniform
+NSplines          = 32
+Planck            = 1.0
+Charge            = 1.0
+Mass              = 1.0
+MassIsConstant    = 1
+Potential         = 0.5 * 1.0 * 0.2 * 0.2 * (x*x + y*y)
+PotentialDerivativeX = 0.2 * 0.2 * x
+PotentialDerivativeY = 0.2 * 0.2 * y
+PotentialDerivativeZ = 0
+UseDirectSolve    = 0
+TargetEigenvalue  = 0.0
+NBoundStates      = 6
+NBoundStatesSave  = 0
+EnablePropagation = 0
+EnableCAP         = 0
+Polarization      = x

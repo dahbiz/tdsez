@@ -331,7 +331,9 @@ if(PETSC_INHERIT_FLAGS)
     foreach(_flag ${PETSC_CXXFLAGS_LIST})
         # Skip flags that are PETSc-internal or not relevant to us
         # (-fvisibility=hidden is re-applied below; -std=c++17 is already set)
-        if(NOT _flag MATCHES "^-std=" AND NOT _flag MATCHES "^-fvisibility")
+        if(NOT _flag MATCHES "^-std=" AND
+           NOT _flag MATCHES "^-fvisibility" AND
+           NOT _flag MATCHES "^(-ffast-math|-ffinite-math-only|-funsafe-math-optimizations|-Ofast)$")
             add_compile_options($<$<CONFIG:Release>:${_flag}>)
         endif()
     endforeach()
@@ -342,14 +344,10 @@ if(PETSC_INHERIT_FLAGS)
     # If PETSc has O3, also add aggressive loop optimisations PETSc doesn't set
     if(PETSC_HAS_O3)
         add_compile_options($<$<CONFIG:Release>:-funroll-loops>)
-        # -ffast-math: violates IEEE, but standard for physics solvers (matches
-        # PETSc's own openblas which is built with it). Safe because TDSEZ does
-        # no signed-zero / NaN-dependent branching.
-        add_compile_options($<$<CONFIG:Release>:-ffast-math>)
-        # -fno-trapping-math: PETSc/OpenBLAS already assumes no FP traps
+        # Keep IEEE NaN/Inf semantics: input validation checks std::isfinite.
+        # -ffast-math would let the compiler remove those checks.
+        # PETSc/OpenBLAS already assume floating-point exceptions do not trap.
         add_compile_options($<$<CONFIG:Release>:-fno-trapping-math>)
-        # Limit stdlib allocations in hot loops: inline known-size constructors
-        add_compile_options($<$<CONFIG:Release>:-fno-enforce-eh-specs>)
     endif()
 endif()
 
@@ -468,8 +466,8 @@ endif()
 # --- tdsez: main TDSE solver (full feature set) ---------------------------
 set(TDSEZ_SOURCES
     src/parser.cpp
+    src/parser_validation.cpp
     src/assembly/assembly.cpp
-    src/assembler.cpp
     src/assembler_class.cpp
     src/core_knots.cpp
     src/core.cpp
@@ -478,11 +476,23 @@ set(TDSEZ_SOURCES
     src/propagator.cpp
     src/diagnostics.cpp
     src/tdsez.cpp
-    src/debug.cpp
 )
 
 tdsez_add_target(tdsez ${TDSEZ_SOURCES}
     LINK_LIBS slepc petiga ${MUPARSER_LINK} hdf5 hdf5_hl
+)
+
+# Small, serial checks for parser invariants. They run without a simulation.
+tdsez_add_target(tdsez_parser_validation_test
+    tests/test_parser_validation.cpp
+    src/parser.cpp
+    src/parser_validation.cpp
+    LINK_LIBS ${MUPARSER_LINK}
+)
+add_custom_target(unit-test
+    COMMAND $<TARGET_FILE:tdsez_parser_validation_test>
+    DEPENDS tdsez_parser_validation_test
+    USES_TERMINAL
 )
 
 # --- tdmprocessor: full transition-dipole matrix post-processor ------
@@ -509,9 +519,98 @@ tdsez_add_target(drecprocessor
     LINK_LIBS hdf5 hdf5_hl
 )
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Testing (`make test`)
+# ------------------------------------------------------------------------------
+# `make test` runs the full pytest suite (tests/test_tdsez.py) which launches
+# the tdsez binary via mpirun --bind-to none -np 5 on small analytic inputs
+# (1D/2D/3D harmonic oscillator, box, input-validation guards) and asserts
+# computed spectra + degeneracies match hard-coded references.
+#
+# Each individual check prints [PASS]/[FAIL] as it runs; output is streamed
+# live to the terminal (not captured by ctest).
+#
+# Requires: pytest + h5py + scipy + zkit-lib.
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -c "import pytest, h5py, scipy, zkit"
+    OUTPUT_QUIET ERROR_QUIET
+    RESULT_VARIABLE _test_deps_rc
+)
+
+if(_test_deps_rc EQUAL 0)
+    add_custom_target(test
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
+                TDSEZ_BINARY=$<TARGET_FILE:tdsez>
+                ${Python3_EXECUTABLE} -m pytest
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tdsez.py -v -s
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS tdsez tdmprocessor tdmselect drecprocessor unit-test
+        USES_TERMINAL
+        COMMENT "Running TDSEZ test suite (pytest, 5 MPI procs) ..."
+    )
+    message(STATUS "Testing enabled: `make test` runs pytest suite (5 MPI procs, live output)")
+else()
+    message(STATUS "Testing disabled: pip install pytest h5py scipy zkit-lib to enable `make test`")
+endif()
+
+# ------------------------------------------------------------------------------
+# Documentation (`make docs`)
+# ------------------------------------------------------------------------------
+# `make docs` generates Doxygen HTML documentation into docs/doxygen/html/.
+# Requires Doxygen to be installed.
+find_package(Doxygen)
+
+if(DOXYGEN_FOUND)
+    add_custom_target(docs
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/docs/doxygen
+        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Generating Doxygen documentation ..."
+    )
+    message(STATUS "Documentation enabled: `make docs` generates Doxygen HTML")
+else()
+    message(STATUS "Documentation disabled: install Doxygen to enable `make docs`")
+endif()
+
+# ------------------------------------------------------------------------------
+# Sphinx documentation (`make docs-sphinx`)
+# ------------------------------------------------------------------------------
+# `make docs-sphinx` generates Sphinx HTML documentation from docs/docs_sphinx/.
+# Requires: pip install sphinx sphinx-rtd-theme (optionally breathe for Doxygen)
+find_package(Python3 COMPONENTS Interpreter)
+
+if(Python3_Interpreter_FOUND)
+    find_program(SPHINXBUILD sphinx-build)
+    if(SPHINXBUILD)
+        set(SPHINX_SOURCEDIR ${CMAKE_CURRENT_SOURCE_DIR}/docs/docs_sphinx)
+        set(SPHINX_BUILDDIR  ${CMAKE_CURRENT_SOURCE_DIR}/docs/docs_sphinx/_build)
+
+        add_custom_target(docs-sphinx
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${SPHINX_BUILDDIR}
+            COMMAND ${SPHINXBUILD} -b html
+                    -c ${SPHINX_SOURCEDIR}
+                    ${SPHINX_SOURCEDIR}
+                    ${SPHINX_BUILDDIR}/html
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Generating Sphinx documentation ..."
+            VERBATIM
+        )
+        add_custom_target(docs-sphinx-clean
+            COMMAND ${CMAKE_COMMAND} -E rm -rf ${SPHINX_BUILDDIR}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Cleaning Sphinx build directory ..."
+        )
+        message(STATUS "Sphinx docs enabled: `make docs-sphinx` generates HTML docs")
+    else()
+        message(STATUS "Sphinx not found -- `make docs-sphinx` will not be available")
+    endif()
+else()
+    message(STATUS "Python3 not found -- Sphinx docs will not be built")
+endif()
+
+# ------------------------------------------------------------------------------
 # Banner -- matches the runtime TDSEZInfo::banner() format exactly
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/banner.cmake)
 message(STATUS "")           # blank separator before banner
 tdsez_banner()

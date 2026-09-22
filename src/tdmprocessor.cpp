@@ -25,6 +25,13 @@
 //  (it looks for static/Dx_foo.prm.bin and static/EigenData_foo.prm.h5)
 // ============================================================================
 
+/**
+ * @file tdmprocessor.cpp
+ * @brief Standalone post-processor that computes the transition-dipole matrix
+ *        d_ij = <psi_i | Dx | psi_j> from saved operator and eigenstates,
+ *        streaming the N×N result to a .npy file block-by-block.
+ */
+
 #include <petsc.h>
 #include <petscviewerhdf5.h>
 #include <cstring>
@@ -44,6 +51,16 @@
 //     idx = np.load("static/States_foo.npy")        # state labels 0..N-1
 // Supported descr: "<c16" (complex128), "<f8" (float64), "<i4" (int32).
 // ----------------------------------------------------------------------------
+/// Minimal NumPy .npy writer (version 1.0, little-endian), no external deps.
+/**
+ * Writes a contiguous array with the given dtype and shape to a .npy file.
+ * @param[in] path    Output file path.
+ * @param[in] descr   NumPy dtype string (e.g. "<c16", "<f8", "<i4").
+ * @param[in] shape   Vector of dimension sizes.
+ * @param[in] data    Raw data buffer to write.
+ * @param[in] nbytes  Number of bytes in data.
+ * @return true on success, false on file open failure.
+ */
 static bool writeNpy(const std::string& path, const char* descr,
                      const std::vector<PetscInt64>& shape,
                      const void* data, size_t nbytes)
@@ -84,6 +101,16 @@ static bool writeNpy(const std::string& path, const char* descr,
 // createNpy(): writes header + zero-filled body for an array of the given
 //     shape, returns the header length (bytes) the caller must pass to
 //     writeNpyRows().
+/// Streaming .npy creator: writes header + zero-filled body for a large array.
+/**
+ * Creates a .npy file with the full array zero-filled so rows can later be
+ * overwritten in place by writeNpyRect(), keeping host RAM O(1) regardless
+ * of matrix size.
+ * @param[in] path  Output file path.
+ * @param[in] descr NumPy dtype string.
+ * @param[in] shape Vector of dimension sizes.
+ * @return Header length in bytes (prefix 10 + hlen), or 0 on failure.
+ */
 static size_t createNpy(const std::string& path, const char* descr,
                         const std::vector<PetscInt64>& shape)
 {
@@ -127,6 +154,22 @@ static size_t createNpy(const std::string& path, const char* descr,
 //     (row-major), i.e. buf[r*nCols + c] -> matrix (rowStart+r, colStart+c).
 //     Used so the symmetric (conjugate) fill writes ONLY its own rectangle and
 //     never clobbers the upper triangle computed elsewhere.
+/// Overwrite a sub-rectangle of a .npy file in place.
+/**
+ * Writes a rows×cols rectangle at the given offset in an existing .npy file,
+ * used for incremental streaming of the transition-dipole matrix. The buffer
+ * is laid out row-major with full stride nCols.
+ * @param[in] path      Path to the .npy file (must already exist).
+ * @param[in] hdrLen    Header length in bytes (from createNpy).
+ * @param[in] nCols     Full number of columns in the array.
+ * @param[in] rowStart  Starting row index of the rectangle.
+ * @param[in] nRows     Number of rows in the rectangle.
+ * @param[in] colStart  Starting column index of the rectangle.
+ * @param[in] nColsRect Number of columns in the rectangle.
+ * @param[in] buf       Row-major buffer with stride nCols.
+ * @param[in] esize     Element size in bytes.
+ * @return true on success, false on failure.
+ */
 static bool writeNpyRect(const std::string& path, size_t hdrLen,
                          PetscInt64 nCols, PetscInt64 rowStart, PetscInt64 nRows,
                          PetscInt64 colStart, PetscInt64 nColsRect,
@@ -149,6 +192,15 @@ static bool writeNpyRect(const std::string& path, size_t hdrLen,
 
 // --- Lightweight eigenstate access for streaming ---
 // loadSpectrum(): read only Nstates + energies (no eigenstate vectors held).
+/// Read only the eigenstate count and energies (no vectors held in RAM).
+/**
+ * Opens the static HDF5 file and reads the 'spectrum' dataset (real parts)
+ * to get the number of states and their energies.
+ * @param[in]  h5path  Path to the EigenData HDF5 file.
+ * @param[out] nStates Number of eigenstates found.
+ * @param[out] energies Vector of eigenstate energies (real parts).
+ * @return PETSc error code.
+ */
 static PetscErrorCode loadSpectrum(const std::string& h5path,
                                    PetscInt& nStates,
                                    std::vector<PetscReal>& energies)
@@ -179,6 +231,17 @@ static PetscErrorCode loadSpectrum(const std::string& h5path,
 // loadState(): load a single eigenstate psi_i into a fresh Vec using an
 // already-open HDF5 viewer (reused across all states to avoid reopening the
 // file thousands of times). Caller owns the returned Vec.
+/// Load a single eigenstate psi_i into a fresh Vec via an open HDF5 viewer.
+/**
+ * Creates a new Vec with the layout of Dx, names it "psi_<i>", and loads the
+ * corresponding dataset. The viewer is reused across all states to avoid
+ * reopening the file.
+ * @param[in]  viewer Already-open HDF5 viewer.
+ * @param[in]  Dx     Dipole operator (provides the Vec layout).
+ * @param[in]  i      State index to load.
+ * @param[out] v      Newly created and loaded Vec (caller owns).
+ * @return PETSc error code.
+ */
 static PetscErrorCode loadState(PetscViewer viewer, Mat Dx,
                                 PetscInt i, Vec* v)
 {
@@ -193,9 +256,24 @@ static PetscErrorCode loadState(PetscViewer viewer, Mat Dx,
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/// Main: compute d_ij = <psi_i | Dx | psi_j> (streaming, block-by-block).
+/**
+ * Loads the dipole operator Dx and eigenstates, computes the upper-triangle
+ * transition-dipole matrix using Hermitian conjugation for the lower triangle,
+ * and streams the result to a .npy file. Host RAM stays O(block size).
+ *
+ * @param argc  Number of CLI arguments (expects <input-stem>).
+ * @param argv  CLI argument strings.
+ * @return 0 on success, 1 on usage error.
+ */
 int main(int argc, char **argv)
 {
     PetscCall(PetscInitialize(&argc, &argv, PETSC_NULLPTR, PETSC_NULLPTR));
+
+    PetscMPIInt commSize = 0;
+    PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &commSize));
+    PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
+               "tdmprocessor: sequential PETSc files require a single MPI rank");
 
     if (argc < 2) {
         PetscCall(PetscPrintf(PETSC_COMM_WORLD,

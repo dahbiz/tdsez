@@ -1,6 +1,4 @@
-/usr/bin/bash: /home/zakaria/miniconda3/envs/cudaq-env/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
-/usr/bin/bash: /home/zakaria/miniconda3/envs/cudaq-env/lib/libtinfo.so.6: no version information available (required by /usr/bin/bash)
-#include "tdsez_internal.hpp"
+#include "tdsez_parser.hpp"
 
 #include <slepc.h>
 #include <petiga.h>
@@ -24,11 +22,21 @@
 #include <petscblaslapack.h>
 
 #include "muParser.h"
-#include "debug.hpp"
 
-/* \brief Build a handler that parses "a,b,c" (per-axis list) into 3 refs.
-   Single token replicates to all axes; missing tokens fall back to the
-   first token (matches Domain / KnotSequence convention). */
+/**
+ * @file parser.cpp
+ * @brief Read input files and initialize muParser expressions.
+ * @author TDSEZ Project
+ */
+
+/// @brief Build a handler lambda that parses a comma-separated "a,b,c"
+///        per-axis list string into three PetscReal references. A single
+///        token replicates to all axes; missing tokens fall back to the
+///        first token.
+/// @param x  Reference to store the x-axis value.
+/// @param y  Reference to store the y-axis value.
+/// @param z  Reference to store the z-axis value.
+/// @return Lambda accepting a string and populating x, y, z.
 static std::function<void(const std::string &)>
 axisListHandler(PetscReal &x, PetscReal &y, PetscReal &z)
 {
@@ -51,7 +59,9 @@ axisListHandler(PetscReal &x, PetscReal &y, PetscReal &z)
     };
 }
 
-/* \brief Read key=value file, stripping comments. */
+/// @brief Read and parse a key=value parameter file, stripping comments.
+///        Populates the static TDSEZParser member fields from the .prm input.
+/// @param prm  Path to the input parameter file.
 void TDSEZParser::PrmReader(const std::string &prm)
 {
     std::ifstream in(prm);
@@ -367,7 +377,9 @@ void TDSEZParser::PrmReader(const std::string &prm)
     }
 }
 
-/* \\brief Initialize muParser instances and bind variables. */
+/// @brief Initialize muParser instances and bind parser variables (V,
+///        MassDist, Ex/Ey/Ez, Envelope, and their derivatives) to the
+///        corresponding TDSEZParser static member expressions.
 void TDSEZParser::initParsers()
 {
     /* bind constant pi */
@@ -516,7 +528,8 @@ void TDSEZParser::initParsers()
     Env.SetExpr(Envelope);
 }
 
-/* \brief Trim whitespace from both ends. */
+/// @brief Trim leading and trailing whitespace from a string in place.
+/// @param s  String to trim (modified in place).
 void TDSEZParser::trim(std::string &s)
 {
     auto isNotSpace = [](char c){ return !std::isspace(static_cast<unsigned char>(c)); };
@@ -561,290 +574,14 @@ inline std::vector<PetscReal> gradientND(const std::vector<PetscReal>& x)
 }
 
 
-/* \brief Validate the parsed parameter set. Throws std::runtime_error on any
-   physically inconsistent / dangerous combination. Called once after parsing. */
-void TDSEZParser::ValidateOrThrow()
-{
-    using std::to_string;
-    // --- dimension ---
-    if (Dimension < 1 || Dimension > 3)
-        throw std::runtime_error("ValidateOrThrow: Dimension must be 1, 2 or 3 (got "
-                                 + to_string(Dimension) + ")");
-
-    // --- spline degree ---
-    if (SplineDegree < 1 || SplineDegree > 14)
-        throw std::runtime_error("ValidateOrThrow: SplineDegree must be in [1,14] (got "
-                                 + to_string(SplineDegree) + ")");
-
-    // --- domain sanity (per-axis) ---
-    auto checkAxis = [](PetscReal lo, PetscReal hi, const char *which) {
-        if (!std::isfinite(lo) || !std::isfinite(hi))
-            throw std::runtime_error(std::string("ValidateOrThrow: ") + which
-                                     + " domain bound is not finite");
-        if (hi <= lo)
-            throw std::runtime_error(std::string("ValidateOrThrow: ") + which
-                                     + " requires LMax > LMin (got ["
-                                     + to_string(lo) + "," + to_string(hi) + "])");
-    };
-    checkAxis(LMinX, LMaxX, "X");
-    checkAxis(LMinY, LMaxY, "Y");
-    checkAxis(LMinZ, LMaxZ, "Z");
-
-    // --- elements / dof count ---
-    if (Nelements < 1)
-        throw std::runtime_error("ValidateOrThrow: Nelements must be >= 1 (got "
-                                 + to_string(Nelements) + ")");
-    PetscInt nfuncs = Nelements + SplineDegree; // PetIGA open-knot convention
-    if (nfuncs < 2)
-        throw std::runtime_error("ValidateOrThrow: too few basis functions (Nelements + SplineDegree < 2)");
-
-    // --- time ---
-    if (EnablePropagation) {
-        if (TimeStep <= 0.0 || FinalTime <= 0.0)
-            throw std::runtime_error("ValidateOrThrow: TimeStep and FinalTime must be > 0 when propagating");
-        if (!std::isfinite(TimeStep) || !std::isfinite(FinalTime))
-            throw std::runtime_error("ValidateOrThrow: non-finite TimeStep/FinalTime");
-    }
-
-    // --- requested states ---
-    if (NBoundStates < 1)
-        throw std::runtime_error("ValidateOrThrow: NBoundStates must be >= 1");
-
-    // --- initial state selection ---
-    // Parse InitialState into a mode + (index,coeff) terms, and guard indices
-    // against NBoundStates. Supported forms:
-    //   "ground"              -> mode 0 (== state:0)
-    //   "state:N"             -> mode 1, single bound state N
-    //   "sup: a*N + b*M [+c*P]"-> mode 2, coherent superposition of <=3 states
-    {
-        const std::string &s = InitialState;
-        InitialStateTerms.clear();
-        InitialStateMode = 0;
-        InitialStateIndex = 0;
-
-        if (s == "ground" || s.empty()) {
-            InitialStateMode = 0;
-            InitialStateIndex = 0;
-        } else if (s.rfind("state:", 0) == 0) {
-            // "state:N"
-            std::string num = s.substr(6);
-            if (num.empty())
-                throw std::runtime_error(
-                    "ValidateOrThrow: InitialState='" + s + "' missing state index (use 'state:N')");
-            PetscInt idx;
-            try { idx = (PetscInt)std::stoll(num); }
-            catch (...) {
-                throw std::runtime_error(
-                    "ValidateOrThrow: InitialState='" + s + "' has a non-integer index");
-            }
-            if (idx < 0)
-                throw std::runtime_error(
-                    "ValidateOrThrow: InitialState index must be >= 0 (got " + std::to_string(idx) + ")");
-            if (idx >= NBoundStates)
-                throw std::runtime_error(
-                    "ValidateOrThrow: InitialState='state:" + std::to_string(idx) +
-                    "' but only NBoundStates=" + std::to_string(NBoundStates) +
-                    " bound states are computed. Increase NBoundStates to at least " +
-                    std::to_string(idx + 1) + ".");
-            InitialStateMode = 1;
-            InitialStateIndex = idx;
-        } else if (s.rfind("sup:", 0) == 0) {
-            // "sup: a*N + b*M [+ c*P]"  (real coeffs, <=3 terms, '+'/'-' separated)
-            InitialStateMode = 2;
-            std::string body = s.substr(4);
-            // split on '+' (keep unary '-' inside terms)
-            std::vector<std::string> terms;
-            {
-                std::string cur;
-                for (char c : body) {
-                    if (c == '+') { if (!cur.empty()) { terms.push_back(cur); cur.clear(); } }
-                    else cur += c;
-                }
-                if (!cur.empty()) terms.push_back(cur);
-            }
-            if (terms.empty() || terms.size() > 3)
-                throw std::runtime_error(
-                    "ValidateOrThrow: InitialState='" + s + "' must have 1..3 superposition terms");
-            for (auto &t : terms) {
-                // term is "coeff*idx" (coeff optional -> 1.0)
-                size_t star = t.find('*');
-                std::string cstr = (star == std::string::npos) ? "1.0" : t.substr(0, star);
-                std::string istr = (star == std::string::npos) ? t : t.substr(star + 1);
-                // trim whitespace
-                auto trim = [](std::string &x){ size_t a=x.find_first_not_of(" \t"); size_t b=x.find_last_not_of(" \t");
-                    if(a==std::string::npos){x="";}else{x=x.substr(a,b-a+1);} };
-                trim(cstr); trim(istr);
-                PetscReal coeff;
-                PetscInt  idx;
-                try { coeff = (PetscReal)std::stod(cstr); }
-                catch (...) {
-                    throw std::runtime_error(
-                        "ValidateOrThrow: InitialState term '" + t + "' has a non-numeric coefficient");
-                }
-                try { idx = (PetscInt)std::stoll(istr); }
-                catch (...) {
-                    throw std::runtime_error(
-                        "ValidateOrThrow: InitialState term '" + t + "' has a non-integer state index");
-                }
-                if (!std::isfinite(coeff))
-                    throw std::runtime_error(
-                        "ValidateOrThrow: InitialState term '" + t + "' coefficient is not finite");
-                if (idx < 0)
-                    throw std::runtime_error(
-                        "ValidateOrThrow: InitialState index must be >= 0 (got " + std::to_string(idx) + ")");
-                if (idx >= NBoundStates)
-                    throw std::runtime_error(
-                        "ValidateOrThrow: InitialState superposition includes state:" + std::to_string(idx) +
-                        " but only NBoundStates=" + std::to_string(NBoundStates) +
-                        " bound states are computed. Increase NBoundStates to at least " +
-                        std::to_string(idx + 1) + ".");
-                InitialStateTerms.push_back({idx, coeff});
-            }
-        } else {
-            throw std::runtime_error(
-                "ValidateOrThrow: InitialState must be 'ground', 'state:N', or "
-                "'sup: a*N + b*M [+ c*P]' (got '" + s + "')");
-        }
-    }
-
-    // --- bound-state save format ---
-    if (BoundStateFormat != "complex" && BoundStateFormat != "real")
-        throw std::runtime_error(
-            "ValidateOrThrow: BoundStateFormat must be 'complex' or 'real' (got '" + BoundStateFormat + "')");
-
-    // --- mass positivity: sample on a coarse grid. A non-positive mass makes the
-    //     kinetic term indefinite -> garbage / solver breakdown. Mass may be a
-    //     piecewise expression (DQW material step), so we sample, not assume.
-    {
-        const PetscInt nsamp = 16;
-        auto sampleMass = [&](PetscReal lo, PetscReal hi) {
-            for (PetscInt i = 0; i < nsamp; ++i) {
-                PetscReal x = lo + (hi - lo) * (PetscReal)i / (nsamp - 1);
-                PetscReal m = 1.0;
-                try { m = MassDist(x, 0.0, 0.0); } catch (...) { return; }
-                if (!std::isfinite(m) || m <= 0.0)
-                    throw std::runtime_error(
-                        "ValidateOrThrow: Mass must be > 0 and finite everywhere (got "
-                        + to_string(m) + " at x=" + to_string(x) + ")");
-            }
-        };
-        sampleMass(LMinX, LMaxX);
-        if (Dimension >= 2) sampleMass(LMinY, LMaxY);
-        if (Dimension >= 3) sampleMass(LMinZ, LMaxZ);
-    }
-
-    // --- potential finiteness: a NaN/Inf potential poisons the assembly.
-    {
-        const PetscInt nsamp = 16;
-        auto sampleV = [&](PetscReal lo, PetscReal hi) {
-            for (PetscInt i = 0; i < nsamp; ++i) {
-                PetscReal x = lo + (hi - lo) * (PetscReal)i / (nsamp - 1);
-                PetscReal v = 0.0;
-                try { v = V(x); } catch (...) { return; }
-                if (!std::isfinite(v))
-                    throw std::runtime_error(
-                        "ValidateOrThrow: Potential is not finite at x=" + to_string(x));
-            }
-        };
-        sampleV(LMinX, LMaxX);
-        if (Dimension >= 2) sampleV(LMinY, LMaxY);
-        if (Dimension >= 3) sampleV(LMinZ, LMaxZ);
-    }
-
-    // --- enum normalisation + cross-constraints (footguns caught late before) ---
-    auto lower = [](std::string s){
-        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-        return s;
-    };
-
-    // Polarization: normalise case + reject invalid axis sets up front
-    // (was a cryptic "not compatible with dimension" crash deep in assembly).
-    {
-        static const std::set<std::string> valid = {
-            "", "none", "x", "y", "z", "xy", "xz", "yz", "xyz"};
-        std::string p = lower(Polarization);
-        Polarization = p;
-        if (valid.find(p) == valid.end())
-            throw std::runtime_error(
-                "ValidateOrThrow: Polarization '" + Polarization + "' is invalid. "
-                "Use one of: none, x, y, z, xy, xz, yz, xyz (case-insensitive).");
-    }
-
-    // BoundaryType: normalise aliases + reject unknown up front
-    // (was a silent default-to-Neumann; now explicit + validated).
-    {
-        std::string b = lower(BoundaryType);
-        if      (b == "natural") b = "neumann";
-        else if (b == "wall")    b = "dirichlet";
-        if (b != "neumann" && b != "dirichlet")
-            throw std::runtime_error(
-                "ValidateOrThrow: BoundaryType '" + BoundaryType + "' is unknown. "
-                "Use 'Neumann' (reflecting wall) or 'Dirichlet' (psi=0 at wall) "
-                "(case-insensitive; 'natural' and 'wall' are aliases).");
-        BoundaryType = b;
-    }
-
-    // EnvelopeType: normalise case only (kept permissive).
-    EnvelopeType = lower(EnvelopeType);
-
-    // CAP requires kmin > 0: kmin<=0 makes the Manolopoulos absorb width
-    // diverge (absorbs the ENTIRE domain) -> silent TS divergence.
-    if (EnableCAP && CAPKmin <= 0.0)
-        throw std::runtime_error(
-            "ValidateOrThrow: EnableCAP=1 but CAPKmin=" + to_string(CAPKmin) +
-            " <= 0. A zero/negative kmin makes the absorbing width diverge and the "
-            "time stepper diverges. Set CAPKmin > 0 (e.g. 0.1) or disable CAP.");
-
-    // Propagation requires a field expression: an empty Laser/LaserX/Y/Z makes
-    // muParser throw on an empty expression inside the TS monitor (after assembly).
-    if (EnablePropagation)
-    {
-        bool hasField = !(LaserX.empty() && LaserY.empty() &&
-                          LaserZ.empty() && Laser.empty());
-        if (!hasField)
-            throw std::runtime_error(
-                "ValidateOrThrow: EnablePropagation=1 but no field expression is set "
-                "(LaserX/LaserY/LaserZ/Laser are all empty). Set e.g. "
-                "LaserX = Amplitude*sin(Omega*t).");
-    }
-
-    // The "adaptive" and "adaptive_wf" KnotSequences need the analytic potential
-    // derivative to place knots (TDSEZAdaptiveKnots evaluates dVPotX/Y/Z). An
-    // empty PotentialDerivativeX/Y/Z makes muParser throw on an empty expression
-    // deep inside knot generation (after assembly starts) -> ugly std::terminate.
-    // Catch it here with a clean, actionable FATAL. adaptive_wf needs it too
-    // because its coarse bootstrap mesh is built with TDSEZAdaptiveKnots.
-    {
-        auto needs = [&](const std::string &seq) {
-            return seq == "adaptive" || seq == "adaptive_wf";
-        };
-        if (needs(KnotSeq[0]) && PotentialDerivativeX.empty())
-            throw std::runtime_error(
-                "ValidateOrThrow: KnotSequence='" + KnotSeq[0] + "' (X axis) requires "
-                "PotentialDerivativeX to be set (it is empty). Provide the analytic "
-                "derivative of the potential, e.g. PotentialDerivativeX = -2.0*x.");
-        if (Dimension >= 2 && needs(KnotSeq[1]) && PotentialDerivativeY.empty())
-            throw std::runtime_error(
-                "ValidateOrThrow: KnotSequence='" + KnotSeq[1] + "' (Y axis) requires "
-                "PotentialDerivativeY to be set (it is empty). Provide the analytic "
-                "derivative of the potential, e.g. PotentialDerivativeY = -2.0*y.");
-        if (Dimension >= 3 && needs(KnotSeq[2]) && PotentialDerivativeZ.empty())
-            throw std::runtime_error(
-                "ValidateOrThrow: KnotSequence='" + KnotSeq[2] + "' (Z axis) requires "
-                "PotentialDerivativeZ to be set (it is empty). Provide the analytic "
-                "derivative of the potential, e.g. PotentialDerivativeZ = -2.0*z.");
-    }
-}
-
-
-/* \brief Code version string for provenance. */
+/// @brief Return the code version string for provenance tracking.
+/// @return Version string (compiler, date, git hash).
 std::string TDSEZParser::VersionString()
 {
     // Not a git repo in this deployment -> static tag. If git is ever enabled,
     // shell out to `git describe --tags --dirty` here.
     return std::string("TDSEZ-1.0.0");
 }
-
 
 
 

@@ -297,26 +297,25 @@ XYZ laser polarization and t-SURFF:
 
 **What it demonstrates:**
 - Full 3D propagation (``Dimension = 3``)
-- Multi-center potential with adaptive knot sequence
+- Multi-center potential on a uniform knot sequence
 - XYZ laser polarization — all three dipole components
 - t-SURFF for 3D photoelectron momentum distribution
-- Adaptive mesh refinement (``KnotSequence = adaptive``)
+- Current ``adaptive`` fallback behavior (uniform interior knots)
 
 **Expected behavior:**
 
-The double-well potential creates a bonding and anti-bonding ground state.
-The XYZ laser drives transitions between these states and ionization. The
-adaptive knot sequence refines the grid near the centers of the wells where
-the wavefunction has structure.
+The XYZ laser drives the modeled system. The input requests
+``KnotSequence = adaptive``, but this release uses uniform interior knots for
+that mode; ``AdaptiveKappa`` and ``AdaptivePower`` have no effect.
 
 **Key parameters:**
 
 - ``Dimension = 3``, ``Domain = [-25, 25], [-20, 20], [-20, 20]``
-- ``KnotSequence = adaptive``, ``AdaptiveKappa = 1.0``, ``AdaptivePower = 2.0``
+- ``KnotSequence = adaptive`` (currently uniform fallback)
 - ``Polarization = xyz`` — all three field components
 - ``TSurff = 1`` — t-SURFF for 3D momentum spectrum
 
-Run: ``./tdsez -np 8 ./tdsez -inp inps/multi_center_3d.prm`` (recommended:
+Run: ``mpirun -np 8 ./tdsez -inp inps/multi_center_3d.prm`` (recommended:
 multiple MPI ranks for 3D)
 
 Known Physics Benchmarks

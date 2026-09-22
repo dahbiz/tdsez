@@ -1,6 +1,25 @@
 #include "tdsez_internal.hpp"
 
+/**
+ * @file diagnostics.cpp
+ * @brief Runtime diagnostics: transition dipole matrix computation,
+ *        momentum matrix precomputation, and length-velocity gauge
+ *        consistency verification.
+ * @author TDSEZ Project
+ */
 
+/// @brief Compute and print the unified transition dipole matrix
+///        d_ij = <psi_i | D | psi_j> for all active dipole operators
+///        (Dx, Dy, Dz). Explicitly conjugates the bra since this PETSc
+///        build's VecDot does not conjugate the first argument. Caches
+///        the upper triangle and fills the lower by Hermitian conjugation.
+/// @param states    Vector of bound-state eigenvectors.
+/// @param energies  Corresponding energy eigenvalues.
+/// @param Dx        X dipole operator (may be NULL if inactive).
+/// @param Dy        Y dipole operator (may be NULL if inactive).
+/// @param Dz        Z dipole operator (may be NULL if inactive).
+/// @param fileName  Base filename for text output.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
     const std::vector<Vec>& states,
     const std::vector<PetscReal>& energies,
@@ -211,10 +230,12 @@ PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
 }
 
 
-/* Save a single assembled operator matrix (e.g. the dipole Dx) to a PETSc
-   binary file. Reloadable later with MatLoad + the same matrix type context
-   (IGA, for MATIGA). MatView is collective, so every rank must call it; PETSc
-   writes a single file. No-op if mat is NULL. */
+/// @brief Save a single assembled operator matrix to a PETSc binary file,
+///        reloadable later with MatLoad. No-op if mat is NULL. MatView is
+///        collective, so every rank must call it.
+/// @param mat      Operator matrix to save (may be NULL).
+/// @param filename Output binary file path.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZSaveOperatorMatrix(Mat mat, const std::string& filename)
 {
     PetscFunctionBeginUser;
@@ -233,6 +254,15 @@ PetscErrorCode TDSEZSaveOperatorMatrix(Mat mat, const std::string& filename)
 }
 
 
+/// @brief Make a single complex eigenstate real-valued by projecting out
+///        its imaginary part under the mass matrix M. Computes the
+///        expectation <psi|M|Im(psi)> and subtracts the corresponding
+///        real state to produce a real eigenvector (up to numerical
+///        precision).
+/// @param v_complex  Complex eigenvector (modified in place).
+/// @param Vre        Work vector for the real part.
+/// @param M          Mass (overlap) matrix.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZMakeStateReal2(Vec v_complex, Vec Vre, Mat M)
 {
     PetscFunctionBegin;
@@ -299,6 +329,13 @@ PetscErrorCode TDSEZMakeStateReal2(Vec v_complex, Vec Vre, Mat M)
 }
 
 
+/// @brief Make all bound-state eigenstates real-valued by applying
+///        TDSEZMakeStateReal2 to each state. Real states simplify the
+///        dipole matrix computation and are required for certain
+///        post-processing tools.
+/// @param states  Vector of bound-state eigenvectors (modified in place).
+/// @param M       Mass (overlap) matrix.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode MakeStatesReal(std::vector<Vec>& states, Mat M)
 {
     PetscFunctionBeginUser;
@@ -347,98 +384,13 @@ PetscErrorCode MakeStatesReal(std::vector<Vec>& states, Mat M)
     PetscCall(VecDestroy(&Mpsi));
     PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-
-PetscErrorCode TDSEZComputeCurrents(TDSEZManager *TDSEZ,
-                                     Vec psi,
-                                     PetscReal t,
-                                     PetscScalar *Jx_intra,
-                                     PetscScalar *Jy_intra,
-                                     PetscScalar *Jx_inter,
-                                     PetscScalar *Jy_inter,
-                                     PetscScalar *Jx_bc,
-                                     PetscScalar *Jy_bc,
-                                     PetscScalar *Jx_total,
-                                     PetscScalar *Jy_total)
-{
-    PetscFunctionBeginUser;
-    const PetscInt N = TDSEZ->NPOP;
-
-    /* ----------------------------------------------------------------
-       Step 1: projections c_n = <phi_n|psi>  (M-weighted if needed)
-       Here plain VecDot assumes M-orthonormal bound states
-       ---------------------------------------------------------------- */
-    std::vector<PetscScalar> c(N);
-    for (PetscInt n = 0; n < N; n++)
-        PetscCall(VecDot(psi, TDSEZ->boundstates[n], &c[n]));
-
-    /* ----------------------------------------------------------------
-       Step 2: total current  J_total = <psi|Vx|psi>
-       ---------------------------------------------------------------- */
-    Vec tmpX, tmpY;
-    PetscCall(VecDuplicate(psi, &tmpX));
-    PetscCall(VecDuplicate(psi, &tmpY));
-    PetscCall(MatMult(TDSEZ->VelX(), psi, tmpX));
-    PetscCall(MatMult(TDSEZ->VelY(), psi, tmpY));
-
-    PetscScalar dots[2];
-    Vec vecs[2] = {tmpX, tmpY};
-    PetscCall(VecMDot(psi, 2, vecs, dots));
-    *Jx_total = dots[0];
-    *Jy_total = dots[1];
-
-    PetscCall(VecDestroy(&tmpX));
-    PetscCall(VecDestroy(&tmpY));
-
-    /* ----------------------------------------------------------------
-       Step 3: intraband  J_intra = Σ_n |c_n|^2 * v_nn
-       For isotropic harmonic oscillator v_nn = 0 by symmetry
-       but keep for general potentials
-       ---------------------------------------------------------------- */
-    *Jx_intra = 0.0;
-    *Jy_intra = 0.0;
-    for (PetscInt n = 0; n < N; n++)
-    {
-        PetscReal pop = PetscRealPart(PetscConj(c[n]) * c[n]);  // |c_n|^2
-        *Jx_intra += pop * TDSEZ->vMat_x[n*N+n];
-        *Jy_intra += pop * TDSEZ->vMat_y[n*N+n];
-    }
-
-    /* ----------------------------------------------------------------
-       Step 4: interband  J_inter = Σ_{m≠n} c_m* * c_n * v_mn
-       This is the coherence-driven HHG mechanism
-       ---------------------------------------------------------------- */
-    *Jx_inter = 0.0;
-    *Jy_inter = 0.0;
-    for (PetscInt m = 0; m < N; m++)
-    for (PetscInt n = 0; n < N; n++)
-    {
-        if (m == n) continue;
-        PetscScalar rho_mn = PetscConj(c[m]) * c[n];
-        *Jx_inter += rho_mn * TDSEZ->vMat_x[m*N+n];
-        *Jy_inter += rho_mn * TDSEZ->vMat_y[m*N+n];
-    }
-
-    /* ----------------------------------------------------------------
-       Step 5: bound-continuum  J_bc = J_total - J_intra - J_inter
-       Wavefunction outside the bound state subspace
-       ---------------------------------------------------------------- */
-    *Jx_bc = *Jx_total - *Jx_intra - *Jx_inter;
-    *Jy_bc = *Jy_total - *Jy_intra - *Jy_inter;
-
-    /* ----------------------------------------------------------------
-       Sanity: imaginary parts of all contributions should be ~0
-       since Vx is Hermitian and ψ is normalized
-       ---------------------------------------------------------------- */
-    if (PetscAbsReal(PetscImaginaryPart(*Jx_total)) > 1e-8)
-        PetscPrintf(PETSC_COMM_WORLD,
-            "WARNING t=%.4f: Im(Jx_total)=%.2e\n",
-            t, PetscImaginaryPart(*Jx_total));
-
-    PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-
+/// @brief Verify length-velocity gauge consistency: checks that the
+///        momentum matrix v_mn satisfies [D, H] = i*omega*v (the
+///        commutator relation linking the length and velocity gauges).
+///        Reports per-element residuals and overall pass/fail status.
+/// @param TDSEZ  Pointer to the TDSEZManager holding bound states and
+///               operators.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
 {
     PetscFunctionBeginUser;
@@ -646,6 +598,13 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
 }
 
 
+/// @brief Precompute the momentum matrix v_mn = <psi_m | Vel | psi_n> for
+///        all active velocity operators (VelX, VelY, VelZ). Performs
+///        Hermiticity and diagonal-reality checks, and reports global
+///        operator assembly norms ||Vel - Vel^H||.
+/// @param TDSEZ  Pointer to the TDSEZManager holding bound states and
+///               velocity operators.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
 {
     PetscFunctionBeginUser;
@@ -783,172 +742,3 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-PetscErrorCode DetectAndPrintSymmetry(
-    PetscReal (*V2)(PetscReal x, PetscReal y),           // pass nullptr if 3D
-    PetscReal (*V3)(PetscReal x, PetscReal y, PetscReal z), // pass nullptr if 2D
-    PetscReal xmax, PetscReal ymax, PetscReal zmax,      // zmax ignored in 2D
-    PetscInt  Nsample,
-    PetscInt  dim)                                        // 2 or 3
-{
-    PetscFunctionBeginUser;
-
-    const PetscReal tol = 1e-10;
-    const char *HR = "  ══════════════════════════════════════════════════════════════════════\n";
-
-    //  Sample and compute errors
-    PetscReal err_Mx=0, err_My=0, err_Mz=0;
-    PetscReal err_inv=0, err_swap_xy=0, err_swap_xz=0, err_swap_yz=0;
-    PetscReal err_diag_xy=0;
-    PetscBool o2_z=PETSC_TRUE;
-    PetscBool o3=PETSC_FALSE;
-
-    // discrete symmetries
-    for (PetscInt i = 1; i <= Nsample; i++) {
-    for (PetscInt j = 1; j <= Nsample; j++) {
-        PetscReal x = xmax * ((PetscReal)i / (Nsample+1));
-        PetscReal y = ymax * ((PetscReal)j / (Nsample+1));
-
-        if (dim == 2) {
-            PetscReal v00 = V2( x,  y);
-            err_Mx    = PetscMax(err_Mx,    PetscAbsReal(v00 - V2(-x,  y)));
-            err_My    = PetscMax(err_My,    PetscAbsReal(v00 - V2( x, -y)));
-            err_inv   = PetscMax(err_inv,   PetscAbsReal(v00 - V2(-x, -y)));
-            err_swap_xy = PetscMax(err_swap_xy, PetscAbsReal(v00 - V2( y,  x)));
-            err_diag_xy = PetscMax(err_diag_xy, PetscAbsReal(v00 - V2(-y, -x)));
-        } else {
-            for (PetscInt k = 1; k <= Nsample; k++) {
-                PetscReal z = zmax * ((PetscReal)k / (Nsample+1));
-                PetscReal v = V3( x,  y,  z);
-                err_Mx    = PetscMax(err_Mx,    PetscAbsReal(v - V3(-x,  y,  z)));
-                err_My    = PetscMax(err_My,    PetscAbsReal(v - V3( x, -y,  z)));
-                err_Mz    = PetscMax(err_Mz,    PetscAbsReal(v - V3( x,  y, -z)));
-                err_inv   = PetscMax(err_inv,   PetscAbsReal(v - V3(-x, -y, -z)));
-                err_swap_xy = PetscMax(err_swap_xy, PetscAbsReal(v - V3( y,  x,  z)));
-                err_swap_xz = PetscMax(err_swap_xz, PetscAbsReal(v - V3( z,  y,  x)));
-                err_swap_yz = PetscMax(err_swap_yz, PetscAbsReal(v - V3( x,  z,  y)));
-            }
-        }
-    }}
-
-    PetscBool mx      = (err_Mx      < tol);
-    PetscBool my      = (err_My      < tol);
-    PetscBool mz      = (err_Mz      < tol);
-    PetscBool inv     = (err_inv     < tol);
-    PetscBool sxy     = (err_swap_xy < tol);
-    PetscBool sxz     = (err_swap_xz < tol);
-    PetscBool syz     = (err_swap_yz < tol);
-    PetscBool dxy     = (err_diag_xy < tol);
-
-    // O(2) around z: sample V on circles in xy-plane 
-    if (dim == 2 || dim == 3) {
-        PetscReal radii[3] = {
-            0.3 * PetscMin(xmax, ymax),
-            0.5 * PetscMin(xmax, ymax),
-            0.7 * PetscMin(xmax, ymax)
-        };
-        o2_z = PETSC_TRUE;
-        for (PetscInt ir = 0; ir < 3 && o2_z; ir++) {
-            PetscReal r  = radii[ir];
-            PetscReal z0 = (dim==3) ? 0.5*zmax : 0.0;
-            PetscReal v0 = (dim==2) ? V2(r, 0.0) : V3(r, 0.0, z0);
-            for (PetscInt k = 1; k <= 72; k++) {
-                PetscReal th = 2.0*PETSC_PI*k/72.0;
-                PetscReal vk = (dim==2)
-                    ? V2(r*PetscCosReal(th), r*PetscSinReal(th))
-                    : V3(r*PetscCosReal(th), r*PetscSinReal(th), z0);
-                if (PetscAbsReal(vk - v0) > tol) { o2_z = PETSC_FALSE; break; }
-            }
-        }
-    }
-
-    // --- O(3): O(2) around z AND swap xz, yz ---
-    if (dim == 3)
-        o3 = (o2_z && sxz && syz);
-
-    // ----------------------------------------------------------------
-    //  Classify
-    // ----------------------------------------------------------------
-    const char *sym_class, *good_qn;
-
-    if (dim == 2) {
-        if      (o2_z)       { sym_class="O(2) circular";    good_qn="(nr, m)";        }
-        else if (mx&&my&&sxy){ sym_class="C4v square";        good_qn="(nx, ny)";       }
-        else if (mx&&my)     { sym_class="C2v rectangular";   good_qn="(nx, ny)";       }
-        else if (mx||my)     { sym_class="Cs single mirror";  good_qn="parity + E-idx"; }
-        else if (inv)        { sym_class="Ci inversion";      good_qn="parity + E-idx"; }
-        else                 { sym_class="C1 none";           good_qn="E-index only";   }
-    } else {
-        if      (o3)         { sym_class="O(3) spherical";    good_qn="(n, l, ml)";     }
-        else if (o2_z&&mz)   { sym_class="O(2) cylindrical z";good_qn="(nr, m, pz)";   }
-        else if (o2_z)       { sym_class="O(2) rotation z";   good_qn="(nr, m)";        }
-        else if (mx&&my&&mz&&sxy&&sxz&&syz)
-                             { sym_class="Oh cubic";          good_qn="(nx, ny, nz)";   }
-        else if (mx&&my&&mz) { sym_class="C2v rectangular";   good_qn="(nx, ny, nz)";   }
-        else if (inv)        { sym_class="Ci inversion";      good_qn="parity + E-idx"; }
-        else                 { sym_class="C1 none";           good_qn="E-index only";   }
-    }
-
-    // ----------------------------------------------------------------
-    //  Print
-    // ----------------------------------------------------------------
-    PetscPrintf(PETSC_COMM_WORLD, "%s", HR);
-    PetscPrintf(PETSC_COMM_WORLD,
-        "  ▸ SYMMETRY DETECTION  (%dD, tol=%.0e, sample=%d²%s)\\n",
-        (int)dim, tol, (int)Nsample, ((int)dim==3)?"×N":"");
-    PetscPrintf(PETSC_COMM_WORLD, "%s\n", HR);
-
-    // Continuous
-    PetscPrintf(PETSC_COMM_WORLD,
-        "  %-28s  %s\n", " Continuous symmetries", "");
-
-    if (dim == 2) {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "    %-24s  %s\n",
-            "O(2) rotation (z-axis)",
-            o2_z ? "   YES" : "   NO");
-    } else {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "    %-24s  %s\n", " O(3) spherical",  o3   ? "✔  YES" : "✘  NO");
-        PetscPrintf(PETSC_COMM_WORLD,
-            "    %-24s  %s\n", " O(2) around z",   o2_z ? "✔  YES" : "✘  NO");
-    }
-
-    // Discrete
-    PetscPrintf(PETSC_COMM_WORLD,
-        "\n  %-28s  %-6s  %s\n", " Discrete symmetries", "result", "max |ΔV|");
-    PetscPrintf(PETSC_COMM_WORLD,
-        "  %-28s  %-6s  %s\n",
-        "  ──────────────────────────", "──────", "──────────");
-
-    #define ROW(label, flag, err) \
-        PetscPrintf(PETSC_COMM_WORLD, \
-            "    %-26s  %-6s  %.2e\n", \
-            label, (flag)?"   YES":"   NO", (double)(err))
-
-    ROW(" mirror  x → -x",      mx,  err_Mx);
-    ROW(" mirror  y → -y",      my,  err_My);
-    if (dim == 3)
-    ROW(" mirror  z → -z",      mz,  err_Mz);
-    ROW(" inversion (x,y)→(-x,-y)", inv, err_inv);
-    ROW(" swap  x ↔ y",         sxy, err_swap_xy);
-    if (dim == 2)
-    ROW(" diag refl (-y,-x)",   dxy, err_diag_xy);
-    if (dim == 3) {
-    ROW(" swap  x ↔ z",         sxz, err_swap_xz);
-    ROW(" swap  y ↔ z",         syz, err_swap_yz);
-    }
-    #undef ROW
-
-    // Result
-    PetscPrintf(PETSC_COMM_WORLD, "\n");
-    PetscPrintf(PETSC_COMM_WORLD,
-        "    %-26s  %s\n", "Symmetry class",  sym_class);
-    PetscPrintf(PETSC_COMM_WORLD,
-        "    %-26s  %s\n", "Good quantum numbers", good_qn);
-    PetscPrintf(PETSC_COMM_WORLD, "\n%s", HR);
-
-    PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-

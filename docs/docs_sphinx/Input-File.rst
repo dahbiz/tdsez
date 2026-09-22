@@ -411,19 +411,19 @@ Knot Sequences
    * - AdaptiveKappa
      - real
      - 1.0
-     - Weighting parameter for adaptive knot sequences (potential-driven). Higher = more clustering near potential gradients.
+     - Reserved for adaptive knots; currently ignored while that mode uses uniform knots.
    * - AdaptivePower
      - real
      - 1.0
-     - Power for adaptive knot clustering. Higher = sharper clustering in high-gradient regions.
+     - Reserved for adaptive knots; currently ignored.
    * - AdaptiveWFCoarseN
      - int
      - 20
-     - Number of basis functions for coarse first-pass wavefunction solve (adaptive_wf).
+     - Reserved for the adaptive_wf coarse solve; currently ignored.
    * - AdaptiveWFKinLambda
      - real
      - 3.0
-     - Kinetic-energy weighting scale for density-driven adaptive clustering (adaptive_wf). Higher = more clustering near nodes.
+     - Reserved for adaptive_wf density weighting; currently ignored.
 
 t-SURFF (Surface Flux)
 ----------------------

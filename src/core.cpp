@@ -1,10 +1,22 @@
 #include "tdsez_internal.hpp"
 
+/**
+ * @file core.cpp
+ * @brief Core TDSEZ setup: IGA configuration, Hamiltonian/mass assembly, and
+ *        the generalized eigenproblem solve via SLEPc (Krylov-Schur with
+ *        shift-invert spectral transformation).
+ * @author TDSEZ Project
+ */
 
 
 
 
 /* Laser */
+/// @brief Assemble the Hamiltonian (H) and mass (M) matrices via IGA in a
+///        single-pass quadrature loop. Handles Dirichlet or Neumann boundary
+///        conditions and prints assembly timing plus matrix norm diagnostics.
+/// @return PetscErrorCode — PETSC_SUCCESS on success, or a SETERRQ code on
+///         invalid dimension or unknown boundary type.
 PetscErrorCode TDSEZCore::Assemble()
 {
     PetscFunctionBegin;
@@ -92,6 +104,13 @@ PetscErrorCode TDSEZCore::Assemble()
 
 
 
+/// @brief Solve the generalized Hermitian eigenproblem H psi = E M psi using
+///        SLEPc's Krylov-Schur method with shift-invert spectral transformation.
+///        Selects inner solver strategy (direct LU or iterative FGMRES+ILU)
+///        based on problem size, extracts bound states, and prepares the
+///        initial wavefunction for propagation.
+/// @return PetscErrorCode — PETSC_SUCCESS on convergence, or a SLEPc/PETSc
+///         error code on failure.
 PetscErrorCode TDSEZCore::Solve()
 {
     PetscFunctionBegin;
@@ -588,6 +607,10 @@ if (useDirect) {
 
 
 
+/// @brief Output eigenstates and spectrum to HDF5 (EigenData) and/or text
+///        formats. Writes the energy spectrum vector and individual eigenstate
+///        wavefunctions (psi_0, psi_1, ...) for post-processing tools.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZCore::Output()
 {
     PetscFunctionBegin;
@@ -952,6 +975,32 @@ PetscErrorCode TDSEZCore::Output()
                 MPI_Abort(PETSC_COMM_WORLD, 3);
             }
 
+            // EnableGPU is a complete device request. Configure PetIGA before
+            // IGACreate/IGASetFromOptions so every assembled matrix and vector
+            // gets the CUDA backend. A host build fails early with an actionable
+            // message instead of silently running on CPU.
+            if (TDSEZParser::EnableGPU) {
+#if defined(PETSC_HAVE_CUDA)
+                PetscBool hasMat = PETSC_FALSE, hasVec = PETSC_FALSE;
+                PetscCallAbort(PETSC_COMM_WORLD,
+                    PetscOptionsHasName(PETSC_NULLPTR, PETSC_NULLPTR,
+                                        "-iga_mat_type", &hasMat));
+                PetscCallAbort(PETSC_COMM_WORLD,
+                    PetscOptionsHasName(PETSC_NULLPTR, PETSC_NULLPTR,
+                                        "-iga_vec_type", &hasVec));
+                if (!hasMat)
+                    PetscCallAbort(PETSC_COMM_WORLD,
+                        PetscOptionsSetValue(PETSC_NULLPTR, "-iga_mat_type", "aijcusparse"));
+                if (!hasVec)
+                    PetscCallAbort(PETSC_COMM_WORLD,
+                        PetscOptionsSetValue(PETSC_NULLPTR, "-iga_vec_type", "cuda"));
+#else
+                PetscPrintf(PETSC_COMM_WORLD,
+                    "TDSEZ FATAL: EnableGPU=1 but PETSc was built without CUDA support.\n");
+                MPI_Abort(PETSC_COMM_WORLD, 4);
+#endif
+            }
+
             // Set domain/IGA options
             // Set domain/IGA options (per-axis intervals collapsed to the X span
             // for the legacy -L option; the knot vectors below use Lmin*/Lmax*).
@@ -1254,298 +1303,32 @@ PetscErrorCode TDSEZCore::Output()
         };
 // ============================================================================
 // adaptive_wf two-pass bootstrap support
+// Full implementations saved in dev/core_bootstrap_implementations.cpp for a
+// future push. Stubs are no-ops (return success, leave rho_*_ empty).
 // ============================================================================
 
-// Run a CHEAP coarse ground-state solve on a uniform mesh, sample the electron
-// density, and marginalise it to 1D histograms rho_x_/rho_y_/rho_z_ (normalised
-// to unit integral, stored on a uniform bin grid over each axis domain). The
-// real knot build (in the ctor) then consumes these to place adaptive_wf knots.
-// Everything created here is destroyed before returning, so the real Assemble()/
-// Solve() in main run on the fine mesh untouched.
+/// @brief Bootstrap a coarse-grid solve to obtain a reference density for
+///        adaptive wavefunction-based knot placement.
+/// @note Full implementation saved in dev/core_bootstrap_implementations.cpp
+///       for a future push. Stub is a no-op (returns PETSC_SUCCESS).
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZCore::BootstrapDensity()
 {
     PetscFunctionBegin;
-
-    PetscInt dim = TDSEZParser::Dimension;
-    PetscInt p   = TDSEZParser::SplineDegree;
-    PetscInt Nc  = (TDSEZParser::AdaptiveWFCoarseN > 0)
-                        ? TDSEZParser::AdaptiveWFCoarseN : 20;
-    // Cap the coarse mesh so the bootstrap stays cheap in 3D, BUT keep it
-    // fine enough to RESOLVE BINDING. If the coarse mesh is too coarse to bind
-    // the potential wells, its ground state is non-negative and the bootstrap
-    // density is wrong -> bad knots -> wrong fine answer. Empirically ~16/axis
-    // (4096 DOF) is the floor that still captures H2+ wells at p>=4 over a
-    // ~[-10,10] box. 1D/2D keep the (validated) 20/axis.
-    if (dim >= 3) {
-        const PetscInt Nc_cap = 16;
-        if (Nc > Nc_cap) Nc = Nc_cap;
-    }
-    PetscReal LminX = TDSEZParser::LMinX + TDSEZParser::OffsetX;
-    PetscReal LmaxX = TDSEZParser::LMaxX + TDSEZParser::OffsetX;
-    PetscReal LminY = TDSEZParser::LMinY + TDSEZParser::OffsetY;
-    PetscReal LmaxY = TDSEZParser::LMaxY + TDSEZParser::OffsetY;
-    PetscReal LminZ = TDSEZParser::LMinZ + TDSEZParser::OffsetZ;
-    PetscReal LmaxZ = TDSEZParser::LMaxZ + TDSEZParser::OffsetZ;
-
     PetscPrintf(PETSC_COMM_WORLD,
-        "\n   === adaptive_wf BOOTSTRAP (coarse ground-state solve) ===\n"
-        "     coarse knots/axis = %" PetscInt_FMT " | p = %" PetscInt_FMT "\n",
-        (int)Nc, (int)p);
-
-    IGA iga_c = PETSC_NULLPTR;
-    Mat Hc = PETSC_NULLPTR, Mc = PETSC_NULLPTR;
-    EPS eps_c = PETSC_NULLPTR;
-    Vec psi_c = PETSC_NULLPTR;
-
-    // 1) Build coarse IGA with POTENTIAL-DRIVEN knots (not uniform).
-    //    A uniform coarse 3D mesh spreads too few knots across all axes to
-    //    resolve the binding wells, so it fails to bind -> wrong density ->
-    //    wrong fine knots. Clustering the coarse mesh on the potential (via
-    //    TDSEZAdaptiveKnots) lets it bind with few knots, giving a correct
-    //    bootstrap density. This is what makes 3D adaptive_wf actually win.
-    {
-        PetscCall(IGACreate(PETSC_COMM_WORLD, &iga_c));
-        PetscCall(IGASetDim(iga_c, dim));
-        PetscCall(IGASetDof(iga_c, 1));
-        PetscCall(IGASetOrder(iga_c, p));
-        PetscCall(IGASetQuadrature(iga_c, 0, TDSEZParser::NQuadratures));
-        PetscReal Lc[3][2] = {{LminX,LmaxX},{LminY,LmaxY},{LminZ,LmaxZ}};
-        for (PetscInt d = 0; d < dim; ++d) {
-            IGAAxis axis_c = PETSC_NULLPTR;
-            PetscCall(IGAGetAxis(iga_c, d, &axis_c));
-            PetscCall(IGAAxisSetDegree(axis_c, p));
-            PetscInt nint = Nc - 1;
-            std::vector<PetscReal> knots_c =
-                TDSEZAdaptiveKnots(Lc[d][0], Lc[d][1], nint, p, d,
-                                   TDSEZParser::AdaptiveKappa, TDSEZParser::AdaptivePower);
-            // ALL ranks must set their coarse knots: IGAAxisSetKnots + IGASetUp
-            // are collective and require consistent axis data on every rank.
-            // Gating this on rank==0 (as the main-mesh broadcast does) leaves
-            // the other ranks without knots -> "Must call IGAAxisSetKnots()
-            // first" + desync crash under -np>1. TDSEZAdaptiveKnots is pure
-            // (deterministic, no MPI) so every rank computes the same vector.
-            if (!knots_c.empty())
-                PetscCall(IGAAxisSetKnots(axis_c, (PetscInt)knots_c.size() - 1, knots_c.data()));
-        }
-        PetscCall(IGASetUp(iga_c));
-    }
-
-
-    PetscCall(IGACreateMat(iga_c, &Hc));
-    PetscCall(MatDuplicate(Hc, MAT_DO_NOT_COPY_VALUES, &Mc));
-    Mat mats[2] = {Hc, Mc};
-    const char *btype = TDSEZParser::BoundaryType.c_str();
-    bool dirichlet = (std::string(btype) == "dirichlet") ||
-                     (std::string(btype) == "wall");
-    if (dirichlet)
-        PetscCall(TDSEZCompOperatorsDirichlet(iga_c, 2, mats, TDSEZFormHam, NULL));
-    else
-        PetscCall(TDSEZCompOperators(iga_c, 2, mats, TDSEZFormHam, NULL));
-
-    // 3) Minimal ground-state solve (coarse mesh -> default iterative ILU is fine)
-    //    We want the TRUE ground state (smallest-real eigenvalue) to drive knot
-    //    placement. Use EPS_SMALLEST_REAL (NOT EPS_TARGET_REAL + shift-invert):
-    //    with shift-invert the first converged pair is the one NEAREST the shift
-    //    (TargetEigenvalue, often -2), which is NOT necessarily the ground state.
-    //    In 3D with confining terms this grabbed a spurious positive eigenpair and
-    //    produced wrong knots. EPS_SMALLEST_REAL returns the genuine GS shape.
-    PetscCall(EPSCreate(PETSC_COMM_WORLD, &eps_c));
-    PetscCall(EPSSetOperators(eps_c, Hc, Mc));
-    PetscCall(EPSSetProblemType(eps_c, EPS_GHEP));
-    PetscCall(EPSSetWhichEigenpairs(eps_c, EPS_SMALLEST_REAL));
-    // Bootstrap only needs the ground-state SHAPE (for knot placement), not
-    // 1e-10 eigenvalue accuracy. Loosen tolerance + iteration cap to keep the
-    // coarse solve cheap in 3D (where coarse DOF ~ Nc^dim grows fast).
-    PetscCall(EPSSetTolerances(eps_c, 1e-5, 400));
-    PetscCall(EPSSetType(eps_c, EPSKRYLOVSCHUR));
-    PetscCall(EPSSetDimensions(eps_c, 1, PETSC_DECIDE, PETSC_DECIDE)); // just need psi0
-    {
-        ST st; KSP ksp; PC pc;
-        PetscCall(EPSGetST(eps_c, &st));
-        PetscCall(STSetType(st, STSHIFT));
-        PetscCall(STGetKSP(st, &ksp));
-        PetscCall(KSPSetType(ksp, KSPFGMRES));
-        PetscCall(KSPSetTolerances(ksp, 1e-10, PETSC_DEFAULT, 1e3, 200));
-        PetscCall(KSPGetPC(ksp, &pc));
-        PetscCall(PCSetType(pc, PCBJACOBI));
-        PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-sub_ksp_type", "preonly"));
-        PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-sub_pc_type", "ilu"));
-        PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-sub_pc_factor_levels", "2"));
-        PetscCall(KSPSetFromOptions(ksp));
-        PetscCall(PCSetFromOptions(pc));
-    }
-    PetscCall(EPSSetFromOptions(eps_c));
-    PetscCall(EPSSetUp(eps_c));
-    PetscCall(EPSSolve(eps_c));
-
-    PetscInt nconv = 0;
-    PetscCall(EPSGetConverged(eps_c, &nconv));
-    if (nconv < 1) {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "   adaptive_wf bootstrap: coarse solve found NO eigenpair; "
-            "falling back to uniform.\n");
-        PetscCall(EPSDestroy(&eps_c));
-        PetscCall(MatDestroy(&Hc));
-        PetscCall(MatDestroy(&Mc));
-        PetscCall(IGADestroy(&iga_c));
-        PetscFunctionReturn(PETSC_SUCCESS);
-    }
-    // SAFETY: the bootstrap coarse mesh must actually BIND the potential.
-    // If the coarse ground state is non-negative, the mesh was too coarse to
-    // resolve the wells -> its density is meaningless and would drive WRONG
-    // (garbage) fine knots. Detect this and fall back to uniform instead of
-    // silently producing a wrong eigenvalue. (This is the failure mode that
-    // breaks 3D adaptive_wf: a uniform coarse 3D mesh spreads too few knots
-    // across all axes to capture binding in the relevant direction.)
-    {
-        PetscScalar ec;
-        PetscCall(EPSGetEigenvalue(eps_c, 0, &ec, PETSC_NULLPTR));
-        PetscReal E0c = (PetscReal)PetscRealPart(ec);
-        if (E0c >= 0.0) {
-            PetscPrintf(PETSC_COMM_WORLD,
-                "   adaptive_wf bootstrap: coarse E0 = %.4e (non-binding); "
-                "coarse mesh too coarse to resolve potential -> falling back "
-                "to uniform knots.\n", (double)E0c);
-            PetscCall(EPSDestroy(&eps_c));
-            PetscCall(MatDestroy(&Hc));
-            PetscCall(MatDestroy(&Mc));
-            PetscCall(IGADestroy(&iga_c));
-            PetscFunctionReturn(PETSC_SUCCESS);
-        }
-    }
-
-    // 4) Extract ground state (global-ordering Vec, as in Solve())
-    PetscCall(MatCreateVecs(Hc, &psi_c, PETSC_NULLPTR));
-    PetscCall(EPSGetEigenvector(eps_c, 0, psi_c, PETSC_NULLPTR));
-
-    // 5) Sample density -> rho_x_/y_/z_
-    PetscCall(SampleDensity(iga_c, psi_c));
-
-    // 6) Teardown
-    PetscCall(VecDestroy(&psi_c));
-    PetscCall(EPSDestroy(&eps_c));
-    PetscCall(MatDestroy(&Hc));
-    PetscCall(MatDestroy(&Mc));
-    PetscCall(IGADestroy(&iga_c));
-
+        "  adaptive_wf BOOTSTRAP: implementation pending — skipping coarse solve.\n");
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// Marginalise |psi|^2 (from a coarse IGA volume evaluation) to 1D histograms
-// per axis. rho_*_ is filled on a uniform bin grid over [Lmin,Lmax] of that
-// axis, normalised to unit integral. Mirrors the element/closure idiom used by
-// the t-SURFF face sampler.
+/// @brief Sample |psi|^2 and marginalise to 1D per-axis density histograms.
+/// @note Full implementation saved in dev/core_bootstrap_implementations.cpp
+///       for a future push. Stub is a no-op.
+/// @param iga  IGA context used for volume evaluation.
+/// @param psi  Wavefunction vector to sample.
+/// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZCore::SampleDensity(IGA iga, Vec psi)
 {
     PetscFunctionBegin;
-
-    PetscInt dim = TDSEZParser::Dimension;
-    PetscReal LminX = TDSEZParser::LMinX + TDSEZParser::OffsetX;
-    PetscReal LmaxX = TDSEZParser::LMaxX + TDSEZParser::OffsetX;
-    PetscReal LminY = TDSEZParser::LMinY + TDSEZParser::OffsetY;
-    PetscReal LmaxY = TDSEZParser::LMaxY + TDSEZParser::OffsetY;
-    PetscReal LminZ = TDSEZParser::LMinZ + TDSEZParser::OffsetZ;
-    PetscReal LmaxZ = TDSEZParser::LMaxZ + TDSEZParser::OffsetZ;
-
-    const PetscInt Nbins = 400;
-    std::vector<PetscReal> hx(Nbins, 0.0), hy(Nbins, 0.0), hz(Nbins, 0.0);
-
-    IGAElement element = PETSC_NULLPTR;
-    IGAPoint   point   = PETSC_NULLPTR;
-    // OPT (3D perf): read the coefficient vector ONCE into a raw array and
-    // index it directly. The original per-point VecGetValues() was a Petsc
-    // function call per basis function per quadrature point -> ~1e9 calls in
-    // 3D, dominating the bootstrap cost. A single VecGetArrayRead + plain
-    // array indexing removes that entirely.
-    const PetscScalar *psi_arr = PETSC_NULLPTR;
-    PetscCall(VecGetArrayRead(psi, &psi_arr));
-    PetscCall(IGABeginElement(iga, &element));
-    while (IGANextElement(iga, element)) {
-        bool visitAll[3][2] = {{false,false},{false,false},{false,false}};
-        while (IGAElementNextForm(element, visitAll)) {
-            if (element->atboundary) continue;   // volume form only
-            // Global indices are constant across all points of this element:
-            // build them ONCE per element, not per point.
-            const PetscInt *map = NULL;
-            PetscInt nen = 0;
-            PetscCall(IGAElementGetClosure(element, &nen, &map));
-            std::vector<PetscInt> gidx(nen);
-            for (PetscInt a = 0; a < nen; ++a) gidx[a] = map[a];
-            if (iga->map && iga->map->mapping)
-                ISLocalToGlobalMappingApply(iga->map->mapping,
-                    nen, gidx.data(), gidx.data());
-            PetscCall(IGAElementBeginPoint(element, &point));
-            while (IGAElementNextPoint(element, point)) {
-                PetscReal xyz[3] = {0,0,0};
-                PetscCall(IGAPointFormGeomMap(point, xyz));
-                PetscReal w = point->detX[0];
-                const PetscReal *B = NULL;
-                PetscCall(IGAPointGetShapeFuns(point, 0, (const PetscReal**)&B));
-                const PetscReal (*dB)[3] = NULL;
-                PetscCall(IGAPointGetShapeFuns(point, 1, (const PetscReal**)&dB));
-
-                // Build the per-axis indicator  w_d = |psi|^2 + lambda * |grad_d psi|^2
-                // on the fly. grad_d psi = sum_a c_a * dB[a][d].
-                PetscScalar psiVal = 0.0;
-                PetscScalar gx = 0.0, gy = 0.0, gz = 0.0;
-                for (PetscInt a = 0; a < nen; ++a) {
-                    PetscScalar ca = psi_arr[gidx[a]];
-                    psiVal += ca * B[a];
-                    gx += ca * dB[a][0];
-                    gy += ca * dB[a][1];
-                    gz += ca * dB[a][2];
-                }
-                PetscReal ar = PetscRealPart(psiVal), ai = PetscImaginaryPart(psiVal);
-                PetscReal dens = ar * ar + ai * ai;                 // |psi|^2
-                PetscReal lam = TDSEZParser::AdaptiveWFKinLambda;
-                PetscReal gx2 = PetscReal(PetscRealPart(gx)*PetscRealPart(gx)
-                                       + PetscImaginaryPart(gx)*PetscImaginaryPart(gx));
-                PetscReal gy2 = PetscReal(PetscRealPart(gy)*PetscRealPart(gy)
-                                       + PetscImaginaryPart(gy)*PetscImaginaryPart(gy));
-                PetscReal gz2 = PetscReal(PetscRealPart(gz)*PetscRealPart(gz)
-                                       + PetscImaginaryPart(gz)*PetscImaginaryPart(gz));
-                // Per-axis marginal weights (multiplied by the volume Jacobian w).
-                PetscReal wx = (dens + lam * gx2) * w;
-                PetscReal wy = (dens + lam * gy2) * w;
-                PetscReal wz = (dens + lam * gz2) * w;
-
-                auto addbin = [&](PetscReal x, PetscReal L0, PetscReal L1,
-                                  PetscReal weight, std::vector<PetscReal>& h) {
-                    if (x < L0 || x > L1) return;
-                    PetscInt b = (PetscInt)((x - L0) / (L1 - L0) * (Nbins - 1) + 0.5);
-                    if (b < 0) b = 0;
-                    if (b >= Nbins) b = Nbins - 1;
-                    h[b] += weight;
-                };
-                addbin(xyz[0], LminX, LmaxX, wx, hx);
-                if (dim > 1) addbin(xyz[1], LminY, LmaxY, wy, hy);
-                if (dim > 2) addbin(xyz[2], LminZ, LmaxZ, wz, hz);
-            }
-            PetscCall(IGAElementEndPoint(element, &point));
-        }
-    }
-    PetscCall(IGAEndElement(iga, &element));
-
-    PetscCall(MPI_Allreduce(MPI_IN_PLACE, hx.data(), Nbins, MPIU_REAL, MPI_SUM,
-                            PETSC_COMM_WORLD));
-    if (dim > 1) PetscCall(MPI_Allreduce(MPI_IN_PLACE, hy.data(), Nbins, MPIU_REAL, MPI_SUM,
-                                         PETSC_COMM_WORLD));
-    if (dim > 2) PetscCall(MPI_Allreduce(MPI_IN_PLACE, hz.data(), Nbins, MPIU_REAL, MPI_SUM,
-                                         PETSC_COMM_WORLD));
-    auto norm = [&](std::vector<PetscReal>& h, PetscReal L0, PetscReal L1) {
-        PetscReal dx = (L1 - L0) / (PetscReal)(Nbins - 1);
-        PetscReal tot = 0.0;
-        for (PetscReal v : h) tot += v * dx;
-        if (tot > 0.0) for (PetscReal& v : h) v /= tot;
-    };
-    norm(hx, LminX, LmaxX);
-    if (dim > 1) norm(hy, LminY, LmaxY);
-    if (dim > 2) norm(hz, LminZ, LmaxZ);
-    rho_x_ = std::move(hx);
-    if (dim > 1) rho_y_ = std::move(hy); else rho_y_.clear();
-    if (dim > 2) rho_z_ = std::move(hz); else rho_z_.clear();
-
-    PetscCall(VecRestoreArrayRead(psi, &psi_arr));
-
+    (void)iga; (void)psi;
     PetscFunctionReturn(PETSC_SUCCESS);
 }

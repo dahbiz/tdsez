@@ -46,6 +46,20 @@ TDSE-Z solves the time-dependent Schrödinger equation for single-particle quant
 - **t-SURFF** — photoelectron energy spectra via the surface-flux method
 - **Absorbing boundary (CAP)** — open-system dynamics
 
+## Code Layout
+
+| Component | Responsibility |
+|-----------|----------------|
+| `include/tdsez_parser.hpp`, `src/parser.cpp`, `src/parser_validation.cpp` | Input fields, file parsing, expression setup, and validation |
+| `include/tdsez_info.hpp` | Shared terminal output formatting |
+| `include/tdsez_core.hpp`, `src/core.cpp`, `src/core_knots.cpp` | Grid construction and bound-state solve |
+| `include/tdsez_assembler.hpp`, `src/assembly/`, `src/assembler_class.cpp` | Operator assembly |
+| `include/tdsez_manager.hpp`, `include/tdsez_propagator.hpp`, `src/manager.cpp`, `src/propagator.cpp`, `src/monitor.cpp` | Time evolution and output |
+| `src/diagnostics.cpp` | Physics diagnostics |
+
+`include/tdsez_internal.hpp` collects shared solver types and function
+declarations. Individual class headers can be included separately.
+
 ## Key Features
 
 - B-spline basis functions via PetIGA for high-accuracy spatial discretisation
@@ -55,45 +69,6 @@ TDSE-Z solves the time-dependent Schrödinger equation for single-particle quant
 - CUDA GPU offload for matrix operations (auto-detected)
 - HDF5 output with full provenance metadata
 - muParser for user-defined potentials, laser fields, and mass profiles
-
-## Repository Structure
-
-```
-├── CMakeLists.txt            Build configuration
-├── LICENSE                   MIT License
-├── README.md                 This file
-├── Doxyfile                  Doxygen config
-├── cmake/
-│   └── banner.cmake          CMake config banner
-├── docs/                     GitHub Pages website
-│   ├── index.html            Landing page
-│   ├── gallery.html          Simulation gallery
-│   ├── docs/                 User documentation (5 sections)
-│   ├── brand/                Logo, favicon, hero assets
-│   └── gallery/              Gallery media (waveforms, trajectories, video)
-├── include/
-│   └── tdsez_internal.hpp    Internal interfaces, formatting helpers
-├── src/
-│   ├── tdsez.cpp             Main entry point
-│   ├── parser.cpp            Input file parser
-│   ├── core.cpp              Core solver (assemble, solve, output)
-│   ├── core_knots.cpp        Knot sequence generators
-│   ├── assembler.cpp         Hamiltonian assembly
-│   ├── assembler_class.cpp   Assembler class
-│   ├── assembly/             Low-level assembly routines
-│   ├── manager.cpp           Propagation state management
-│   ├── monitor.cpp           Time-stepping callbacks
-│   ├── propagator.cpp        Propagator engine
-│   ├── diagnostics.cpp       Dipole, current, gauge checks
-│   ├── drecprocessor.cpp     Dipole recombination processor
-│   ├── tdmprocessor.cpp      Dipole matrix post-processor
-│   ├── tdmselect.cpp         Selective dipole element calculator
-│   └── TDSE-Z_logo.txt       ASCII-art banner
-└── tests/
-    ├── test_tdsez.py         Validation tests (pytest)
-    ├── conftest.py           Test configuration fixtures
-    └── inputs/               Test input files (.inp)
-```
 
 ## Tests
 

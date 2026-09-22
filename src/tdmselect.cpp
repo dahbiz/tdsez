@@ -6,6 +6,12 @@
 //  with full high-precision numerical formatting.
 // ============================================================================
 
+/**
+ * @file tdmselect.cpp
+ * @brief Selective transition-dipole vector computation with density-of-states
+ *        weighting for a chosen bra state and energy threshold.
+ */
+
 #include <petsc.h>
 #include <petscviewerhdf5.h>
 #include <hdf5.h>
@@ -19,6 +25,15 @@
 #include <limits>
 
 // --- read spectrum energies (real parts) via direct HDF5 read -------------
+/// Read spectrum energies (real parts) via direct HDF5 read.
+/**
+ * Opens the EigenData HDF5 file and reads the 'spectrum' dataset to extract
+ * the number of states and their real-valued energies.
+ * @param[in]  h5path  Path to the HDF5 file.
+ * @param[out] energies Vector of eigenstate energies (real parts).
+ * @param[out] nStates Number of eigenstates found.
+ * @return PETSc error code.
+ */
 static PetscErrorCode loadSpectrum(const std::string& h5path,
                                    std::vector<PetscReal>& energies,
                                    PetscInt& nStates)
@@ -52,6 +67,16 @@ static PetscErrorCode loadSpectrum(const std::string& h5path,
 }
 
 // --- load a single eigenstate psi_<i> via VecLoad --------------------------
+/// Load a single eigenstate psi_i into a fresh Vec via VecLoad.
+/**
+ * Creates a Vec with the layout of Dx, names it "psi_<i>", and loads the
+ * corresponding dataset from the open HDF5 viewer.
+ * @param[in]  viewer Already-open HDF5 viewer.
+ * @param[in]  Dx     Dipole operator (provides the Vec layout).
+ * @param[in]  i      State index to load.
+ * @param[out] v      Newly created and loaded Vec (caller owns).
+ * @return PETSc error code.
+ */
 static PetscErrorCode loadState(PetscViewer viewer, Mat Dx,
                                 PetscInt i, Vec* v)
 {
@@ -66,9 +91,25 @@ static PetscErrorCode loadState(PetscViewer viewer, Mat Dx,
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/// Main: compute selective dipole vector with DOS for a chosen bra state.
+/**
+ * Loads Dx and the eigenstate spectrum, computes d_j = <psi_i|Dx|psi_j> for
+ * all states j above an energy threshold, evaluates the density of states
+ * (DOS), and writes a high-precision CSV with dipole elements, |d|², and
+ * DOS-weighted quantities.
+ *
+ * @param argc  Number of CLI arguments (expects <stem> -i <state> -Ethr <E>).
+ * @param argv  CLI argument strings.
+ * @return 0 on success, 1 on usage error.
+ */
 int main(int argc, char **argv)
 {
     PetscCall(PetscInitialize(&argc, &argv, PETSC_NULLPTR, PETSC_NULLPTR));
+
+    PetscMPIInt commSize = 0;
+    PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &commSize));
+    PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
+               "tdmselect: sequential dipole files require a single MPI rank");
 
     if (argc < 2) {
         PetscCall(PetscPrintf(PETSC_COMM_WORLD,
