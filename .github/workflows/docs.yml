@@ -76,6 +76,13 @@ jobs:
           # the published site lives at the project Pages URL.
           sed -i 's|href="docs_sphinx/_build/html/index.html"|href="https://dahbiz.github.io/tdsez/docs/"|g' _site/index.html
 
+          # Keep the previous relative Docs URL working for cached landing pages.
+          mkdir -p _site/docs_sphinx/_build/html
+          cat > _site/docs_sphinx/_build/html/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en"><head><meta http-equiv="refresh" content="0; url=../../../docs/"><link rel="canonical" href="https://dahbiz.github.io/tdsez/docs/"><title>TDSE-ⵣ Documentation</title></head><body><p>Redirecting to the <a href="../../../docs/">TDSE-ⵣ documentation</a>…</p></body></html>
+          EOF
+
           # C++ API reference: /api/
           doxygen Doxyfile
           mkdir -p _site/api

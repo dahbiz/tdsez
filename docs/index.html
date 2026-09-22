@@ -3937,6 +3937,14 @@ footer#contact {
   });
 })();
 
+// Keep documentation links valid in both local previews and GitHub Pages.
+(function() {
+  const publishedDocs = 'https://dahbiz.github.io/tdsez/docs/';
+  document.querySelectorAll('a[href="docs_sphinx/_build/html/index.html"]').forEach(link => {
+    link.href = publishedDocs;
+  });
+})();
+
 // === HERO PULSES: multi-pulse system + mouse drawing + circle interaction ===
 (function() {
   const hero = document.getElementById('top');
