@@ -97,6 +97,30 @@ analytical references (1D/2D/3D harmonic oscillators). See [tests/README.md](tes
 | HDF5 | Simulation output |
 | Python 3 + pytest + numpy + h5py | Tests (optional) |
 
+## Documentation
+
+The documentation is split into a user guide and a generated C++ API reference.
+The user guide explains the model, input format, solver workflow, output schema,
+and reproducible examples. The API reference follows the ownership boundaries
+of the parser, core, assembler, manager, and propagator.
+
+```bash
+# User guide
+cmake --build build --target docs-sphinx
+
+# C++ API reference
+cmake --build build --target docs
+```
+
+The generated pages are written to `docs/docs_sphinx/_build/html/` and
+`docs/doxygen/html/`. See [Architecture](docs/docs_sphinx/Architecture.rst),
+[API Reference](docs/docs_sphinx/API-Reference.rst), and
+[Compilation](docs/docs_sphinx/Compilation.rst) for the supported build and
+ownership model. The `Publish documentation` GitHub Actions workflow rebuilds
+these pages and publishes them to [GitHub Pages](https://dahbiz.github.io/tdsez/docs/)
+when documentation-related changes reach `main`; it can also be started from
+the Actions tab with `workflow_dispatch`.
+
 ## Citing
 
 If you use TDSE-Z in your research, please cite:

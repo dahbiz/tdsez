@@ -1,0 +1,93 @@
+name: Build and publish documentation
+
+on:
+  push:
+    paths:
+      - "Doxyfile"
+      - "include/**"
+      - "src/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "tests/**"
+      - "docs/**"
+      - "README.md"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "Doxyfile"
+      - "include/**"
+      - "src/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - "tests/**"
+      - "docs/**"
+      - "README.md"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install documentation tools
+        run: python -m pip install --upgrade sphinx sphinx-rtd-theme
+
+      - name: Install Doxygen
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes doxygen
+
+      - name: Build documentation site
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf _site docs/doxygen
+          mkdir -p _site/docs
+
+          # Keep the existing project landing page and gallery at /docs/.
+          cp docs/index.html docs/gallery.html _site/docs/
+          cp -R docs/brand docs/gallery _site/docs/
+
+          # User guide: /docs/docs_sphinx/_build/html/
+          sphinx-build -W -b html docs/docs_sphinx _site/docs/docs_sphinx/_build/html
+
+          # C++ API reference: /docs/doxygen/html/
+          doxygen Doxyfile
+          cp -R docs/doxygen _site/docs/
+
+          # GitHub Pages must serve files beginning with an underscore.
+          touch _site/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

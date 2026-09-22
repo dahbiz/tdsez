@@ -91,6 +91,8 @@ td/
 
 # ---- Website / docs duplicates (generated from docs/) ---------------------
 website/
+docs/doxygen/
+docs/docs_sphinx/_build/
 
 # ---- Source-level generated files ------------------------------------------
 src/tdsez_version.h.in

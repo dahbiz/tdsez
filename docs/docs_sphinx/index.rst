@@ -69,6 +69,8 @@ Documentation
    :hidden:
 
    Overview
+   Architecture
+   API-Reference
    Compilation
    Input-File
    Grid-Domain

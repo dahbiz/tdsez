@@ -17,7 +17,7 @@ CREATE_SUBDIRS         = NO
 ALLOW_UNICODE_NAMES    = YES
 
 # Input configuration
-INPUT                  = include src tests
+INPUT                  = include src
 RECURSIVE              = YES
 FILE_PATTERNS          = *.h *.hpp *.cpp *.py
 EXCLUDE_PATTERNS       = */build/* */build-split/* */docs/* */website/*
@@ -62,10 +62,10 @@ SORT_MEMBERS_CTORS_1ST = NO
 SORT_GROUP_NAMES       = NO
 SORT_BY_SCOPE_NAME     = NO
 STRICT_PROTO_MATCHING  = NO
-GENERATE_TODOLIST      = YES
-GENERATE_TESTLIST      = YES
-GENERATE_BUGLIST       = YES
-GENERATE_DEPRECATEDLIST= YES
+GENERATE_TODOLIST      = NO
+GENERATE_TESTLIST      = NO
+GENERATE_BUGLIST       = NO
+GENERATE_DEPRECATEDLIST= NO
 
 # Preprocessing
 ENABLE_PREPROCESSING   = YES

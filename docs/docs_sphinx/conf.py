@@ -39,7 +39,6 @@ def setup(app):
 
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
-    "style": "neutral",
     "collapse_navigation": False,
     "sticky_navigation": True,
     "navigation_depth": 4,
