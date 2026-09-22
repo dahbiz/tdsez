@@ -17,8 +17,6 @@
 <p align="center">
   <a href="https://dahbiz.github.io/tdsez/">Website</a> &middot;
   <a href="https://dahbiz.github.io/tdsez/docs/index.html">Documentation</a>
-  <br />
-  <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/UKRI_EPSR_Council-Logo_Horiz-RGB.png?utm_source=commons.wikimedia.org&amp;utm_campaign=index&amp;utm_content=original" alt="UKRI Engineering and Physical Sciences Research Council" width="360" />
 </p>
 
 ---
@@ -153,3 +151,7 @@ Dr. Zakaria Dahbi
 
 Z.D. acknowledges funding from UK Research and Innovation (UKRI) under the UK
 government’s Horizon Europe funding guarantee [Grant No. EP/Z000807/1].
+
+<p align="center">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/UKRI_EPSR_Council-Logo_Horiz-RGB.png" alt="UKRI Engineering and Physical Sciences Research Council" width="240" />
+</p>

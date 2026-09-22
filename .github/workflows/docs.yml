@@ -71,6 +71,11 @@ jobs:
           # User guide: /docs/
           sphinx-build -W -b html docs/docs_sphinx _site/docs
 
+          # Point the published landing page at the deployed Sphinx guide.
+          # The source link targets the checked-in local build for development;
+          # the published site lives at the project Pages URL.
+          sed -i 's|href="docs_sphinx/_build/html/index.html"|href="https://dahbiz.github.io/tdsez/docs/"|g' _site/index.html
+
           # C++ API reference: /api/
           doxygen Doxyfile
           mkdir -p _site/api
