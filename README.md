@@ -16,7 +16,9 @@
 
 <p align="center">
   <a href="https://dahbiz.github.io/tdsez/">Website</a> &middot;
-  <a href="https://dahbiz.github.io/tdsez/docs/">Documentation</a>
+  <a href="https://dahbiz.github.io/tdsez/docs/index.html">Documentation</a>
+  <br />
+  <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/UKRI_EPSR_Council-Logo_Horiz-RGB.png?utm_source=commons.wikimedia.org&amp;utm_campaign=index&amp;utm_content=original" alt="UKRI Engineering and Physical Sciences Research Council" width="360" />
 </p>
 
 ---
@@ -113,7 +115,7 @@ The generated pages are written to `docs/docs_sphinx/_build/html/` and
 [API Reference](docs/docs_sphinx/API-Reference.rst), and
 [Compilation](docs/docs_sphinx/Compilation.rst) for the supported build and
 ownership model. The `Publish documentation` GitHub Actions workflow rebuilds
-these pages and publishes them to [GitHub Pages](https://dahbiz.github.io/tdsez/docs/)
+these pages and publishes them to [GitHub Pages](https://dahbiz.github.io/tdsez/docs/index.html)
 when documentation-related changes reach `main`; it can also be started from
 the Actions tab with `workflow_dispatch`.
 
@@ -127,6 +129,11 @@ If you use TDSE-Z in your research, please cite:
 
 The same metadata is available in [`CITATION.cff`](CITATION.cff), which GitHub
 uses to display the repository's “Cite this repository” information.
+
+## Funding acknowledgement
+
+Z.D. acknowledges funding from UK Research and Innovation (UKRI) under the UK
+government’s Horizon Europe funding guarantee [Grant No. EP/Z000807/1].
 
 ## License & Commercial Use
 
