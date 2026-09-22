@@ -3,9 +3,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0d0b1a" />
+    <meta name="theme-color" content="#000000" />
     <meta name="description" content="TDSE-ⵣ — an open C++ framework for reproducible attosecond quantum dynamics research, built on PETSc, SLEPc and PETIGA." />
     <link rel="icon" type="image/png" href="brand/favicon.png" />
+    <link rel="preload" as="image" href="brand/logo.png" fetchpriority="high" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -1840,23 +1841,23 @@ video {
 }
 
 /* ============================================================
-   TDSE-ⵣ — Ambient dark design system
+   TDSE-ⵣ — Black design system
    ============================================================ */
 :root {
   --radius: 0.5rem;
-  --bg-base: #0d0b1a;
-  --bg-elev: #16122a;
-  --text-base: #f0eaff;
-  --text-muted: #b8acd0;
-  --primary: #ff3cac;
-  --primary-rgb: 255, 60, 172;
-  --secondary: #2b86c5;
-  --secondary-rgb: 43, 134, 197;
-  --accent: #ffd700;
-  --border-glass: rgba(255, 60, 172, 0.12);
-  --bg-glass: rgba(22, 18, 42, 0.55);
-  --glow: 0 0 30px rgba(255, 60, 172, 0.4);
-  --stroke-transparent: rgba(255, 60, 172, 0.2);
+  --bg-base: #000000;
+  --bg-elev: #101010;
+  --text-base: #f5f5f5;
+  --text-muted: #b3b3b3;
+  --primary: #ffffff;
+  --primary-rgb: 255, 255, 255;
+  --secondary: #ffffff;
+  --secondary-rgb: 255, 255, 255;
+  --accent: #ffffff;
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --bg-glass: rgba(16, 16, 16, 0.55);
+  --glow: 0 0 30px rgba(255, 255, 255, 0.4);
+  --stroke-transparent: rgba(255, 255, 255, 0.2);
 }
 
 * {
@@ -3075,6 +3076,7 @@ body {
   pointer-events: auto;
   mix-blend-mode: screen;
   cursor: crosshair;
+  contain: strict;
 }
 
 /* impact ring — expands from circle on pulse hit */
@@ -3110,10 +3112,9 @@ body {
 
 /* color burst on impact */
 @keyframes color-burst {
-  0%   { filter: blur(0.5px) brightness(1.4) saturate(1); box-shadow: 0 0 80px 20px rgba(255,60,172,0.2); }
-  30%  { filter: blur(0.5px) brightness(2.0) saturate(2.5); box-shadow: 0 0 120px 40px rgba(255,60,172,0.6); }
-  60%  { filter: blur(0.5px) brightness(1.8) saturate(2.0); box-shadow: 0 0 100px 30px rgba(43,134,197,0.5); }
-  100% { filter: blur(0.5px) brightness(1.4) saturate(1); box-shadow: 0 0 80px 20px rgba(255,60,172,0.2); }
+  0%, 100% { opacity: 0.6; }
+  30% { opacity: 1; }
+  60% { opacity: 0.8; }
 }
 
 /* ---------- LARGE SCREEN TEXT SCALING ---------- */
@@ -3177,7 +3178,7 @@ body {
 
 @media (min-width: 1536px) {
   /* Hero h1 gets even bigger */
-  section#top h1 { font-size: 8rem !important; line-height: 0.92; }
+  section#top h1 { font-size: 2.9rem !important; line-height: 0.92; }
   /* Section h2 even bigger */
   h2.font-display.text-4xl { font-size: 4.5rem; }
   h2.font-display.md\:text-5xl { font-size: 5rem; }
@@ -3206,24 +3207,142 @@ body {
   footer .font-mono.text-\[10px\] { font-size: 1rem; }
 }
 
-.footer-split { display: flex; flex-direction: column; gap: 2.5rem; }
-.footer-split > div { flex: 1 1 0%; min-width: 0; }
-.footer-text h2 { text-align: left; }
-.footer-text p { text-align: left; margin-left: 0; margin-right: 0; }
-.footer-text .footer-buttons { justify-content: flex-start; }
-@media (min-width: 1024px) {
-  .footer-split { flex-direction: row; align-items: center; gap: 3rem; }
+section#top h1 { font-size: 1.8rem; }
+@media (min-width: 640px) { section#top h1 { font-size: 2.25rem; } }
+@media (min-width: 768px) { section#top h1 { font-size: 2.85rem; } }
+@media (min-width: 1024px) { section#top h1 { font-size: 2.7rem; } }
+#root > div {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+#root > div > main {
+  display: flex;
+  flex: 1;
+}
+section#top {
+  flex: 1;
+  min-height: 0;
+  padding-top: clamp(5rem, 8vh, 5.5rem);
+  padding-bottom: 1.5rem;
+}
+
+.landing-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  margin-inline: auto;
+  max-width: 90rem;
+  pointer-events: none;
+}
+.landing-heading {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  text-align: center;
+}
+.landing-heading h1 {
+  margin-inline: auto;
+}
+.landing-copy {
+  grid-row: 3;
+}
+.landing-copy > p:first-child {
+  margin-top: 0;
+}
+.landing-copy,
+.landing-terminal-section {
+  pointer-events: auto;
+}
+.hero-animation-space {
+  --orb-size: min(400px, 64vw, 44vh);
+  grid-column: 1 / -1;
+  grid-row: 2;
+  position: relative;
+  width: 100%;
+  min-height: calc(var(--orb-size) + 36px);
+  pointer-events: none;
+  contain: layout paint;
+}
+#hero-orb {
+  width: var(--orb-size);
+  height: var(--orb-size);
+}
+#hero-orb img {
+  transform: scale(1.24);
+  filter: drop-shadow(0 0 14px rgba(255,255,255,0.16)) saturate(1.12);
+}
+.hero-animation-space .hero-orbit-ring.r1 {
+  width: calc(var(--orb-size) + 8px);
+  max-width: none;
+}
+.hero-animation-space .hero-orbit-ring.r2 {
+  width: calc(var(--orb-size) + 20px);
+  max-width: none;
+}
+.hero-animation-space .hero-orbit-glow {
+  width: calc(var(--orb-size) + 40px);
+  max-width: none;
+}
+.hero-animation-space .hero-impact-ring {
+  width: var(--orb-size);
+  height: var(--orb-size);
+}
+.landing-terminal-section {
+  min-width: 0;
+}
+.landing-terminal-section .mac-terminal {
+  width: 100%;
+  max-width: 42rem;
+}
+@media (min-width: 900px) {
+  .landing-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .landing-copy {
+    grid-column: 1;
+  }
+  .landing-terminal-section {
+    grid-column: 2;
+    grid-row: 3;
+  }
+}
+@media (min-width: 1280px) {
+  .landing-layout {
+    grid-template-columns: minmax(0, 1fr) 440px minmax(0, 1fr);
+  }
+  .landing-copy {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .landing-terminal-section {
+    grid-column: 3;
+    grid-row: 2;
+    width: 100%;
+  }
+  .hero-animation-space {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+@media (max-width: 360px) {
+  section#top h1 { font-size: clamp(1.45rem, 8vw, 1.8rem); }
+}
+@media (min-width: 1280px) and (max-height: 800px) {
+  .landing-terminal-section .mac-terminal-bar { padding-block: 8px; }
+  .landing-terminal-section .mac-terminal-body { padding: 14px; font-size: 12px; line-height: 1.5; }
 }
 /* macOS terminal window */
-.mac-terminal { background: #16122a; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.12); font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', monospace; }
-.mac-terminal-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #201a38; border-bottom: 1px solid rgba(255,255,255,0.1); }
+.mac-terminal { background: #101010; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.12); font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', monospace; }
+.mac-terminal-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: #181818; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .mac-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-.mac-dot-red { background: #ffffff; }
-.mac-dot-yellow { background: #ffffff; }
-.mac-dot-green { background: #ffffff; }
+.mac-dot-red { background: #ff5f57; }
+.mac-dot-yellow { background: #febc2e; }
+.mac-dot-green { background: #28c840; }
 .mac-terminal-title { margin-left: 8px; font-size: 12px; color: rgba(255,255,255,0.4); font-family: inherit; }
-.mac-terminal-body { padding: 20px; font-size: 13px; line-height: 1.8; color: #d4c8f0; }
-.term-line { color: #d4c8f0; white-space: nowrap; overflow-x: auto; }
+.mac-terminal-body { padding: 20px; font-size: 13px; line-height: 1.8; color: #dedede; }
+.term-line { color: #dedede; white-space: nowrap; overflow-x: auto; }
 .term-prompt { color: var(--primary, #ffffff); margin-right: 8px; font-weight: 700; }
 .term-output { color: rgba(255,255,255,0.4); padding-left: 20px; font-size: 12px; }
 .term-cursor { color: var(--primary, #ffffff); animation: term-blink 1s step-end infinite; display: inline-block; }
@@ -3248,46 +3367,12 @@ body {
 
 /* ===== HERO ORB BREATHING GLOW ===== */
 @keyframes hero-orb-breathe {
-  0%, 100% {
-    filter: drop-shadow(0 0 20px rgba(255,60,172,0.3));
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    filter: drop-shadow(0 0 40px rgba(255,60,172,0.6)) drop-shadow(0 0 80px rgba(43,134,197,0.3));
-    transform: translate(-50%, -50%) scale(1.04);
-  }
+  0%, 100% { transform: scale(1.24); }
+  50% { transform: scale(1.29); }
 }
-.hero-orb-breath {
+.hero-orb-breath img {
   animation: hero-orb-breathe 4s ease-in-out infinite;
 }
-
-.hero-logo-caption {
-  position: absolute;
-  top: calc(100% + 1.15rem);
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  text-align: center;
-  color: var(--text-base);
-  font-family: 'Unbounded', system-ui, sans-serif;
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  text-shadow: 0 0 18px rgba(255, 60, 172, 0.35);
-}
-
-.hero-logo-caption small {
-  display: block;
-  margin-top: 0.45rem;
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.58rem;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
 
 /* ===== BACK TO TOP ===== */
 #back-to-top.visible {
@@ -3400,33 +3485,15 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  .hero-orb-breath { animation: none; }
+  .hero-orb-breath img { animation: none; }
   .scroll-progress { display: none; }
 }
 
 /* ===== LARGE SCREEN ENHANCEMENTS ===== */
 @media (min-width: 1440px) {
-  .hero-orb-breath {
+  .hero-orb-breath img {
     animation: hero-orb-breathe 3s ease-in-out infinite;
   }
-}
-
-/* ===== PARALLAX DEPTH ===== */
-[data-parallax="hero"] {
-  transition: transform 0.1s ease-out;
-  will-change: transform;
-}
-[data-parallax="slow"] {
-  transition: transform 0.15s ease-out;
-  will-change: transform;
-}
-[data-parallax="medium"] {
-  transition: transform 0.2s ease-out;
-  will-change: transform;
-}
-[data-parallax="footer"] {
-  transition: transform 0.25s ease-out;
-  will-change: transform;
 }
 
 /* ===== FOOTER ANIMATIONS ===== */
@@ -3434,17 +3501,20 @@ footer {
   position: relative;
   overflow: hidden;
 }
+header::after,
 footer::before {
   content: '';
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), transparent);
   opacity: 0.5;
   animation: footer-glow 4s ease-in-out infinite;
+  pointer-events: none;
 }
+header::after { bottom: 0; }
+footer::before { top: 0; }
 @keyframes footer-glow {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 0.8; }
@@ -3456,9 +3526,59 @@ footer .font-mono:hover {
   color: var(--primary);
 }
 
+.footer-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0;
+  text-align: center;
+}
+footer#contact {
+  padding-top: 1.25rem;
+  padding-bottom: 1.5rem;
+}
+.footer-copyright,
+.footer-funding {
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  text-transform: none;
+}
+.footer-copyright {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.footer-copyright svg {
+  display: block;
+  width: min(100%, 240px);
+  height: 16px;
+  margin-top: 0.25rem;
+  overflow: visible;
+  filter: drop-shadow(0 0 4px rgba(255, 60, 172, 0.45));
+}
+.footer-funding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 56rem;
+  letter-spacing: normal;
+}
+.footer-funding p {
+  margin: 0;
+}
+.footer-funding img {
+  display: block;
+  width: 150px;
+  height: auto;
+}
+
 /* ===== MOBILE OPTIMIZATIONS ===== */
 @media (max-width: 768px) {
-  .hero-orb-breath {
+  .hero-orb-breath img {
     animation: hero-orb-breathe 3s ease-in-out infinite;
   }
   #back-to-top {
@@ -3470,12 +3590,12 @@ footer .font-mono:hover {
 }
 
 <style>
-/* Ambient dark palette: one fixed presentation, with colorful pulse feedback. */
+/* Black and white interface with colorful pulse feedback. */
 :root, html, [data-theme="ambient"] {
-  --bg-base: #0d0b1a; --bg-elev: #16122a; --text-base: #f0eaff; --text-muted: #b8acd0;
-  --primary: #ff3cac; --primary-rgb: 255,60,172; --secondary: #2b86c5; --secondary-rgb: 43,134,197;
-  --accent: #ffd700; --border-glass: rgba(255,60,172,0.12); --bg-glass: rgba(22,18,42,0.55);
-  --glow: 0 0 30px rgba(255,60,172,0.4); --stroke-transparent: rgba(255,60,172,0.2);
+  --bg-base: #000000; --bg-elev: #101010; --text-base: #f5f5f5; --text-muted: #b3b3b3;
+  --primary: #ffffff; --primary-rgb: 255,255,255; --secondary: #ffffff; --secondary-rgb: 255,255,255;
+  --accent: #ffffff; --border-glass: rgba(255,255,255,0.12); --bg-glass: rgba(16,16,16,0.55);
+  --glow: 0 0 30px rgba(255,255,255,0.4); --stroke-transparent: rgba(255,255,255,0.2);
 }
 .hero-orbit-ring.r1 { background: conic-gradient(from 0deg, #ff3cac, #2b86c5, #ff6b00, #ffd700, #ff3cac); }
 .hero-orbit-ring.r2 { background: conic-gradient(from 180deg, #2b86c5, #ff3cac, #ffd700, #00e5a0, #2b86c5); }
@@ -3483,11 +3603,27 @@ footer .font-mono:hover {
 </style>
 </head>
 <body>
-    <div class="page-loader" id="page-loader"><div class="loader-ring"></div><div class="page-loader-text">Initializing quantum field</div></div>
-    <div id="root"><div class="relative min-h-screen bg-[var(--bg-base)] text-[var(--text-base)] overflow-x-hidden"><canvas aria-hidden="true" class="fixed inset-0 -z-10 pointer-events-none" style="opacity: 0.35; width: 1536px; height: 643px;" width="1920" height="803"></canvas><div class="noise-overlay" aria-hidden="true"></div><div class="scroll-progress fixed top-0 inset-x-0 h-[2px] z-[60] bg-transparent"><div id="scroll-progress-bar" class="h-full bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--accent)] transition-all duration-150 ease-out" style="width:0%"></div></div>
-<header class="fixed top-0 inset-x-0 z-50" style="opacity: 1; transform: none;"><nav class="mx-auto flex items-center justify-between px-5 md:px-10 transition-[padding,background] duration-500 py-5 bg-transparent"><a href="#top" class="flex items-center gap-3 group"><img alt="TDSE-ⵣ" class="h-9 w-9 object-contain transition-transform duration-500 group-hover:rotate-90" src="brand/logo.png"><span class="font-display text-lg font-extrabold tracking-tight text-[var(--text-base)]">TDSE-ⵣ</span></a><div class="flex items-center gap-3"><div class="hidden md:flex items-center gap-6 font-mono text-xs uppercase tracking-widest"><a href="https://dahbiz.github.io/tdsez/docs/index.html" class="link-underline text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300 font-bold">DOCS</a><a href="https://dahbiz.github.io/zkit" target="_blank" rel="noopener noreferrer" class="link-underline text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300 font-bold">Zkit</a></div><a href="https://github.com/dahbiz/tdsez" target="_blank" rel="noopener noreferrer" class="hidden sm:flex items-center gap-2 rounded-full glass px-4 py-2 font-mono text-xs uppercase tracking-widest text-[var(--text-base)] hover:shadow-[var(--glow)] transition-shadow duration-300"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg>GitHub</a><button aria-label="Toggle menu" class="md:hidden rounded-full glass p-2.5 text-[var(--text-base)]"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu" aria-hidden="true"><path d="M4 12h16"></path><path d="M4 18h16"></path><path d="M4 6h16"></path></svg></button></div></nav></header><main><section id="top" data-parallax="hero" class="relative min-h-screen flex items-center px-5 md:px-10 pt-32 pb-20 overflow-hidden"><div id="hero-orb" class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hero-orb-breath" style="width: 320px; height: 320px; z-index: 6;"><img src="brand/logo.png" alt="TDSE-ⵣ" style="width: 100%; height: 100%; object-fit: contain; border-radius: 9999px; filter: drop-shadow(0 0 20px rgba(255,60,172,0.3));"><div class="hero-logo-caption">TDSE-ⵣ<small>Strong-field quantum dynamics</small></div></div><div id="hero-ring-1" class="hero-orbit-ring r1" aria-hidden="true"></div><div id="hero-ring-2" class="hero-orbit-ring r2" aria-hidden="true"></div><div id="hero-glow" class="hero-orbit-glow" aria-hidden="true"></div><canvas id="hero-pulse-canvas" class="hero-pulse-canvas" aria-hidden="true"></canvas><div id="hero-impact-ring" class="hero-impact-ring" aria-hidden="true"></div><div class="relative z-10 w-full max-w-6xl"><div data-animate="fade-up" data-delay="0.15" class="flex flex-wrap gap-2 mb-8" style="opacity: 0; transform: translateY(20px); transition: opacity 0.7s ease, transform 0.7s ease;" style="opacity: 1; transform: none;"><span class="font-mono text-[10px] md:text-xs uppercase tracking-widest rounded-full border border-[var(--border-glass)] bg-white/5 px-3 py-1 text-[var(--text-muted)] backdrop-blur-sm">C++17</span><span class="font-mono text-[10px] md:text-xs uppercase tracking-widest rounded-full border border-[var(--border-glass)] bg-white/5 px-3 py-1 text-[var(--text-muted)] backdrop-blur-sm">MPI</span><span class="font-mono text-[10px] md:text-xs uppercase tracking-widest rounded-full border border-[var(--border-glass)] bg-white/5 px-3 py-1 text-[var(--text-muted)] backdrop-blur-sm">PETSc</span><span class="font-mono text-[10px] md:text-xs uppercase tracking-widest rounded-full border border-[var(--border-glass)] bg-white/5 px-3 py-1 text-[var(--text-muted)] backdrop-blur-sm">SLEPc</span><span class="font-mono text-[10px] md:text-xs uppercase tracking-widest rounded-full border border-[var(--border-glass)] bg-white/5 px-3 py-1 text-[var(--text-muted)] backdrop-blur-sm">PETIGA</span></div><h1 class="font-display font-extrabold tracking-tighter leading-[0.95] text-[var(--text-base)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl"><span class="block overflow-hidden" data-animate="mask-line"><span class="block " data-animate="mask-inner" style="transform: translateY(110%); transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);">Attosecond</span></span><span class="block overflow-hidden" data-animate="mask-line"><span class="block " data-animate="mask-inner" style="transform: translateY(110%); transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);">quantum dynamics,</span></span><span class="block overflow-hidden" data-animate="mask-line"><span class="block" data-animate="mask-inner" style="transform: translateY(110%); transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1); color: #ff3cac; text-shadow: 0 0 30px rgba(255,60,172,0.5);">made reproducible.</span></span></h1><p class="mt-8 max-w-xl font-body text-base md:text-lg text-[var(--text-muted)] leading-relaxed" style="opacity: 1; transform: none;">An open C++ framework for modelling atomic and molecular dynamics in strong laser fields. Define an input file, run the solver on a workstation or MPI cluster, and inspect reproducible HDF5 output.</p><div class="mt-10 flex flex-wrap items-center gap-4" style="opacity: 1; transform: none;"><a href="https://dahbiz.github.io/tdsez/docs/index.html" class="group inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-7 py-3.5 font-mono text-sm font-semibold uppercase tracking-widest text-[var(--bg-base)] shadow-[var(--glow)] transition-transform duration-300 hover:-translate-y-0.5" tabindex="0">Read the guide<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a></div><div class="mt-16 grid grid-cols-2 sm:grid-cols-2 gap-px max-w-2xl overflow-hidden rounded-2xl glass" style="opacity: 1; transform: none;"><div class="p-5"><div class="font-mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Parallelism</div><div class="mt-1 font-display text-lg font-bold text-[var(--text-base)]">MPI + OpenMP</div></div><div class="p-5"><div class="font-mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Resolution</div><div class="mt-1 font-display text-lg font-bold text-[var(--text-base)]">Attosecond</div></div></div></div></section>
-
-</main><footer id="contact" class="relative z-10 border-t border-[var(--border-glass)] px-5 md:px-10 pt-24 pb-10"><div class="max-w-6xl mx-auto"><div data-animate="fade-up" class="glass rounded-3xl p-8 md:p-14" style="opacity: 0; transform: translateY(30px); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);"><div class="footer-split"><div class="footer-text"><h2 class="font-display text-2xl md:text-4xl font-extrabold tracking-tighter text-[var(--text-base)]">Simulate attosecond dynamics.</h2><p class="mt-4 font-body text-[var(--text-muted)] max-w-md">Clone the repository, run the benchmark suite, and start exploring ultrafast quantum physics.</p><div class="mt-8 flex flex-wrap gap-4 footer-buttons"><a href="https://github.com/dahbiz/tdsez" target="_blank" rel="noopener noreferrer" class="group inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-7 py-3.5 font-mono text-sm font-semibold uppercase tracking-widest text-[var(--bg-base)] shadow-[var(--glow)] transition-transform duration-300 hover:-translate-y-0.5"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg> Clone on GitHub</a></div></div><div class="mac-terminal"><div class="mac-terminal-bar"><span class="mac-dot mac-dot-red"></span><span class="mac-dot mac-dot-yellow"></span><span class="mac-dot mac-dot-green"></span><span class="mac-terminal-title">tdsez — zsh</span></div><div class="mac-terminal-body" id="terminal-demo"><div class="term-line"><span class="term-prompt">$</span> git clone https://github.com/dahbiz/tdsez.git</div><div class="term-output">Cloning into 'tdsez'...</div><div class="term-line"><span class="term-prompt">$</span> cd tdsez &amp;&amp; mkdir build &amp;&amp; cd build</div><div class="term-line"><span class="term-prompt">$</span> cmake ..</div><div class="term-output">-- Found PETSc 3.24.3<br>-- Found SLEPc 3.24.3<br>-- Found PETIGA<br>-- Configuring done<br>-- Build files written</div><div class="term-line"><span class="term-prompt">$</span> make -j8</div><div class="term-output">[100%] Built target tdsez</div><div class="term-line"><span class="term-prompt">$</span> mpirun -np 4 ./tdsez -inp inps/model.inp</div><div class="term-output" id="term-running">Running 4 MPI processes...<span class="term-cursor term-cursor-blink">▊</span></div></div></div></div></div><div class="mt-16 flex flex-col md:flex-row md:items-center md:justify-between gap-8"><div class="flex items-center gap-3"><img alt="" class="h-8 w-8 object-contain" src="brand/logo.png"><span class="font-display font-extrabold tracking-tight text-[var(--text-base)]">TDSE-ⵣ</span></div><div class="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 font-mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]"><span>© <span data-ve-dynamic="true" style="display: contents;">2026</span> Dr. Zakaria Dahbi</span><span class="funding-acknowledgement">Z.D. acknowledges funding from UK Research and Innovation (UKRI) under the UK government’s Horizon Europe funding guarantee [Grant No. EP/Z000807/1].</span><img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/UKRI_EPSR_Council-Logo_Horiz-RGB.png?utm_source=commons.wikimedia.org&amp;utm_campaign=index&amp;utm_content=original" alt="UKRI Engineering and Physical Sciences Research Council" style="width: 180px; height: auto; opacity: 0.9;"></div></div></footer></div></div>
+    <div class="page-loader" id="page-loader"><div class="loader-ring"></div><div class="page-loader-text">ⵣ — coded with Amazigh roots. From free people, for free people.</div></div>
+    <div id="root"><div class="relative min-h-screen bg-[var(--bg-base)] text-[var(--text-base)] overflow-x-hidden"><div class="noise-overlay" aria-hidden="true"></div><div class="scroll-progress fixed top-0 inset-x-0 h-[2px] z-[60] bg-transparent"><div id="scroll-progress-bar" class="h-full bg-gradient-to-r from-[var(--primary)] via-[var(--secondary)] to-[var(--accent)] transition-all duration-150 ease-out" style="width:0%"></div></div><header class="fixed top-0 inset-x-0 z-50" style="opacity: 1; transform: none;"><nav class="mx-auto flex items-center justify-between px-5 md:px-10 transition-[padding,background] duration-500 py-5 bg-transparent"><a href="#top" class="flex items-center gap-3 group"><img alt="" class="h-9 w-9 object-contain transition-transform duration-500 group-hover:rotate-90" src="brand/logo.png"><span class="font-display text-lg font-extrabold tracking-tight text-[var(--text-base)]">TDSE-ⵣ</span></a><div class="flex items-center gap-3"><div class="hidden md:flex items-center gap-6 font-mono text-xs uppercase tracking-widest"><a href="docs_sphinx/_build/html/index.html" class="link-underline text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300 font-bold">DOCS</a><a href="https://dahbiz.github.io/zkit" target="_blank" rel="noopener noreferrer" class="link-underline text-[var(--text-muted)] hover:text-[var(--text-base)] transition-colors duration-300 font-bold">Zkit</a></div><a href="https://github.com/dahbiz/tdsez" target="_blank" rel="noopener noreferrer" class="hidden sm:flex items-center gap-2 rounded-full glass px-4 py-2 font-mono text-xs uppercase tracking-widest text-[var(--text-base)] hover:shadow-[var(--glow)] transition-shadow duration-300"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-github" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg>GitHub</a><button aria-label="Toggle menu" class="md:hidden rounded-full glass p-2.5 text-[var(--text-base)]"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu" aria-hidden="true"><path d="M4 12h16"></path><path d="M4 18h16"></path><path d="M4 6h16"></path></svg></button></div></nav></header><main><section id="top" class="relative flex items-center px-5 md:px-10 overflow-hidden"><canvas id="hero-pulse-canvas" class="hero-pulse-canvas" aria-hidden="true"></canvas><div class="relative z-10 w-full landing-layout"><div class="landing-heading"><h1 class="font-display font-extrabold tracking-tighter leading-[0.95] text-[var(--text-base)] text-4xl sm:text-5xl md:text-6xl lg:text-7xl"><span class="block overflow-hidden" data-animate="mask-line"><span class="block " data-animate="mask-inner" style="transform: translateY(110%); transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);">Attosecond</span></span><span class="block overflow-hidden" data-animate="mask-line"><span class="block " data-animate="mask-inner" style="transform: translateY(110%); transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);">quantum dynamics,</span></span><span class="block overflow-hidden" data-animate="mask-line"><span class="block" data-animate="mask-inner" style="transform: translateY(110%); transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1); color: #ff3cac; text-shadow: 0 0 30px rgba(255,60,172,0.5);">made at scale.</span></span></h1></div><div class="landing-copy"><p class="mt-8 max-w-xl font-body text-base md:text-lg text-[var(--text-muted)] leading-relaxed" style="opacity: 1; transform: none;">An open C++ framework for modelling atomic and molecular dynamics in strong laser fields. Define an input file, run the solver on a workstation or MPI cluster, and inspect reproducible HDF5 output.</p><div class="mt-10 flex flex-wrap items-center gap-4" style="opacity: 1; transform: none;"><a href="docs_sphinx/_build/html/index.html" class="group inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-7 py-3.5 font-mono text-sm font-semibold uppercase tracking-widest text-[var(--bg-base)] shadow-[var(--glow)] transition-transform duration-300 hover:-translate-y-0.5" tabindex="0">Read the guide<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></a></div><div class="mt-10 grid grid-cols-2 sm:grid-cols-2 gap-px max-w-2xl overflow-hidden rounded-2xl glass" style="opacity: 1; transform: none;"><div class="p-5"><div class="font-mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Parallelism</div><div class="mt-1 font-display text-lg font-bold text-[var(--text-base)]">MPI + OpenMP</div></div><div class="p-5"><div class="font-mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Resolution</div><div class="mt-1 font-display text-lg font-bold text-[var(--text-base)]">Attosecond</div></div></div></div>
+<div class="hero-animation-space" aria-hidden="true"><div id="hero-orb" class="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hero-orb-breath" style="z-index: 6;"><img src="brand/logo.png" alt="TDSE-ⵣ" style="width: 100%; height: 100%; object-fit: contain; border-radius: 9999px;"></div><div id="hero-ring-1" class="hero-orbit-ring r1" aria-hidden="true"></div><div id="hero-ring-2" class="hero-orbit-ring r2" aria-hidden="true"></div><div id="hero-glow" class="hero-orbit-glow" aria-hidden="true"></div><div id="hero-impact-ring" class="hero-impact-ring" aria-hidden="true"></div></div>
+<div class="landing-terminal-section" role="group" aria-label="Example terminal session">
+<div class="mac-terminal"><div class="mac-terminal-bar"><span class="mac-dot mac-dot-red"></span><span class="mac-dot mac-dot-yellow"></span><span class="mac-dot mac-dot-green"></span><span class="mac-terminal-title">tdsez — zsh</span></div><div class="mac-terminal-body" id="terminal-demo"><div class="term-line"><span class="term-prompt">$</span> git clone https://github.com/dahbiz/tdsez.git</div><div class="term-output">Cloning into 'tdsez'...</div><div class="term-line"><span class="term-prompt">$</span> cd tdsez &amp;&amp; mkdir build &amp;&amp; cd build</div><div class="term-line"><span class="term-prompt">$</span> cmake ..</div><div class="term-output">-- Found PETSc 3.24.3<br>-- Found SLEPc 3.24.3<br>-- Found PETIGA<br>-- Configuring done<br>-- Build files written</div><div class="term-line"><span class="term-prompt">$</span> make -j8</div><div class="term-output">[100%] Built target tdsez</div><div class="term-line"><span class="term-prompt">$</span> mpirun -np 4 ./tdsez -inp inps/model.inp</div><div class="term-output" id="term-running">Running 4 MPI processes...<span class="term-cursor term-cursor-blink">▊</span></div></div></div>
+</div></div></section>
+</main><footer id="contact" class="relative z-10 border-t border-[var(--border-glass)] px-5 md:px-10"><div class="max-w-6xl mx-auto">
+  <div class="footer-meta">
+    <div class="footer-copyright">
+      <span>© <span data-ve-dynamic="true" style="display: contents;">2026</span> Dr. Zakaria Dahbi</span>
+      <svg viewBox="0 0 240 16" aria-hidden="true" focusable="false">
+        <defs><linearGradient id="footer-pulse-gradient" x1="0%" x2="100%"><stop stop-color="#00f0ff"/><stop offset="50%" stop-color="#ff3cac"/><stop offset="100%" stop-color="#ffe000"/></linearGradient></defs>
+        <path d="M 1 8 H 65 C 72 8 76 2 82 2 S 92 14 98 14 S 108 2 114 2 S 124 14 130 14 S 140 2 146 2 S 156 14 162 14 S 172 8 178 8 H 239" fill="none" stroke="url(#footer-pulse-gradient)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="footer-funding">
+      <p>Z.D. acknowledges funding from UK Research and Innovation (UKRI) under the UK government’s Horizon Europe funding guarantee [Grant No. EP/Z000807/1].</p>
+      <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/UKRI_EPSR_Council-Logo_Horiz-RGB.png" alt="UKRI Engineering and Physical Sciences Research Council" loading="lazy" decoding="async" width="150" height="50">
+    </div>
+  </div>
+</div></footer></div></div>
     <script>
         // Animated counters
         function animateCounter(el, target, duration) {
@@ -3526,65 +3662,6 @@ footer .font-mono:hover {
             observer.observe(el);
         });
 
-        // Quantum canvas animation
-        const canvas = document.querySelector('canvas[data-testid="quantum-canvas"]');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            let particles = [];
-            const w = canvas.width = window.innerWidth;
-            const h = canvas.height = window.innerHeight;
-            for (let i = 0; i < 60; i++) {
-                particles.push({
-                    x: Math.random() * w, y: Math.random() * h,
-                    vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
-                    r: Math.random() * 2 + 0.5
-                });
-            }
-            function drawParticles() {
-                ctx.fillStyle = '#0d0b1a';
-                ctx.fillRect(0, 0, w, h);
-                const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-                particles.forEach((p, i) => {
-                    p.x += p.vx; p.y += p.vy;
-                    if (p.x < 0 || p.x > w) p.vx *= -1;
-                    if (p.y < 0 || p.y > h) p.vy *= -1;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-                    ctx.fillStyle = primary;
-                    ctx.globalAlpha = 0.3;
-                    ctx.fill();
-                    // Draw connections
-                    for (let j = i + 1; j < particles.length; j++) {
-                        const dx = p.x - particles[j].x;
-                        const dy = p.y - particles[j].y;
-                        const dist = Math.sqrt(dx*dx + dy*dy);
-                        if (dist < 120) {
-                            ctx.beginPath();
-                            ctx.moveTo(p.x, p.y);
-                            ctx.lineTo(particles[j].x, particles[j].y);
-                            ctx.strokeStyle = primary;
-                            ctx.globalAlpha = 0.15 * (1 - dist/120);
-                            ctx.lineWidth = 0.5;
-                            ctx.stroke();
-                        }
-                    }
-                });
-                ctx.globalAlpha = 1;
-                requestAnimationFrame(drawParticles);
-            }
-            drawParticles();
-        }
-
-        // Smooth scroll for nav links
-        document.querySelectorAll('a[href^="#"]').forEach(a => {
-            a.addEventListener('click', e => {
-                const target = document.querySelector(a.getAttribute('href'));
-                if (target) {
-                    e.preventDefault();
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
     </script>
 
 <script>
@@ -3598,19 +3675,22 @@ footer .font-mono:hover {
   document.body.prepend(canvas);
 
   const ctx = canvas.getContext('2d');
-  let raf, width = 0, height = 0, nodes = [], t = 0;
-  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let raf = 0, width = 0, height = 0, nodes = [], bonds = [], t = 0, lastFrame = 0;
+  let dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   const mouse = { x: -9999, y: -9999 };
-
-  function hexToRgb(hex) {
-    const h = hex.replace('#', '');
-    const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
-    const n = parseInt(full, 16);
-    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-  }
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const dotSprite = document.createElement('canvas');
+  dotSprite.width = dotSprite.height = 32;
+  const dotCtx = dotSprite.getContext('2d');
+  const dotGlow = dotCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  dotGlow.addColorStop(0, 'rgba(43,134,197,0.9)');
+  dotGlow.addColorStop(1, 'rgba(255,60,172,0)');
+  dotCtx.fillStyle = dotGlow;
+  dotCtx.fillRect(0, 0, 32, 32);
 
   function buildNodes() {
     nodes = [];
+    bonds = [];
     const spacing = width < 768 ? 130 : 100;
     const cols = Math.ceil(width / spacing) + 1;
     const rows = Math.ceil(height / spacing) + 1;
@@ -3625,29 +3705,34 @@ footer .font-mono:hover {
         });
       }
     }
+    // Only nearby grid points can connect, even when the cursor moves them.
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].ox - nodes[j].ox;
+        const dy = nodes[i].oy - nodes[j].oy;
+        if (dx * dx + dy * dy < 220 * 220) bonds.push([nodes[i], nodes[j]]);
+      }
+    }
   }
 
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+    dpr = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(3000000 / Math.max(1, width * height)));
+    canvas.width = Math.max(1, Math.round(width * dpr));
+    canvas.height = Math.max(1, Math.round(height * dpr));
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     buildNodes();
   }
 
-  function render() {
-    t += 0.016;
+  function render(now) {
+    raf = requestAnimationFrame(render);
+    if (lastFrame && now - lastFrame < 1000 / 30) return;
+    t += lastFrame ? Math.min((now - lastFrame) / 1000, 0.05) : 1 / 30;
+    lastFrame = now;
     ctx.clearRect(0, 0, width, height);
-
-    const styles = getComputedStyle(document.documentElement);
-    const primary = (styles.getPropertyValue('--primary').trim() || '#ffffff');
-    const secondary = (styles.getPropertyValue('--secondary').trim() || '#ffffff');
-    const p = hexToRgb(primary);
-    const s = hexToRgb(secondary);
 
     // Update node positions (driven oscillation + cursor lensing)
     for (const n of nodes) {
@@ -3673,20 +3758,16 @@ footer .font-mono:hover {
     // Draw connecting bonds
     const maxDist = 118;
     ctx.lineWidth = 1;
-    for (let i = 0; i < nodes.length; i++) {
-      const a = nodes[i];
-      for (let k = i + 1; k < nodes.length; k++) {
-        const b = nodes[k];
-        const ddx = a.x - b.x, ddy = a.y - b.y;
-        const d2 = ddx * ddx + ddy * ddy;
-        if (d2 < maxDist * maxDist) {
-          const alpha = (1 - Math.sqrt(d2) / maxDist) * 0.5;
-          ctx.strokeStyle = `rgba(${p.r},${p.g},${p.b},${alpha})`;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
+    for (const [a, b] of bonds) {
+      const ddx = a.x - b.x, ddy = a.y - b.y;
+      const d2 = ddx * ddx + ddy * ddy;
+      if (d2 < maxDist * maxDist) {
+        const alpha = (1 - Math.sqrt(d2) / maxDist) * 0.5;
+        ctx.strokeStyle = `rgba(255,60,172,${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
       }
     }
 
@@ -3694,25 +3775,33 @@ footer .font-mono:hover {
     for (const n of nodes) {
       const pulse = 0.6 + 0.4 * Math.abs(Math.sin(t * n.freq + n.phase));
       const r = 1.6 + pulse * 1.6;
-      const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 4);
-      grad.addColorStop(0, `rgba(${s.r},${s.g},${s.b},${0.9 * pulse})`);
-      grad.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, r * 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(${p.r},${p.g},${p.b},${pulse})`;
+      const glowRadius = r * 4;
+      ctx.globalAlpha = pulse;
+      ctx.drawImage(dotSprite, n.x - glowRadius, n.y - glowRadius, glowRadius * 2, glowRadius * 2);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = `rgba(255,60,172,${pulse})`;
       ctx.beginPath();
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fill();
     }
-    raf = requestAnimationFrame(render);
   }
 
   resize();
-  render();
+  function updateActivity() {
+    if (document.hidden || reducedMotion.matches) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      lastFrame = 0;
+      ctx.clearRect(0, 0, width, height);
+    } else if (!raf) {
+      raf = requestAnimationFrame(render);
+    }
+  }
+  updateActivity();
 
   window.addEventListener('resize', resize);
+  document.addEventListener('visibilitychange', updateActivity);
+  reducedMotion.addEventListener('change', updateActivity);
   window.addEventListener('mousemove', e => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
@@ -3814,63 +3903,9 @@ footer .font-mono:hover {
   }
 })();
 
-// === HERO ORB (scroll-linked transform on logo) ===
-(function() {
-  const orb = document.querySelector('[data-animate="hero-orb"]');
-  if (!orb) return;
-  const heroSection = document.getElementById('top');
-  if (!heroSection) return;
-
-  function onScroll() {
-    const rect = heroSection.getBoundingClientRect();
-    const total = rect.height + window.innerHeight;
-    const scrolled = Math.max(0, Math.min(1, -rect.top / (rect.height)));
-    const orbY = scrolled * 160;
-    const orbRot = scrolled * 90;
-    const orbScale = 1 + scrolled * 0.25;
-    orb.style.transform = `translateY(${orbY}px) rotate(${orbRot}deg) scale(${orbScale})`;
-  }
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-})();
-
-// === LIVE COUNTER (showcase stats) ===
-(function() {
-  function animateCounter(el, start, perSecond, formatter) {
-    let val = start;
-    let last = performance.now();
-    function tick(now) {
-      const dt = (now - last) / 1000;
-      last = now;
-      val += perSecond * dt;
-      el.textContent = formatter(val);
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-  }
-
-  const iterEl = document.querySelector('[data-counter="iterations"]');
-  if (iterEl) {
-    animateCounter(iterEl, 10402110, 3175, v => Math.floor(v).toLocaleString());
-  }
-
-  const normEl = document.querySelector('[data-counter="norm"]');
-  if (normEl) {
-    animateCounter(normEl, 0.9999820, 0, v => v.toFixed(7));
-  }
-})();
-
-// === MARQUEE (infinite scroll) ===
-(function() {
-  const track = document.querySelector('.marquee-track');
-  if (!track) return;
-  track.style.display = 'flex';
-  track.style.animation = 'marquee-scroll 30s linear infinite';
-})();
-
 // === NAV SHRINK ON SCROLL ===
 (function() {
-  const nav = document.querySelector('nav');
+  const nav = document.querySelector('header nav');
   if (!nav) return;
   function onScroll() {
     if (window.scrollY > 24) {
@@ -3886,7 +3921,6 @@ footer .font-mono:hover {
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 })();
-
 
 // === SMOOTH SCROLL ===
 (function() {
@@ -3908,21 +3942,26 @@ footer .font-mono:hover {
   const hero = document.getElementById('top');
   const canvas = document.getElementById('hero-pulse-canvas');
   const orb = document.getElementById('hero-orb');
+  const animationSpace = document.querySelector('.hero-animation-space');
   const ring1 = document.getElementById('hero-ring-1');
   const ring2 = document.getElementById('hero-ring-2');
   const glow = document.getElementById('hero-glow');
   const impactRing = document.getElementById('hero-impact-ring');
-  if (!hero || !canvas || !orb) return;
+  if (!hero || !canvas || !orb || !animationSpace) return;
 
   const ctx = canvas.getContext('2d');
-  let W = 0, H = 0, dpr = window.devicePixelRatio || 1;
+  let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
   function resize() {
     const rect = hero.getBoundingClientRect();
     W = rect.width; H = rect.height;
-    canvas.width = W * dpr; canvas.height = H * dpr;
+    dpr = Math.min(window.devicePixelRatio || 1, 1.5, Math.sqrt(3000000 / Math.max(1, W * H)));
+    canvas.width = Math.max(1, Math.round(W * dpr));
+    canvas.height = Math.max(1, Math.round(H * dpr));
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
   }
   resize();
   window.addEventListener('resize', resize);
@@ -3934,6 +3973,23 @@ footer .font-mono:hover {
   ];
   function randColor() { return colors[Math.floor(Math.random() * colors.length)]; }
   function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+
+  function orbMetrics() {
+    const orbRect = orb.getBoundingClientRect();
+    const heroRect = hero.getBoundingClientRect();
+    return {
+      x: orbRect.left + orbRect.width / 2 - heroRect.left,
+      y: orbRect.top + orbRect.height / 2 - heroRect.top,
+      radius: orbRect.width / 2
+    };
+  }
+
+  function visibleBand() {
+    const rect = hero.getBoundingClientRect();
+    const top = Math.min(H, Math.max(0, -rect.top));
+    const bottom = Math.min(H, window.innerHeight - rect.top);
+    return { top: top, bottom: Math.max(top, bottom) };
+  }
 
   // --- Laser polarization ---
   // type: 'linear' (oscillate along angle), 'circular' (orbit), 'elliptical' (elliptical orbit)
@@ -3978,24 +4034,38 @@ footer .font-mono:hover {
   // --- Linear sine wave pulse (travels in a random direction) ---
   function createLinearPulse() {
     const edge = Math.floor(Math.random() * 4);
-    const margin = 200;
-    let x, y;
-    if (edge === 0) { x = -margin; y = Math.random() * H; }
-    else if (edge === 1) { x = W + margin; y = Math.random() * H; }
-    else if (edge === 2) { x = Math.random() * W; y = -margin; }
-    else { x = Math.random() * W; y = H + margin; }
-    const targetX = W * 0.5 + (Math.random() - 0.5) * W * 0.3;
-    const targetY = H * 0.5 + (Math.random() - 0.5) * H * 0.3;
+    const margin = 100;
+    const band = visibleBand();
+    const randomY = () => band.top + Math.random() * (band.bottom - band.top);
+    let x, y, targetX, targetY;
+    if (edge === 0) { x = -margin; y = randomY(); targetX = W + margin; targetY = randomY(); }
+    else if (edge === 1) { x = W + margin; y = randomY(); targetX = -margin; targetY = randomY(); }
+    else if (edge === 2) { x = Math.random() * W; y = band.top - margin; targetX = Math.random() * W; targetY = band.bottom + margin; }
+    else { x = Math.random() * W; y = band.bottom + margin; targetX = Math.random() * W; targetY = band.top - margin; }
+    if (Math.random() < 0.2) {
+      const center = orbMetrics();
+      targetX = center.x + (Math.random() - 0.5) * center.radius;
+      targetY = center.y + (Math.random() - 0.5) * center.radius;
+    }
     const dx = targetX - x, dy = targetY - y;
     const dist = Math.sqrt(dx*dx + dy*dy);
-    const speed = 1.5 + Math.random() * 1.5;
+    const speed = 2.2 + Math.random() * 1.6;
+    const width = 120 + Math.random() * 80;
+    const wavelength = 25 + Math.random() * 25;
+    const halfWidth = width / 2;
+    const envelopeDenominator = 2 * (halfWidth / 2) * (halfWidth / 2);
+    const samples = [];
+    for (let s = -halfWidth; s <= halfWidth; s += 3) {
+      samples.push({ s: s, envelope: Math.exp(-(s * s) / envelopeDenominator), phase: s / wavelength * 2 * Math.PI });
+    }
     return {
       type: 'linear',
       x: x, y: y,
       vx: (dx / dist) * speed, vy: (dy / dist) * speed,
       angle: Math.atan2(dy, dx),
-      width: 120 + Math.random() * 80,
-      wavelength: 25 + Math.random() * 25,
+      width: width,
+      wavelength: wavelength,
+      samples: samples,
       amplitude: 30 + Math.random() * 30,
       color: randColor(),
       life: 1, maxLife: 600,
@@ -4009,9 +4079,11 @@ footer .font-mono:hover {
 
   // --- Circular ripple pulse ---
   function createCircularPulse() {
+    const band = visibleBand();
     return {
       type: 'circular',
-      x: Math.random() * W, y: Math.random() * H,
+      x: Math.random() * W,
+      y: band.top + Math.random() * (band.bottom - band.top),
       r: 5, maxR: 200 + Math.random() * 200,
       speed: 1.5 + Math.random() * 2,
       color: randColor(),
@@ -4071,6 +4143,8 @@ footer .font-mono:hover {
 
   const pulses = [];
   let frameCount = 0;
+  let lastLinearSpawn = 0;
+  let lastCircularSpawn = 0;
   let cooldown = 0;
 
   // Spawn initial pulses
@@ -4159,10 +4233,6 @@ footer .font-mono:hover {
     ring1.style.animation = 'orbit-spin 12s linear infinite, color-burst 1.2s ease-out';
     ring2.style.animation = 'orbit-spin 18s linear infinite reverse, color-burst 1.2s ease-out 0.1s';
     glow.style.animation = 'color-burst 1.2s ease-out';
-    var glowR = 80 + strength * 250;
-    var glowSpread = 20 + strength * 80;
-    var glowOpacity = 0.4 + strength * 0.5;
-    glow.style.boxShadow = '0 0 ' + glowR + 'px ' + glowSpread + 'px ' + rgba(color, glowOpacity);
     impactRing.style.animation = 'none';
     void impactRing.offsetWidth;
     var impactScale = 1 + strength * 2;
@@ -4172,13 +4242,11 @@ footer .font-mono:hover {
     if (strength > 0.3) {
       emitColorBurst(circleCxStored, circleCyStored, color, strength);
     }
-    var clearMs = 1200 + strength * 2000;
-    setTimeout(function() { glow.style.boxShadow = ''; }, clearMs);
   }
 
-  function updatePolMovement() {
+  function updatePolMovement(step) {
     if (!polMovement) return;
-    polMovement.elapsed++;
+    polMovement.elapsed += step;
     var t = polMovement.elapsed / polMovement.duration;
     if (t >= 1) {
       // Restore neutral position
@@ -4226,84 +4294,85 @@ footer .font-mono:hover {
   var drawPoints = [];
   var drawColor = null;
 
-  function getMousePos(e) {
-    var rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  function addDrawPoint(point) {
+    const previous = drawPoints[drawPoints.length - 1];
+    if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) < 3) return;
+    drawPoints.push(point);
+    if (drawPoints.length > 96) {
+      drawPoints = drawPoints.filter(function(_, index) { return index % 2 === 0; });
+    }
   }
 
-  canvas.addEventListener('mousedown', function(e) {
-    drawing = true;
-    drawPoints = [];
-    drawColor = randColor();
-    drawPoints.push(getMousePos(e));
-  });
+  function getMousePos(e) {
+    return { x: e.offsetX, y: e.offsetY };
+  }
 
-  canvas.addEventListener('mousemove', function(e) {
-    if (!drawing) return;
-    var pos = getMousePos(e);
-    drawPoints.push(pos);
-    // Draw the shape being drawn live
-    if (drawPoints.length > 1) {
-      ctx.beginPath();
-      ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
-      for (var i = 1; i < drawPoints.length; i++) {
-        ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
-      }
-      ctx.strokeStyle = rgba(drawColor, 0.9);
-      ctx.lineWidth = 3;
-      ctx.shadowColor = rgba(drawColor, 0.8);
-      ctx.shadowBlur = 15;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-  });
-
-  canvas.addEventListener('mouseup', function(e) {
-    if (!drawing || drawPoints.length < 3) { drawing = false; drawPoints = []; return; }
-    drawing = false;
-    // Create a drawn pulse from the user's shape
-    pulses.push(createDrawnPulse(drawPoints, drawColor));
-    drawPoints = [];
-  });
-
-  canvas.addEventListener('mouseleave', function() {
+  function finishDrawing() {
     if (drawing && drawPoints.length >= 3) {
       pulses.push(createDrawnPulse(drawPoints, drawColor));
     }
     drawing = false;
     drawPoints = [];
+  }
+
+  canvas.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    drawing = true;
+    drawPoints = [];
+    drawColor = randColor();
+    addDrawPoint(getMousePos(e));
   });
+
+  canvas.addEventListener('mousemove', function(e) {
+    if (!drawing) return;
+    if (e.buttons === 0) { finishDrawing(); return; }
+    addDrawPoint(getMousePos(e));
+  });
+
+  canvas.addEventListener('mouseup', finishDrawing);
+  canvas.addEventListener('mouseleave', finishDrawing);
 
   // Touch support
   canvas.addEventListener('touchstart', function(e) {
-    e.preventDefault();
     var t = e.touches[0];
+    var area = animationSpace.getBoundingClientRect();
+    var logo = orb.getBoundingClientRect();
+    var cx = logo.left + logo.width / 2;
+    var cy = logo.top + logo.height / 2;
+    var touchRadius = logo.width * 0.65;
+    if (t.clientX < area.left || t.clientX > area.right || t.clientY < area.top || t.clientY > area.bottom ||
+        Math.hypot(t.clientX - cx, t.clientY - cy) > touchRadius) return;
+    e.preventDefault();
     drawing = true;
     drawPoints = [];
     drawColor = randColor();
     var rect = canvas.getBoundingClientRect();
-    drawPoints.push({ x: t.clientX - rect.left, y: t.clientY - rect.top });
-  });
+    addDrawPoint({ x: t.clientX - rect.left, y: t.clientY - rect.top });
+  }, { passive: false });
   canvas.addEventListener('touchmove', function(e) {
-    e.preventDefault();
     if (!drawing) return;
+    e.preventDefault();
     var t = e.touches[0];
     var rect = canvas.getBoundingClientRect();
-    drawPoints.push({ x: t.clientX - rect.left, y: t.clientY - rect.top });
-  });
+    addDrawPoint({ x: t.clientX - rect.left, y: t.clientY - rect.top });
+  }, { passive: false });
   canvas.addEventListener('touchend', function(e) {
+    if (!drawing) return;
     e.preventDefault();
-    if (!drawing || drawPoints.length < 3) { drawing = false; drawPoints = []; return; }
+    finishDrawing();
+  }, { passive: false });
+  canvas.addEventListener('touchcancel', function() {
     drawing = false;
-    pulses.push(createDrawnPulse(drawPoints, drawColor));
     drawPoints = [];
   });
 
-  function tick() {
+  function tick(step) {
     ctx.clearRect(0, 0, W, H);
 
     const orbRect = orb.getBoundingClientRect();
     const heroRect = hero.getBoundingClientRect();
+    const visibleTop = Math.max(0, -heroRect.top);
+    const visibleBottom = Math.min(H, window.innerHeight - heroRect.top);
     const circleCx = orbRect.left + orbRect.width / 2 - heroRect.left;
     const circleCy = orbRect.top + orbRect.height / 2 - heroRect.top;
     const circleR = orbRect.width / 2;
@@ -4311,11 +4380,13 @@ footer .font-mono:hover {
     circleCyStored = circleCy;
 
     // Spawn auto pulses
-    frameCount++;
-    if (frameCount % 120 === 0 && pulses.filter(function(p) { return p.type === 'linear'; }).length < 5) {
+    frameCount += step;
+    if (frameCount - lastLinearSpawn >= 120 && pulses.filter(function(p) { return p.type === 'linear'; }).length < 5) {
+      lastLinearSpawn = frameCount;
       pulses.push(createLinearPulse());
     }
-    if (frameCount % 90 === 0 && pulses.filter(function(p) { return p.type === 'circular'; }).length < 4) {
+    if (frameCount - lastCircularSpawn >= 90 && pulses.filter(function(p) { return p.type === 'circular'; }).length < 4) {
+      lastCircularSpawn = frameCount;
       pulses.push(createCircularPulse());
     }
 
@@ -4323,13 +4394,16 @@ footer .font-mono:hover {
     if (drawing && drawPoints.length > 1) {
       ctx.beginPath();
       ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
-      for (var i = 1; i < drawPoints.length; i++) {
-        ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+      for (var i = 1; i < drawPoints.length - 1; i++) {
+        ctx.quadraticCurveTo(drawPoints[i].x, drawPoints[i].y,
+          (drawPoints[i].x + drawPoints[i + 1].x) / 2,
+          (drawPoints[i].y + drawPoints[i + 1].y) / 2);
       }
+      ctx.lineTo(drawPoints[drawPoints.length - 1].x, drawPoints[drawPoints.length - 1].y);
       ctx.strokeStyle = rgba(drawColor, 0.9);
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2.5;
       ctx.shadowColor = rgba(drawColor, 0.8);
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = 8;
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
@@ -4339,18 +4413,17 @@ footer .font-mono:hover {
       var dead = false;
 
       if (p.type === 'linear') {
-        p.x += p.vx; p.y += p.vy; p.phase += p.phaseSpeed;
+        p.x += p.vx * step; p.y += p.vy * step; p.phase += p.phaseSpeed * step;
         p.life = 1 - (frameCount % p.maxLife) / p.maxLife;
         var cosA = Math.cos(p.angle), sinA = Math.sin(p.angle);
         var halfW = p.width / 2;
         ctx.beginPath();
-        for (var s = -halfW; s <= halfW; s += 2) {
-          var env = Math.exp(-(s * s) / (2 * Math.pow(halfW / 2, 2)));
-          var ph = s / p.wavelength * 2 * Math.PI + p.phase;
-          var off = p.amplitude * env * Math.sin(ph);
-          var px = p.x + cosA * s - sinA * off;
-          var py = p.y + sinA * s + cosA * off;
-          if (s === -halfW) ctx.moveTo(px, py);
+        for (var j = 0; j < p.samples.length; j++) {
+          var sample = p.samples[j];
+          var off = p.amplitude * sample.envelope * Math.sin(sample.phase + p.phase);
+          var px = p.x + cosA * sample.s - sinA * off;
+          var py = p.y + sinA * sample.s + cosA * off;
+          if (j === 0) ctx.moveTo(px, py);
           else ctx.lineTo(px, py);
         }
         var grad = ctx.createLinearGradient(p.x - cosA * halfW, p.y - sinA * halfW, p.x + cosA * halfW, p.y + sinA * halfW);
@@ -4362,13 +4435,12 @@ footer .font-mono:hover {
         ctx.stroke(); ctx.shadowBlur = 0;
         // Echo wave — phase-offset, smaller amplitude, gives trailing ripple
         ctx.beginPath();
-        for (var s = -halfW; s <= halfW; s += 2) {
-          var env = Math.exp(-(s * s) / (2 * Math.pow(halfW / 2, 2)));
-          var ph = s / p.wavelength * 2 * Math.PI + p.phase + Math.PI / 2;
-          var off = p.amplitude * 0.5 * env * Math.sin(ph);
-          var px = p.x + cosA * s - sinA * off;
-          var py = p.y + sinA * s + cosA * off;
-          if (s === -halfW) ctx.moveTo(px, py);
+        for (var j = 0; j < p.samples.length; j++) {
+          var sample = p.samples[j];
+          var off = p.amplitude * 0.5 * sample.envelope * Math.cos(sample.phase + p.phase);
+          var px = p.x + cosA * sample.s - sinA * off;
+          var py = p.y + sinA * sample.s + cosA * off;
+          if (j === 0) ctx.moveTo(px, py);
           else ctx.lineTo(px, py);
         }
         ctx.strokeStyle = rgba(p.color, 0.3);
@@ -4380,13 +4452,13 @@ footer .font-mono:hover {
           var str = Math.min(1, p.width / 200); // wider pulse = stronger
           triggerVibration(p.vibType, p.color, str, p.polarization); cooldown = 30;
         }
-        if (p.x < -300 || p.x > W + 300 || p.y < -300 || p.y > H + 300) dead = true;
+        if (p.x < -300 || p.x > W + 300 || p.y < visibleTop - 350 || p.y > visibleBottom + 350) dead = true;
       }
       else if (p.type === 'circular') {
-        p.r += p.speed; p.phase += p.phaseSpeed;
+        p.r += p.speed * step; p.phase += p.phaseSpeed * step;
         p.life = 1 - p.r / p.maxR;
         if (p.r >= p.maxR) { dead = true; continue; }
-        var segs = 120;
+        var segs = 72;
         ctx.beginPath();
         for (var a = 0; a <= segs; a++) {
           var ang = (a / segs) * Math.PI * 2;
@@ -4410,9 +4482,9 @@ footer .font-mono:hover {
         }
       }
       else if (p.type === 'drawn') {
-        p.r += p.speed;
-        p.phase += p.phaseSpeed;
-        p.rot += p.rotSpeed;
+        p.r += p.speed * step;
+        p.phase += p.phaseSpeed * step;
+        p.rot += p.rotSpeed * step;
         p.life = 1 - p.r / p.maxR;
         if (p.r >= p.maxR) { dead = true; continue; }
 
@@ -4469,10 +4541,10 @@ footer .font-mono:hover {
       if (dead) pulses.splice(i, 1);
     }
 
-    if (cooldown > 0) cooldown--;
+    if (cooldown > 0) cooldown = Math.max(0, cooldown - step);
 
     // Update polarization-driven circle movement
-    updatePolMovement();
+    updatePolMovement(step);
 
     // Render color burst (radial gradient flash from circle center)
     if (burstAlpha > 0.01) {
@@ -4483,13 +4555,51 @@ footer .font-mono:hover {
       grad2.addColorStop(1, rgba(burstColor, 0));
       ctx.fillStyle = grad2;
       ctx.fillRect(burstCx - burstRadius, burstCy - burstRadius, burstRadius * 2, burstRadius * 2);
-      burstAlpha *= 0.93; // fade out
+      burstAlpha *= Math.pow(0.93, step); // fade out
     }
 
-    requestAnimationFrame(tick);
+    requestTick();
   }
 
-  requestAnimationFrame(tick);
+  let heroVisible = true;
+  let frameRequested = false;
+  let lastHeroFrame = 0;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  function requestTick() {
+    if (frameRequested || !heroVisible || document.hidden || reducedMotion.matches) return;
+    frameRequested = true;
+    requestAnimationFrame(function(now) {
+      frameRequested = false;
+      if (!heroVisible || document.hidden || reducedMotion.matches) {
+        lastHeroFrame = 0;
+        return;
+      }
+      const elapsed = lastHeroFrame ? now - lastHeroFrame : 1000 / 30;
+      if (elapsed < 1000 / 30 - 1) {
+        requestTick();
+        return;
+      }
+      lastHeroFrame = now;
+      tick(Math.min(elapsed / (1000 / 60), 3));
+    });
+  }
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function(entries) {
+      heroVisible = entries[0].isIntersecting;
+      if (!heroVisible) lastHeroFrame = 0;
+      requestTick();
+    }, { rootMargin: '100px' }).observe(hero);
+  }
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) lastHeroFrame = 0;
+    requestTick();
+  });
+  reducedMotion.addEventListener('change', function() {
+    if (reducedMotion.matches) ctx.clearRect(0, 0, W, H);
+    lastHeroFrame = 0;
+    requestTick();
+  });
+  requestTick();
 })();
 
 // ===== SCROLL PROGRESS =====
@@ -4538,45 +4648,6 @@ footer .font-mono:hover {
       setTimeout(() => loader.remove(), 600);
     }
   }, 3000);
-})();
-
-// ===== PARALLAX DEPTH ON SCROLL =====
-(function() {
-  const layers = document.querySelectorAll('[data-parallax]');
-  if (layers.length === 0) return;
-  const speeds = { hero: 0.08, slow: 0.04, medium: 0.06, footer: 0.02 };
-  function updateParallax() {
-    const scrollY = window.scrollY;
-    layers.forEach(layer => {
-      const speed = speeds[layer.dataset.parallax] || 0.05;
-      const y = scrollY * speed;
-      layer.style.transform = `translateY(${y}px)`;
-    });
-  }
-  window.addEventListener('scroll', updateParallax, { passive: true });
-  updateParallax();
-})();
-
-// ===== ENHANCED HERO ORB MOUSE FOLLOW =====
-(function() {
-  const orb = document.getElementById('hero-orb');
-  const hero = document.getElementById('top');
-  if (!orb || !hero) return;
-  let targetX = 0, targetY = 0, currentX = 0, currentY = 0;
-  hero.addEventListener('mousemove', (e) => {
-    const rect = hero.getBoundingClientRect();
-    targetX = (e.clientX - rect.left) / rect.width - 0.5;
-    targetY = (e.clientY - rect.top) / rect.height - 0.5;
-  });
-  function animateOrb() {
-    currentX += (targetX - currentX) * 0.05;
-    currentY += (targetY - currentY) * 0.05;
-    const offsetX = currentX * 30;
-    const offsetY = currentY * 30;
-    orb.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
-    requestAnimationFrame(animateOrb);
-  }
-  animateOrb();
 })();
 
 // ===== STATS CARD COLOR FLASH ON VIEW =====
