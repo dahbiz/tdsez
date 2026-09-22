@@ -16,7 +16,6 @@
 
 <p align="center">
   <a href="https://dahbiz.github.io/tdsez/">Website</a> &middot;
-  <a href="https://dahbiz.github.io/tdsez/gallery.html">Gallery</a> &middot;
   <a href="https://dahbiz.github.io/tdsez/docs/">Documentation</a>
 </p>
 

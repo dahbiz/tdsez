@@ -61,12 +61,19 @@ jobs:
           rm -rf _site docs/doxygen
           mkdir -p _site/docs
 
-          # Keep the existing project landing page and gallery at /docs/.
-          cp docs/index.html docs/gallery.html _site/docs/
-          cp -R docs/brand docs/gallery _site/docs/
+          # Keep the existing project landing page at the site root.
+          cp docs/index.html _site/index.html
+          cp -R docs/brand _site/brand
 
           # User guide: /docs/docs_sphinx/_build/html/
           sphinx-build -W -b html docs/docs_sphinx _site/docs/docs_sphinx/_build/html
+
+          # Keep /docs/ as a stable entry point for the generated guide.
+          cat > _site/docs/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=docs_sphinx/_build/html/index.html"><title>TDSE-ⵣ Documentation</title></head>
+          <body><p>Opening the <a href="docs_sphinx/_build/html/index.html">TDSE-ⵣ documentation</a>…</p></body></html>
+          EOF
 
           # C++ API reference: /docs/doxygen/html/
           doxygen Doxyfile
