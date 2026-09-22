@@ -130,11 +130,6 @@ If you use TDSE-Z in your research, please cite:
 The same metadata is available in [`CITATION.cff`](CITATION.cff), which GitHub
 uses to display the repository's “Cite this repository” information.
 
-## Funding acknowledgement
-
-Z.D. acknowledges funding from UK Research and Innovation (UKRI) under the UK
-government’s Horizon Europe funding guarantee [Grant No. EP/Z000807/1].
-
 ## License & Commercial Use
 
 This software is released under the **PolyForm Noncommercial License 1.0.0**.
@@ -149,6 +144,12 @@ for details.
 
 ## Contact
 
-- **Research:** [www.attokings.com](https://www.attokings.com)
-- **Email:** zakaria.dahbi@kcl.ac.uk
-- **GitHub:** [dahbiz/tdsez](https://github.com/dahbiz/tdsez)
+Dr. Zakaria Dahbi
+
+[zakaria.dahbi@kcl.ac.uk](mailto:zakaria.dahbi@kcl.ac.uk) /
+[zdahbi@outlook.es](mailto:zdahbi@outlook.es)
+
+## Funding acknowledgement
+
+Z.D. acknowledges funding from UK Research and Innovation (UKRI) under the UK
+government’s Horizon Europe funding guarantee [Grant No. EP/Z000807/1].
