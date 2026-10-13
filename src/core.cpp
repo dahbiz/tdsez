@@ -111,6 +111,92 @@ PetscErrorCode TDSEZCore::Assemble()
 ///        initial wavefunction for propagation.
 /// @return PetscErrorCode — PETSC_SUCCESS on convergence, or a SLEPc/PETSc
 ///         error code on failure.
+// ── Deterministic eigenvector gauge for superposition initial states ───────
+// SLEPc returns each eigenvector with an arbitrary complex phase that also
+// depends on the solver run and the MPI decomposition. A superposition
+// sum_k c_k phi_k built from raw eigenvectors therefore has an arbitrary
+// relative phase between its terms. The helpers below fix the gauge of every
+// term: the phase makes phi real (as in MakeStatesReal), and the remaining sign
+// is chosen so that the overlap with a fixed smooth weight w(r) is positive.
+
+/// @brief Assemble g_I = \int w(r) B_I(r) dr with the parity-mixing weight
+///        w = prod_d (1 + 0.3 * xhat_d), xhat_d the coordinate scaled to [-1,1].
+///        The weight contains every parity class (1, x, y, z, xy, ...), so any
+///        eigenstate of a reflection-symmetric problem has a nonzero overlap.
+///        Built from physical coordinates, it is independent of the MPI layout.
+static PetscErrorCode TDSEZGaugeWeightVector(IGA iga, Vec *g)
+{
+    PetscFunctionBeginUser;
+    const PetscInt  dim = iga->dim;
+    const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
+    const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
+    PetscCall(IGACreateVec(iga, g));
+    PetscCall(VecSet(*g, 0.0));
+    IGAElement element = NULL;
+    IGAPoint   point   = NULL;
+    PetscCall(IGABeginElement(iga, &element));
+    while (IGANextElement(iga, element)) {
+        const PetscInt nen = element->nen;
+        PetscScalar   *F   = NULL;
+        PetscCall(IGAElementGetWorkVec(element, &F));
+        PetscCall(PetscArrayzero(F, nen));
+        PetscCall(IGAElementBeginPoint(element, &point));
+        while (IGAElementNextPoint(element, point)) {
+            PetscReal xyz[3] = {0.0, 0.0, 0.0};
+            PetscCall(IGAPointFormGeomMap(point, xyz));
+            PetscReal wt = 1.0;
+            for (PetscInt d = 0; d < dim; ++d) {
+                const PetscReal half = 0.5 * (hi[d] - lo[d]);
+                const PetscReal xhat = half > 0.0 ? (xyz[d] - 0.5 * (hi[d] + lo[d])) / half : 0.0;
+                wt *= 1.0 + 0.3 * xhat;
+            }
+            const PetscReal *B = NULL;
+            PetscCall(IGAPointGetShapeFuns(point, 0, &B));
+            const PetscReal jw = point->weight[0] * point->detJac[0] * wt;
+            for (PetscInt a = 0; a < nen; ++a) F[a] += B[a] * jw;
+        }
+        PetscCall(IGAElementEndPoint(element, &point));
+        PetscCall(IGAElementAssembleVec(element, F, *g));
+    }
+    PetscCall(IGAEndElement(iga, &element));
+    PetscCall(VecAssemblyBegin(*g));
+    PetscCall(VecAssemblyEnd(*g));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/// @brief Fix the gauge of an eigenvector in place: rotate its global phase so
+///        that c^T M c is real and positive (c real for a nondegenerate state),
+///        then flip the sign so that \int w psi = g^T c > 0.
+/// @param[in,out] c  Eigenvector coefficients.
+/// @param[in]     M  Overlap matrix.
+/// @param[in]     g  Weight vector from TDSEZGaugeWeightVector.
+/// @param[in]     k  State index (for diagnostics).
+static PetscErrorCode TDSEZFixEigenvectorGauge(Vec c, Mat M, Vec g, PetscInt k)
+{
+    PetscFunctionBeginUser;
+    Vec Mc;
+    PetscScalar z, ov;
+    PetscCall(VecDuplicate(c, &Mc));
+    PetscCall(MatMult(M, c, Mc));
+    PetscCall(VecTDot(c, Mc, &z));                        // z = c^T M c (no conjugate)
+    PetscCall(VecDestroy(&Mc));
+    if (PetscAbsScalar(z) > 0.0) {
+        const PetscReal theta = 0.5 * PetscAtan2Real(PetscImaginaryPart(z), PetscRealPart(z));
+        PetscCall(VecScale(c, PetscExpScalar(-PETSC_i * theta)));
+    }
+    PetscCall(VecTDot(c, g, &ov));                        // \int w psi
+    PetscReal nc, ng;
+    PetscCall(VecNorm(c, NORM_2, &nc));
+    PetscCall(VecNorm(g, NORM_2, &ng));
+    if (PetscAbsReal(PetscRealPart(ov)) < 1e-10 * nc * ng)
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+            "TDSEZ: WARNING state %" PetscInt_FMT " has a near-zero gauge overlap; "
+            "its sign in the superposition may not be reproducible.\n", k));
+    if (PetscRealPart(ov) < 0.0) PetscCall(VecScale(c, -1.0));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
 PetscErrorCode TDSEZCore::Solve()
 {
     PetscFunctionBegin;
@@ -204,7 +290,7 @@ PetscErrorCode TDSEZCore::Solve()
         std::string desc;
         for (const auto &term : TDSEZParser::InitialStateTerms) {
             if (!desc.empty()) desc += " + ";
-            char cbuf[32];
+            char cbuf[64];
             snprintf(cbuf, sizeof(cbuf), "%.3f*state:%" PetscInt_FMT, term.second, term.first);
             desc += cbuf;
         }
@@ -497,19 +583,23 @@ if (useDirect) {
         // Assemble psi0 = sum_i coeff_i * eigenvector(idx_i)
         PetscCall(IGACreateVec(iga, &initialPsi));
         PetscCall(VecSet(initialPsi, 0.0));
+        Vec gaugeW = PETSC_NULLPTR;
+        PetscCall(TDSEZGaugeWeightVector(iga, &gaugeW));
         std::string desc;
         for (const auto &term : TDSEZParser::InitialStateTerms) {
             PetscInt  k = term.first;
             PetscReal c = term.second;
             Vec evec = PETSC_NULLPTR;
             PetscCall(buildFromIndex(k, &evec));
+            PetscCall(TDSEZFixEigenvectorGauge(evec, M, gaugeW, k));
             PetscCall(VecAXPY(initialPsi, c, evec));
             PetscCall(VecDestroy(&evec));
             if (!desc.empty()) desc += " + ";
-            char cbuf[32];
+            char cbuf[64];
             snprintf(cbuf, sizeof(cbuf), "%.3f*state:%" PetscInt_FMT, c, k);
             desc += cbuf;
         }
+        PetscCall(VecDestroy(&gaugeW));
         // Normalize so <psi0|M|psi0> = 1 (physical convention for observables)
         if (TDSEZParser::NormalizeInitialState) {
             Vec Mpsi = PETSC_NULLPTR;
