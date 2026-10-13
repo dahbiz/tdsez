@@ -297,7 +297,9 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
     Vec rhs = work_[0], Hx = work_[1], tmp = work_[2];
 
     for (int k = 0; k < 2; ++k) {
+        PetscCall(PetscLogEventBegin(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
         PetscCall(BuildStageMatrix(Astage_[k], g[k], E));
+        PetscCall(PetscLogEventEnd(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
         // rhs = M x + conj(g) H_E x
         PetscCall(MatMult(manager_.H(), psi, Hx));
         for (int a = 0; a < 3; ++a)

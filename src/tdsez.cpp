@@ -133,12 +133,20 @@ int main(int argc, char *argv[])
         PetscCallAbort(PETSC_COMM_WORLD,
             PetscOptionsSetValue(PETSC_NULLPTR, "-iga_vec_type", igaVecType.c_str()));
     // Dedicated, clean timing metrics
-    PetscLogDouble t_global_start, t_global_end;
-    PetscLogDouble t_assemble_start, t_assemble_end;
-    PetscLogDouble t_solve_start, t_solve_end;
-    PetscLogDouble t_data_write_start = 0.0, t_data_write_end = 0.0;
-    PetscLogDouble t_prop_start = 0.0, t_prop_end = 0.0;
-    PetscTime(&t_global_start);
+    // Run profile: phase wall times plus PETSc log stages for the propagation
+    // breakdown; reported in the timing summary at the end of the run.
+    TDSEZProfile &profile = TDSEZProfile::Get();
+    PetscCallAbort(PETSC_COMM_WORLD, profile.Init());
+    PetscLogDouble t_phase = 0.0, t_now = 0.0;
+    PetscTime(&t_phase);
+    // Close the current phase: charge the time since the last mark to p.
+    auto markPhase = [&](TDSEZProfile::Phase p) {
+        PetscTime(&t_now);
+        profile.Add(p, t_now - t_phase);
+        t_phase = t_now;
+    };
+    PetscInt  reportDofs = 0;
+    PetscBool propagated = PETSC_FALSE;
 
     /// Main workflow: read input, assemble, solve, and optionally propagate.
     try {
@@ -147,17 +155,16 @@ int main(int argc, char *argv[])
         (void)TDSEZParser::Dimension;
 
         TDSEZCore TDSEZ(input);
+        markPhase(TDSEZProfile::Setup);
 
-        // 1. Matrix Assembly Timing
-        PetscTime(&t_assemble_start);
         PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Assemble());
-        PetscTime(&t_assemble_end);
-        // 2. Eigensolver Timing
-        PetscTime(&t_solve_start);
+        markPhase(TDSEZProfile::Assembly);
         PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Solve());
-        PetscTime(&t_solve_end);
+        markPhase(TDSEZProfile::Eigensolve);
+        if (TDSEZ.initialPsi) PetscCallAbort(PETSC_COMM_WORLD, VecGetSize(TDSEZ.initialPsi, &reportDofs));
 
         PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Output());
+        markPhase(TDSEZProfile::StaticOutput);
 
         // Decide whether the dipole operator assembler must be built. It is
         // needed ONLY when (a) a dipole-matrix save was explicitly requested
@@ -201,6 +208,7 @@ int main(int argc, char *argv[])
                 PetscCall(TDSEZSaveOperatorMatrix(
                     pDipole->Dz, "static/Dz_" + dipPrefix + ".bin"));
         }
+        markPhase(TDSEZProfile::OperatorAssembly);
 
         if (!TDSEZParser::EnablePropagation)
         {
@@ -212,9 +220,6 @@ int main(int argc, char *argv[])
         }
         else
         {
-            // Intermediate Setup Timing (Local Scope Variables)
-            PetscLogDouble t_setup_start;
-            (void)t_setup_start;
             if (!pDipole) pDipole = new TDSEZAssembler(TDSEZ.iga); // safety
             TDSEZManager manager(&TDSEZ, pDipole);
 
@@ -252,25 +257,28 @@ int main(int argc, char *argv[])
             }
             manager.setPsi0(psi0Local);
 
-            PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
-            PetscPrintf(PETSC_COMM_WORLD, "                       PROPAGATING THE QUANTUM SYSTEM                  \n");
-            PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
+            TDSEZInfo propagationInfo(PETSC_COMM_WORLD);
+            propagationInfo.section("PROPAGATION");
+            markPhase(TDSEZProfile::TDSetup);
 
-            // 3. Time Propagation Timing (Dedicated Scope Variables)
-            PetscTime(&t_prop_start);
+            // Propagation runs in its own log stage; the monitors push the nested
+            // "TDSEZ Observables" stage, so solver events in this stage are
+            // purely time-stepping work.
+            PetscCall(PetscLogStagePush(profile.stagePropagation));
             manager.outputFilename = "td/TimeEvolutionData_" + dipPrefix + ".h5";
             TDSEZPropagator propagator(manager);
             PetscCallAbort(PETSC_COMM_WORLD, propagator.Evolve());
-            PetscTime(&t_prop_end);
+            PetscCall(PetscLogStagePop());
+            markPhase(TDSEZProfile::Propagation);
+            propagated = PETSC_TRUE;
 
             // t-SURFF: finalize accumulators and write the PES to its own HDF5.
             PetscCall(manager.FinalizeSurff());
 
             // write HDF5 output (incremental: only records any remaining unflushed rows),
             // then flush and close the persistent handle so the file is always finalized.
-            PetscTime(&t_data_write_start);
             PetscCallAbort(PETSC_COMM_WORLD, manager.CloseHDF5());
-            PetscTime(&t_data_write_end);
+            markPhase(TDSEZProfile::FinalOutput);
         }
 
         // Assembler (if built) is no longer needed once the manager is gone.
@@ -282,22 +290,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Capture global termination timestamp
-    PetscTime(&t_global_end);
-
-    // Print out the distinct, accurately mapped parameters
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
-    PetscPrintf(PETSC_COMM_WORLD, "         TISE assembly took : %2.4g seconds.\n", t_assemble_end - t_assemble_start);
-    PetscPrintf(PETSC_COMM_WORLD, "         Eigensolve took    : %2.4g seconds.\n", t_solve_end - t_solve_start);
-    if (TDSEZParser::EnablePropagation) {
-        PetscPrintf(PETSC_COMM_WORLD, "         Propagation took : %2.4g seconds.\n", t_prop_end - t_prop_start);
-        PetscPrintf(PETSC_COMM_WORLD, "         Data write took  : %2.4g seconds.\n", t_data_write_end - t_data_write_start);
-    } else {
-        PetscPrintf(PETSC_COMM_WORLD, "         Propagation took : SKIPPED (0.0 seconds).\n");
-        PetscPrintf(PETSC_COMM_WORLD, "         Data write took  : SKIPPED (0.0 seconds).\n");
-    }
-    PetscPrintf(PETSC_COMM_WORLD, "         Total Wall time  : %2.4g seconds.\n", t_global_end - t_global_start);
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
+    // End-of-run timing summary (collective).
+    PetscCallAbort(PETSC_COMM_WORLD, profile.Report(reportDofs, propagated));
 
     SlepcFinalize();
     return 0;
