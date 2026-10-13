@@ -360,6 +360,10 @@ Boundary Conditions and CAP
    :widths: 25 10 15 50
    :header-rows: 1
 
+   * - Propagator
+     - string
+     - "cn"
+     - Time stepper. "cn": Crank-Nicolson, Pade(1,1), second order, one sparse solve per step. "pade22": exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, two solves per step). "magnus4": commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, four solves per step). The rational propagators are unitary for Hermitian H and allow much larger TimeStep at equal accuracy.
    * - Parameter
      - Type
      - Default

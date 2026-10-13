@@ -326,6 +326,10 @@ class TDSEZParser
         /// force operator, needs smooth m and V), or "discrete"
         /// (a = d<v>/dt from the Galerkin equation of motion).
         inline static std::string           AccelerationMethod = "auto";
+        /// Time propagator: "cn" (Crank-Nicolson, Pade(1,1), PETSc TS; default),
+        /// "pade22" (exponential midpoint rule with a Pade(2,2) exponential) or
+        /// "magnus4" (commutator-free 4th-order Magnus, Pade(2,2) exponentials).
+        inline static std::string           Propagator         = "cn";
         // Parsed in ValidateOrThrow:
         //   0 = ground (== state:0), 1 = single state:InitialStateIndex,
         //   2 = superposition, 3 = analytic Quesne, 4 = analytic mass step.

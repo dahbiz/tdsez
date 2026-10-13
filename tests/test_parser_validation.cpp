@@ -68,6 +68,12 @@ int main()
         rejects("AccelerationMethod must be", [] { TDSEZParser::ValidateOrThrow(); });
         TDSEZParser::AccelerationMethod = "auto";
 
+        TDSEZParser::Propagator = "magnus4";
+        TDSEZParser::ValidateOrThrow();
+        TDSEZParser::Propagator = "rk4";
+        rejects("Propagator must be", [] { TDSEZParser::ValidateOrThrow(); });
+        TDSEZParser::Propagator = "cn";
+
         TDSEZParser::Dimension = 4;
         rejects("Dimension must be 1, 2 or 3", [] { TDSEZParser::ValidateOrThrow(); });
         TDSEZParser::Dimension = 1;
