@@ -1,4 +1,6 @@
 #include "tdsez_internal.hpp"
+#include <cctype>
+#include <cstdlib>
 
 /**
  * @file core_knots.cpp
@@ -237,51 +239,153 @@ std::vector<PetscReal> TDSEZCore::TDSEZTanUSymKnots(
 // Parses a muParser-style ternary expression such as
 //   (abs(x) < 37.794) ? 0.084 : ((abs(x) < 151.176) ? 0.067 : 0.084)
 // and returns the x-positions where the piecewise definition changes
-// (the material interfaces). Supports nested ternaries, parentheses, and the
-// comparison/arithmetic operators muParser uses for geometry specs.
-// Comparison forms recognised:  x <  c, x <= c, x >  c, x >= c,
-//   abs(x) <  c, abs(x) <= c, abs(x) > c, abs(x) >= c,
-//   f(x) < c  (generic unary call) — constant pulled from RHS.
+// (the material interfaces). Recognised comparisons, with c a numeric
+// literal on the right-hand side:
+//   x < c, x <= c, x > c, x >= c                 -> breakpoint c
+//   abs(x) < c, fabs(x) < c (and <=, >, >=)      -> breakpoints -c, +c
+// The operand is the token immediately left of the operator, so mixed
+// abs(x)/x branches inside one nested ternary are classified independently.
+// Comparisons on any other operand are ignored.
 /// @brief Parse a muParser-style piecewise ternary expression and extract
 ///        the x-positions where the piecewise definition changes (material
 ///        interfaces). Supports nested ternaries and comparison operators.
 /// @param expr  The piecewise expression string (e.g. with ?: operators).
-/// @return Vector of breakpoint x-positions.
-/// @note Full implementation saved in dev/core_knots_implementations.cpp
-///       for a future push. Returns empty (falls back to uniform).
+/// @return Sorted, de-duplicated vector of breakpoint x-positions.
 std::vector<PetscReal> TDSEZExtractBreakpoints(const std::string& expr)
 {
-    (void)expr;
-    return {};
+    // Tokenise on whitespace and on the structural characters ? : ( ) < >,
+    // keeping <= and >= as single tokens. A leading sign on a number is kept
+    // with the number ("x<-188.97" -> "x" "<" "-188.97").
+    std::vector<std::string> toks;
+    std::string cur;
+    auto flush = [&]() { if (!cur.empty()) { toks.push_back(cur); cur.clear(); } };
+    for (size_t i = 0; i < expr.size(); ++i) {
+        const char ch = expr[i];
+        if (std::isspace((unsigned char)ch)) { flush(); continue; }
+        if ((ch == '<' || ch == '>') && i + 1 < expr.size() && expr[i + 1] == '=') {
+            flush(); toks.push_back(std::string(1, ch) + "="); ++i; continue;
+        }
+        if (ch == '?' || ch == ':' || ch == '(' || ch == ')' || ch == '<' || ch == '>') {
+            flush(); toks.push_back(std::string(1, ch)); continue;
+        }
+        cur.push_back(ch);
+    }
+    flush();
+
+    auto to_num = [](const std::string& s, PetscReal& v) -> bool {
+        if (s.empty()) return false;
+        char* end = nullptr;
+        const double d = std::strtod(s.c_str(), &end);
+        if (end == s.c_str() || *end != '\0') return false;
+        v = (PetscReal)d;
+        return true;
+    };
+
+    std::vector<PetscReal> bp;
+    for (size_t i = 1; i + 1 < toks.size(); ++i) {
+        const std::string& op = toks[i];
+        if (op != "<" && op != "<=" && op != ">" && op != ">=") continue;
+        PetscReal c;
+        if (!to_num(toks[i + 1], c)) continue;
+        if (toks[i - 1] == "x") {
+            bp.push_back(c);
+        } else if (toks[i - 1] == ")" && i >= 4 && toks[i - 2] == "x" &&
+                   toks[i - 3] == "(" && (toks[i - 4] == "abs" || toks[i - 4] == "fabs")) {
+            bp.push_back(-c); bp.push_back(c);
+        }
+    }
+    std::sort(bp.begin(), bp.end());
+    std::vector<PetscReal> out;
+    for (PetscReal x : bp)
+        if (out.empty() || std::fabs(x - out.back()) > 1e-9) out.push_back(x);
+    return out;
 }
 
 
-/// @brief Generate a clamped B-spline knot vector with interface-aware knot
-///        placement. Inserts breakpoints extracted from a piecewise mass
-///        expression, and adds extra knots at material interfaces.
+/// @brief Generate a clamped B-spline knot vector whose element boundaries
+///        coincide with the material interfaces, each carried as a knot of
+///        multiplicity p. The basis is then C0 at every interface, which lets
+///        the Galerkin solution carry the BDD kink (psi continuous,
+///        (1/m) psi' continuous, psi' discontinuous). Elsewhere the basis is
+///        C^{p-1}.
 /// @param Lmin       Left domain boundary.
 /// @param Lmax       Right domain boundary.
-/// @param ninterior  Number of interior knots.
+/// @param ninterior  Number of interior knots of the equivalent uniform mesh
+///                   (Nelements - 1); sets the total element budget.
 /// @param p          Spline degree (boundary multiplicity = p+1).
-/// @param expr       Piecewise potential/geometry expression string.
+/// @param expr       Piecewise potential expression string.
 /// @param massexpr   Piecewise mass distribution expression string.
-/// @return Vector of knot values with interface breakpoints included.
-/// @note Full implementation saved in dev/core_knots_implementations.cpp
-///       for a future push. Falls back to uniform interior knots.
+/// @return Knot vector. Its length exceeds ninterior + 2(p+1) by (p-1) per
+///         interface; the caller passes the actual size to IGAAxisSetKnots.
+/// @note Elements are distributed over the segments between interfaces in
+///       proportion to segment length (largest-remainder rounding, at least
+///       one element per segment) and are uniform within each segment.
 std::vector<PetscReal> TDSEZCore::TDSEZInterfaceKnots(
     PetscReal Lmin, PetscReal Lmax, PetscInt ninterior, PetscInt p,
     const std::string& expr, const std::string& massexpr)
 {
-    (void)expr; (void)massexpr;
-    const PetscInt nbnd   = p + 1;
-    const PetscInt nknots = ninterior + 2 * nbnd;
-    std::vector<PetscReal> knots(nknots);
-    for (PetscInt i = 0; i < nbnd; ++i) knots[i] = Lmin;
-    for (PetscInt i = nbnd + ninterior; i < nknots; ++i) knots[i] = Lmax;
-    for (PetscInt i = 0; i < ninterior; ++i)
-        knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
+    const PetscInt nbnd      = p + 1;
+    const PetscInt nelements = ninterior + 1;
+    const PetscReal tol      = 1e-9 * (Lmax - Lmin);
+
+    // 1) Interfaces from the potential AND the mass expression (union).
+    std::vector<PetscReal> iface = TDSEZExtractBreakpoints(expr);
+    for (PetscReal x : TDSEZExtractBreakpoints(massexpr)) iface.push_back(x);
+    std::sort(iface.begin(), iface.end());
+    std::vector<PetscReal> brk;   // Lmin, interfaces strictly inside, Lmax
+    brk.push_back(Lmin);
+    for (PetscReal x : iface)
+        if (x > Lmin + tol && x < Lmax - tol && x > brk.back() + tol) brk.push_back(x);
+    brk.push_back(Lmax);
+    const PetscInt nseg = (PetscInt)brk.size() - 1;
+
+    if (nseg == 1)
+        PetscPrintf(PETSC_COMM_WORLD,
+            "TDSEZInterfaceKnots: no breakpoints found in expression; "
+            "using uniform interior knots.\n");
+    if (nelements < nseg)
+        throw std::runtime_error("TDSEZInterfaceKnots: fewer elements than material segments");
+
+    // 2) Elements per segment: proportional to length, >= 1, summing to nelements.
+    std::vector<PetscInt>  nel(nseg, 1);
+    std::vector<PetscReal> rem(nseg, 0.0);
+    PetscInt assigned = 0;
+    for (PetscInt s = 0; s < nseg; ++s) {
+        const PetscReal share = (PetscReal)nelements * (brk[s + 1] - brk[s]) / (Lmax - Lmin);
+        nel[s] = std::max<PetscInt>(1, (PetscInt)std::floor(share));
+        rem[s] = share - std::floor(share);
+        assigned += nel[s];
+    }
+    while (assigned < nelements) {          // hand out the remainder
+        const PetscInt s = (PetscInt)(std::max_element(rem.begin(), rem.end()) - rem.begin());
+        ++nel[s]; rem[s] = -1.0; ++assigned;
+    }
+    while (assigned > nelements) {          // only possible via the >= 1 floor
+        PetscInt s = -1;
+        for (PetscInt k = 0; k < nseg; ++k)
+            if (nel[k] > 1 && (s < 0 || nel[k] > nel[s])) s = k;
+        if (s < 0) break;
+        --nel[s]; --assigned;
+    }
+
+    // 3) Assemble: clamped ends, uniform knots inside each segment,
+    //    multiplicity p at each interior breakpoint.
+    std::vector<PetscReal> knots;
+    knots.reserve(2 * nbnd + nelements + nseg * p);
+    for (PetscInt i = 0; i < nbnd; ++i) knots.push_back(Lmin);
+    for (PetscInt s = 0; s < nseg; ++s) {
+        const PetscReal a = brk[s], b = brk[s + 1];
+        for (PetscInt i = 1; i < nel[s]; ++i) knots.push_back(a + (b - a) * (PetscReal)i / (PetscReal)nel[s]);
+        if (s + 1 < nseg)
+            for (PetscInt k = 0; k < p; ++k) knots.push_back(b);
+    }
+    for (PetscInt i = 0; i < nbnd; ++i) knots.push_back(Lmax);
+
     PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZInterfaceKnots: implementation pending — using uniform interior.\n");
+        "TDSEZInterfaceKnots: %d C0 interface(s) (multiplicity p=%d) at",
+        (int)(nseg - 1), (int)p);
+    for (PetscInt s = 1; s < nseg; ++s) PetscPrintf(PETSC_COMM_WORLD, " %.6g", (double)brk[s]);
+    PetscPrintf(PETSC_COMM_WORLD, " | %d elements\n", (int)nelements);
     return knots;
 }
 

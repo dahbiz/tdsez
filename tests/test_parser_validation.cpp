@@ -62,6 +62,12 @@ int main()
         rejects("non-numeric coefficient", [] { TDSEZParser::ValidateOrThrow(); });
         TDSEZParser::InitialState = "ground";
 
+        TDSEZParser::AccelerationMethod = "discrete";
+        TDSEZParser::ValidateOrThrow();
+        TDSEZParser::AccelerationMethod = "exact";
+        rejects("AccelerationMethod must be", [] { TDSEZParser::ValidateOrThrow(); });
+        TDSEZParser::AccelerationMethod = "auto";
+
         TDSEZParser::Dimension = 4;
         rejects("Dimension must be 1, 2 or 3", [] { TDSEZParser::ValidateOrThrow(); });
         TDSEZParser::Dimension = 1;

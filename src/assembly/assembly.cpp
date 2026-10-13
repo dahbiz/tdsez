@@ -318,7 +318,7 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
 
     for (PetscInt k = 0; k < nmat; ++k) {
         PetscCheck(mats[k], comm, PETSC_ERR_ARG_NULL,
-                   "mats[%d] is NULL", k);
+                   "mats[%" PetscInt_FMT "] is NULL", k);
         PetscCall(MatSetOption(mats[k], MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE));
         PetscCall(MatSetOption(mats[k], MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE));
         PetscCall(MatSetOption(mats[k], MAT_NO_OFF_PROC_ZERO_ROWS, PETSC_TRUE));
@@ -646,7 +646,7 @@ PetscErrorCode TDSEZFormPhyX(
     // changing TDSEZCompDerivative itself — but it only runs when
     // MassIsConstant==0, so constant-mass runs pay none of this cost.
     auto invMassFunc = [](const std::vector<PetscReal>& xx) {
-        return 1.0 / TDSEZParser::MassDist(xx[0], xx[1], xx[2]);
+        return 1.0 / TDSEZParser::MassDist(xx[0], (xx.size() > 1 ? xx[1] : 0.0), (xx.size() > 2 ? xx[2] : 0.0));
     };
 
     if (dim == 1)
@@ -705,7 +705,7 @@ PetscErrorCode TDSEZFormPhyX(
                 Vrow[b]  += Ba_Vxyz_w * Bb;
                 Mdrow[b] += Ba_invMass_w * Bb;
                 Xrow[b]  += Ba_x_w * Bb;
-                Pxrow[b] += -0.5 * PETSC_i * (Ba_w * dBb_x - dBa_x * Bb * w);
+                Pxrow[b] += -0.5 * PETSC_i * invMass * (Ba_w * dBb_x - dBa_x * Bb * w);
 
                 // Constant mass: quantum correction is exactly zero,
                 // dVdx reduces to the classical Ehrenfest term only.
@@ -788,7 +788,7 @@ PetscErrorCode TDSEZFormPhyX(
                 Vrow[b]  += Ba_Vxyz_w * Bb;
                 Mdrow[b] += Ba_invMass_w * Bb;
                 Xrow[b]  += Ba_x_w * Bb;
-                Pxrow[b] += -0.5 * PETSC_i * (Ba_w * dBb_x - dBa_x * Bb * w);
+                Pxrow[b] += -0.5 * PETSC_i * invMass * (Ba_w * dBb_x - dBa_x * Bb * w);
 
                 PetscScalar dv = Ba_neg_dVdx_f_w * Bb;
                 if (!massIsConstant) {
@@ -892,7 +892,7 @@ PetscErrorCode TDSEZFormPhyX(
                 Vrow[b]  += Ba_V_w * Bb;
                 Mdrow[b] += Ba_invMass_w * Bb;
                 Xrow[b]  += Ba_x_w * Bb;
-                Pxrow[b] += -0.5 * PETSC_i * (Ba_w * dBb_x - dBa_x * Bb * w);
+                Pxrow[b] += -0.5 * PETSC_i * invMass * (Ba_w * dBb_x - dBa_x * Bb * w);
 
                 PetscScalar dv = Ba_neg_dVdx_f_w * Bb;
                 if (!massIsConstant) {
@@ -1437,7 +1437,7 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
 
     // Mass grad and laplacian terms
     auto invMassFunc = [](const std::vector<PetscReal>& xx) {
-        return 1.0/TDSEZParser::MassDist(xx[0], xx[1], xx[2]);
+        return 1.0/TDSEZParser::MassDist(xx[0], (xx.size() > 1 ? xx[1] : 0.0), (xx.size() > 2 ? xx[2] : 0.0));
     };
 
     if(dim == 1)
@@ -1741,7 +1741,7 @@ PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx)
 
     auto invMassFunc = [](const std::vector<PetscReal>& xx) 
     {
-        return 1.0/TDSEZParser::MassDist(xx[0], xx[1], xx[2]);
+        return 1.0/TDSEZParser::MassDist(xx[0], (xx.size() > 1 ? xx[1] : 0.0), (xx.size() > 2 ? xx[2] : 0.0));
     };
 
     PetscReal dVdz = TDSEZParser::dVz(x, y, z);

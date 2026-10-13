@@ -272,6 +272,19 @@ class TDSEZManager
     /// @param step Current step index.
     /// @return PetscErrorCode (0 on success).
     PetscErrorCode AccumulateSurff(Vec psi, PetscReal t, PetscReal dt, PetscInt step);
+
+    /// True when the dipole acceleration is taken from the discrete
+    /// equation of motion rather than the force operator (AccelerationMethod).
+    PetscBool UseDiscreteAcceleration() const;
+    /// Dipole acceleration a = q d<v>/dt from the Galerkin equation of motion
+    /// i M c' = (H + E.D) c:  a_alpha = -2 q Im( w^H Vel_alpha psi ),
+    /// w = M^{-1} (H + E.D) psi.  Needs no derivatives of m or V, so it is
+    /// valid across sharp material interfaces. Inactive axes return 0.
+    PetscErrorCode DiscreteAcceleration(PetscReal t, Vec psi, PetscScalar acc[3]);
+    /// Direct solver for the overlap matrix M (built on first use).
+    KSP kspMass = PETSC_NULLPTR;
+    /// Work vectors for DiscreteAcceleration (built on first use).
+    Vec accelWork[3] = {PETSC_NULLPTR, PETSC_NULLPTR, PETSC_NULLPTR};
     /// @brief Finalize the t-SURFF reconstruction and write the PES to disk.
     /// @return PetscErrorCode (0 on success).
     PetscErrorCode FinalizeSurff();

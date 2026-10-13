@@ -436,6 +436,14 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     }
 
 
+    // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
+    // delta-like there, so take a(t) from the discrete equation of motion instead.
+    if (TDSEZParser::out_dipole && TDSEZ->UseDiscreteAcceleration()) {
+        PetscScalar acc[3];
+        PetscCall(TDSEZ->DiscreteAcceleration(t, psi, acc));
+        accelX = acc[0];
+    }
+
     const PetscScalar interactionE = laserEx*projDx;
     const PetscScalar totalEnergy  = expectationH + interactionE;
 
@@ -654,6 +662,14 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     }
     if (idxVx >= 0) Jx_total = res[idxVx];
     if (idxVy >= 0) Jy_total = res[idxVy];
+
+    // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
+    // delta-like there, so take a(t) from the discrete equation of motion instead.
+    if (TDSEZParser::out_dipole && TDSEZ->UseDiscreteAcceleration()) {
+        PetscScalar acc[3];
+        PetscCall(TDSEZ->DiscreteAcceleration(t, psi, acc));
+        accelX = acc[0]; accelY = acc[1];
+    }
 
     const PetscScalar interactionE = laserEx*projDx + laserEy*projDy;
     const PetscScalar totalEnergy  = expectH + interactionE;
@@ -948,6 +964,14 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         dipoleMZ = TDSEZ->charge * projDz;
         accelZ   = (TDSEZParser::out_energy || TDSEZParser::out_dipole)
                    ? res[idxAccZ] - invMassAvg*(TDSEZ->charge*laserEz) : 0.0;
+    }
+
+    // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
+    // delta-like there, so take a(t) from the discrete equation of motion instead.
+    if (TDSEZParser::out_dipole && TDSEZ->UseDiscreteAcceleration()) {
+        PetscScalar acc[3];
+        PetscCall(TDSEZ->DiscreteAcceleration(t, psi, acc));
+        accelX = acc[0]; accelY = acc[1]; accelZ = acc[2];
     }
 
     const PetscScalar interactionE = (laserEx*projDx) + (laserEy*projDy) + (laserEz*projDz);
