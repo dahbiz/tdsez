@@ -514,6 +514,14 @@ PetscErrorCode TDSEZFormHam(
             dBz[i] = dB[i][2];
         }
 
+        // H and M are real symmetric. Accumulate only the upper triangle in
+        // real per-element buffers (half the work, half the bytes, and the
+        // inner loop vectorises) and write the full complex element matrices
+        // once, at the element's last quadrature point.
+        thread_local std::vector<PetscReal> Hr, Mr;
+        const size_t n2 = (size_t)nen * (size_t)nen;
+        if (p->index == 0) { Hr.assign(n2, 0.0); Mr.assign(n2, 0.0); }
+
         for (PetscInt a = 0; a < nen; ++a) {
             const PetscReal BaW = B[a] * w;
             const PetscReal pot_a = B[a] * Vw;
@@ -521,19 +529,23 @@ PetscErrorCode TDSEZFormHam(
             const PetscReal gy_a = dBy[a] * cW;
             const PetscReal gz_a = dBz[a] * cW;
 
-            PetscScalar *__restrict__ Hrow = M[0] + a * nen;
-            PetscScalar *__restrict__ Mrow = M[1] + a * nen;
+            PetscReal *__restrict__ Hrow = Hr.data() + (size_t)a * nen;
+            PetscReal *__restrict__ Mrow = Mr.data() + (size_t)a * nen;
 
-            for (PetscInt b = 0; b < nen; ++b) {
+            for (PetscInt b = a; b < nen; ++b) {
                 const PetscReal Bb = B[b];
-
-                Hrow[b] += gx_a * dBx[b]
-                         + gy_a * dBy[b]
-                         + gz_a * dBz[b]
-                         + pot_a * Bb;
-
+                Hrow[b] += gx_a * dBx[b] + gy_a * dBy[b] + gz_a * dBz[b] + pot_a * Bb;
                 Mrow[b] += BaW * Bb;
             }
+        }
+
+        if (p->index == p->count - 1) {
+            for (PetscInt a = 0; a < nen; ++a)
+                for (PetscInt b = a; b < nen; ++b) {
+                    const PetscReal h = Hr[(size_t)a * nen + b], m = Mr[(size_t)a * nen + b];
+                    M[0][a * nen + b] += h; M[1][a * nen + b] += m;
+                    if (b != a) { M[0][b * nen + a] += h; M[1][b * nen + a] += m; }
+                }
         }
 
         if (nen > STACK_NEN) {
@@ -549,24 +561,37 @@ PetscErrorCode TDSEZFormHam(
 
         const PetscReal Vw = TDSEZParser::V(x, y) * w;
 
+        // H and M are real symmetric. Accumulate only the upper triangle in
+        // real per-element buffers (half the work, half the bytes, and the
+        // inner loop vectorises) and write the full complex element matrices
+        // once, at the element's last quadrature point.
+        thread_local std::vector<PetscReal> Hr, Mr;
+        const size_t n2 = (size_t)nen * (size_t)nen;
+        if (p->index == 0) { Hr.assign(n2, 0.0); Mr.assign(n2, 0.0); }
+
         for (PetscInt a = 0; a < nen; ++a) {
             const PetscReal BaW = B[a] * w;
             const PetscReal pot_a = B[a] * Vw;
             const PetscReal gx_a = dB[a][0] * cW;
             const PetscReal gy_a = dB[a][1] * cW;
 
-            PetscScalar *__restrict__ Hrow = M[0] + a * nen;
-            PetscScalar *__restrict__ Mrow = M[1] + a * nen;
+            PetscReal *__restrict__ Hrow = Hr.data() + (size_t)a * nen;
+            PetscReal *__restrict__ Mrow = Mr.data() + (size_t)a * nen;
 
-            for (PetscInt b = 0; b < nen; ++b) {
+            for (PetscInt b = a; b < nen; ++b) {
                 const PetscReal Bb = B[b];
-
-                Hrow[b] += gx_a * dB[b][0]
-                         + gy_a * dB[b][1]
-                         + pot_a * Bb;
-
+                Hrow[b] += gx_a * dB[b][0] + gy_a * dB[b][1] + pot_a * Bb;
                 Mrow[b] += BaW * Bb;
             }
+        }
+
+        if (p->index == p->count - 1) {
+            for (PetscInt a = 0; a < nen; ++a)
+                for (PetscInt b = a; b < nen; ++b) {
+                    const PetscReal h = Hr[(size_t)a * nen + b], m = Mr[(size_t)a * nen + b];
+                    M[0][a * nen + b] += h; M[1][a * nen + b] += m;
+                    if (b != a) { M[0][b * nen + a] += h; M[1][b * nen + a] += m; }
+                }
         }
 
         PetscFunctionReturn(PETSC_SUCCESS);
@@ -820,11 +845,17 @@ PetscErrorCode TDSEZFormPhyX(
         const PetscReal dVdx  = TDSEZParser::dVx(x, y, z);
         const PetscReal neg_dVdx_f = -dVdx * invMass;
 
+        // Mass-gradient corrections of the force operator. They are needed only
+        // when a(t) uses the operator form; with the discrete acceleration the
+        // dVdx matrix is not read, so skip the finite-difference derivatives
+        // (O(dim^3) mass evaluations per quadrature point).
+        const bool corr = !massIsConstant && !TDSEZDiscreteAccelerationActive();
+
         // All quantum-correction scalars default to zero (constant-mass path).
         PetscReal two_fgrad2=0, f_4fy=0, f_4fz=0, f_2_lap=0, f_mix=0;
         PetscReal two_f_fx=0, ffx_x=0, ffx_y=0, ffx_z=0;
         PetscReal fz_fxz=0, fy_fxy_fx_fxx=0;
-        if (!massIsConstant) {
+        if (corr) {
             PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y, z}, 1e-4);
             const PetscReal fx = ops.first[0], fy = ops.first[1], fz = ops.first[2];
             const PetscReal fxx = ops.second[0*3+0], fyy = ops.second[1*3+1], fzz = ops.second[2*3+2];
@@ -851,13 +882,27 @@ PetscErrorCode TDSEZFormPhyX(
         PetscReal *dBx = buf_dBx, *dBy = buf_dBy, *dBz = buf_dBz;
         PetscBool heap_used = PETSC_FALSE;
         if (PetscUnlikely(nen > 512)) {
-            PetscMalloc3(nen, &dBx, nen, &dBy, nen, &dBz);
+            PetscCall(PetscMalloc3(nen, &dBx, nen, &dBy, nen, &dBz));
             heap_used = PETSC_TRUE;
         }
         for (PetscInt i = 0; i < nen; i++) {
             dBx[i] = dB[i][0]; dBy[i] = dB[i][1]; dBz[i] = dB[i][2];
         }
 
+        // K, V, Md and X are real symmetric and VelX = i R with R real
+        // antisymmetric: accumulate their upper triangles in real per-element
+        // buffers and write the full complex element matrices once, at the
+        // element's last quadrature point. dVdx is real; it is symmetric unless
+        // the mass corrections are active, in which case it is kept in full.
+        thread_local std::vector<PetscReal> Rk, Rv, Rmd, Rx, Rvel, Rdv;
+        const size_t n2 = (size_t)nen * (size_t)nen;
+        if (p->index == 0) {
+            Rk.assign(n2, 0.0); Rv.assign(n2, 0.0); Rmd.assign(n2, 0.0);
+            Rx.assign(n2, 0.0); Rvel.assign(n2, 0.0); Rdv.assign(n2, 0.0);
+        }
+
+        const PetscReal coeff_w   = coeff * w;
+        const PetscReal vel_w     = -0.5 * invMass * w;
         for (PetscInt a = 0; a < nen; a++)
         {
             const PetscReal Ba    = B[a];
@@ -865,52 +910,72 @@ PetscErrorCode TDSEZFormPhyX(
             const PetscReal dBa_y = dBy[a];
             const PetscReal dBa_z = dBz[a];
 
-            PetscScalar *Krow    = &M[0][a * nen];
-            PetscScalar *Vrow    = &M[1][a * nen];
-            PetscScalar *Mdrow   = &M[2][a * nen];
-            PetscScalar *Xrow    = &M[3][a * nen];
-            PetscScalar *Pxrow   = &M[4][a * nen];
-            PetscScalar *dVdxrow = &M[5][a * nen];
+            const size_t    row             = (size_t)a * nen;
+            PetscReal *__restrict__ Krow    = Rk.data()   + row;
+            PetscReal *__restrict__ Vrow    = Rv.data()   + row;
+            PetscReal *__restrict__ Mdrow   = Rmd.data()  + row;
+            PetscReal *__restrict__ Xrow    = Rx.data()   + row;
+            PetscReal *__restrict__ Velrow  = Rvel.data() + row;
+            PetscReal *__restrict__ dVdxrow = Rdv.data()  + row;
 
-            const PetscReal Ba_w            = Ba * w;
             const PetscReal Ba_V_w          = Ba * V_val * w;
             const PetscReal Ba_invMass_w    = Ba * invMass * w;
             const PetscReal Ba_x_w          = Ba * x * w;
             const PetscReal Ba_neg_dVdx_f_w = Ba * neg_dVdx_f * w;
-            const PetscReal coeff_w         = coeff * w;
+            const PetscReal gx_a = coeff_w * dBa_x, gy_a = coeff_w * dBa_y, gz_a = coeff_w * dBa_z;
+            const PetscReal vBa = vel_w * Ba, vdBa = vel_w * dBa_x;
 
-            for (PetscInt b = 0; b < nen; b++)
+            for (PetscInt b = a; b < nen; b++)
             {
-                const PetscReal Bb     = B[b];
-                const PetscReal dBb_x  = dBx[b];
-                const PetscReal dBb_y  = dBy[b];
-                const PetscReal dBb_z  = dBz[b];
-                const PetscReal dBb_xy = ddB[b][0][1];
-                const PetscReal dBb_xz = ddB[b][0][2];
+                const PetscReal Bb = B[b];
+                Krow[b]   += gx_a * dBx[b] + gy_a * dBy[b] + gz_a * dBz[b];
+                Vrow[b]   += Ba_V_w * Bb;
+                Mdrow[b]  += Ba_invMass_w * Bb;
+                Xrow[b]   += Ba_x_w * Bb;
+                Velrow[b] += vBa * dBx[b] - vdBa * Bb;
+            }
 
-                Krow[b]  += coeff_w * (dBa_x*dBb_x + dBa_y*dBb_y + dBa_z*dBb_z);
-                Vrow[b]  += Ba_V_w * Bb;
-                Mdrow[b] += Ba_invMass_w * Bb;
-                Xrow[b]  += Ba_x_w * Bb;
-                Pxrow[b] += -0.5 * PETSC_i * invMass * (Ba_w * dBb_x - dBa_x * Bb * w);
-
-                PetscScalar dv = Ba_neg_dVdx_f_w * Bb;
-                if (!massIsConstant) {
-                    const PetscScalar row1 = two_fgrad2 * Ba * dBb_x;
-                    const PetscScalar row2 = f_4fz * Ba * dBb_xz + fz_fxz * Ba * Bb;
-                    const PetscScalar row3 = f_4fy * Ba * dBb_xy
-                                           + f_2_lap * Ba * dBb_x
-                                           + f_mix   * Ba * Bb;
-                    const PetscScalar row4 = two_f_fx * (dBa_z*dBb_z + dBa_y*dBb_y - dBa_x*dBb_x);
-                    const PetscScalar row5 = 2.0*(Ba*dBb_z*ffx_z + Ba*dBb_y*ffx_y - Ba*dBb_x*ffx_x);
-                    const PetscScalar row6 = fy_fxy_fx_fxx * Ba * Bb;
-                    dv -= 0.25 * (row1+row2+row3+row4+row5+row6) * w;
+            if (!corr) {
+                for (PetscInt b = a; b < nen; b++) dVdxrow[b] += Ba_neg_dVdx_f_w * B[b];
+            } else {
+                for (PetscInt b = 0; b < nen; b++)
+                {
+                    const PetscReal Bb     = B[b];
+                    const PetscReal dBb_x  = dBx[b];
+                    const PetscReal dBb_y  = dBy[b];
+                    const PetscReal dBb_z  = dBz[b];
+                    const PetscReal dBb_xy = ddB[b][0][1];
+                    const PetscReal dBb_xz = ddB[b][0][2];
+                    const PetscReal row1 = two_fgrad2 * Ba * dBb_x;
+                    const PetscReal row2 = f_4fz * Ba * dBb_xz + fz_fxz * Ba * Bb;
+                    const PetscReal row3 = f_4fy * Ba * dBb_xy
+                                         + f_2_lap * Ba * dBb_x
+                                         + f_mix   * Ba * Bb;
+                    const PetscReal row4 = two_f_fx * (dBa_z*dBb_z + dBa_y*dBb_y - dBa_x*dBb_x);
+                    const PetscReal row5 = 2.0*(Ba*dBb_z*ffx_z + Ba*dBb_y*ffx_y - Ba*dBb_x*ffx_x);
+                    const PetscReal row6 = fy_fxy_fx_fxx * Ba * Bb;
+                    dVdxrow[b] += Ba_neg_dVdx_f_w * Bb - 0.25 * (row1+row2+row3+row4+row5+row6) * w;
                 }
-                dVdxrow[b] += dv;
             }
         }
 
-        if (PetscUnlikely(heap_used)) PetscFree3(dBx, dBy, dBz);
+        if (p->index == p->count - 1) {
+            for (PetscInt a = 0; a < nen; a++)
+                for (PetscInt b = a; b < nen; b++) {
+                    const size_t ab = (size_t)a * nen + b, ba = (size_t)b * nen + a;
+                    M[0][ab] += Rk[ab];  M[1][ab] += Rv[ab];  M[2][ab] += Rmd[ab];
+                    M[3][ab] += Rx[ab];  M[4][ab] += PETSC_i * Rvel[ab];
+                    if (b != a) {
+                        M[0][ba] += Rk[ab];  M[1][ba] += Rv[ab];  M[2][ba] += Rmd[ab];
+                        M[3][ba] += Rx[ab];  M[4][ba] -= PETSC_i * Rvel[ab];
+                    }
+                    if (!corr) { M[5][ab] += Rdv[ab]; if (b != a) M[5][ba] += Rdv[ab]; }
+                }
+            if (corr)
+                for (size_t k = 0; k < n2; ++k) M[5][k] += Rdv[k];
+        }
+
+        if (PetscUnlikely(heap_used)) PetscCall(PetscFree3(dBx, dBy, dBz));
     }
 
     PetscFunctionReturn(PETSC_SUCCESS);
