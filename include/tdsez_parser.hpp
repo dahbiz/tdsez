@@ -317,7 +317,9 @@ class TDSEZParser
         //   "state:N"                      -> Nth converged bound state (0-based)
         //   "sup: a*N + b*M [+ c*P]"       -> coherent superposition of up to 3
         //                                     bound states (indices N,M,P; real coeffs)
-        /// Initial-state selector string ("ground", "state:N", or "sup: ...").
+        //   "analytic:quesne01"             -> projected exact Quesne n=0,1 state
+        //   "analytic:massstep01"           -> projected exact sharp-interface state
+        /// Initial-state selector string ("ground", "state:N", "sup: ...", or analytic benchmark).
         inline static std::string           InitialState       = "ground";
         /// Dipole-acceleration method: "auto" (discrete when the mass is
         /// position dependent, operator otherwise), "operator" (Ehrenfest
@@ -326,14 +328,15 @@ class TDSEZParser
         inline static std::string           AccelerationMethod = "auto";
         // Parsed in ValidateOrThrow:
         //   0 = ground (== state:0), 1 = single state:InitialStateIndex,
-        //   2 = superposition over InitialStateTerms.
-        /// Parsed initial-state mode: 0=ground, 1=single, 2=superposition.
+        //   2 = superposition, 3 = analytic Quesne, 4 = analytic mass step.
+        /// Parsed initial-state mode: 0=ground, 1=single, 2=superposition, 3=Quesne, 4=mass step.
         inline static PetscInt              InitialStateMode   = 0;
         /// Index of the selected bound state (mode 1).
         inline static PetscInt              InitialStateIndex  = 0;
         // (index, coefficient) pairs for mode 2 (max 3 entries).
         /// (index, coefficient) pairs for the superposition (mode 2, max 3).
-        inline static std::vector<std::pair<PetscInt,PetscReal>> InitialStateTerms;
+        /// Coefficients may be complex: "a", "a+ib", "a-ib", "b*i" (a,b real).
+        inline static std::vector<std::pair<PetscInt,PetscScalar>> InitialStateTerms;
         // Normalize the assembled initial state so <psi|M|psi> = 1 (default on).
         /// Whether to normalize the initial state so <psi|M|psi> = 1.
         inline static PetscBool             NormalizeInitialState = PETSC_TRUE;

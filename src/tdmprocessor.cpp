@@ -1,17 +1,17 @@
 // ============================================================================
 //  tdmprocessor.cpp  —  standalone post-processor
 // ----------------------------------------------------------------------------
-//  Reads the assembled dipole operator Dx (PETSc binary, written by the
-//  SaveDipoleMatrix / -save_dipole path) and the eigenstates from the static
+//  Reads every saved assembled dipole operator (Dx, Dy, Dz; PETSc binary,
+//  written by the SaveDipoleMatrix / -save_dipole path) and the eigenstates from the static
 //  HDF5 (EigenData_<stem>.h5, datasets psi_0, psi_1, ...), then computes the
 //  transition-dipole matrix
 //
-//        d_ij = < psi_i | Dx | psi_j >
+//        d_ij^(a) = < psi_i | D_a | psi_j >,  a = x, y, z
 //
-//  Dx is Hermitian, so d_ji = conj(d_ij); only the upper triangle is computed
+//  Each D_a is Hermitian, so d_ji = conj(d_ij); only the upper triangle is computed
 //  and the lower triangle is filled by conjugation. Writes d_ij to
-//  static/TDM_Dx_<stem>.txt (human-readable) and NumPy .npy files:
-//  static/TDM_Dx_<stem>.npy (complex NxN, D[i,j]==d_ij),
+//  static/TDM_D{axis}_<stem>.txt (human-readable) and NumPy .npy files:
+//  static/TDM_D{axis}_<stem>.npy (complex NxN, D[i,j]==d_ij),
 //  static/EigenEnergies_<stem>.npy (float64 N), static/States_<stem>.npy (int32 N).
 //
 //  Build (separately, against the same PETSc stack):
@@ -22,13 +22,13 @@
 //    ./tdmprocessor <input-stem>
 //  e.g. for input file foo.prm:
 //    ./tdmprocessor foo.prm
-//  (it looks for static/Dx_foo.prm.bin and static/EigenData_foo.prm.h5)
+//  (it auto-detects static/Dx|Dy|Dz_foo.prm.bin and reads EigenData_foo.prm.h5)
 // ============================================================================
 
 /**
  * @file tdmprocessor.cpp
  * @brief Standalone post-processor that computes the transition-dipole matrix
- *        d_ij = <psi_i | Dx | psi_j> from saved operator and eigenstates,
+ *        d_ij = <psi_i | D_a | psi_j> from every saved Cartesian operator and eigenstates,
  *        streaming the N×N result to a .npy file block-by-block.
  */
 
@@ -46,7 +46,7 @@
 // Writes a contiguous array with the given dtype string and shape. This makes
 // the TDM trivially loadable from Python:
 //     import numpy as np
-//     D = np.load("static/TDM_Dx_foo.npy")          # D[i,j] == d_ij
+//     D = np.load("static/TDM_Dx_foo.npy")          # D[i,j] == d_ij (and Dy/Dz if saved)
 //     E = np.load("static/EigenEnergies_foo.npy")   # E[i]  == energy of psi_i
 //     idx = np.load("static/States_foo.npy")        # state labels 0..N-1
 // Supported descr: "<c16" (complex128), "<f8" (float64), "<i4" (int32).
@@ -94,6 +94,27 @@ static bool writeNpy(const std::string& path, const char* descr,
     f.write(reinterpret_cast<const char*>(data), nbytes);
     f.close();
     return (bool)f;
+}
+
+/// Open and validate a complex version-1 NumPy file written by createNpy().
+static bool openNpyComplex(const std::string& path, std::ifstream& f, size_t& headerLength)
+{
+    f.open(path, std::ios::binary);
+    if (!f) return false;
+    char magic[6];
+    uint8_t major = 0, minor = 0;
+    uint16_t hlen = 0;
+    f.read(magic, sizeof(magic));
+    f.read(reinterpret_cast<char*>(&major), 1);
+    f.read(reinterpret_cast<char*>(&minor), 1);
+    f.read(reinterpret_cast<char*>(&hlen), sizeof(hlen));
+    if (!f || std::memcmp(magic, "\x93" "NUMPY", sizeof(magic)) != 0 ||
+        major != 1 || minor != 0) return false;
+    std::string header(hlen, '\0');
+    f.read(header.data(), hlen);
+    if (!f || header.find("'descr': '<c16'") == std::string::npos) return false;
+    headerLength = 10 + hlen;
+    return true;
 }
 
 // --- Streaming .npy support (write a huge array row-block by row-block so the
@@ -250,58 +271,37 @@ static PetscErrorCode loadState(PetscViewer viewer, Mat Dx,
     PetscCall(MatCreateVecs(Dx, &tmpl, NULL));
     PetscCall(VecDuplicate(tmpl, v));
     std::string name = "psi_" + std::to_string(i);
+    // New solver exports preserve saved-matrix/natural ordering independently of
+    // dimension and MPI decomposition. Retain psi_i fallback for old files.
+    const std::string coefficientName = "coeff_" + std::to_string(i);
+    PetscBool hasCoefficients = PETSC_FALSE;
+    PetscCall(PetscViewerHDF5HasDataset(viewer, coefficientName.c_str(), &hasCoefficients));
+    if (hasCoefficients) name = coefficientName;
     PetscCall(PetscObjectSetName((PetscObject)(*v), name.c_str()));
     PetscCall(VecLoad(*v, viewer));
     PetscCall(VecDestroy(&tmpl));
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/// Main: compute d_ij = <psi_i | Dx | psi_j> (streaming, block-by-block).
+/// Compute one Cartesian component of d_ij = <psi_i | D | psi_j>.
 /**
- * Loads the dipole operator Dx and eigenstates, computes the upper-triangle
+ * Loads one Cartesian dipole operator and eigenstates, computes the upper-triangle
  * transition-dipole matrix using Hermitian conjugation for the lower triangle,
  * and streams the result to a .npy file. Host RAM stays O(block size).
  *
- * @param argc  Number of CLI arguments (expects <input-stem>).
- * @param argv  CLI argument strings.
- * @return 0 on success, 1 on usage error.
+ * @param stem  Input-file stem.
+ * @param axis  Cartesian component (x, y, or z).
+ * @param gpu   Whether to use the CUDA matrix/vector backend.
+ * @param rank  MPI rank (the processor is serial).
+ * @return PETSc error code.
  */
-int main(int argc, char **argv)
+static PetscErrorCode processAxis(const std::string& stem, char axis,
+                                  bool gpu, PetscMPIInt rank)
 {
-    PetscCall(PetscInitialize(&argc, &argv, PETSC_NULLPTR, PETSC_NULLPTR));
-
-    PetscMPIInt commSize = 0;
-    PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &commSize));
-    PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
-               "tdmprocessor: sequential PETSc files require a single MPI rank");
-
-    if (argc < 2) {
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-            "Usage: %s <input-stem>\n  e.g. %s foo.prm\n", argv[0], argv[0]));
-        PetscCall(PetscFinalize());
-        return 1;
-    }
-    std::string stem = argv[1];
-    std::string dxPath   = "static/Dx_"   + stem + ".bin";
+    PetscFunctionBeginUser;
+    const std::string dipole = std::string("D") + axis;
+    std::string dxPath   = "static/" + dipole + "_" + stem + ".bin";
     std::string eigPath  = "static/EigenData_" + stem + ".h5";
-
-    // Optional -gpu flag: route Dx and the eigenstate vecs to CUDA so the
-    // (potentially huge) d_ij inner products run on the GPU. Single-GPU only
-    // (uses SEQAIJCUSPARSE / VecCUDA), so it requires a serial run. We read it
-    // through PetscOptionsGetBool so PETSc consumes the flag (no "Option left"
-    // warning) and we get a clean bool.
-    PetscBool gpuB = PETSC_FALSE;
-    PetscCall(PetscOptionsGetBool(NULL, NULL, "-gpu", &gpuB, NULL));
-    bool gpu = (gpuB == PETSC_TRUE);
-    if (gpu) {
-        PetscMPIInt sz = 0;
-        PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &sz));
-        PetscCheck(sz == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
-                   "tdmprocessor: -gpu uses single-GPU (SEQAIJCUSPARSE); run with np=1");
-    }
-
-    PetscMPIInt rank;
-    PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
 
     // --- 1. Load Dx operator matrix (serial, seqaij) ---
     // The matrix is written as a sequential PETSc binary by the solver. For now
@@ -333,8 +333,8 @@ int main(int argc, char **argv)
     PetscInt nrows, ncols;
     PetscCall(MatGetSize(Dx, &nrows, &ncols));
     PetscCheck(nrows == ncols, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ,
-               "tdmprocessor: Dx is not square (%" PetscInt_FMT " x %" PetscInt_FMT ")",
-               nrows, ncols);
+               "tdmprocessor: %s is not square (%" PetscInt_FMT " x %" PetscInt_FMT ")",
+               dipole.c_str(), nrows, ncols);
 
     // --- 2. Get Nstates + energies (no eigenstate vectors held in RAM) ---
     std::vector<PetscReal> energies;
@@ -350,7 +350,7 @@ int main(int argc, char **argv)
     const PetscInt B = 256; // row-block size; tune to fit device/host memory
     std::vector<PetscInt64> shape2 = {(PetscInt64)N, (PetscInt64)N};
     std::vector<PetscInt64> shape1 = {(PetscInt64)N};
-    std::string npyD = "static/TDM_Dx_" + stem + ".npy";
+    std::string npyD = "static/TDM_" + dipole + "_" + stem + ".npy";
     std::string npyE = "static/EigenEnergies_" + stem + ".npy";
     std::string npyS = "static/States_" + stem + ".npy";
     std::error_code ec;
@@ -385,10 +385,9 @@ int main(int argc, char **argv)
         for (PetscInt b = 0; b < nblk; ++b)
             PetscCall(loadState(ev, Dx, i0 + b, &rowVecs[(size_t)b]));
 
-        // Pre-conjugate the bra block ONCE: <psi_i|Dx|psi_j> = VecDot(conj(psi_i), Dx psi_j).
-        // NOTE: in this PETSc build VecDot == VecTDot (neither conjugates the
-        // first argument), so the bra MUST be conjugated explicitly. Skipping
-        // this makes the TDM wrong by a phase for any genuinely complex state.
+        // Form the physical Hermitian bra explicitly. VecTDot is the
+        // transpose (non-conjugating) dot product, hence
+        // VecTDot(conj(psi_i), Dx psi_j) = <psi_i|Dx|psi_j>.
         std::vector<Vec> rowVecsConj((size_t)nblk);
         for (PetscInt b = 0; b < nblk; ++b) {
             PetscCall(VecDuplicate(rowVecs[(size_t)b], &rowVecsConj[(size_t)b]));
@@ -421,10 +420,7 @@ int main(int argc, char **argv)
                     PetscInt i = i0 + b;
                     if (j < i) continue;            // upper triangle only
                     PetscScalar val;
-                    // <psi_i | Dx | psi_j> = VecDot( conj(psi_i), Dx psi_j )
-                    // (bra explicitly conjugated; VecDot/VecTDot do NOT
-                    //  conjugate the first arg in this PETSc build).
-                    PetscCall(VecDot(rowVecsConj[(size_t)b], Dpsi_j, &val));
+                    PetscCall(VecTDot(rowVecsConj[(size_t)b], Dpsi_j, &val));
                     ++totalDot;
                     blockRows[(size_t)b * N + j] = val;       // d[i,j] (upper)
                     if (i != j) {
@@ -492,11 +488,11 @@ int main(int argc, char **argv)
         PetscCall(MatGetType(Dx, &dxtype));
         PetscCall(PetscPrintf(PETSC_COMM_SELF,
             "\n══════════════════════════════════════════════════════════════════════\n"
-            "  TRANSITION DIPOLE MATRIX  d_ij = <psi_i | Dx | psi_j>\n"
-            "  Dx : %s  (%" PetscInt_FMT " x %" PetscInt_FMT ", type=%s%s)\n"
+            "  TRANSITION DIPOLE MATRIX  d_ij = <psi_i | %s | psi_j>\n"
+            "  %s : %s  (%" PetscInt_FMT " x %" PetscInt_FMT ", type=%s%s)\n"
             "  States from %s : %" PetscInt_FMT "   (streaming, block=%" PetscInt_FMT ")\n"
             "══════════════════════════════════════════════════════════════════════\n",
-            dxPath.c_str(), nrows, ncols, dxtype, gpu ? " [GPU]" : "",
+            dipole.c_str(), dipole.c_str(), dxPath.c_str(), nrows, ncols, dxtype, gpu ? " [GPU]" : "",
             eigPath.c_str(), N, B));
         // Compact table only for small N (avoids 49M prints at N=7000).
         if (N <= 200) {
@@ -520,11 +516,11 @@ int main(int argc, char **argv)
 
     // --- 5. Optional human-readable .txt (small N only) ---
     if (rank == 0 && N <= 200) {
-        std::string outPath = "static/TDM_Dx_" + stem + ".txt";
+        std::string outPath = "static/TDM_" + dipole + "_" + stem + ".txt";
         std::FILE* fp = std::fopen(outPath.c_str(), "w");
         if (fp) {
-            std::fprintf(fp, "# Transition dipole matrix d_ij = <psi_i | Dx | psi_j>\n");
-            std::fprintf(fp, "# Nstates = %" PetscInt_FMT "   Dx = %s\n", N, dxPath.c_str());
+            std::fprintf(fp, "# Transition dipole matrix d_ij = <psi_i | %s | psi_j>\n", dipole.c_str());
+            std::fprintf(fp, "# Nstates = %" PetscInt_FMT "   %s = %s\n", N, dipole.c_str(), dxPath.c_str());
             std::fprintf(fp, "# row = i, col = j ; columns: Re(d) Im(d) |d|\n");
             std::vector<PetscScalar> rb((size_t)N);
             std::fstream fin(npyD, std::ios::in | std::ios::binary);
@@ -549,6 +545,142 @@ int main(int argc, char **argv)
     // --- cleanup ---
     PetscCall(PetscViewerDestroy(&ev));
     PetscCall(MatDestroy(&Dx));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+int main(int argc, char **argv)
+{
+    PetscCall(PetscInitialize(&argc, &argv, PETSC_NULLPTR, PETSC_NULLPTR));
+
+    PetscMPIInt commSize = 0;
+    PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &commSize));
+    PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
+               "tdmprocessor: sequential PETSc files require a single MPI rank");
+    if (argc < 2) {
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+            "Usage: %s <input-stem>\n  e.g. %s foo.prm\n", argv[0], argv[0]));
+        PetscCall(PetscFinalize());
+        return 1;
+    }
+
+    // Process every saved Cartesian dipole.  This preserves the established
+    // 1D behaviour (only Dx exists there) while making multi-axis runs
+    // complete without requiring a command-line component selection.
+    const std::string stem = argv[1];
+    PetscBool gpuB = PETSC_FALSE;
+    PetscCall(PetscOptionsGetBool(NULL, NULL, "-gpu", &gpuB, NULL));
+    const bool gpu = (gpuB == PETSC_TRUE);
+    if (gpu) {
+        PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
+                   "tdmprocessor: -gpu uses single-GPU (SEQAIJCUSPARSE); run with np=1");
+    }
+    PetscMPIInt rank;
+    PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
+    bool found = false;
+    std::vector<std::string> componentFiles;
+    for (char axis : {'x', 'y', 'z'}) {
+        const std::string path = "static/D" + std::string(1, axis) + "_" + stem + ".bin";
+        if (!std::filesystem::exists(path)) continue;
+        found = true;
+        PetscCall(processAxis(stem, axis, gpu, rank));
+        componentFiles.push_back("static/TDM_D" + std::string(1, axis) + "_" + stem + ".npy");
+    }
+    PetscCheck(found, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
+               "tdmprocessor: no saved dipole operator found for %s (expected static/Dx_, Dy_, or Dz_<stem>.bin)",
+               stem.c_str());
+
+    // The total transition-dipole magnitude is an axis-independent scalar:
+    // |d_ij| = sqrt(|d_x,ij|^2 + |d_y,ij|^2 + |d_z,ij|^2).  Components not
+    // saved by the simulation are naturally omitted from the sum.
+    PetscInt N = 0;
+    std::vector<PetscReal> energies;
+    PetscCall(loadSpectrum("static/EigenData_" + stem + ".h5", N, energies));
+    const std::string magnitudePath = "static/TDM_magnitude_" + stem + ".npy";
+    const std::vector<PetscInt64> magnitudeShape = {(PetscInt64)N, (PetscInt64)N};
+    const size_t magnitudeHeader = createNpy(magnitudePath, "<f8", magnitudeShape);
+    PetscCheck(magnitudeHeader > 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
+               "tdmprocessor: cannot create %s", magnitudePath.c_str());
+    std::vector<std::ifstream> inputs(componentFiles.size());
+    for (size_t a = 0; a < componentFiles.size(); ++a) {
+        size_t headerLength = 0;
+        PetscCheck(openNpyComplex(componentFiles[a], inputs[a], headerLength), PETSC_COMM_SELF,
+                   PETSC_ERR_FILE_READ, "tdmprocessor: cannot read %s", componentFiles[a].c_str());
+    }
+    std::fstream output(magnitudePath, std::ios::in | std::ios::out | std::ios::binary);
+    PetscCheck((bool)output, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
+               "tdmprocessor: cannot open %s", magnitudePath.c_str());
+    output.seekp((std::streampos)magnitudeHeader, std::ios::beg);
+    const size_t chunkSize = 8192;
+    std::vector<std::vector<PetscScalar>> values(componentFiles.size(),
+                                                  std::vector<PetscScalar>(chunkSize));
+    std::vector<PetscReal> magnitude(chunkSize);
+    const size_t total = (size_t)N * (size_t)N;
+    for (size_t offset = 0; offset < total; offset += chunkSize) {
+        const size_t count = std::min(chunkSize, total - offset);
+        std::fill(magnitude.begin(), magnitude.begin() + count, 0.0);
+        for (size_t a = 0; a < inputs.size(); ++a) {
+            inputs[a].read(reinterpret_cast<char*>(values[a].data()), count * sizeof(PetscScalar));
+            PetscCheck((bool)inputs[a], PETSC_COMM_SELF, PETSC_ERR_FILE_READ,
+                       "tdmprocessor: unexpected end of %s", componentFiles[a].c_str());
+            for (size_t k = 0; k < count; ++k)
+                magnitude[k] += PetscRealPart(values[a][k] * PetscConj(values[a][k]));
+        }
+        for (size_t k = 0; k < count; ++k) magnitude[k] = PetscSqrtReal(magnitude[k]);
+        output.write(reinterpret_cast<const char*>(magnitude.data()), count * sizeof(PetscReal));
+        PetscCheck((bool)output, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
+                   "tdmprocessor: cannot write %s", magnitudePath.c_str());
+    }
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "  Wrote %s\n", magnitudePath.c_str()));
+
+    // Few-level models also need the Bohr angular frequencies omega_ij = E_j -
+    // E_i.  Write them explicitly so no convention needs to be inferred from
+    // the energy vector or the ordering of a matrix element.
+    const std::string frequencyPath = "static/TransitionFrequencies_" + stem + ".npy";
+    const size_t frequencyHeader = createNpy(frequencyPath, "<f8", magnitudeShape);
+    PetscCheck(frequencyHeader > 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
+               "tdmprocessor: cannot create %s", frequencyPath.c_str());
+    std::fstream frequenciesOut(frequencyPath, std::ios::in | std::ios::out | std::ios::binary);
+    PetscCheck((bool)frequenciesOut, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
+               "tdmprocessor: cannot open %s", frequencyPath.c_str());
+    frequenciesOut.seekp((std::streampos)frequencyHeader, std::ios::beg);
+    std::vector<PetscReal> frequencyRow((size_t)N);
+    for (PetscInt i = 0; i < N; ++i) {
+        for (PetscInt j = 0; j < N; ++j) frequencyRow[(size_t)j] = energies[(size_t)j] - energies[(size_t)i];
+        frequenciesOut.write(reinterpret_cast<const char*>(frequencyRow.data()),
+                             (size_t)N * sizeof(PetscReal));
+        PetscCheck((bool)frequenciesOut, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
+                   "tdmprocessor: cannot write %s", frequencyPath.c_str());
+    }
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "  Wrote %s\n", frequencyPath.c_str()));
+
+    // A self-describing manifest keeps the files directly usable as a
+    // truncated eigenstate basis: H0 is diagonal with EigenEnergies, while
+    // laser couplings are +E(t) dot TDM_D{axis}, matching TDSE-Z's length-gauge
+    // convention i dpsi/dt = (H0 + E(t) D) psi.
+    const std::string manifestPath = "static/FewLevelSystem_" + stem + ".json";
+    std::ofstream manifest(manifestPath);
+    PetscCheck((bool)manifest, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
+               "tdmprocessor: cannot create %s", manifestPath.c_str());
+    manifest << "{\n"
+             << "  \"schema\": \"tdsez-few-level-v1\",\n"
+             << "  \"basis\": \"TDSE-Z stationary eigenstates psi_i\",\n"
+             << "  \"energy_units\": \"hartree\",\n"
+             << "  \"angular_frequency_units\": \"atomic units (hartree/hbar)\",\n"
+             << "  \"dipole_units\": \"atomic units\",\n"
+             << "  \"field_coupling\": \"H_ij(t) = E_i delta_ij + E(t) dot d_ij\",\n"
+             << "  \"energies\": \"EigenEnergies_" << stem << ".npy\",\n"
+             << "  \"transition_frequencies\": \"TransitionFrequencies_" << stem << ".npy\",\n"
+             << "  \"dipole_magnitude\": \"TDM_magnitude_" << stem << ".npy\",\n"
+             << "  \"dipole_components\": [";
+    for (size_t a = 0; a < componentFiles.size(); ++a) {
+        if (a) manifest << ", ";
+        manifest << "\"" << componentFiles[a].substr(std::string("static/").size()) << "\"";
+    }
+    manifest << "]\n}\n";
+    PetscCheck((bool)manifest, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
+               "tdmprocessor: cannot write %s", manifestPath.c_str());
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "  Wrote %s\n", manifestPath.c_str()));
 
     PetscCall(PetscFinalize());
     return 0;

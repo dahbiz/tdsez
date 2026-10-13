@@ -512,8 +512,8 @@ add_custom_target(unit-test
 )
 
 # --- tdmprocessor: full transition-dipole matrix post-processor ------
-# Loads the saved dipole operator Dx (PETSc binary) and the eigenstates from
-# the static HDF5, computes d_ij = <psi_i|Dx|psi_j> block-by-block.
+# Loads every saved Cartesian dipole operator (Dx/Dy/Dz, PETSc binary) and the
+# eigenstates from the static HDF5, computing each d_ij = <psi_i|D_a|psi_j> block-by-block.
 # Standalone; only needs PETSc.
 tdsez_add_target(tdmprocessor
     src/tdmprocessor.cpp

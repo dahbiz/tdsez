@@ -3,6 +3,7 @@
 
 #include <petscsys.h>
 #include <cstdarg>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -39,6 +40,29 @@ static inline std::string TDSEZ_fmtAu(double x) {
  */
 static inline std::string TDSEZ_fmtEv(double au) {
     return TDSEZ_fmtSci2(au * 27.211386245988);
+}
+/**
+ * @brief Format a PetscScalar for terminal display (complex-aware).
+ * @param z Scalar to format.
+ * @return Real builds: "%.3f". Complex builds: "a+bi" decimal parts only
+ *         (imaginary part omitted when zero), at most 1 char wider than the
+ *         real format so KV rows stay within their fixed-width box.
+ * @throws never
+ */
+static inline std::string TDSEZ_fmtZ(PetscScalar z) {
+    char b[64];
+#if defined(PETSC_USE_COMPLEX)
+    const double re = (double)PetscRealPart(z);
+    const double im = (double)PetscImaginaryPart(z);
+    if (std::abs(im) < 1e-12)
+        snprintf(b, sizeof(b), "%.3f", re);
+    else
+        snprintf(b, sizeof(b), "%.3f%+.3fi", re, im);
+    return std::string(b);
+#else
+    snprintf(b, sizeof(b), "%.3f", (double)z);
+    return std::string(b);
+#endif
 }
 
 
