@@ -255,6 +255,7 @@ Dipole operators are saved to `static/Dx_<input>.bin` (and Dy, Dz for multi-axis
 | `InitialState` / `StartState` | string | `"ground"` | Initial state selector. See below for formats |
 | `NormalizeInitialState` / `NormalizePsi0` | bool | 1 | Normalize the assembled initial state so <ψ₀\|M\|ψ₀> = 1 |
 | `AccelerationMethod` | string | `"auto"` | Dipole acceleration a(t): `operator` (Ehrenfest force −⟨(1/m)(∇V+E)⟩ plus mass-gradient terms; needs smooth m and V), `discrete` (a = d⟨v⟩/dt from the Galerkin equation of motion, one M solve per output step; exact for sharp interfaces and hard walls), `auto` (`discrete` when `Mass` depends on x, y or z and `MassIsConstant = 0`, otherwise `operator`) |
+| `Propagator` | string | `"cn"` | Time stepper. `cn`: Crank-Nicolson (Pade(1,1), second order, 1 sparse solve per step). `pade22`: exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, 2 solves per step). `magnus4`: commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, 4 solves per step). Both rational propagators are unitary for Hermitian H and allow much larger `TimeStep` for the same accuracy; stage solvers accept `-pade_stage1_` / `-pade_stage2_` PETSc options |
 
 **InitialState formats:**
 - `"ground"` — Use the 0th converged bound state (ground state)

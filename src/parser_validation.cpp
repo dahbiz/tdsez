@@ -244,6 +244,11 @@ void TDSEZParser::ValidateOrThrow()
         throw std::runtime_error("ValidateOrThrow: AccelerationMethod must be 'auto', "
                                  "'operator' or 'discrete' (got '" + AccelerationMethod + "')");
 
+    // --- time propagator ---
+    if (Propagator != "cn" && Propagator != "pade22" && Propagator != "magnus4")
+        throw std::runtime_error("ValidateOrThrow: Propagator must be 'cn', 'pade22' "
+                                 "or 'magnus4' (got '" + Propagator + "')");
+
     // --- spline degree ---
     if (SplineDegree < 1 || SplineDegree > 14)
         throw std::runtime_error("ValidateOrThrow: SplineDegree must be in [1,14] (got "

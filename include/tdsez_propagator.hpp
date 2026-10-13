@@ -28,6 +28,11 @@ public:
         // cleanup
         if (J_) MatDestroy(&J_);
         if (ts_) TSDestroy(&ts_);
+        if (kspStage_[0]) KSPDestroy(&kspStage_[0]);
+        if (kspStage_[1]) KSPDestroy(&kspStage_[1]);
+        if (Astage_[0]) MatDestroy(&Astage_[0]);
+        if (Astage_[1]) MatDestroy(&Astage_[1]);
+        for (Vec &v : work_) if (v) VecDestroy(&v);
         PetscFunctionReturnVoid();
     }
 
@@ -43,6 +48,21 @@ private:
 
     TS  ts_  = PETSC_NULLPTR;  ///< PETSc time-stepping context
     Mat J_   = PETSC_NULLPTR;  ///< Jacobian matrix for the TS step
+
+    /// @name Rational (Pade(2,2)) propagators: Propagator = pade22 | magnus4
+    /// @{
+    /// Time loop for the rational propagators (Crank-Nicolson uses PETSc TS).
+    PetscErrorCode EvolveRational();
+    /// psi <- R22(-i h M^{-1} H_E) psi, H_E = H + sum_a E_a D_a, as two
+    /// unitary Cayley-type stages with complex shifts.
+    PetscErrorCode Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi);
+    /// Set A = M + g (H + sum_a E_a D_a).
+    PetscErrorCode BuildStageMatrix(Mat A, PetscScalar g, const PetscScalar E[3]);
+    Mat Astage_[2]   = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< stage matrices M + g_k H_E
+    KSP kspStage_[2] = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< one solver per stage shift
+    Vec work_[3]     = {PETSC_NULLPTR, PETSC_NULLPTR, PETSC_NULLPTR};
+    PetscInt nStageSolves_ = 0, nStageIts_ = 0;        ///< solver statistics
+    /// @}
 };
 
 

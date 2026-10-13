@@ -546,7 +546,7 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     // TS stride snapshot
     PetscInt tsStride = TDSEZParser::OutputStrideTS;
-    if (tsStride > 0 && step % tsStride == 0) {
+    if (ts && tsStride > 0 && step % tsStride == 0) {
         PetscInt ts_index = step / tsStride;
         PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->TIMEViewer, ts_index));
         PetscObjectSetName((PetscObject)ts, "timestepper");
@@ -1162,7 +1162,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     // TS stride snapshot
     PetscInt tsStride = TDSEZParser::OutputStrideTS;
-    if (tsStride > 0 && step % tsStride == 0) {
+    if (ts && tsStride > 0 && step % tsStride == 0) {
         PetscInt ts_index = step / tsStride;
         PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->TIMEViewer, ts_index));
         PetscObjectSetName((PetscObject)ts, "timestepper");

@@ -56,6 +56,11 @@ PetscErrorCode TDSEZPropagator::Evolve()
     if (dt <= 0.0 || endT <= 0.0)
         SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Invalid time step or final time.");
 
+    if (TDSEZParser::Propagator != "cn") {
+        PetscCall(EvolveRational());
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
+
     // ---------------- TS ----------------
     ierr = TSCreate(PETSC_COMM_WORLD, &ts_); CHKERRQ(ierr);
     ierr = TSSetType(ts_, TSTHETA); CHKERRQ(ierr);
@@ -182,6 +187,224 @@ PetscErrorCode TDSEZPropagator::Evolve()
     // ---------------- Solve ----------------
     ierr = TSSolve(ts_, tdse_.initialPsi); CHKERRQ(ierr);
 
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Rational propagators: Propagator = pade22 | magnus4
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The semi-discrete equation is i M c' = H(t) c with H(t) = H + E(t).D (H
+// includes the CAP once applied). Crank-Nicolson is the Pade(1,1)
+// approximant of the step exponential. These propagators use the Pade(2,2)
+// approximant
+//     R(z) = (1 + z/2 + z^2/12) / (1 - z/2 + z^2/12),   z = -i h M^{-1} H_E,
+// which is fourth order and unitary for Hermitian H_E. Its numerator has the
+// roots z_+- = -3 +- i sqrt(3), so R factorises into two Cayley-type stages,
+//     (M + g_k H_E) y = (M + conj(g_k) H_E) x,   g_{1,2} = h (-+sqrt(3) + 3i)/12,
+// each of which is itself unitary. Every stage costs one sparse solve with the
+// sparsity pattern of the Crank-Nicolson Jacobian.
+//
+//   pade22  : exponential midpoint rule, one R22 with H_E = H(t + h/2).
+//             Second order in the field variation, fourth order in the
+//             field-free phase (removes the Crank-Nicolson dispersion
+//             1/(1+(E h/2)^2) of high-energy components). 2 solves/step.
+//   magnus4 : commutator-free fourth-order Magnus (Blanes & Moan 2006),
+//             U = exp(h(a1 A1 + a2 A2)) exp(h(a2 A1 + a1 A2)), A_j = -i M^{-1}
+//             H(t + c_j h), with Gauss nodes c_j = 1/2 -+ sqrt(3)/6 and
+//             a_{1,2} = (3 -+ 2 sqrt(3))/12. Since a1 + a2 = 1/2, each factor is
+//             a half step with the effective field 2(a E1 + b E2), evaluated
+//             with R22. Fourth order overall. 4 solves/step.
+
+/// @brief Configure a stage solver like the Crank-Nicolson KSP: GMRES with
+///        right preconditioning (tolerance on the true residual), restricted
+///        additive Schwarz with ILU subdomain solves, preconditioner built once
+///        and reused. Options prefix pade_stage{1,2}_.
+static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix)
+{
+    PetscFunctionBeginUser;
+    PC pc;
+    PetscInt rows = 0;
+    PetscCall(MatGetSize(A, &rows, NULL));
+    PetscCall(KSPSetOptionsPrefix(ksp, prefix));
+    PetscCall(KSPSetOperators(ksp, A, A));
+    PetscCall(KSPSetType(ksp, KSPGMRES));
+    PetscCall(KSPGMRESSetRestart(ksp, rows > 100000 ? 50 : 30));
+    PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, 1000));
+    PetscCall(KSPSetInitialGuessNonzero(ksp, PETSC_TRUE));
+    PetscCall(KSPSetPCSide(ksp, PC_RIGHT));
+    PetscCall(KSPSetReusePreconditioner(ksp, PETSC_TRUE));
+    PetscCall(KSPGetPC(ksp, &pc));
+    PetscCall(PCSetType(pc, PCASM));
+    PetscCall(PCASMSetType(pc, PC_ASM_RESTRICT));
+    PetscCall(KSPSetFromOptions(ksp));
+    PetscCall(KSPSetUp(ksp));
+
+    PetscBool isASM = PETSC_FALSE;
+    PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCASM, &isASM));
+    if (isASM) {
+        PetscInt nlocal = 0, localRows = 0;
+        KSP     *subksp = NULL;
+        PetscCall(PCASMGetSubKSP(pc, &nlocal, NULL, &subksp));
+        PetscCall(MatGetLocalSize(A, &localRows, NULL));
+        for (PetscInt i = 0; i < nlocal; ++i) {
+            PC subpc;
+            PetscCall(KSPGetPC(subksp[i], &subpc));
+            PetscCall(PCSetType(subpc, PCILU));
+            PetscCall(PCFactorSetLevels(subpc, (localRows > 4000) ? 1 : 0));
+            PetscCall(PCFactorSetReuseOrdering(subpc, PETSC_TRUE));
+            PetscCall(PCFactorSetReuseFill(subpc, PETSC_TRUE));
+            PetscCall(PCFactorSetShiftType(subpc, MAT_SHIFT_INBLOCKS));
+            PetscCall(PCFactorSetShiftAmount(subpc, 1e-12));
+            PetscCall(KSPSetReusePreconditioner(subksp[i], PETSC_TRUE));
+            PetscCall(KSPSetType(subksp[i], KSPPREONLY));
+        }
+        PetscCall(PCSetUp(pc));
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// @brief Set A = M + g (H + sum_a E_a D_a) on the active polarization axes.
+PetscErrorCode TDSEZPropagator::BuildStageMatrix(Mat A, PetscScalar g, const PetscScalar E[3])
+{
+    PetscFunctionBeginUser;
+    const Mat       D[3]  = {manager_.Dx(), manager_.Dy(), manager_.Dz()};
+    const PetscBool on[3] = {manager_.hasX, manager_.hasY, manager_.hasZ};
+    PetscCall(MatCopy(manager_.H(), A, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(A, g));
+    PetscCall(MatAXPY(A, 1.0, manager_.M(), SAME_NONZERO_PATTERN));
+    for (int a = 0; a < 3; ++a)
+        if (on[a] && D[a] && E[a] != 0.0)
+            PetscCall(MatAXPY(A, g * E[a], D[a], SAME_NONZERO_PATTERN));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// @brief psi <- R22(-i h M^{-1} H_E) psi with H_E = H + sum_a E_a D_a.
+/// @param[in]     h    Step length of this exponential.
+/// @param[in]     E    Field components used for H_E.
+/// @param[in,out] psi  State vector.
+PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi)
+{
+    PetscFunctionBeginUser;
+    const PetscReal   s3   = PetscSqrtReal(3.0);
+    const PetscScalar g[2] = {h * (-s3 + 3.0 * PETSC_i) / 12.0,
+                              h * ( s3 + 3.0 * PETSC_i) / 12.0};
+    const Mat       D[3]  = {manager_.Dx(), manager_.Dy(), manager_.Dz()};
+    const PetscBool on[3] = {manager_.hasX, manager_.hasY, manager_.hasZ};
+    Vec rhs = work_[0], Hx = work_[1], tmp = work_[2];
+
+    for (int k = 0; k < 2; ++k) {
+        PetscCall(BuildStageMatrix(Astage_[k], g[k], E));
+        // rhs = M x + conj(g) H_E x
+        PetscCall(MatMult(manager_.H(), psi, Hx));
+        for (int a = 0; a < 3; ++a)
+            if (on[a] && D[a] && E[a] != 0.0) {
+                PetscCall(MatMult(D[a], psi, tmp));
+                PetscCall(VecAXPY(Hx, E[a], tmp));
+            }
+        PetscCall(MatMult(manager_.M(), psi, rhs));
+        PetscCall(VecAXPY(rhs, PetscConj(g[k]), Hx));
+        PetscCall(KSPSolve(kspStage_[k], rhs, psi));        // psi is also the initial guess
+        KSPConvergedReason reason;
+        PetscInt its = 0;
+        PetscCall(KSPGetConvergedReason(kspStage_[k], &reason));
+        PetscCall(KSPGetIterationNumber(kspStage_[k], &its));
+        PetscCheck(reason > 0, PETSC_COMM_WORLD, PETSC_ERR_NOT_CONVERGED,
+                   "Pade(2,2) stage %d solve did not converge (reason %d)", k + 1, (int)reason);
+        nStageSolves_++; nStageIts_ += its;
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// @brief Time loop for Propagator = pade22 | magnus4. Calls the same HDF5
+///        monitors as the TS path (with a NULL TS) at t = 0 and after every
+///        step; the last step is shortened to end exactly at FinalTime.
+PetscErrorCode TDSEZPropagator::EvolveRational()
+{
+    PetscFunctionBeginUser;
+    const PetscReal dt   = TDSEZParser::TimeStep;
+    const PetscReal endT = TDSEZParser::FinalTime;
+    const bool      m4   = (TDSEZParser::Propagator == "magnus4");
+    const PetscBool on[3] = {manager_.hasX, manager_.hasY, manager_.hasZ};
+    Vec psi = tdse_.initialPsi;
+
+    PetscErrorCode (*monitor)(TS, PetscInt, PetscReal, Vec, void *) = NULL;
+    const PetscInt dim = (PetscInt)TDSEZParser::Dimension;
+    switch (dim) {
+        case 1: monitor = TDSEZMonitorHDF5_1D; break;
+        case 2: monitor = TDSEZMonitorHDF5_2D; break;
+        case 3: monitor = TDSEZMonitorHDF5_3D; break;
+        default: SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Unsupported dimension");
+    }
+    auto field = [&](PetscReal t, PetscScalar E[3]) {
+        E[0] = on[0] ? TDSEZParser::Ex(t) : 0.0;
+        E[1] = on[1] ? TDSEZParser::Ey(t) : 0.0;
+        E[2] = on[2] ? TDSEZParser::Ez(t) : 0.0;
+    };
+
+    // Stage matrices share the Crank-Nicolson Jacobian sparsity (that of H).
+    for (int k = 0; k < 2; ++k)
+        PetscCall(MatDuplicate(manager_.H(), MAT_DO_NOT_COPY_VALUES, &Astage_[k]));
+    for (Vec &v : work_) PetscCall(VecDuplicate(psi, &v));
+
+    // Build both stage matrices for the first step and set up the solvers;
+    // their preconditioners are then reused for the whole propagation.
+    {
+        const PetscReal   h0 = m4 ? 0.5 * PetscMin(dt, endT) : PetscMin(dt, endT);
+        const PetscReal   s3 = PetscSqrtReal(3.0);
+        const PetscScalar g[2] = {h0 * (-s3 + 3.0 * PETSC_i) / 12.0, h0 * (s3 + 3.0 * PETSC_i) / 12.0};
+        PetscScalar E0[3];
+        field(0.0, E0);
+        const char *prefix[2] = {"pade_stage1_", "pade_stage2_"};
+        for (int k = 0; k < 2; ++k) {
+            PetscCall(BuildStageMatrix(Astage_[k], g[k], E0));
+            PetscCall(KSPCreate(PETSC_COMM_WORLD, &kspStage_[k]));
+            PetscCall(TDSEZConfigureStageKSP(kspStage_[k], Astage_[k], prefix[k]));
+        }
+    }
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+        "      Propagator: %s (Pade(2,2) exponential%s, %d sparse solves per step)\n",
+        TDSEZParser::Propagator.c_str(),
+        m4 ? "s, commutator-free 4th-order Magnus" : ", exponential midpoint", m4 ? 4 : 2));
+
+    // Commutator-free Magnus 4 constants.
+    const PetscReal s3 = PetscSqrtReal(3.0);
+    const PetscReal c1 = 0.5 - s3 / 6.0, c2 = 0.5 + s3 / 6.0;
+    const PetscReal a1 = (3.0 - 2.0 * s3) / 12.0, a2 = (3.0 + 2.0 * s3) / 12.0;
+
+    PetscReal t = 0.0;
+    PetscInt  step = 0;
+    PetscCall(monitor(NULL, step, t, psi, &manager_));
+    const PetscReal tol = 1e-12 * PetscMax(1.0, endT);
+    while (t < endT - tol) {
+        const PetscReal h = PetscMin(dt, endT - t);
+        if (!m4) {
+            PetscScalar Em[3];
+            field(t + 0.5 * h, Em);
+            PetscCall(Pade22Step(h, Em, psi));
+        } else {
+            PetscScalar E1[3], E2[3], Ea[3], Eb[3];
+            field(t + c1 * h, E1);
+            field(t + c2 * h, E2);
+            for (int a = 0; a < 3; ++a) {
+                Ea[a] = 2.0 * (a2 * E1[a] + a1 * E2[a]);   // applied first
+                Eb[a] = 2.0 * (a1 * E1[a] + a2 * E2[a]);
+            }
+            PetscCall(Pade22Step(0.5 * h, Ea, psi));
+            PetscCall(Pade22Step(0.5 * h, Eb, psi));
+        }
+        t = (h < dt) ? endT : t + h;
+        ++step;
+        PetscCall(monitor(NULL, step, t, psi, &manager_));
+    }
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+        "      Propagator %s: %" PetscInt_FMT " steps, %" PetscInt_FMT " stage solves, %.2f GMRES iterations per solve\n",
+        TDSEZParser::Propagator.c_str(), step, nStageSolves_,
+        nStageSolves_ ? (double)nStageIts_ / (double)nStageSolves_ : 0.0));
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
