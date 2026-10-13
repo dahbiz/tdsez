@@ -319,6 +319,11 @@ class TDSEZParser
         //                                     bound states (indices N,M,P; real coeffs)
         /// Initial-state selector string ("ground", "state:N", or "sup: ...").
         inline static std::string           InitialState       = "ground";
+        /// Dipole-acceleration method: "auto" (discrete when the mass is
+        /// position dependent, operator otherwise), "operator" (Ehrenfest
+        /// force operator, needs smooth m and V), or "discrete"
+        /// (a = d<v>/dt from the Galerkin equation of motion).
+        inline static std::string           AccelerationMethod = "auto";
         // Parsed in ValidateOrThrow:
         //   0 = ground (== state:0), 1 = single state:InitialStateIndex,
         //   2 = superposition over InitialStateTerms.

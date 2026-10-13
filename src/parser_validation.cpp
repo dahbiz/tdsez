@@ -60,6 +60,12 @@ void TDSEZParser::ValidateOrThrow()
         throw std::runtime_error("ValidateOrThrow: Dimension must be 1, 2 or 3 (got "
                                  + to_string(Dimension) + ")");
 
+    // --- dipole-acceleration method ---
+    if (AccelerationMethod != "auto" && AccelerationMethod != "operator" &&
+        AccelerationMethod != "discrete")
+        throw std::runtime_error("ValidateOrThrow: AccelerationMethod must be 'auto', "
+                                 "'operator' or 'discrete' (got '" + AccelerationMethod + "')");
+
     // --- spline degree ---
     if (SplineDegree < 1 || SplineDegree > 14)
         throw std::runtime_error("ValidateOrThrow: SplineDegree must be in [1,14] (got "

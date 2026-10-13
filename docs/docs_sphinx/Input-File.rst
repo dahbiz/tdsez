@@ -348,6 +348,10 @@ Initial State
      - bool
      - 1 (true)
      - 1 = normalize initial state so \<psi_0|M|psi_0\> = 1.
+   * - AccelerationMethod
+     - string
+     - "auto"
+     - Dipole acceleration a(t). "operator": Ehrenfest force operator (smooth m and V only). "discrete": a = d<v>/dt from the Galerkin equation of motion (exact at sharp interfaces and hard walls; one M solve per output step). "auto": "discrete" when Mass depends on x, y or z and MassIsConstant = 0, otherwise "operator".
 
 Boundary Conditions and CAP
 ---------------------------

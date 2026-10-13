@@ -566,8 +566,10 @@ if (useDirect) {
         info.blank();
     }
 
-    // BDD current sanity check: verify mass matrix positive definiteness
-    // for the computed eigenstates (relevant when mass is not constant)
+    // Sanity check: the overlap matrix M must give each computed eigenstate a
+    // positive norm psi^H M psi. This does not test current or flux
+    // conservation; the length-velocity check (TDSEZCheckLengthVelocity)
+    // is the operator-level test of the BDD velocity.
     {
         PetscBool conserved = PETSC_TRUE;
         Vec tmp = PETSC_NULLPTR;
@@ -589,7 +591,7 @@ if (useDirect) {
         PetscCall(VecDestroy(&psi_i));
 
         info.status(conserved ? "✔" : "✖",
-               conserved ? "BDD current: CONSERVED" : "BDD current: NOT CONSERVED");
+               conserved ? "Overlap-matrix norms: POSITIVE" : "Overlap-matrix norms: NOT POSITIVE");
         info.blank();
     }
 
@@ -1090,7 +1092,7 @@ PetscErrorCode TDSEZCore::Output()
                 {
                     if (seq == "symexp")
                         knots_x = TDSEZExpSymKnots(LminX, LmaxX, TDSEZParser::Nelements - 1, alphax, TDSEZParser::SplineDegree);
-                    else if (seq == "interfaces")
+                    else if (seq == "interface" || seq == "interfaces")
                         knots_x = TDSEZInterfaceKnots(LminX, LmaxX, TDSEZParser::Nelements - 1, TDSEZParser::SplineDegree, TDSEZParser::Potential, TDSEZParser::Mass);
                     else if (seq == "symtanu")
                         knots_x = TDSEZTanUSymKnots(LminX, LmaxX, TDSEZParser::Nelements - 1, alphax, TDSEZParser::SplineDegree);
@@ -1164,7 +1166,7 @@ PetscErrorCode TDSEZCore::Output()
                     {
                         if (seq == "symexp")
                             knots_y = TDSEZExpSymKnots(LminY, LmaxY, TDSEZParser::Nelements - 1, alphay, TDSEZParser::SplineDegree);
-                        else if (seq == "interfaces")
+                        else if (seq == "interface" || seq == "interfaces")
                             knots_y = TDSEZInterfaceKnots(LminY, LmaxY, TDSEZParser::Nelements - 1, TDSEZParser::SplineDegree, TDSEZParser::Potential, TDSEZParser::Mass);
                         else if (seq == "symtanu")
                             knots_y = TDSEZTanUSymKnots(LminY, LmaxY, TDSEZParser::Nelements - 1, alphay, TDSEZParser::SplineDegree);
@@ -1225,7 +1227,7 @@ PetscErrorCode TDSEZCore::Output()
                     {
                         if (seq == "symexp")
                             knots_z = TDSEZExpSymKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1, alphaz, TDSEZParser::SplineDegree);
-                        else if (seq == "interfaces")
+                        else if (seq == "interface" || seq == "interfaces")
                             knots_z = TDSEZInterfaceKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1, TDSEZParser::SplineDegree, TDSEZParser::Potential, TDSEZParser::Mass);
                         else if (seq == "symtanu")
                             knots_z = TDSEZTanUSymKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1, alphaz, TDSEZParser::SplineDegree);

@@ -174,7 +174,7 @@ PetscErrorCode TDSEZManager::WriteHDF5(const std::string& filename)
         // exceeds nRows after the first flush). Sizing it to only nRows rows
         // caused a heap-buffer-overflow (ASan) on every disabled dataset from
         // the 2nd flush onward. ZW is the widest dataset width in use.
-        const PetscInt ZW = std::max({dipWidth, popWidth, energyWidth,
+        const PetscInt ZW = std::max<PetscInt>({dipWidth, popWidth, energyWidth,
                                       (TDSEZParser::Dimension == 3 ? 15 : 11), (PetscInt)3});
         const PetscInt zRows = (maxAllocatedSteps > 0) ? maxAllocatedSteps : nRows;
         std::vector<PetscScalar> zeros((size_t)zRows * (size_t)ZW, 0.0);
@@ -1216,6 +1216,8 @@ PetscErrorCode TDSEZManager::FinalizeSurff()
             // and destroys them. Destroying them here too is a double-free
             // (SEGV at teardown). Only destroy matrices the manager owns.
             if (m_Ht)          MatDestroy(&m_Ht);
+            if (kspMass)       KSPDestroy(&kspMass);
+            for (Vec &v : accelWork) if (v) VecDestroy(&v);
 
             // Free the buffers
             if (dipBuffer)    PetscFree(dipBuffer);
@@ -1279,3 +1281,89 @@ PetscErrorCode TDSEZManager::FinalizeSurff()
             }
                     
         }
+
+
+/// @brief Whether a(t) is evaluated by DiscreteAcceleration().
+/// @details "auto" selects the discrete form only when the mass expression
+///          actually depends on x, y or z (and MassIsConstant is not set), so
+///          constant-mass inputs keep the operator form and reproduce
+///          earlier results.
+PetscBool TDSEZManager::UseDiscreteAcceleration() const
+{
+    const std::string &m = TDSEZParser::AccelerationMethod;
+    if (m == "discrete") return PETSC_TRUE;
+    if (m == "operator") return PETSC_FALSE;
+    if (TDSEZParser::MassIsConstant) return PETSC_FALSE;               // "auto"
+    try {
+        return TDSEZParser::MassExpr.GetUsedVar().empty() ? PETSC_FALSE : PETSC_TRUE;
+    } catch (const mu::Parser::exception_type &) {
+        return PETSC_TRUE;
+    }
+}
+
+
+/// @brief Dipole acceleration from the discrete equation of motion.
+/// @details With i M c' = H_t c and H_t = H + E.D, the exact time derivative
+///          of <v> = c^H Vel c is d<v>/dt = -2 Im( w^H Vel c ),
+///          w = M^{-1} H_t c, for Hermitian Vel. Without a CAP this is used
+///          as is. With a CAP, H_t is replaced by its Hermitian part, which
+///          gives the discrete Ehrenfest acceleration
+///          c^H i[H_h + E.D, Vel]_M c of the physical Hamiltonian.
+/// @param[in]  t    Current time.
+/// @param[in]  psi  Current coefficient vector.
+/// @param[out] acc  Acceleration components (x, y, z), scaled by the charge.
+/// @return PETSc error code.
+PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, PetscScalar acc[3])
+{
+    PetscFunctionBeginUser;
+    if (!accelWork[0])
+        for (Vec &v : accelWork) PetscCall(VecDuplicate(psi, &v));
+    Vec r = accelWork[0], w = accelWork[1], s = accelWork[2];
+
+    if (!kspMass) {
+        PC pc;
+        PetscCall(KSPCreate(PetscObjectComm((PetscObject)m_M), &kspMass));
+        PetscCall(KSPSetOptionsPrefix(kspMass, "accel_"));
+        PetscCall(KSPSetOperators(kspMass, m_M, m_M));
+        PetscCall(KSPSetType(kspMass, KSPPREONLY));
+        PetscCall(KSPGetPC(kspMass, &pc));
+        PetscCall(PCSetType(pc, PCLU));
+#if defined(PETSC_HAVE_MUMPS)
+        PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERMUMPS));
+#endif
+        PetscCall(KSPSetFromOptions(kspMass));
+        PetscCall(KSPSetUp(kspMass));
+    }
+
+    // r = (H_h + E.D) psi with H_h = (H + H^H)/2 the Hermitian part of H.
+    // When a CAP is active it has been merged into H as an anti-Hermitian
+    // term; dropping it gives the Ehrenfest acceleration of the physical
+    // Hamiltonian instead of adding the absorber's -<{W, v}> drag.
+    PetscCall(MatMult(m_H, psi, r));
+    if (TDSEZParser::EnableCAP) {
+        PetscCall(MatMultHermitianTranspose(m_H, psi, s));
+        PetscCall(VecAXPBY(r, 0.5, 0.5, s));
+    }
+    const Mat       D[3]   = {m_Dx, m_Dy, m_Dz};
+    const Mat       Vel[3] = {m_VelX, m_VelY, m_VelZ};
+    const PetscBool on[3]  = {hasX, hasY, hasZ};
+    const PetscScalar E[3] = {on[0] ? TDSEZParser::Ex(t) : 0.0,
+                              on[1] ? TDSEZParser::Ey(t) : 0.0,
+                              on[2] ? TDSEZParser::Ez(t) : 0.0};
+    for (int a = 0; a < 3; ++a) {
+        if (!on[a] || D[a] == PETSC_NULLPTR) continue;
+        PetscCall(MatMult(D[a], psi, s));
+        PetscCall(VecAXPY(r, E[a], s));
+    }
+    PetscCall(KSPSolve(kspMass, r, w));
+
+    for (int a = 0; a < 3; ++a) {
+        acc[a] = 0.0;
+        if (!on[a] || Vel[a] == PETSC_NULLPTR) continue;
+        PetscScalar z;
+        PetscCall(MatMult(Vel[a], psi, s));
+        PetscCall(VecDot(s, w, &z));                 // z = w^H (Vel psi)
+        acc[a] = -2.0 * charge * PetscImaginaryPart(z);
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}

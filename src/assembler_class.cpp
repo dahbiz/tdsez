@@ -106,7 +106,7 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
 
     // assemble core TDSE operators first and time them
     PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
-    PetscPrintf(PETSC_COMM_WORLD, "      TD Operator Assembly Timing (%dD): %s \n", dim, pol.c_str());
+    PetscPrintf(PETSC_COMM_WORLD, "      TD Operator Assembly Timing (%dD): %s \n", (int)dim, pol.c_str());
     PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
 
 
@@ -131,7 +131,7 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
             "    ▸ COMPLEX ABSORBING POTENTIAL (CAP) ACTIVATION REGION\n"
             "  ══════════════════════════════════════════════════════════════════════\n");
         PetscPrintf(PETSC_COMM_WORLD,
-            "      dimension            = %dD\n", dim);
+            "      dimension            = %dD\n", (int)dim);
         PetscPrintf(PETSC_COMM_WORLD,
             "      R_outer (|LMaxX|)     = %12.6f   (CAP off outside this radius)\n", R_outer);
         PetscPrintf(PETSC_COMM_WORLD,

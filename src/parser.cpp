@@ -265,6 +265,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"SaveStateFormat",    S(BoundStateFormat)}, // intuitive alias
                 {"StateFormat",        S(BoundStateFormat)}, // intuitive alias
                 {"InitialState",       S(InitialState)},
+                {"AccelerationMethod", S(AccelerationMethod)},
                 {"StartState",         S(InitialState)},     // intuitive alias
                 {"NormalizeInitialState", B(NormalizeInitialState)},
                 {"NormalizePsi0",      B(NormalizeInitialState)}, // intuitive alias
