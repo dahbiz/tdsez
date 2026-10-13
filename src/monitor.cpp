@@ -8,6 +8,24 @@
  *        IJacobian callbacks for each polarization combination.
  */
 
+static PetscInt TDSEZProgressTotal()
+{
+    return PetscMax((PetscInt)1,
+        (PetscInt)(TDSEZParser::FinalTime /
+                   PetscMax(TDSEZParser::TimeStep, 1e-30) + 0.5));
+}
+
+static bool TDSEZShouldLogProgress(PetscInt step)
+{
+    // Verbose means a live per-step monitor.  The observable callbacks already
+    // retain every step when Verbose is enabled; honour that same intent for
+    // the console instead of still throttling output to twenty updates.
+    if (TDSEZParser::Verbose) return true;
+    const PetscInt total = TDSEZProgressTotal();
+    const PetscInt stride = PetscMax((PetscInt)1, total / 20);
+    return step == 0 || step >= total || (step % stride) == 0;
+}
+
 /// IFunction for x-polarized propagation: F = i M psidot - H psi - Ex Dx psi.
 /**
  * @param[in]  ts      Time-stepper context (unused).
@@ -388,6 +406,9 @@ PetscErrorCode TDSEZIJacobianPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pet
 PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
 {
     PetscFunctionBeginUser;
+    TDSEZProfile &profile = TDSEZProfile::Get();
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePush(profile.stageObservables));
+    profile.steps = PetscMax(profile.steps, step);
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
 
@@ -522,8 +543,10 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             PetscInt stride = TDSEZParser::OutputStrideTS;
             if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
                 TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
+                PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
                 PetscCallAbort(PETSC_COMM_WORLD,
                                TDSEZ->WriteHDF5(TDSEZ->outputFilename));
+                PetscCall(PetscLogEventEnd(profile.eventHDF5Write, 0, 0, 0, 0));
             }
         }
     }
@@ -557,15 +580,16 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     // Logging
     // ------------------------
-    if (step % 100 == 0 || TDSEZParser::Verbose)
+    if (TDSEZShouldLogProgress(step))
     {
         PetscPrintf(PETSC_COMM_WORLD,
-            "      [%6" PetscInt_FMT "] t=%8.3f   <Psi|Psi>=%12.3e     <H>=%12.4e\n",
-            step, t,
+            "      [%6" PetscInt_FMT "/%" PetscInt_FMT "] %6.1f%%  t=%10.4f   <Psi|Psi>=%12.3e   <H>=%12.4e\n",
+            step, TDSEZProgressTotal(), 100.0 * (double)step / TDSEZProgressTotal(), t,
             (PetscReal)PetscRealPart(normSq),
             (PetscReal)PetscRealPart(totalEnergy));
     }
 
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -588,6 +612,9 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 {
     (void)ts; (void)step; (void)t; (void)psi;
     PetscFunctionBeginUser;
+    TDSEZProfile &profile = TDSEZProfile::Get();
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePush(profile.stageObservables));
+    profile.steps = PetscMax(profile.steps, step);
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
 
     if (TDSEZParser::out_tsurff) PetscCall(TDSEZ->AccumulateSurff(psi, t, TDSEZParser::TimeStep, step));
@@ -829,8 +856,10 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             PetscInt stride = TDSEZParser::OutputStrideTS;
             if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
                 TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
+                PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
                 PetscCallAbort(PETSC_COMM_WORLD,
                                TDSEZ->WriteHDF5(TDSEZ->outputFilename));
+                PetscCall(PetscLogEventEnd(profile.eventHDF5Write, 0, 0, 0, 0));
             }
         }
     }
@@ -854,16 +883,17 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     // Logging 
     // ------------------------
-    if (step % 100 == 0 || TDSEZParser::Verbose)
+    if (TDSEZShouldLogProgress(step))
     {
         PetscPrintf(PETSC_COMM_WORLD,
-            "      [%6" PetscInt_FMT "] t=%8.3f   ⟨Ψ|Ψ⟩=%12.3e     ⟨H⟩=%12.4e\n",
-            step, t,
+            "      [%6" PetscInt_FMT "/%" PetscInt_FMT "] %6.1f%%  t=%10.4f   ⟨Ψ|Ψ⟩=%12.3e   ⟨H⟩=%12.4e\n",
+            step, TDSEZProgressTotal(), 100.0 * (double)step / TDSEZProgressTotal(), t,
             (PetscReal)PetscRealPart(normSq),
             (PetscReal)PetscRealPart(totalEnergy));
     }
 
 
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -888,6 +918,9 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
 {
     PetscFunctionBeginUser;
+    TDSEZProfile &profile = TDSEZProfile::Get();
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePush(profile.stageObservables));
+    profile.steps = PetscMax(profile.steps, step);
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
 
@@ -1116,8 +1149,10 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             PetscInt stride = TDSEZParser::OutputStrideTS;
             if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
                 TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
+                PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
                 PetscCallAbort(PETSC_COMM_WORLD,
                                TDSEZ->WriteHDF5(TDSEZ->outputFilename));
+                PetscCall(PetscLogEventEnd(profile.eventHDF5Write, 0, 0, 0, 0));
             }
         }
 
@@ -1173,15 +1208,16 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // -------------------------
     // Logging 
     // -------------------------
-    if (step % 100 == 0 || TDSEZParser::Verbose)
+    if (TDSEZShouldLogProgress(step))
     {
         PetscPrintf(PETSC_COMM_WORLD,
-            "      [%6" PetscInt_FMT "] t=%8.3f   ⟨Ψ|Ψ⟩=%12.3e     ⟨H⟩=%12.4e\n",
-            step, t,
+            "      [%6" PetscInt_FMT "/%" PetscInt_FMT "] %6.1f%%  t=%10.4f   ⟨Ψ|Ψ⟩=%12.3e   ⟨H⟩=%12.4e\n",
+            step, TDSEZProgressTotal(), 100.0 * (double)step / TDSEZProgressTotal(), t,
             (PetscReal)PetscRealPart(normSq),
             (PetscReal)PetscRealPart(totalEnergy));
     }
     
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 

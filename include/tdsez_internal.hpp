@@ -116,6 +116,31 @@ typedef PetscErrorCode (*TDSEZPhysicsKernel)(
 
 #include "tdsez_propagator.hpp"
 
+/**
+ * @brief Run-time profile: phase wall times, PETSc log stages for the
+ *        propagation breakdown, and the end-of-run timing report.
+ */
+struct TDSEZProfile
+{
+    /// Top-level phases of a run, in execution order.
+    enum Phase { Setup, Assembly, Eigensolve, StaticOutput, OperatorAssembly,
+                 TDSetup, Propagation, FinalOutput, NPHASES };
+    PetscLogDouble phase[NPHASES] = {0};
+    PetscLogDouble tStart = 0.0;
+    PetscLogStage  stagePropagation = -1, stageObservables = -1;
+    PetscLogEvent  eventHDF5Write = -1, eventStageUpdate = -1;
+    PetscInt       steps = 0;               ///< time steps taken
+    PetscBool      initialised = PETSC_FALSE;
+
+    static TDSEZProfile& Get();
+    /// Enable PETSc logging if needed, register stages/events, start the clock.
+    PetscErrorCode Init();
+    /// Accumulate wall time into a phase.
+    void Add(Phase p, PetscLogDouble seconds);
+    /// Print the timing table and performance summary (collective).
+    PetscErrorCode Report(PetscInt dofs, PetscBool propagated);
+};
+
 // ============================================================================
 //  Cross-TU free functions (prototypes)
 // ============================================================================

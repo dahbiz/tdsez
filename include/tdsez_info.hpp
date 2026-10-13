@@ -8,6 +8,11 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <cstdlib>
+#if defined(__unix__) || defined(__APPLE__)
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
 
 // ── TDSE-Z output-formatting helpers (quality bar) ────────────────────────
 // fmtSci2 : 2-significant-digit scientific notation, used ONLY for eV.
@@ -100,8 +105,9 @@ class TDSEZInfo
 public:
     /// Left indentation (spaces) applied to every printed line.
     static constexpr int INDENT = 2;
-    /// Inner content width; a full rule line is INDENT + W box-drawing chars.
-    static constexpr int W      = 70;   // inner width (rule = INDENT + W ═)
+    /// Default inner content width used when stdout is redirected or the
+    /// terminal size cannot be queried.
+    static constexpr int W      = 70;
 
     /**
      * @brief Construct the printer bound to an MPI communicator.
@@ -116,8 +122,9 @@ public:
     // ── heavy rule: "  " + W×═ + "\n" ──────────────────────────────────
     void rule() const
     {
+        const int w = width();
         PetscPrintf(m_comm, "%*s", INDENT, "");
-        for (int i = 0; i < W; ++i) PetscPrintf(m_comm, "═");
+        for (int i = 0; i < w; ++i) PetscPrintf(m_comm, "═");
         PetscPrintf(m_comm, "\n");
     }
 
@@ -141,10 +148,7 @@ public:
     // ── ▸ section label + trailing rule (no leading rule) ──────────────
     void section(const char* label) const
     {
-        int llen = (int)strlen(label) + 4;   // "  ▸ " prefix
-        int pad  = W - llen;
-        if (pad < 0) pad = 0;
-        PetscPrintf(m_comm, "%*s  ▸ %s%*s\n", INDENT, "", label, pad, "");
+        PetscPrintf(m_comm, "%*s  ▸ %s\n", INDENT, "", label);
         rule();
     }
 
@@ -154,22 +158,25 @@ public:
      * @param fmt   printf-style format string for the value.
      * @param ...   Arguments matching @p fmt.
      */
-    // ── KV row: left-aligned label, right-aligned value ────────────────
-    //    "  " + 4-space inner indent + label + gap + value + 2 trailing
+    // ── KV row: compact PETSc-style "key = value" ────────────────────
     void kv(const char* label, const char* fmt, ...) const
     {
+        const int w = width();
         char val[256];
         va_list args;
         va_start(args, fmt);
         vsnprintf(val, sizeof(val), fmt, args);
         va_end(args);
 
-        int llen = (int)strlen(label);
-        int vlen = (int)strlen(val);
-        int gap  = W - 4 - llen - vlen;
-        if (gap < 1) gap = 1;
-        PetscPrintf(m_comm, "%*s    %-*s%*s  \n",
-                     INDENT, "", llen, label, gap + vlen, val);
+        const int labelWidth = 28;
+        const int maxValue = PetscMax(8, w - 4 - labelWidth - 3);
+        std::string shown(val);
+        if ((int)shown.size() > maxValue) {
+            shown.resize((size_t)PetscMax(0, maxValue - 3));
+            shown += "...";
+        }
+        PetscPrintf(m_comm, "%*s    %-*s = %s\n",
+                    INDENT, "", labelWidth, label, shown.c_str());
     }
 
     /**
@@ -178,8 +185,6 @@ public:
     // ── blank line matching box width ─────────────────────────────────
     void blank() const
     {
-        PetscPrintf(m_comm, "%*s", INDENT, "");
-        for (int i = 0; i < W; ++i) PetscPrintf(m_comm, " ");
         PetscPrintf(m_comm, "\n");
     }
 
@@ -208,11 +213,7 @@ public:
         vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
 
-        int mlen = (int)strlen(icon) + 1 + (int)strlen(msg);
-        int pad  = W - 4 - mlen;
-        if (pad < 0) pad = 0;
-        PetscPrintf(m_comm, "%*s    %s %s%*s\n",
-                     INDENT, "", icon, msg, pad, "");
+        PetscPrintf(m_comm, "%*s    %s %s\n", INDENT, "", icon, msg);
     }
 
     /**
@@ -282,6 +283,31 @@ private:
     /// MPI communicator used for all PetscPrintf output.
     MPI_Comm m_comm;
 
+    /// Return the usable inner width of the current terminal.  PETSc output
+    /// is often redirected under batch systems, so ioctl is deliberately
+    /// optional and the fixed width remains the deterministic fallback.
+    static int width()
+    {
+        static const int cached = [] {
+            int columns = 0;
+#if defined(__unix__) || defined(__APPLE__)
+            struct winsize ws{};
+            if (isatty(STDOUT_FILENO) && ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0)
+                columns = (int)ws.ws_col;
+#endif
+            if (columns <= 0) {
+                const char *env = std::getenv("COLUMNS");
+                if (env) columns = std::atoi(env);
+            }
+            if (columns <= 0) return W;
+            // Keep a small readable margin and avoid pathological scheduler
+            // values making the report wider than the display.
+            const int inner = columns - INDENT;
+            return inner < 70 ? 70 : (inner > 94 ? 94 : inner);
+        }();
+        return cached;
+    }
+
     /**
      * @brief Print @p s centered within the W-wide field using a display width.
      * @param s  String to print.
@@ -289,7 +315,7 @@ private:
      */
     void centerStr(const char* s, int dw) const
     {
-        int pad = (dw > 0) ? (W - dw) / 2 : 0;
+        int pad = (dw > 0) ? (width() - dw) / 2 : 0;
         if (pad < 0) pad = 0;
         PetscPrintf(m_comm, "%*s%*s%s\n", INDENT, "", pad, "", s);
     }

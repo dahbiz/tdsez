@@ -489,6 +489,7 @@ set(TDSEZ_SOURCES
     src/core.cpp
     src/manager.cpp
     src/monitor.cpp
+    src/timing.cpp
     src/propagator.cpp
     src/diagnostics.cpp
     src/tdsez.cpp
