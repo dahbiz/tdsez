@@ -280,7 +280,8 @@ class TDSEZManager
     /// i M c' = (H + E.D) c:  a_alpha = -2 q Im( w^H Vel_alpha psi ),
     /// w = M^{-1} (H + E.D) psi.  Needs no derivatives of m or V, so it is
     /// valid across sharp material interfaces. Inactive axes return 0.
-    PetscErrorCode DiscreteAcceleration(PetscReal t, Vec psi, PetscScalar acc[3]);
+    /// Hpsi, if not NULL, must hold H psi (as computed by the monitor) and saves a MatMult.
+    PetscErrorCode DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi, PetscScalar acc[3]);
     /// Direct solver for the overlap matrix M (built on first use).
     KSP kspMass = PETSC_NULLPTR;
     /// Work vectors for DiscreteAcceleration (built on first use).

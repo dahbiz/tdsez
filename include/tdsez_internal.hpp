@@ -364,5 +364,8 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ);
 /// @param expr muParser expression potentially containing ternary operators.
 /// @return Vector of breakpoint coordinates.
 std::vector<PetscReal> TDSEZExtractBreakpoints(const std::string& expr);
+/// True when a(t) comes from the discrete equation of motion (AccelerationMethod);
+/// the force-operator mass corrections are then unused and need not be assembled.
+PetscBool TDSEZDiscreteAccelerationActive();
 
 #endif // TDSEZ_INTERNAL_HPP

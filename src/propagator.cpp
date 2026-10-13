@@ -115,6 +115,22 @@ PetscErrorCode TDSEZPropagator::Evolve()
     // KSP tolerance still drives every linear solve to the identical residual
     // (PETSc only refreshes the factorization if a solve actually diverges).
     ierr = KSPSetReusePreconditioner(ksp, PETSC_TRUE); CHKERRQ(ierr);
+    // The KSP flag alone is not enough: on every SNESSolve the SNES layer
+    // resets the KSP reuse flag from its own preconditioner lag (default 1,
+    // i.e. rebuild every solve), so ASM re-extracted the subdomain matrices
+    // and refactored ILU at every time step. Lag -2 builds the preconditioner
+    // once (at the first step) and never again; "persists" keeps that across
+    // the successive SNESSolve calls made by TS. Both are still overridable
+    // with -snes_lag_preconditioner on the command line.
+    ierr = SNESSetLagPreconditioner(snes, -2); CHKERRQ(ierr);
+    ierr = SNESSetLagPreconditionerPersists(snes, PETSC_TRUE); CHKERRQ(ierr);
+    // Right preconditioning: GMRES then monitors the true (unpreconditioned)
+    // residual, so the 1e-12 tolerance bounds the actual Crank-Nicolson solve
+    // error independently of preconditioner quality. With left preconditioning
+    // the tolerance applied to the preconditioned residual, which for
+    // ill-conditioned systems (e.g. C0 interface knots) left ~1e-6 errors in
+    // <x>(t); right preconditioning brings these to ~1e-14 at the same cost.
+    ierr = KSPSetPCSide(ksp, PC_RIGHT); CHKERRQ(ierr);
 
     ierr = PCSetType(pc, PCASM); CHKERRQ(ierr);
     // ierr = PCASMSetOverlap(pc, 1); CHKERRQ(ierr);

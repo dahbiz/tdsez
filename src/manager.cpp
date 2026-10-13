@@ -1290,15 +1290,34 @@ PetscErrorCode TDSEZManager::FinalizeSurff()
 ///          earlier results.
 PetscBool TDSEZManager::UseDiscreteAcceleration() const
 {
+    return TDSEZDiscreteAccelerationActive();
+}
+
+
+/// @brief Free-function form of TDSEZManager::UseDiscreteAcceleration(), usable
+///        from the assembly kernels.
+PetscBool TDSEZDiscreteAccelerationActive()
+{
     const std::string &m = TDSEZParser::AccelerationMethod;
     if (m == "discrete") return PETSC_TRUE;
     if (m == "operator") return PETSC_FALSE;
     if (TDSEZParser::MassIsConstant) return PETSC_FALSE;               // "auto"
-    try {
-        return TDSEZParser::MassExpr.GetUsedVar().empty() ? PETSC_FALSE : PETSC_TRUE;
-    } catch (const mu::Parser::exception_type &) {
-        return PETSC_TRUE;
+    // GetUsedVar() re-parses the expression and this is queried from the
+    // assembly kernels at every quadrature point, so cache the answer per
+    // mass expression.
+    static std::string cachedExpr;
+    static PetscBool   cachedVaries = PETSC_TRUE, cacheValid = PETSC_FALSE;
+    const std::string &expr = TDSEZParser::MassExpr.GetExpr();
+    if (!cacheValid || expr != cachedExpr) {
+        try {
+            cachedVaries = TDSEZParser::MassExpr.GetUsedVar().empty() ? PETSC_FALSE : PETSC_TRUE;
+        } catch (const mu::Parser::exception_type &) {
+            cachedVaries = PETSC_TRUE;
+        }
+        cachedExpr = expr;
+        cacheValid = PETSC_TRUE;
     }
+    return cachedVaries;
 }
 
 
@@ -1311,9 +1330,10 @@ PetscBool TDSEZManager::UseDiscreteAcceleration() const
 ///          c^H i[H_h + E.D, Vel]_M c of the physical Hamiltonian.
 /// @param[in]  t    Current time.
 /// @param[in]  psi  Current coefficient vector.
+/// @param[in]  Hpsi H psi if already available (may be NULL).
 /// @param[out] acc  Acceleration components (x, y, z), scaled by the charge.
 /// @return PETSc error code.
-PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, PetscScalar acc[3])
+PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi, PetscScalar acc[3])
 {
     PetscFunctionBeginUser;
     if (!accelWork[0])
@@ -1339,7 +1359,8 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, PetscSca
     // When a CAP is active it has been merged into H as an anti-Hermitian
     // term; dropping it gives the Ehrenfest acceleration of the physical
     // Hamiltonian instead of adding the absorber's -<{W, v}> drag.
-    PetscCall(MatMult(m_H, psi, r));
+    if (Hpsi) PetscCall(VecCopy(Hpsi, r));
+    else      PetscCall(MatMult(m_H, psi, r));
     if (TDSEZParser::EnableCAP) {
         PetscCall(MatMultHermitianTranspose(m_H, psi, s));
         PetscCall(VecAXPBY(r, 0.5, 0.5, s));
