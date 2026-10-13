@@ -2,8 +2,8 @@ Knot Sequences
 ==============
 
 B-spline knot vector generation supports uniform, symmetric exponential and
-tangent, logarithmic tangent, and hydrogenic sequences. The ``interface``,
-``adaptive``, and ``adaptive_wf`` names currently select uniform interior knots;
+tangent, logarithmic tangent, hydrogenic, and interface-aligned sequences. The
+``adaptive`` and ``adaptive_wf`` names currently select uniform interior knots;
 their specialized generators are pending implementation.
 
 Knot Sequence Types
@@ -31,9 +31,9 @@ Knot Sequence Types
    * - **logtan**
      - Logarithmic tangent
      - KnotAlpha
-   * - **interface**
-     - Pending: currently uses uniform interior knots, without interface alignment
-     - None currently active
+   * - **interface** (alias **interfaces**)
+     - C0 knots (multiplicity p) at every breakpoint of the Potential and Mass expressions; uniform elements within each layer, element count per layer proportional to its width. Required for spectral accuracy at abrupt BDD heterojunctions.
+     - Breakpoints from ``x < c`` / ``abs(x) < c`` comparisons
    * - **hydrogenic**
      - Linear near origin, exponential tail. For Coulombic problems
      - HydrogenicNLin[d], HydrogenicNExp[d], HydrogenicR1[d]

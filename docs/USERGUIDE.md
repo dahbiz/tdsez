@@ -210,7 +210,7 @@ E_i(t) = LaserX(t)   // User-defined expression in variable t
 | `symtanu` | Symmetric tangent, unbounded: tanh-compressed near origin | `KnotAlpha` |
 | `symtan` | Symmetric tangent, bounded (in [Lmin,Lmax]) | `KnotAlpha` |
 | `logtan` | Logarithmic tangent knot vector | `KnotAlpha` |
-| `interface` | Auto-aligned at potential/mass breakpoints | (breakpoints extracted from Potential/Mass expressions) |
+| `interface` (alias `interfaces`) | C0 knots (multiplicity p) at every potential/mass breakpoint; elements uniform within each layer, element count per layer proportional to its width | Breakpoints read from `x < c` / `abs(x) < c` comparisons in `Potential` and `Mass` |
 | `hydrogenic` | Linear near origin, exponential tail. For Coulombic problems | `HydrogenicNLin[d]`, `HydrogenicNExp[d]`, `HydrogenicR1[d]` |
 | `adaptive` | Potential-driven: clusters knots where |∇V| + wells are strong | `AdaptiveKappa`, `AdaptivePower` |
 | `adaptive_wf` | Density-driven (two-pass): first coarse solve, then cluster on \|ψ₀\|² | `AdaptiveWFCoarseN`, `AdaptiveWFKinLambda` |
@@ -254,6 +254,7 @@ Dipole operators are saved to `static/Dx_<input>.bin` (and Dy, Dz for multi-axis
 |-----|------|---------|-------------|
 | `InitialState` / `StartState` | string | `"ground"` | Initial state selector. See below for formats |
 | `NormalizeInitialState` / `NormalizePsi0` | bool | 1 | Normalize the assembled initial state so <ψ₀\|M\|ψ₀> = 1 |
+| `AccelerationMethod` | string | `"auto"` | Dipole acceleration a(t): `operator` (Ehrenfest force −⟨(1/m)(∇V+E)⟩ plus mass-gradient terms; needs smooth m and V), `discrete` (a = d⟨v⟩/dt from the Galerkin equation of motion, one M solve per output step; exact for sharp interfaces and hard walls), `auto` (`discrete` when `Mass` depends on x, y or z and `MassIsConstant = 0`, otherwise `operator`) |
 
 **InitialState formats:**
 - `"ground"` — Use the 0th converged bound state (ground state)
@@ -513,8 +514,8 @@ Accumulates in `manager.BerryPhase`.
 **"Unknown Mat type given: "**
 - This happens when `-mat_type` or `-vec_type` is not properly handled by PetIGA. Use the CLI flags as-is; TDSEZ re-injects them as `-iga_mat_type` / `-iga_vec_type`.
 
-**"BDD current: NOT CONSERVED"**
-- The mass matrix test failed. This typically means `Mass(x,y,z)` is non-positive somewhere in the domain. Check your mass expression for negative or zero values.
+**"Overlap-matrix norms: NOT POSITIVE"**
+- An eigenvector has a non-positive norm ψᴴMψ. Check the eigensolver settings and the mesh. This check does not test current conservation; the length–velocity gauge check printed before propagation is the operator-level test of the BDD velocity.
 
 **StrictInput fatal on unknown key**
 - Either fix the typo in your input file, or set `StrictInput = 0` to tolerate unknown keys (not recommended for physics codes).

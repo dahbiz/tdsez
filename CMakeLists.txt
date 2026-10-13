@@ -153,11 +153,14 @@ separate_arguments(PETSC_CXXFLAGS_LIST UNIX_COMMAND "${PETSC_CXXFLAGS_EXTRA}")
 
 # Extract -march, -mtune from PETSc (so we match the exact CPU target)
 set(PETSC_MARCH "")
+set(PETSC_MCPU "")
 set(PETSC_MTUNE "")
 set(PETSC_HAS_O3 OFF)
 foreach(_flag ${PETSC_CXXFLAGS_LIST})
     if(_flag MATCHES "^-march=(.*)")
         set(PETSC_MARCH "${CMAKE_MATCH_1}")
+    elseif(_flag MATCHES "^-mcpu=(.*)")
+        set(PETSC_MCPU "${CMAKE_MATCH_1}")
     elseif(_flag MATCHES "^-mtune=(.*)")
         set(PETSC_MTUNE "${CMAKE_MATCH_1}")
     elseif(_flag STREQUAL "-O3")
@@ -351,9 +354,16 @@ if(PETSC_INHERIT_FLAGS)
     endif()
 endif()
 
-# If ENABLE_NATIVE is ON and PETSc didn't specify -march, fall back to -march=native
-if(ENABLE_NATIVE AND NOT PETSC_MARCH)
-    add_compile_options($<$<CONFIG:Release>:-march=native>)
+# If ENABLE_NATIVE is ON and PETSc specified no CPU target, fall back to the
+# native target. On arm64 (Apple Silicon, aarch64 Linux) the GCC/Clang
+# spelling is -mcpu=native; -march=native expands to names such as apple-m1
+# that GCC rejects. A PETSc -mcpu=... already arrives via its inherited flags.
+if(ENABLE_NATIVE AND NOT PETSC_MARCH AND NOT PETSC_MCPU)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64|ARM64)$")
+        add_compile_options($<$<CONFIG:Release>:-mcpu=native>)
+    else()
+        add_compile_options($<$<CONFIG:Release>:-march=native>)
+    endif()
 endif()
 
 # ----------------------------------------------------------------------------
@@ -378,6 +388,12 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 # PETSc / SLEPc / PETIGA / HDF5 live under $PETSC_DIR/lib.
 include_directories(${PETSC_DIR}/include)
 link_directories(${PETSC_DIR}/lib)
+
+# Embed $PETSC_DIR/lib as a run path so the executables find PETSc and its
+# bundled libraries (HDF5, MUMPS, muParser, ...) without DYLD_LIBRARY_PATH /
+# LD_LIBRARY_PATH, in the build tree and after installation.
+list(APPEND CMAKE_BUILD_RPATH   "${PETSC_DIR}/lib")
+list(APPEND CMAKE_INSTALL_RPATH "${PETSC_DIR}/lib")
 
 # muparser: prefer the CMake config (explicit, self-contained).
 find_package(muparser CONFIG QUIET)
