@@ -59,7 +59,7 @@ int main()
         TDSEZParser::InitialState = "state:1typo";
         rejects("non-integer index", [] { TDSEZParser::ValidateOrThrow(); });
         TDSEZParser::InitialState = "sup: 0.5extra*0 + 0.5*1";
-        rejects("non-numeric coefficient", [] { TDSEZParser::ValidateOrThrow(); });
+        rejects("cannot parse superposition coefficient", [] { TDSEZParser::ValidateOrThrow(); });
         TDSEZParser::InitialState = "ground";
 
         TDSEZParser::AccelerationMethod = "discrete";

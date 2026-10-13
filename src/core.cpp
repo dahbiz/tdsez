@@ -290,12 +290,17 @@ PetscErrorCode TDSEZCore::Solve()
         std::string desc;
         for (const auto &term : TDSEZParser::InitialStateTerms) {
             if (!desc.empty()) desc += " + ";
-            char cbuf[64];
-            snprintf(cbuf, sizeof(cbuf), "%.3f*state:%" PetscInt_FMT, term.second, term.first);
-            desc += cbuf;
+            desc += TDSEZ_fmtZ(term.second) + "*state:" +
+                     std::to_string(term.first);
         }
         info.kv("Initial state",  "%s", desc.c_str());
         info.kv("Normalization",  "%s", TDSEZParser::NormalizeInitialState ? "yes" : "no");
+    } else if (TDSEZParser::InitialStateMode == 3) {
+        info.kv("Initial state", "analytic Quesne n=0,1 (M-projected)");
+        info.kv("Normalization", "yes");
+    } else if (TDSEZParser::InitialStateMode == 4) {
+        info.kv("Initial state", "analytic mass-step n=0,1 (M-projected)");
+        info.kv("Normalization", "yes");
     } else {
         info.kv("Initial state",  "state:%" PetscInt_FMT, TDSEZParser::InitialStateIndex);
     }
@@ -567,6 +572,7 @@ if (useDirect) {
     // Extract initial state
     //   mode 0/1 -> single converged eigenstate (ground or state:N)
     //   mode 2   -> coherent superposition of up to 3 bound states
+    //   mode 3/4 -> exact analytic state, L2-projected into this IGA basis
     PetscInt initIdx = TDSEZParser::InitialStateIndex;
     auto buildFromIndex = [&](PetscInt k, Vec *out) -> PetscErrorCode {
         if (k >= nconv)
@@ -587,8 +593,8 @@ if (useDirect) {
         PetscCall(TDSEZGaugeWeightVector(iga, &gaugeW));
         std::string desc;
         for (const auto &term : TDSEZParser::InitialStateTerms) {
-            PetscInt  k = term.first;
-            PetscReal c = term.second;
+            PetscInt      k = term.first;
+            PetscScalar   c = term.second;
             Vec evec = PETSC_NULLPTR;
             PetscCall(buildFromIndex(k, &evec));
             PetscCall(TDSEZFixEigenvectorGauge(evec, M, gaugeW, k));
@@ -596,7 +602,8 @@ if (useDirect) {
             PetscCall(VecDestroy(&evec));
             if (!desc.empty()) desc += " + ";
             char cbuf[64];
-            snprintf(cbuf, sizeof(cbuf), "%.3f*state:%" PetscInt_FMT, c, k);
+            snprintf(cbuf, sizeof(cbuf), "%s*state:%" PetscInt_FMT,
+                     TDSEZ_fmtZ(c).c_str(), k);
             desc += cbuf;
         }
         PetscCall(VecDestroy(&gaugeW));
@@ -634,6 +641,101 @@ if (useDirect) {
             info.status("ⵣ", "Superposition assembled (%s, unnormalized)", desc.c_str());
             info.kv("  ||psi||_M", "%.6f", (double)nrm);
         }
+        info.blank();
+    } else if (TDSEZParser::InitialStateMode == 3 ||
+               TDSEZParser::InitialStateMode == 4) {
+        // These states are analytic; neither is constructed from EPS vectors.
+        // Assemble b_i = integral N_i(x) psi_exact(x,0) dx, then solve M c=b.
+        const PetscBool quesne = TDSEZParser::InitialStateMode == 3;
+        const PetscReal a = 2.0, omega = 1.0, alpha = 4.0;
+        const PetscReal c0 = PetscPowReal(omega * a * a, (alpha + 1.0) / 2.0) /
+                             PetscSqrtReal(a * std::tgamma(alpha + 1.0));
+        const PetscReal c1 = PetscPowReal(omega * a * a, (alpha + 1.0) / 2.0) /
+                             PetscSqrtReal(a * std::tgamma(alpha + 2.0));
+        auto psiExact = [=](PetscReal x) -> PetscScalar {
+            if (!quesne) {
+                const PetscReal theta0 = PetscAcosReal(1.0 / PetscSqrtReal(6.0));
+                const PetscReal theta1 = PETSC_PI - theta0;
+                auto stepPhi = [=](PetscReal theta, PetscReal sign) {
+                    return x < 0.0
+                        ? 2.0 / PetscSqrtReal(5.0) * PetscSinReal(theta * (x + 1.0))
+                        : sign * PetscSqrtReal(6.0 / 5.0) *
+                          PetscSinReal(2.0 * theta * (1.0 - x));
+                };
+                return (stepPhi(theta0, 1.0) + stepPhi(theta1, -1.0)) /
+                       PetscSqrtReal(2.0);
+            }
+            if (x <= -a) return 0.0;
+            const PetscReal u = 1.0 + x / a;
+            const PetscReal z = omega * a * (x + a);
+            const PetscReal common = PetscPowReal(u, alpha / 2.0) * PetscExpReal(-z / 2.0);
+            const PetscReal phi0 = c0 * common;
+            const PetscReal phi1 = c1 * common * (alpha + 1.0 - z);
+            return (phi0 + phi1) / PetscSqrtReal(2.0);
+        };
+        Vec rhs = PETSC_NULLPTR;
+        PetscCall(IGACreateVec(iga, &rhs));
+        PetscCall(VecSet(rhs, 0.0));
+        IGAElement element = PETSC_NULLPTR;
+        IGAPoint point = PETSC_NULLPTR;
+        PetscCall(IGABeginElement(iga, &element));
+        while (IGANextElement(iga, element)) {
+            PetscScalar *local = PETSC_NULLPTR;
+            PetscCall(IGAElementGetWorkVec(element, &local));
+            PetscCall(PetscArrayzero(local, element->nen));
+            PetscCall(IGAElementBeginPoint(element, &point));
+            while (IGAElementNextPoint(element, point)) {
+                const PetscScalar value = psiExact(point->point[0]);
+                const PetscReal weight = point->weight[0] * point->detJac[0];
+                for (PetscInt i = 0; i < point->nen; ++i)
+                    local[i] += weight * point->shape[0][i] * value;
+            }
+            PetscCall(IGAElementEndPoint(element, &point));
+            PetscCall(IGAElementAssembleVec(element, local, rhs));
+        }
+        PetscCall(IGAEndElement(iga, &element));
+        PetscCall(VecAssemblyBegin(rhs));
+        PetscCall(VecAssemblyEnd(rhs));
+        PetscCall(IGACreateVec(iga, &initialPsi));
+        KSP projection = PETSC_NULLPTR;
+        PetscCall(KSPCreate(PETSC_COMM_WORLD, &projection));
+        PetscCall(KSPSetOperators(projection, M, M));
+        PetscCall(KSPSetType(projection, KSPCG));
+        PC projectionPC = PETSC_NULLPTR;
+        PetscCall(KSPGetPC(projection, &projectionPC));
+        PetscCall(PCSetType(projectionPC, PCJACOBI));
+        PetscCall(KSPSetTolerances(projection, 1e-13, PETSC_DEFAULT, PETSC_DEFAULT, 10000));
+        PetscCall(KSPSolve(projection, rhs, initialPsi));
+        KSPConvergedReason projectionReason;
+        PetscCall(KSPGetConvergedReason(projection, &projectionReason));
+        if (projectionReason < 0)
+            SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_NOT_CONVERGED,
+                    "M-projection of analytic initial state did not converge");
+        PetscInt projectionIts;
+        PetscReal projectionResidual;
+        PetscCall(KSPGetIterationNumber(projection, &projectionIts));
+        PetscCall(KSPGetResidualNorm(projection, &projectionResidual));
+        PetscCall(KSPDestroy(&projection));
+        PetscCall(VecDestroy(&rhs));
+        Vec Mpsi = PETSC_NULLPTR;
+        PetscCall(MatCreateVecs(M, &Mpsi, PETSC_NULLPTR));
+        PetscCall(MatMult(M, initialPsi, Mpsi));
+        PetscScalar nrm2;
+        PetscCall(VecDot(Mpsi, initialPsi, &nrm2));
+        const PetscReal nrm = PetscSqrtReal(PetscRealPart(nrm2));
+        if (nrm <= 0.0)
+            SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE,
+                    "Analytic initial state has zero M-norm after projection");
+        PetscCall(VecScale(initialPsi, 1.0 / nrm));
+        PetscCall(MatMult(M, initialPsi, Mpsi));
+        PetscCall(VecDot(Mpsi, initialPsi, &nrm2));
+        PetscCall(VecDestroy(&Mpsi));
+        info.status("ⵣ", quesne ? "Analytic Quesne n=0,1 state projected into spline basis"
+                                 : "Analytic mass-step n=0,1 state projected into spline basis");
+        info.kv("  projection KSP iterations", "%" PetscInt_FMT, projectionIts);
+        info.kv("  projection residual", "%.3e", (double)projectionResidual);
+        info.kv("  ||psi||_M (before)", "%.12f", (double)nrm);
+        info.kv("  ||psi||_M (after)", "%.12f", (double)PetscSqrtReal(PetscRealPart(nrm2)));
         info.blank();
     } else {
         if (initIdx >= nconv)
@@ -774,6 +876,24 @@ PetscErrorCode TDSEZCore::Output()
             std::string name = "psi_" + std::to_string(i);
             PetscObjectSetName((PetscObject)psi_save, name.c_str());
             VecView(psi_save, viewerH5);
+            // Keep the structured PetIGA view for plotting, and also export a
+            // plain vector in natural ordering, matching PetIGA's MatView
+            // permutation for saved matrices. Generic VecLoad cannot interpret
+            // a structured 3D DMDA dataset. MPI-global ordering is NOT generally
+            // natural ordering (they coincide only for some decompositions).
+            Vec coefficients = PETSC_NULLPTR;
+            Vec natural = PETSC_NULLPTR; // borrowed workspace owned by IGA
+            PetscCall(IGAGetNaturalVec(iga, &natural));
+            PetscCall(IGAGlobalToNatural(iga, psi_save, natural));
+            PetscInt localSize = 0, globalSize = 0;
+            PetscCall(VecGetLocalSize(natural, &localSize));
+            PetscCall(VecGetSize(natural, &globalSize));
+            PetscCall(VecCreateMPI(PETSC_COMM_WORLD, localSize, globalSize, &coefficients));
+            PetscCall(VecCopy(natural, coefficients));
+            const std::string coefficientName = "coeff_" + std::to_string(i);
+            PetscCall(PetscObjectSetName((PetscObject)coefficients, coefficientName.c_str()));
+            PetscCall(VecView(coefficients, viewerH5));
+            PetscCall(VecDestroy(&coefficients));
             if (psi_real) PetscCall(VecDestroy(&psi_real));
         }
 

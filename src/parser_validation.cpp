@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <complex>
 #include <limits>
 #include <set>
 #include <stdexcept>
@@ -41,10 +42,187 @@ void sampleDomain(PetscInt dim, const std::array<PetscReal, 3>& lo,
     }
 }
 
+// The Galerkin volume quadrature never evaluates box endpoints.  Validate
+// coefficient fields in that same open domain so a physically valid endpoint
+// singularity (e.g. Quesne's m(x)~1/(x+a) at a Dirichlet wall) is not rejected
+// before assembly.  Potential validation remains closed-domain because it is
+// expected to be finite at the wall as well.
+template <typename F>
+void sampleOpenDomain(PetscInt dim, const std::array<PetscReal, 3>& lo,
+                      const std::array<PetscReal, 3>& hi, F&& evaluate)
+{
+    constexpr PetscInt samplesPerAxis = 16;
+    std::array<PetscReal, 3> center = {0.0, 0.0, 0.0};
+    for (PetscInt d = 0; d < dim; ++d) center[d] = (lo[d] + hi[d]) / 2.0;
+    for (PetscInt d = 0; d < dim; ++d) {
+        for (PetscInt i = 0; i < samplesPerAxis; ++i) {
+            auto point = center;
+            point[d] = lo[d] + (hi[d] - lo[d]) * (i + 0.5) / samplesPerAxis;
+            evaluate(point[0], point[1], point[2]);
+        }
+    }
+}
+
 std::string sampleLocation(PetscReal x, PetscReal y, PetscReal z)
 {
     return " at (" + std::to_string(x) + ", " + std::to_string(y) +
            ", " + std::to_string(z) + ")";
+}
+
+// Strip one matched outer parenthesis pair: "(0.7+0.7i)" -> "0.7+0.7i".
+// Unmatched pairs (e.g. "(1)+(2)") are left untouched.
+std::string stripOuterParens(const std::string &x)
+{
+    if (x.size() < 2 || x.front() != '(' || x.back() != ')')
+        return x;
+    int depth = 0;
+    for (size_t k = 0; k + 1 < x.size(); ++k) {
+        if (x[k] == '(') ++depth;
+        else if (x[k] == ')') {
+            --depth;
+            if (depth == 0 && k + 2 != x.size())
+                return x;   // closes before the last char: not an outer pair
+        }
+    }
+    return x.substr(1, x.size() - 2);
+}
+
+// One superposition coefficient: "a", "a+ib", "a-ib", "a+i", "a-i", "b*i",
+// "i", "-i", "(...)" (a,b real decimal parts; "i" may also be written "j").
+// In complex builds this covers any complex value with real decimal parts;
+// in real builds the imaginary part must be zero.
+PetscScalar parseSuperpositionCoefficient(const std::string &raw)
+{
+    auto trimmed = [](std::string x) {
+        size_t a = x.find_first_not_of(" \t");
+        size_t b = x.find_last_not_of(" \t");
+        return (a == std::string::npos) ? std::string() : x.substr(a, b - a + 1);
+    };
+    std::string s = trimmed(stripOuterParens(trimmed(raw)));
+    if (s.empty())
+        throw std::runtime_error("superposition coefficient is empty");
+
+    // Split into +/- parts at operators that are neither leading signs nor
+    // exponent separators (1e-3 keeps its '-'). An 'i'/'j' directly before
+    // an operator terminates a number, so "2i-1" splits as (2i) - (1).
+    std::vector<std::pair<bool /*isPlus*/, std::string>> parts;
+    auto pushPart = [&parts, &trimmed](bool isPlus, std::string p) {
+        // The sign lives in isPlus; strip it from the token itself so a
+        // negative part is not applied twice.
+        if (!p.empty() && (p.front() == '+' || p.front() == '-'))
+            p.erase(0, 1);
+        parts.push_back({isPlus, trimmed(p)});
+    };
+    {
+        std::string cur;
+        for (size_t k = 0; k < s.size(); ++k) {
+            const char ch = s[k];
+            bool isOperator =
+                (ch == '+' || ch == '-') &&
+                !cur.empty() &&
+                !(cur.size() == 1 && (cur == "+" || cur == "-")) &&
+                !(s[k - 1] == 'e' || s[k - 1] == 'E');
+            if (isOperator) {
+                pushPart(cur[0] != '-', cur);
+                cur.clear();
+            }
+            cur += ch;
+        }
+        // Tail part: empty means the string ended on an operator (caught by
+        // the empty-token check below); otherwise cur[0] carries this part's
+        // leading sign.
+        pushPart(cur.empty() ? true : (cur[0] != '-'), cur);
+    }
+
+    PetscReal re = 0.0, im = 0.0;
+    for (const auto &part : parts) {
+        const bool isPlus = part.first;
+        std::string p = part.second;
+        // pushPart moved any sign into isPlus; a residual sign means a
+        // malformed token such as "1++2" or "1+*".
+        if (p.empty() || p == "+" || p == "-" ||
+            p.front() == '+' || p.front() == '-')
+            throw std::runtime_error("cannot parse superposition coefficient '" + raw + "'");
+        bool imaginary = false;
+        if (p.back() == 'i' || p.back() == 'j') {
+            imaginary = true;
+            p.pop_back();
+        }
+        double v;
+        if (p.empty())                v = 1.0;               // "i", "j"
+        else {
+            size_t consumed = 0;
+            try { v = std::stod(p, &consumed); }
+            catch (...) {
+                throw std::runtime_error(
+                    "cannot parse superposition coefficient '" + raw + "'");
+            }
+            if (consumed != p.size())
+                throw std::runtime_error(
+                    "cannot parse superposition coefficient '" + raw + "'");
+        }
+        if (imaginary) im += isPlus ? v : -v;
+        else           re += isPlus ? v : -v;
+    }
+#if !defined(PETSC_USE_COMPLEX)
+    if (im != 0.0)
+        throw std::runtime_error("nonzero imaginary coefficient '" + raw +
+                                 "' requires a complex PETSc build");
+#endif
+    if (!std::isfinite(re) || !std::isfinite(im))
+        throw std::runtime_error("superposition coefficient '" + raw + "' is not finite");
+#if defined(PETSC_USE_COMPLEX)
+    return PetscScalar(re, im);
+#else
+    return re;
+#endif
+}
+
+// Split the sup: body into "coeff*idx" terms at top-level '+'/'-' operators.
+// Depth counting leaves parenthesized coefficients ("(0.7+0.7i)*0") intact;
+// a '-' separator carries its sign into the following term. An operator is a
+// separator only when the preceding non-space character ends a value
+// (digit, '.', 'i', 'j' or ')'), so leading signs and exponents do not split.
+std::vector<std::string> splitSuperpositionTerms(const std::string &body)
+{
+    auto endsValue = [](char c) {
+        return (c >= '0' && c <= '9') || c == '.' || c == 'i' || c == 'j' || c == ')';
+    };
+    auto trimmed = [](const std::string &x) {
+        size_t a = x.find_first_not_of(" \t");
+        size_t b = x.find_last_not_of(" \t");
+        return (a == std::string::npos) ? std::string() : x.substr(a, b - a + 1);
+    };
+    std::vector<std::string> terms;
+    std::string cur;
+    int depth = 0;
+    bool pendingMinus = false;
+    for (size_t k = 0; k < body.size(); ++k) {
+        const char ch = body[k];
+        if (ch == '(') ++depth;
+        else if (ch == ')') --depth;
+        if (depth == 0 && (ch == '+' || ch == '-')) {
+            size_t prev = k;
+            while (prev > 0 && (body[prev - 1] == ' ' || body[prev - 1] == '\t'))
+                --prev;
+            const bool afterValue = prev > 0 && endsValue(body[prev - 1]);
+            const bool exponent   = prev > 0 &&
+                                    (body[prev - 1] == 'e' || body[prev - 1] == 'E');
+            if (afterValue && !exponent) {
+                if (!cur.empty()) { terms.push_back(trimmed(cur)); cur.clear(); }
+                pendingMinus = (ch == '-');   // sign belongs to the next term
+                continue;
+            }
+        }
+        if (pendingMinus) {
+            if (ch == ' ' || ch == '\t') continue;   // skip space after '-'
+            cur += '-';
+            pendingMinus = false;
+        }
+        cur += ch;
+    }
+    if (!cur.empty()) terms.push_back(trimmed(cur));
+    return terms;
 }
 
 } // namespace
@@ -111,6 +289,8 @@ void TDSEZParser::ValidateOrThrow()
     //   "ground"              -> mode 0 (== state:0)
     //   "state:N"             -> mode 1, single bound state N
     //   "sup: a*N + b*M [+c*P]"-> mode 2, coherent superposition of <=3 states
+    //   "analytic:quesne01"    -> mode 3, projected exact Quesne n=0,1 state
+    //   "analytic:massstep01"  -> mode 4, projected exact sharp-interface state
     {
         const std::string &s = InitialState;
         InitialStateTerms.clear();
@@ -152,20 +332,25 @@ void TDSEZParser::ValidateOrThrow()
                     std::to_string(idx + 1) + ".");
             InitialStateMode = 1;
             InitialStateIndex = idx;
+        } else if (s == "analytic:quesne01") {
+            if (Dimension != 1)
+                throw std::runtime_error(
+                    "ValidateOrThrow: InitialState='analytic:quesne01' is a 1D benchmark");
+            InitialStateMode = 3;
+        } else if (s == "analytic:massstep01") {
+            if (Dimension != 1)
+                throw std::runtime_error(
+                    "ValidateOrThrow: InitialState='analytic:massstep01' is a 1D benchmark");
+            InitialStateMode = 4;
         } else if (s.rfind("sup:", 0) == 0) {
-            // "sup: a*N + b*M [+ c*P]"  (real coeffs, <=3 terms, '+'/'-' separated)
+            // "sup: c1*N + c2*M [+ c3*P]"  (coeffs real or complex, <=3
+            // terms, top-level '+'/'-' separated). Complex coefficients carry
+            // internal signs, so multi-term expressions must parenthesize
+            // them: "sup: (0.7+0.7i)*0 + 1.0*1"; pure-imaginary shorthand
+            // "2i" needs no parens.
             InitialStateMode = 2;
             std::string body = s.substr(4);
-            // split on '+' (keep unary '-' inside terms)
-            std::vector<std::string> terms;
-            {
-                std::string cur;
-                for (char c : body) {
-                    if (c == '+') { if (!cur.empty()) { terms.push_back(cur); cur.clear(); } }
-                    else cur += c;
-                }
-                if (!cur.empty()) terms.push_back(cur);
-            }
+            std::vector<std::string> terms = splitSuperpositionTerms(body);
             if (terms.empty() || terms.size() > 3)
                 throw std::runtime_error(
                     "ValidateOrThrow: InitialState='" + s + "' must have 1..3 superposition terms");
@@ -178,18 +363,15 @@ void TDSEZParser::ValidateOrThrow()
                 auto trim = [](std::string &x){ size_t a=x.find_first_not_of(" \t"); size_t b=x.find_last_not_of(" \t");
                     if(a==std::string::npos){x="";}else{x=x.substr(a,b-a+1);} };
                 trim(cstr); trim(istr);
-                PetscReal coeff;
-                PetscInt  idx;
+                PetscScalar coeff;
                 try {
-                    size_t consumed = 0;
-                    coeff = (PetscReal)std::stod(cstr, &consumed);
-                    if (consumed != cstr.size())
-                        throw std::invalid_argument("invalid coefficient");
+                    coeff = parseSuperpositionCoefficient(cstr);
                 }
-                catch (...) {
+                catch (std::runtime_error &e) {
                     throw std::runtime_error(
-                        "ValidateOrThrow: InitialState term '" + t + "' has a non-numeric coefficient");
+                        "ValidateOrThrow: InitialState term '" + t + "': " + e.what());
                 }
+                PetscInt  idx;
                 try {
                     size_t consumed = 0;
                     const auto parsed = std::stoll(istr, &consumed);
@@ -203,9 +385,6 @@ void TDSEZParser::ValidateOrThrow()
                     throw std::runtime_error(
                         "ValidateOrThrow: InitialState term '" + t + "' has a non-integer state index");
                 }
-                if (!std::isfinite(coeff))
-                    throw std::runtime_error(
-                        "ValidateOrThrow: InitialState term '" + t + "' coefficient is not finite");
                 if (idx < 0)
                     throw std::runtime_error(
                         "ValidateOrThrow: InitialState index must be >= 0 (got " + std::to_string(idx) + ")");
@@ -219,8 +398,9 @@ void TDSEZParser::ValidateOrThrow()
             }
         } else {
             throw std::runtime_error(
-                "ValidateOrThrow: InitialState must be 'ground', 'state:N', or "
-                "'sup: a*N + b*M [+ c*P]' (got '" + s + "')");
+                "ValidateOrThrow: InitialState must be 'ground', 'state:N', \""
+                "'sup: c*N + c*M [+ c*P]' (complex coeffs need parens: '(0.7+0.7i)*0'), "
+                "'analytic:quesne01', or 'analytic:massstep01' (got '" + s + "')");
         }
     }
 
@@ -232,8 +412,9 @@ void TDSEZParser::ValidateOrThrow()
     const std::array<PetscReal, 3> boundsLow = {LMinX, LMinY, LMinZ};
     const std::array<PetscReal, 3> boundsHigh = {LMaxX, LMaxY, LMaxZ};
 
-    // A non-positive mass makes the kinetic operator indefinite.
-    sampleDomain((PetscInt)Dimension, boundsLow, boundsHigh,
+    // A non-positive mass makes the kinetic operator indefinite.  Coefficients
+    // are sampled in the open domain: volume quadrature excludes endpoints.
+    sampleOpenDomain((PetscInt)Dimension, boundsLow, boundsHigh,
         [&](PetscReal x, PetscReal y, PetscReal z) {
             PetscReal mass;
             try { mass = MassDist(x, y, z); }
@@ -246,13 +427,15 @@ void TDSEZParser::ValidateOrThrow()
                                          + sampleLocation(x, y, z) + ": " + e.what());
             }
             if (!std::isfinite(mass) || mass <= 0.0)
-                throw std::runtime_error("ValidateOrThrow: Mass must be > 0 and finite"
+                throw std::runtime_error("ValidateOrThrow: Mass must be > 0 and finite in the open domain"
                                          + sampleLocation(x, y, z) + " (got "
                                          + to_string(mass) + ")");
         });
 
-    // A non-finite potential poisons matrix assembly.
-    sampleDomain((PetscInt)Dimension, boundsLow, boundsHigh,
+    // A non-finite potential in the open domain poisons volume assembly.
+    // Endpoint singular walls are admissible with a Dirichlet boundary and are
+    // not sampled by PetIGA's Gauss quadrature.
+    sampleOpenDomain((PetscInt)Dimension, boundsLow, boundsHigh,
         [&](PetscReal x, PetscReal y, PetscReal z) {
             PetscReal potential;
             try { potential = V(x, y, z); }
@@ -265,7 +448,7 @@ void TDSEZParser::ValidateOrThrow()
                                          + sampleLocation(x, y, z) + ": " + e.what());
             }
             if (!std::isfinite(potential))
-                throw std::runtime_error("ValidateOrThrow: Potential is not finite"
+                throw std::runtime_error("ValidateOrThrow: Potential is not finite in the open domain"
                                          + sampleLocation(x, y, z));
         });
 

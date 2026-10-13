@@ -1,0 +1,31 @@
+# 1D Harmonic Oscillator — VALIDATION gate: complex superposition beat (|0>+i|1>)/sqrt(2).
+# Imaginary-variant partner of ho1d_supq_real.inp (identical grid/propagation).
+# E0=0.1, E1=0.3 (omega=0.2); beat period T = 2*pi/omega = 31.41592653.
+# <x>(t) = -x01*sin(omega*t + phi)  — exactly 90 degrees out of phase with the
+# real-variant signal: x_real(t)^2 + x_imag(t)^2 = x01^2 = 2.5 at EVERY t.
+Verbose           = 0
+Dimension         = 1
+Domain            = -20.0, 20.0
+SplineDegree      = 5
+NQuadratures      = 8
+KnotSequence      = uniform
+NSplines          = 80
+Planck            = 1.0
+Charge            = 1.0
+Mass              = 1.0
+MassIsConstant    = 1
+Potential         = 0.5 * 1.0 * 0.2 * 0.2 * x * x
+PotentialDerivativeX = 0.2 * 0.2 * x
+UseDirectSolve    = 0
+TargetEigenvalue  = 0.0
+NBoundStates      = 5
+NBoundStatesSave  = 1
+InitialState      = sup: 0.7071067811865476*0 + 0.7071067811865476i*1
+EnablePropagation = 1
+TimeStep          = 0.1
+FinalTime         = 31.41592653
+LaserX            = 0.0*sin(0.1*t)
+OutputStrideTS    = 5
+Polarization      = x
+EnableCAP         = 0
+PhysicsOutput     = dipole,population,energy,autocorrelation

@@ -107,3 +107,12 @@ dev/
 run.log
 *.tar.gz
 *.zip
+
+# ---- Local-only files --------------------------------------------------------
+# macOS AppleDouble metadata (created on SMB/network volumes)
+._*
+# Local benchmark data and input decks
+benchmarks/
+inps/
+# Few-level export tool, kept local for now
+src/fewlevelprocessor.cpp

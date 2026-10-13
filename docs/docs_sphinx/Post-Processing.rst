@@ -11,10 +11,11 @@ with::
     SaveDipoleAxes = x
 
 This writes ``static/EigenData_file.inp.h5`` (including ``psi_0``, ``psi_1``,
-and later states) and ``static/Dx_file.inp.bin``. The tools below operate on
-the x dipole operator. They currently have CPU numerical regression coverage
-for a one-dimensional harmonic oscillator; continuum results remain
-unvalidated.
+and later states) and ``static/Dx_file.inp.bin``. Set ``SaveDipoleAxes = xyz``
+to additionally write ``Dy`` and ``Dz``. ``tdmprocessor`` automatically
+processes every saved Cartesian component. The other tools operate on the x
+component. They currently have CPU numerical regression coverage for a
+one-dimensional harmonic oscillator; continuum results remain unvalidated.
 
 tdmprocessor
 ------------
@@ -24,8 +25,15 @@ Compute the full transition dipole matrix
 
     ./tdmprocessor file.inp
 
-The outputs are ``static/TDM_Dx_file.inp.npy`` (complex matrix),
-``static/EigenEnergies_file.inp.npy``, and ``static/States_file.inp.npy``.
+The outputs are ``static/TDM_Dx_file.inp.npy`` (and ``TDM_Dy``/``TDM_Dz`` when
+those operators were saved), plus ``static/EigenEnergies_file.inp.npy`` and
+``static/States_file.inp.npy``. It also writes
+``static/TDM_magnitude_file.inp.npy``, whose elements are
+:math:`\sqrt{|d_x|^2 + |d_y|^2 + |d_z|^2}` over the saved components.
+For direct few-level modelling, ``TransitionFrequencies_file.inp.npy`` stores
+:math:`\omega_{ij}=E_j-E_i`, and ``FewLevelSystem_file.inp.json`` records the
+file names, atomic-unit conventions, and length-gauge coupling
+:math:`H_{ij}(t)=E_i\delta_{ij}+\mathbf E(t)\cdot\mathbf d_{ij}`.
 
 tdmselect
 ---------
