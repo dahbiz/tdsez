@@ -141,7 +141,7 @@ PetscErrorCode TDSEZProfile::Report(PetscInt dofs, PetscBool propagated)
         "Dipole/TD operator assembly",
         "Time-dependent setup",
         "Propagation",
-        "Final output (HDF5, t-SURFF)"};
+        "Final output (HDF5)"};
     PetscLogDouble accounted = 0.0;
     for (int p = 0; p < NPHASES; ++p) {
         PetscLogDouble mx, mn;

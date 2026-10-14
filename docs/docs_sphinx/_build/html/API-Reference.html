@@ -1,0 +1,439 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; TDSE-Z 0.1.0 documentation</title>
+      
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b0e5de26" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/custom.js?v=3ae78d1c"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Compilation" href="Compilation.html" />
+    <link rel="prev" title="Architecture" href="Architecture.html" />
+ 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            TDSE-Z
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview &amp; Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#solver-workflow">Solver Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#file-structure">File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#residual-assembly">Residual Assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#execution-pipeline">Execution pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#public-modules">Public modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core-lifecycle">Core lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#error-handling">Error handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reference-pages">Reference pages</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#auto-detection">Auto-Detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build Targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#execution-modes">Execution Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#output-directory-structure">Output Directory Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#performance-note">Performance Note</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Input-File.html">Input File</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#format">Format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#muparser">muParser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#file-structure">File Structure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Input-File.html#parameter-reference">Parameter Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#global-settings">Global Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#domain-and-grid">Domain and Grid</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#potential-and-mass">Potential and Mass</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension">Dimension</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#spatial-bounds">Spatial Bounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh Resolution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Potential-Mass.html">Potential &amp; Mass</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#potential">Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#mass">Mass</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#physical-constants">Physical Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#custom-variables">Custom Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#degenerate-levels-and-reproducible-states">Degenerate Levels and Reproducible States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#common-propagation-scenarios">Common Propagation Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Output-Control.html">Output Control</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#observable-selection">Observable Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#other-output-settings">Other Output Settings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#initialstate-selector">InitialState Selector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#format-reference">Format Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#example-superpositions">Example Superpositions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#d-systems">1D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic Oscillator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-ionization">1D Atomic Ionization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-superposition-quantum-beating">1D Superposition — Quantum Beating</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#unknown-input-key-fatal-error">Unknown Input Key Fatal Error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#dimension-must-be-1-2-or-3">Dimension Must Be 1, 2 or 3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#splinedegree-must-be-in-1-14">SplineDegree Must Be in [1,14]</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#initial-state-index-converged-eigenstates">Initial State Index &gt;= Converged Eigenstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#x-slowdown-with-mpirun">8-10x Slowdown with mpirun</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-tip">Performance Tip</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#ring-buffer">Ring Buffer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#time-evolution-data">Time Evolution Data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipole-table">Dipole Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energy-table">Energy Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#current-table">Current Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#population-table">Population Table</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole-moment">Dipole Moment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#energy-decomposition">Energy Decomposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#current-decomposition">Current Decomposition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#berry-phase">Berry Phase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#convention-reference">Convention Reference</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TDSE-Z</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/API-Reference.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<p>The public C++ surface is split into focused headers. Include the smallest
+header that owns the type you use; <code class="docutils literal notranslate"><span class="pre">tdsez_internal.hpp</span></code> is retained as the
+compatibility umbrella for solver translation units.</p>
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Public headers</span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<colgroup>
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Header</p></th>
+<th class="head"><p>Main symbols</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tdsez_parser.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TDSEZParser</span></code> and input validation helpers</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tdsez_core.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TDSEZCore</span></code> and knot-generation methods</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tdsez_assembler.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TDSEZAssembler</span></code> and operator ownership</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tdsez_manager.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TDSEZManager</span></code> and output/observable state</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tdsez_propagator.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TDSEZPropagator</span></code> and PETSc TS integration</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tdsez_info.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TDSEZInfo</span></code> terminal formatting utilities</p></td>
+</tr>
+</tbody>
+</table>
+<section id="core-lifecycle">
+<h2>Core lifecycle<a class="headerlink" href="#core-lifecycle" title="Link to this heading"></a></h2>
+<p>The normal lifecycle is:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">TDSEZCore</span><span class="w"> </span><span class="nf">core</span><span class="p">(</span><span class="n">input_file</span><span class="p">);</span>
+<span class="n">PetscCall</span><span class="p">(</span><span class="n">core</span><span class="p">.</span><span class="n">Assemble</span><span class="p">());</span>
+<span class="n">PetscCall</span><span class="p">(</span><span class="n">core</span><span class="p">.</span><span class="n">Solve</span><span class="p">());</span>
+<span class="n">PetscCall</span><span class="p">(</span><span class="n">core</span><span class="p">.</span><span class="n">Output</span><span class="p">());</span>
+
+<span class="n">TDSEZAssembler</span><span class="w"> </span><span class="nf">assembler</span><span class="p">(</span><span class="n">core</span><span class="p">.</span><span class="n">iga</span><span class="p">);</span>
+<span class="n">TDSEZManager</span><span class="w"> </span><span class="nf">manager</span><span class="p">(</span><span class="o">&amp;</span><span class="n">core</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">assembler</span><span class="p">);</span>
+<span class="n">TDSEZPropagator</span><span class="w"> </span><span class="nf">propagator</span><span class="p">(</span><span class="n">manager</span><span class="p">);</span>
+<span class="n">PetscCall</span><span class="p">(</span><span class="n">propagator</span><span class="p">.</span><span class="n">Evolve</span><span class="p">());</span>
+<span class="n">PetscCall</span><span class="p">(</span><span class="n">manager</span><span class="p">.</span><span class="n">CloseHDF5</span><span class="p">());</span>
+</pre></div>
+</div>
+<p>Applications must initialize PETSc/SLEPc before constructing these objects and
+finalize PETSc after all owned objects have been destroyed.</p>
+</section>
+<section id="error-handling">
+<h2>Error handling<a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
+<p>Functions returning <code class="docutils literal notranslate"><span class="pre">PetscErrorCode</span></code> use PETSc error propagation. Callers
+should use <code class="docutils literal notranslate"><span class="pre">PetscCall</span></code> inside PETSc-aware functions and <code class="docutils literal notranslate"><span class="pre">PetscCallAbort</span></code>
+only at top-level boundaries where there is no recoverable caller. Parser
+validation throws <code class="docutils literal notranslate"><span class="pre">std::runtime_error</span></code> before assembly; command-line entry
+points convert those failures into a clear fatal diagnostic.</p>
+</section>
+<section id="reference-pages">
+<h2>Reference pages<a class="headerlink" href="#reference-pages" title="Link to this heading"></a></h2>
+<p>The complete signatures, member descriptions, source links, and include
+relationships are generated by Doxygen:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">TDSEZParser</span></code> — input state and expression evaluation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TDSEZCore</span></code> — grid, knots, assembly, and eigensolve</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TDSEZAssembler</span></code> — matrices and physics kernels</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TDSEZManager</span></code> — HDF5 output and observables</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TDSEZPropagator</span></code> — time stepping</p></li>
+</ul>
+<p>Use the generated class index when browsing overloaded PETSc callbacks.</p>
+<p>The hosted build includes the complete generated reference at
+<a class="reference external" href="../api/html/index.html">Open the Doxygen API reference</a>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="Architecture.html" class="btn btn-neutral float-left" title="Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Compilation.html" class="btn btn-neutral float-right" title="Compilation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Dr. Zakaria Dahbi.</p>
+  </div>
+
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+<script>
+window.addEventListener('load', function() {
+  var d = document;
+  // Remove all inline style attributes from RTD elements
+  var selectors = [
+    '.wy-nav-side', '.wy-side-nav-search', '.wy-side-scroll',
+    '.wy-nav-content-wrap', '.wy-nav-content',
+    '.wy-menu-vertical li.current > a',
+    '.wy-menu-vertical a', '.wy-menu-vertical header', '.wy-menu-vertical p.caption',
+    '.wy-breadcrumbs', '.wy-breadcrumbs-aside', '.wy-breadcrumbs li',
+    '.wy-nav-top', '.rst-content', '.rst-content h1', '.rst-content h2', '.rst-content h3', '.rst-content h4',
+    '.rst-content p', '.rst-content a', '.rst-content li',
+    'code', 'tt', 'pre',
+    'table th', 'table td', 'table tr',
+    'hr', 'blockquote', 'img',
+    '.rst-footer-buttons', '.rst-footer-buttons a',
+    '.admonition', '.note', '.warning', '.tip', '.hint', '.caution', '.danger', '.error', '.seealso', '.important',
+    '.admonition-title', '.note > .admonition-title', '.warning > .admonition-title'
+  ];
+  for (var i = 0; i < selectors.length; i++) {
+    var els = d.querySelectorAll(selectors[i]);
+    for (var j = 0; j < els.length; j++) {
+      els[j].removeAttribute('style');
+    }
+  }
+  // Also remove from body
+  d.body.removeAttribute('style');
+  // Force light theme via JS to beat any remaining overrides
+  var overrides = [
+    ['body', 'background', '#ffffff'],
+    ['body', 'color', '#2d3748'],
+    ['.wy-nav-side', 'background', '#f8f9fb'],
+    ['.wy-nav-side', 'color', '#2d3748'],
+    ['.wy-side-nav-search', 'background', '#f8f9fb'],
+    ['.wy-side-nav-search > a', 'color', '#1a202c'],
+    ['.wy-menu-vertical li.current > a', 'background', 'rgba(37,99,235,0.08)'],
+    ['.wy-menu-vertical li.current > a', 'color', '#2563eb'],
+    ['.wy-menu-vertical a', 'color', '#2d3748'],
+    ['.wy-menu-vertical a:hover', 'color', '#1a202c'],
+    ['.wy-nav-content-wrap', 'background', '#ffffff'],
+    ['.rst-content', 'color', '#2d3748'],
+    ['.rst-content > h1', 'color', '#1a202c'],
+    ['.rst-content h2', 'color', '#1a202c'],
+    ['.rst-content > h1:first-child', 'border-bottom', '2px solid #e2e6ec'],
+    ['.rst-content h2', 'border-bottom', '1px solid #e2e6ec'],
+    ['.rst-content p', 'color', '#2d3748'],
+    ['.rst-content a', 'color', '#2563eb'],
+    ['code', 'color', '#e05544'],
+    ['code', 'background', '#f6f8fa'],
+    ['pre', 'background', '#f6f8fa'],
+    ['pre', 'color', '#2d3748'],
+    ['table th', 'background', '#f1f3f6'],
+    ['table th', 'color', '#1a202c'],
+    ['table td', 'color', '#2d3748'],
+    ['hr', 'background', '#e2e6ec'],
+    ['blockquote', 'background', '#f8f9fb'],
+    ['blockquote', 'color', '#718096'],
+    ['.wy-breadcrumbs', 'color', '#718096'],
+    ['.wy-nav-top', 'background', '#f8f9fb']
+  ];
+  for (var i = 0; i < overrides.length; i++) {
+    var el = d.querySelector(overrides[i][0]);
+    if (el) el.style[overrides[i][1]] = overrides[i][2];
+  }
+});
+</script>
+
+</body>
+</html>

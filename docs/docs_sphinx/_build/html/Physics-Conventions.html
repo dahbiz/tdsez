@@ -55,6 +55,19 @@
 <li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#execution-pipeline">Execution pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#public-modules">Public modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#core-lifecycle">Core lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#reference-pages">Reference pages</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
@@ -82,8 +95,6 @@
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-surface-flux">t-SURFF (Surface Flux)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#lz-diagonalization">Lz Diagonalization</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
@@ -107,6 +118,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#degenerate-levels-and-reproducible-states">Degenerate Levels and Reproducible States</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
 </ul>
@@ -147,50 +159,28 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-photoionization-t-surff">2D Atomic Photoionization — t-SURFF</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#id2">3D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-multi-center-potential-xyz-polarization">3D Multi-Center Potential — XYZ Polarization</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#known-physics-benchmarks">Known Physics Benchmarks</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#usage">Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#output">Output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id1">Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#options">Options</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id2">Output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#filtering">Filtering</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#save-dipole-operators">Save Dipole Operators</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#input-file">Input File</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#storage">Storage</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#gpu-configuration">GPU Configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#gpu-aware-mpi">GPU-Aware MPI</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>

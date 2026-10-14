@@ -220,9 +220,6 @@ int main(int argc, char *argv[])
             PetscCall(TDSEZPrecomputeMomentumMatrix(&manager));
             PetscCall(TDSEZCheckLengthVelocity(&manager));
 
-            // t-SURFF: build boundary evaluation operators + momentum grid.
-            PetscCall(manager.SetupSurff());
-
             Vec psi0Local = PETSC_NULLPTR;
             PetscCallAbort(PETSC_COMM_WORLD,
                            VecDuplicate(TDSEZ.initialPsi, &psi0Local));
@@ -251,9 +248,6 @@ int main(int argc, char *argv[])
             PetscCall(PetscLogStagePop());
             markPhase(TDSEZProfile::Propagation);
             propagated = PETSC_TRUE;
-
-            // t-SURFF: finalize accumulators and write the PES to its own HDF5.
-            PetscCall(manager.FinalizeSurff());
 
             // write HDF5 output (incremental: only records any remaining unflushed rows),
             // then flush and close the persistent handle so the file is always finalized.

@@ -17,6 +17,9 @@
       <script src="_static/documentation_options.js?v=01f34227"></script>
       <script src="_static/doctools.js?v=fd6eb6e6"></script>
       <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}})</script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}}</script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="_static/custom.js?v=3ae78d1c"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -53,6 +56,19 @@
 <li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#execution-pipeline">Execution pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#public-modules">Public modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#core-lifecycle">Core lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#reference-pages">Reference pages</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
@@ -80,8 +96,6 @@
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-surface-flux">t-SURFF (Surface Flux)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#lz-diagonalization">Lz Diagonalization</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
@@ -105,6 +119,7 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Eigensolver</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#degenerate-levels-and-reproducible-states">Degenerate Levels and Reproducible States</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#solve-mode">Solve Mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#saving-eigenstates">Saving Eigenstates</a></li>
 </ul>
@@ -145,50 +160,28 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-photoionization-t-surff">2D Atomic Photoionization — t-SURFF</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#id2">3D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-multi-center-potential-xyz-polarization">3D Multi-Center Potential — XYZ Polarization</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#known-physics-benchmarks">Known Physics Benchmarks</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#usage">Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#output">Output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id1">Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#options">Options</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id2">Output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#filtering">Filtering</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#save-dipole-operators">Save Dipole Operators</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#input-file">Input File</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#storage">Storage</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#gpu-configuration">GPU Configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#gpu-aware-mpi">GPU-Aware MPI</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
@@ -295,8 +288,9 @@
 <tr class="row-even"><td><p>NBoundStates</p></td>
 <td><p>int</p></td>
 <td><p>1</p></td>
-<td><p>Number of bound states to compute (stored as states 0..NBoundStates-1).
-Aliases: <code class="docutils literal notranslate"><span class="pre">NumberOfBoundStates</span></code></p></td>
+<td><p>Number of bound states to compute (stored as states 0..N-1). If the
+last requested state belongs to a degenerate level, the whole level is
+kept (N &gt; NBoundStates, with a printed note). Aliases: <code class="docutils literal notranslate"><span class="pre">NumberOfBoundStates</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>TargetEigenvalue / TargetEnergy</p></td>
 <td><p>real</p></td>
@@ -305,6 +299,34 @@ Aliases: <code class="docutils literal notranslate"><span class="pre">NumberOfBo
 </tr>
 </tbody>
 </table>
+</section>
+<section id="degenerate-levels-and-reproducible-states">
+<h2>Degenerate Levels and Reproducible States<a class="headerlink" href="#degenerate-levels-and-reproducible-states" title="Link to this heading"></a></h2>
+<p>Inside a degenerate level any orthonormal basis is an eigenbasis, and the one
+SLEPc returns depends on rounding (assembly order, MPI layout, BLAS). Per-state
+populations, currents and saved wavefunctions would then change from run to
+run. TDSE-Z therefore post-processes the converged pairs:</p>
+<ol class="arabic simple">
+<li><p>States are ordered by distance to <code class="docutils literal notranslate"><span class="pre">TargetEigenvalue</span></code> (ties by energy). The
+first <code class="docutils literal notranslate"><span class="pre">NBoundStates</span></code> are kept, extended to the end of a degenerate level.</p></li>
+<li><p>Krylov solvers can miss copies of a repeated eigenvalue. Whenever the kept
+set contains a degenerate level, or ends at the last converged pair, the
+kept states are deflated and SLEPc is asked for the nearest remaining pair.
+If it is not farther from the target, or has the energy of a kept level, it
+was missed and is added (<code class="docutils literal notranslate"><span class="pre">Degenerate-shell</span> <span class="pre">check:</span> <span class="pre">added</span> <span class="pre">...</span></code>). The check
+costs about one extra eigensolve and runs only when degenerate levels are
+kept (or when SLEPc converged no pair beyond the kept set).</p></li>
+<li><p>Inside each degenerate level the states are rotated to diagonalise a fixed
+generic weight (a quadratic polynomial of position at the Greville points),
+sorted by that weight. Energies and the spanned subspace are unchanged.</p></li>
+<li><p>Every state gets a fixed phase: real, with a positive overlap with
+<span class="math notranslate nohighlight">\(\prod_d (1 + 0.3\hat x_d)\)</span> (or, when that overlap vanishes, with
+<span class="math notranslate nohighlight">\(\prod_d e^{a_d \hat x_d}\)</span>).</p></li>
+</ol>
+<p>The resulting states, and everything computed from them, agree across assembly
+paths and MPI rank counts to rounding. Two eigenvalues count as degenerate when
+<span class="math notranslate nohighlight">\(|E_i - E_j| \le \mathrm{tol}\,\max(1, |E_i|)\)</span>, with <code class="docutils literal notranslate"><span class="pre">tol</span></code> set by
+<code class="docutils literal notranslate"><span class="pre">-tdsez_degeneracy_tol</span></code> (default <code class="docutils literal notranslate"><span class="pre">1e-9</span></code>).</p>
 </section>
 <section id="solve-mode">
 <h2>Solve Mode<a class="headerlink" href="#solve-mode" title="Link to this heading"></a></h2>
@@ -356,7 +378,7 @@ Aliases: <code class="docutils literal notranslate"><span class="pre">NumberOfBo
 <tr class="row-odd"><td><p>BoundStateFormat / StateFormat / SaveStateFormat</p></td>
 <td><p>string</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">complex</span></code></p></td>
-<td><p>Save format: <code class="docutils literal notranslate"><span class="pre">complex</span></code> (raw SLEPc eigenvectors) or <code class="docutils literal notranslate"><span class="pre">real</span></code>
+<td><p>Save format: <code class="docutils literal notranslate"><span class="pre">complex</span></code> (eigenvectors in the fixed gauge above) or <code class="docutils literal notranslate"><span class="pre">real</span></code>
 (phase-rotated to real canonical form via TDSEZMakeStateReal2)</p></td>
 </tr>
 </tbody>

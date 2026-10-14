@@ -1,4 +1,4 @@
-# TDSEZ vs qprop t-SURFF benchmark — matched single-Hydrogen, linear x-polarisation.
+# TDSEZ vs qprop benchmark — matched single-Hydrogen, linear x-polarisation.
 # Laser here is the ELECTRIC FIELD E(t) = -dA/dt, chosen so that TDSEZ's
 # internal vector potential A = -int E dt equals qprop's A(t):
 #   A(t) = (E0/omega) * sin^2(omega*t/(2*nc)) * sin(omega*t)
@@ -48,9 +48,3 @@ FinalTime        = 740.0
 EnablePropagation = 1
 EnableCAP        = 0
 OutputStrideWFS  = 100000
-TSurff           = 1
-SurffNk          = 80
-SurffKmax        = 1.5
-OutputStrideSurff = 1
-SurffCouplingSign = 1.0
-SurffRadius      = 0.0

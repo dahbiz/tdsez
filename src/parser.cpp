@@ -305,13 +305,6 @@ void TDSEZParser::PrmReader(const std::string &prm)
                     }
                 }}},
 
-                // --- t-SURFF ---
-                {"TSurff",            B(out_tsurff)},
-                {"SurffNk",           I(SurffNk)},
-                {"SurffKmax",         R(SurffKmax)},
-                {"OutputStrideSurff", I(OutputStrideSurff)},
-                {"SurffCouplingSign", R(SurffCouplingSign)},
-                {"SurffRadius",       R(SurffRadius)},
 
                 // --- per-axis LIST forms (Domain / KnotSequence convention) ---
                 {"DriverAmplitude",  axisListHandler(Ampx, Ampy, Ampz)},
@@ -324,8 +317,18 @@ void TDSEZParser::PrmReader(const std::string &prm)
             return m;
         };
 
+        // Keys of features that have been removed: say so instead of "unknown".
+        static const std::set<std::string> removedTSurff = {
+            "TSurff", "SurffNk", "SurffKmax", "OutputStrideSurff", "SurffCouplingSign", "SurffRadius"};
         auto it = table().find(key);
         if (it != table().end()) it->second(val);
+        else if (removedTSurff.count(key)) {
+            PetscPrintf(PETSC_COMM_WORLD,
+                "\nTDSEZParser %s: input key '%s' belongs to t-SURFF, which has been removed "
+                "from TDSE-Z; delete it from the input file.\n",
+                TDSEZParser::StrictInput ? "FATAL" : "WARNING", key.c_str());
+            if (TDSEZParser::StrictInput) MPI_Abort(PETSC_COMM_WORLD, 2);
+        }
         else if (TDSEZParser::StrictInput) {
             // A typo'd key silently changing nothing is a real hazard in a
             // physics code (wrong potential, wrong mass, etc.). With StrictInput
@@ -351,7 +354,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
         for (auto& c : s) c = (char)std::tolower((unsigned char)c);
         s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
         if (!(s.empty() || s == "all")) {
-            out_dipole = out_population = out_energy = out_current = out_autocorr = out_wfs = out_tsurff = PETSC_FALSE;
+            out_dipole = out_population = out_energy = out_current = out_autocorr = out_wfs = PETSC_FALSE;
             std::istringstream iss(s);
             std::string tok;
             while (std::getline(iss, tok, ',')) {
@@ -361,7 +364,6 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 else if (tok == "current")        out_current   = PETSC_TRUE;
                 else if (tok == "autocorrelation" || tok == "ac") out_autocorr = PETSC_TRUE;
                 else if (tok == "wfs")            out_wfs       = PETSC_TRUE;
-                else if (tok == "tsurff")         out_tsurff    = PETSC_TRUE;
             }
         }
     }

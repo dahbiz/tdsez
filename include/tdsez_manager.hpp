@@ -11,10 +11,9 @@ class TDSEZCore;
 class TDSEZAssembler;
 
 /**
- * @brief Orchestrates time propagation, diagnostics, HDF5 output, and t-SURFF.
+ * @brief Orchestrates time propagation, diagnostics and HDF5 output.
  * @details Owns the operator matrices (H, K, V, dipoles, velocity, CAP, Lz),
- * diagnostic buffers, HDF5 file handle, and the t-SURFF surface-flux
- * machinery.  The Manager is constructed with pointers to a TDSEZCore
+ * diagnostic buffers and the HDF5 file handle.  The Manager is constructed with pointers to a TDSEZCore
  * (eigenproblem results) and a TDSEZAssembler (operator builder) and
  * drives the PETSc TS time-stepping through a TDSEZPropagator.
  */
@@ -191,92 +190,6 @@ class TDSEZManager
     /// @return PetscErrorCode (0 on success).
     PetscErrorCode PolarizationSelector();
 
-    // ---------------- t-SURFF (time-dependent surface flux) ----------------
-    /// @name t-SURFF surface-flux machinery
-    /// @details Faces indexed 0=x-, 1=x+, 2=y-, 3=y+, 4=z-, 5=z+ (i.e.
-    /// (axis,side) = (f/2, f%2)).  Only faces consistent with
-    /// hasX/hasY/hasZ are built/used.
-    /// @{
-
-    /// Boundary value operators per face (MatMult: psi -> boundary values).
-    Mat  Bval_face[6] = {PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR,
-                          PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR};
-    /// Boundary derivative operators per face (MatMult: psi -> boundary normals).
-    Mat  Bder_face[6] = {PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR,
-                          PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR};
-    /// Boundary value vectors (rank 0 only, MatMult output).
-    Vec  faceValVec[6] = {PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR,
-                           PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR};
-    /// Boundary derivative vectors (rank 0 only, MatMult output).
-    Vec  faceDerVec[6] = {PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR,
-                           PETSC_NULLPTR,PETSC_NULLPTR,PETSC_NULLPTR};
-
-    /// Number of quadrature points per face (rank 0 only).
-    PetscInt faceNquad[6] = {0,0,0,0,0,0};
-    /// Sequential copy of psi on rank 0 for SELF face MatMult.
-    Vec       psiZero       = PETSC_NULLPTR;
-    /// Scatter from distributed psi to the rank-0 sequential copy.
-    VecScatter surffScatter = PETSC_NULLPTR;
-    /// Quadrature-point coordinates per face (rank 0 only).
-    std::vector<PetscReal> faceX[6], faceY[6], faceZ[6];
-    /// Quadrature weights per face (includes boundary Jacobian, rank 0 only).
-    std::vector<PetscReal> faceW[6];
-    /// Face axis index: 0=x, 1=y, 2=z.
-    PetscInt   faceAxis[6]     = {0,0,1,1,2,2};
-    /// Outward-normal sign: -1 for lower face, +1 for upper face.
-    PetscReal  faceSign[6]     = {-1,+1,-1,+1,-1,+1};
-    /// Per-quad weight mask: 1 if |r_q|>SurffRadius (active shell), else 0.
-    std::vector<PetscReal> faceMask[6];
-
-    /// @name Running vector potential A(t) = -∫₀^t E(t')dt' (trapezoidal)
-    /// @{
-    PetscReal Ax = 0.0, Ay = 0.0, Az = 0.0;
-    PetscReal surffTprev = 0.0, surffExPrev = 0.0, surffEyPrev = 0.0, surffEzPrev = 0.0;
-    PetscBool surffInitialized = PETSC_FALSE;
-    /// @}
-
-    /// @name Momentum grid + running accumulators (rank 0 only, size Nk³)
-    /// @{
-    PetscInt   surffNk = 0;                 ///< number of k-grid points per axis
-    PetscReal  surffKmax = 0.0;             ///< k-grid cutoff
-    PetscReal  surffMass = 1.0;             ///< sampled particle mass (constant-mass approx)
-    std::vector<PetscReal>   kAxis;         ///< Nk values, -Kmax..+Kmax
-    std::vector<PetscReal>   surffPhi;      ///< running Φ(k,t), size Nk³
-    std::vector<PetscScalar> surffAmp;      ///< running b(k,t) accumulator, size Nk³
-    /// @}
-
-    /// @name Per-face diagnostic PES (allocated when TSURFF_FACE_SPLIT env set)
-    /// @{
-    std::vector<PetscScalar> surffAmpFace[6];
-    PetscBool surffFaceSplit = PETSC_FALSE;
-    /// @}
-
-    /// @name Per-fold separable buffers (rank 0)
-    /// @details For an active face the boundary flux factorizes as
-    /// J_f(k) = e^{-i k_d X_d} [ A_f(k_u) + i·sign·k_d · B_f(k_u) ]
-    /// where (k_u, k_d) split the momentum along tangent/normal axes.
-    /// This makes the per-fold cost O(Nk^{d-1}·Nq + Nk^d) instead of
-    /// O(Nk^d·Nq) — an exact factor-Nk speedup with no approximation.
-    /// @{
-    PetscInt   surffTangentDim = 0;        ///< dim-1
-    std::vector<PetscScalar> surffAf[6];   ///< size (Nk)^(d-1) per active face
-    std::vector<PetscScalar> surffBf[6];   ///< size (Nk)^(d-1) per active face
-    /// @}
-
-    /// @brief Set up the t-SURFF momentum grid, face operators, and scatters.
-    /// @return PetscErrorCode (0 on success).
-    PetscErrorCode SetupSurff();
-    /// @brief Build the per-face boundary value/derivative operators.
-    /// @return PetscErrorCode (0 on success).
-    PetscErrorCode BuildFaceOperators();
-    /// @brief Accumulate the surface-flux contribution at one time step.
-    /// @param psi Current wavefunction.
-    /// @param t Current time.
-    /// @param dt Time-step size.
-    /// @param step Current step index.
-    /// @return PetscErrorCode (0 on success).
-    PetscErrorCode AccumulateSurff(Vec psi, PetscReal t, PetscReal dt, PetscInt step);
-
     /// True when the dipole acceleration is taken from the discrete
     /// equation of motion rather than the force operator (AccelerationMethod).
     PetscBool UseDiscreteAcceleration() const;
@@ -303,10 +216,6 @@ class TDSEZManager
     KSP kspMass = PETSC_NULLPTR;
     /// Work vectors for DiscreteAcceleration (built on first use).
     Vec accelWork[3] = {PETSC_NULLPTR, PETSC_NULLPTR, PETSC_NULLPTR};
-    /// @brief Finalize the t-SURFF reconstruction and write the PES to disk.
-    /// @return PetscErrorCode (0 on success).
-    PetscErrorCode FinalizeSurff();
-    /// @}  // end t-SURFF group
 };
 
 

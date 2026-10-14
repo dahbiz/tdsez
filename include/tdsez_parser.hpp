@@ -371,19 +371,6 @@ class TDSEZParser
         // (polarisation includes them) are written.
         /// Which dipole axes to persist ("x", "xy", "xyz", "all", etc.).
         inline static std::string           SaveDipoleAxes     = "";
-        // t-SURFF (time-dependent surface-flux photoelectron momentum spectrum)
-        /// Whether t-SURFF photoelectron spectrum computation is enabled.
-        inline static PetscBool             out_tsurff         = PETSC_FALSE;
-        /// Momentum grid points per axis in [-SurffKmax, SurffKmax].
-        inline static PetscInt              SurffNk            = 40;   // momentum grid points per axis in [-SurffKmax,SurffKmax]
-        /// Momentum cutoff (atomic units).
-        inline static PetscReal             SurffKmax          = 2.0;  // momentum cutoff (a.u.)
-        /// Fold boundary flux into b(k) every N accepted steps (1 = exact).
-        inline static PetscInt              OutputStrideSurff  = 1;    // fold boundary flux into b(k) every N accepted steps (1 = exact)
-        /// Sign of the k-A(t) coupling in t-SURFF (+1 or -1).
-        inline static PetscReal             SurffCouplingSign  = +1.0; // k_eff = k + s*q*A(t); flip to -1.0 if your field couples as +q*E*r
-        /// If >0, restrict t-SURFF faces to the shell |r| > SurffRadius (a.u.).
-        inline static PetscReal             SurffRadius        = 0.0;  // if >0, restrict t-SURFF faces to the shell |r|>SurffRadius (a.u.)
         /// Envelope type string ("custom", etc.).
         inline static std::string           EnvelopeType       = "custom";
         /// Knot-sequence type string ("uniform", "symexp", etc.).

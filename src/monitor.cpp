@@ -393,7 +393,7 @@ PetscErrorCode TDSEZIJacobianPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pet
  * Computes norm, <H>, kinetic/potential/interaction/total energy, x-dipole,
  * acceleration, populations, and autocorrelation via a fused VecMDot
  * reduction, writes them into in-memory buffers, and flushes periodically to
- * HDF5. Also accumulates t-SURFF, writes wavefunction snapshots, and logs
+ * HDF5. Also writes wavefunction snapshots, and logs
  * progress.
  *
  * @param[in] ts   Time-stepper context.
@@ -412,7 +412,6 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
 
-    if (TDSEZParser::out_tsurff) PetscCall(TDSEZ->AccumulateSurff(psi, t, TDSEZParser::TimeStep, step));
 
     // ------------------------
     // Compute temporary vectors
@@ -660,7 +659,6 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     profile.steps = PetscMax(profile.steps, step);
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
 
-    if (TDSEZParser::out_tsurff) PetscCall(TDSEZ->AccumulateSurff(psi, t, TDSEZParser::TimeStep, step));
 
     /* ----------------------------------------------------------------
        MatMults
@@ -960,7 +958,6 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
 
-    if (TDSEZParser::out_tsurff) PetscCall(TDSEZ->AccumulateSurff(psi, t, TDSEZParser::TimeStep, step));
 
     // ------------------------
     // Compute temporary vectors

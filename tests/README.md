@@ -76,7 +76,6 @@ Each `.inp` file defines a test case. Naming convention:
 - `box1d*.inp` - 1D box/particle-in-a-box cases
 - `h2p*.inp` - H2+ (two-center) molecular cases
 - `bench*.inp` - Benchmark configurations
-- `surff*.inp` - t-SURFF surface flux test cases
 
 ## Adding a New Test
 

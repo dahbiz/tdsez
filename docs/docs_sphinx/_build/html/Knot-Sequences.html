@@ -17,9 +17,6 @@
       <script src="_static/documentation_options.js?v=01f34227"></script>
       <script src="_static/doctools.js?v=fd6eb6e6"></script>
       <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
-      <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}})</script>
-      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}}</script>
-      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="_static/custom.js?v=3ae78d1c"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -56,6 +53,19 @@
 <li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#execution-pipeline">Execution pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#public-modules">Public modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#core-lifecycle">Core lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#reference-pages">Reference pages</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
@@ -83,8 +93,6 @@
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-surface-flux">t-SURFF (Surface Flux)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#lz-diagonalization">Lz Diagonalization</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
@@ -108,6 +116,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#degenerate-levels-and-reproducible-states">Degenerate Levels and Reproducible States</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
 </ul>
@@ -148,50 +157,28 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-photoionization-t-surff">2D Atomic Photoionization — t-SURFF</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#id2">3D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-multi-center-potential-xyz-polarization">3D Multi-Center Potential — XYZ Polarization</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#known-physics-benchmarks">Known Physics Benchmarks</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#usage">Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#output">Output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id1">Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#options">Options</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#id2">Output</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#filtering">Filtering</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#save-dipole-operators">Save Dipole Operators</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#input-file">Input File</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Post-Processing.html#storage">Storage</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#gpu-configuration">GPU Configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#gpu-aware-mpi">GPU-Aware MPI</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
@@ -277,8 +264,10 @@
              
   <section id="knot-sequences">
 <h1>Knot Sequences<a class="headerlink" href="#knot-sequences" title="Link to this heading"></a></h1>
-<p>B-spline knot vector generation: uniform, symexp, symmetric, interface, hydrogenic,
-adaptive.</p>
+<p>B-spline knot vector generation supports uniform, symmetric exponential and
+tangent, logarithmic tangent, hydrogenic, and interface-aligned sequences. The
+<code class="docutils literal notranslate"><span class="pre">adaptive</span></code> and <code class="docutils literal notranslate"><span class="pre">adaptive_wf</span></code> names currently select uniform interior knots;
+their specialized generators are pending implementation.</p>
 <section id="knot-sequence-types">
 <h2>Knot Sequence Types<a class="headerlink" href="#knot-sequence-types" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -300,35 +289,35 @@ adaptive.</p>
 </tr>
 <tr class="row-odd"><td><p><strong>symexp</strong></p></td>
 <td><p>Symmetric exponential: dense near origin, sparse at edges</p></td>
-<td><p>KnotAlpha</p></td>
+<td><p>KnotAlpha (alias KnotGrading, GradingStrength); default 0.9</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>symtanu</strong></p></td>
-<td><p>Symmetric tangent, unbounded: tanh-compressed near origin</p></td>
-<td><p>KnotAlpha</p></td>
+<td><p>Inverse-tanh map: dense near origin, sparse at edges</p></td>
+<td><p>KnotAlpha; default 0.9</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>symtan</strong></p></td>
-<td><p>Symmetric tangent, bounded in [Lmin,Lmax]</p></td>
-<td><p>KnotAlpha</p></td>
+<tr class="row-odd"><td><p><strong>symtann</strong></p></td>
+<td><p>tanh map: dense near the edges, sparse at origin</p></td>
+<td><p>KnotAlpha; default 0.9</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>logtan</strong></p></td>
-<td><p>Logarithmic tangent</p></td>
-<td><p>KnotAlpha</p></td>
+<tr class="row-even"><td><p><strong>symlogtan</strong></p></td>
+<td><p>Tangent map, mildly dense near origin</p></td>
+<td><p>KnotAlpha; default 0.5</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>interface</strong></p></td>
-<td><p>Auto-aligned at potential/mass breakpoints</p></td>
-<td><p>–</p></td>
+<tr class="row-odd"><td><p><strong>interface</strong> (alias <strong>interfaces</strong>)</p></td>
+<td><p>C0 knots (multiplicity p) at every breakpoint of the Potential and Mass expressions; uniform elements within each layer, element count per layer proportional to its width. Required for spectral accuracy at abrupt BDD heterojunctions.</p></td>
+<td><p>Breakpoints from <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">c</span></code> / <code class="docutils literal notranslate"><span class="pre">abs(x)</span> <span class="pre">&lt;</span> <span class="pre">c</span></code> comparisons</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>hydrogenic</strong></p></td>
-<td><p>Linear near origin, exponential tail. For Coulombic problems</p></td>
-<td><p>HydrogenicNLin[d], HydrogenicNExp[d], HydrogenicR1[d]</p></td>
+<td><p>Per half-axis: NLin linear elements of size R1 up to r_cross = NLin*R1, then NExp exponentially growing elements up to Lmax; mirrored about the origin. For Coulombic problems</p></td>
+<td><p>HydrogenicR1 (alias InnerSpacing, HydrogenicInnerSpacing), HydrogenicNLin (alias InnerElements, HydrogenicInnerElements), HydrogenicNExp (alias OuterElements, HydrogenicOuterElements); per-axis lists</p></td>
 </tr>
 <tr class="row-odd"><td><p><strong>adaptive</strong></p></td>
-<td><p>Potential-driven: clusters knots where <span class="math notranslate nohighlight">\(|\nabla V| + \text{wells}\)</span> are strong</p></td>
-<td><p>AdaptiveKappa, AdaptivePower</p></td>
+<td><p>Pending: currently uses uniform interior knots, without potential-driven clustering</p></td>
+<td><p>AdaptiveKappa and AdaptivePower are currently ignored</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>adaptive_wf</strong></p></td>
-<td><p>Density-driven (two-pass): first coarse solve, then cluster on <span class="math notranslate nohighlight">\(|\psi_0|^2\)</span></p></td>
-<td><p>AdaptiveWFCoarseN, AdaptiveWFKinLambda</p></td>
+<td><p>Pending: currently skips the coarse solve and uses uniform interior knots</p></td>
+<td><p>AdaptiveWFCoarseN and AdaptiveWFKinLambda are currently ignored</p></td>
 </tr>
 </tbody>
 </table>
@@ -336,7 +325,7 @@ adaptive.</p>
 <section id="per-axis-assignment">
 <h2>Per-Axis Assignment<a class="headerlink" href="#per-axis-assignment" title="Link to this heading"></a></h2>
 <p>Knot sequences are comma-separated per axis:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">KnotSequence</span> <span class="o">=</span> <span class="s2">&quot;symexp, uniform, symtan&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">KnotSequence</span> <span class="o">=</span> <span class="s2">"symexp, uniform, symtan"</span>
 </pre></div>
 </div>
 <p>X=symexp, Y=uniform, Z=symtan. Missing axes default to the first value.</p>

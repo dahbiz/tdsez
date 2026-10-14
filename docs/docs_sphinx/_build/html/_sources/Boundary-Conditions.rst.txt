@@ -3,8 +3,7 @@ Boundary Conditions
 
 Controls how the wavefunction behaves at the edges of the computational domain.
 Choosing the right boundary condition is critical for accuracy — reflecting walls
-cause spurious reflections, while CAP or t-SURFF allow outgoing flux to leave
-cleanly.
+cause spurious reflections, while CAP allows outgoing flux to leave cleanly.
 
 Boundary Types
 --------------

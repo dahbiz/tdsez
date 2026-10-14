@@ -299,7 +299,7 @@ Output Control
    * - PhysicsOutput / OutputQuantities
      - string
      - "all"
-     - Declarative enable list: comma-separated from: "dipole", "population", "energy", "current", "autocorrelation"/"ac", "wfs", "tsurff". "all" enables everything.
+     - Declarative enable list: comma-separated from: "dipole", "population", "energy", "current", "autocorrelation"/"ac", "wfs". "all" enables everything.
    * - OutputStrideTS
      - int
      - 0
@@ -348,6 +348,10 @@ Initial State
      - bool
      - 1 (true)
      - 1 = normalize initial state so \<psi_0|M|psi_0\> = 1.
+   * - AccelerationMethod
+     - string
+     - "auto"
+     - Dipole acceleration a(t). "operator": Ehrenfest force operator (smooth m and V only). "discrete": a = d<v>/dt from the Galerkin equation of motion (exact at sharp interfaces and hard walls; one M solve per output step). "auto": "discrete" when Mass depends on x, y or z and MassIsConstant = 0, otherwise "operator".
 
 Boundary Conditions and CAP
 ---------------------------
@@ -356,6 +360,10 @@ Boundary Conditions and CAP
    :widths: 25 10 15 50
    :header-rows: 1
 
+   * - Propagator
+     - string
+     - "cn"
+     - Time stepper. "cn": Crank-Nicolson, Pade(1,1), second order, one sparse solve per step. "pade22": exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, two solves per step). "magnus4": commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, four solves per step). The rational propagators are unitary for Hermitian H and allow much larger TimeStep at equal accuracy.
    * - Parameter
      - Type
      - Default
@@ -395,84 +403,33 @@ Knot Sequences
    * - KnotAlpha
      - real
      - 0.0
-     - Primary tuning parameter for symexp and tangent-based sequences. Controls compression rate near origin.
+     - Grading strength of symexp/symtanu/symtann (default 0.9 when unset) and symlogtan (default 0.5). Aliases: KnotGrading, GradingStrength.
    * - HydrogenicNLin
      - int[3]
      - 0,0,0
-     - Number of linear segments near origin for hydrogenic knot sequence. Per-axis (comma-separated) or single value (replicated).
+     - Number of linear elements per half-axis near the origin for the hydrogenic sequence. Per-axis (comma-separated) or single value (replicated). Aliases: InnerElements, HydrogenicInnerElements.
    * - HydrogenicNExp
      - int[3]
      - 0,0,0
-     - Number of exponential segments for hydrogenic knot sequence. Per-axis.
+     - Number of exponentially growing elements per half-axis from r_cross to Lmax (hydrogenic). Per-axis. Aliases: OuterElements, HydrogenicOuterElements.
    * - HydrogenicR1
      - real[3]
      - 0.0,0,0
-     - Transition radius (a.u.) between linear and exponential regions of hydrogenic knot sequence. Per-axis.
+     - Size (a.u.) of the linear near-origin elements (hydrogenic); r_cross = HydrogenicNLin*HydrogenicR1 must be < Lmax. Per-axis. Aliases: InnerSpacing, HydrogenicInnerSpacing.
    * - AdaptiveKappa
      - real
      - 1.0
-     - Weighting parameter for adaptive knot sequences (potential-driven). Higher = more clustering near potential gradients.
+     - Reserved for adaptive knots; currently ignored while that mode uses uniform knots.
    * - AdaptivePower
      - real
      - 1.0
-     - Power for adaptive knot clustering. Higher = sharper clustering in high-gradient regions.
+     - Reserved for adaptive knots; currently ignored.
    * - AdaptiveWFCoarseN
      - int
      - 20
-     - Number of basis functions for coarse first-pass wavefunction solve (adaptive_wf).
+     - Reserved for the adaptive_wf coarse solve; currently ignored.
    * - AdaptiveWFKinLambda
      - real
      - 3.0
-     - Kinetic-energy weighting scale for density-driven adaptive clustering (adaptive_wf). Higher = more clustering near nodes.
+     - Reserved for adaptive_wf density weighting; currently ignored.
 
-t-SURFF (Surface Flux)
-----------------------
-
-.. list-table:: t-SURFF (Surface Flux)
-   :widths: 25 10 15 50
-   :header-rows: 1
-
-   * - Parameter
-     - Type
-     - Default
-     - Description
-   * - TSurff
-     - bool
-     - 0 (false)
-     - 1 = enable t-SURFF momentum spectrum calculation. Requires PhysicsOutput include "tsurff".
-   * - SurffNk
-     - int
-     - 40
-     - Momentum grid points per axis in [-SurffKmax, +SurffKmax].
-   * - SurffKmax
-     - real
-     - 2.0
-     - Momentum cutoff in atomic units.
-   * - OutputStrideSurff
-     - int
-     - 1
-     - Save stride for t-SURFF flux accumulation.
-   * - SurffCouplingSign
-     - real
-     - +1.0
-     - Sign of field-momentum coupling: k_eff = k + s * q A(t). Flip to -1.0 if your field couples as +q E * r instead of -q E * r.
-   * - SurffRadius
-     - real
-     - 0.0
-     - If \> 0, restrict t-SURFF integration surfaces to shell r \> SurffRadius (a.u.). Suppresses near-field contributions.
-
-Lz Diagonalization
-------------------
-
-.. list-table:: Lz Diagonalization
-   :widths: 25 10 15 50
-   :header-rows: 1
-
-   * - Parameter
-     - Type
-     - Default
-     - Description
-   * - EnableLzDiag / LzDiag
-     - bool
-     - 0 (false)
-     - 1 = compute Lz expectation values for all bound states during eigensolve.
