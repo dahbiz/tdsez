@@ -1,160 +1,194 @@
 <p align="center">
-  <img src="docs/brand/logo.png" width="220" alt="TDSE-Z logo">
+  <img src="docs/brand/logo.png" width="200" alt="TDSE-Z logo">
 </p>
 
-<h1 align="center">TDSE-Z — Attosecond Quantum Dynamics, at Scale</h1>
+<h1 align="center">TDSE-Z</h1>
 
 <p align="center">
-  <strong>C++17</strong> &middot; <strong>MPI</strong> &middot; <strong>PETSc</strong> &middot; <strong>SLEPc</strong> &middot; <strong>PetIGA</strong>
-</p>
-
-<p align="center">
-  A high-performance C++ framework for solving the time-dependent Schrödinger equation
-  in strong laser fields — atomic, molecular and solid-state systems resolved to the
-  attosecond, scaled across MPI clusters.
+  A parallel B-spline solver for the time-dependent Schrödinger equation in strong
+  laser fields, from atoms and molecules to semiconductor heterostructures.
 </p>
 
 <p align="center">
-  <a href="https://dahbiz.github.io/tdsez/">Website</a> &middot;
-  <a href="https://dahbiz.github.io/tdsez/docs/index.html">Documentation</a>
+  <a href="https://dahbiz.github.io/tdsez/docs/index.html">Documentation</a> &middot;
+  <a href="https://arxiv.org/abs/2608.18472">Paper</a> &middot;
+  <a href="PERFORMANCE.md">Performance notes</a> &middot;
+  <a href="#citation">Citation</a>
 </p>
 
 ---
 
-## Quick Start
+TDSE-Z solves the single-particle time-dependent Schrödinger equation in one, two
+and three dimensions. It computes bound states and propagates them in arbitrary
+laser fields, with user-defined potentials and position-dependent effective masses.
+The same code and input format cover atoms, molecular ions and layered
+semiconductor structures. Space is discretised with B-splines (isogeometric
+analysis, [PetIGA](https://github.com/dalcinl/PetIGA)). Linear algebra, eigenproblems
+and MPI parallelism are built on [PETSc](https://petsc.org) and
+[SLEPc](https://slepc.upv.es).
+
+## Capabilities
+
+**Physics**
+- Arbitrary potentials $`V(\mathbf r)`$ and effective masses $`m(\mathbf r)`$ given as
+  expressions in the input file (muParser), including piecewise profiles of
+  heterostructures.
+- Hermitian BenDaniel–Duke kinetic operator $`-\tfrac12\nabla\cdot m^{-1}(\mathbf r)\nabla`$
+  for position-dependent masses.
+- Length-gauge coupling to user-defined laser fields along $`x`$, $`y`$ and $`z`$.
+- Reflecting (Neumann) or hard-wall (Dirichlet) boundaries; complex absorbing
+  potential.
+
+**Discretisation and solvers**
+- B-splines of any degree; uniform, graded, hydrogenic and interface-aligned knot
+  sequences ($`C^0`$ knots at material interfaces).
+- Bound states by shift-invert Krylov–Schur (SLEPc), with a direct (MUMPS) or
+  iterative inner solver. Degenerate levels are kept whole and returned in a
+  reproducible basis.
+- Time propagation by Crank–Nicolson, a unitary Padé(2,2) exponential midpoint
+  rule, or a fourth-order commutator-free Magnus integrator.
+
+**Observables**
+- Dipole, velocity and acceleration (operator or equation-of-motion form, exact at
+  sharp interfaces), energy decomposition, currents, bound-state populations,
+  autocorrelation, Berry phase, transition-dipole matrices and wavefunction
+  snapshots.
+- HDF5 output; the bound-state file records the input file, code version, units
+  and eigenpair residuals.
+
+**Performance**
+- Sum-factorised element assembly with BLAS contractions, banded insertion of the
+  element matrices, and MPI parallelism throughout.
+- Measured speed-ups and the methods behind them are documented in
+  [PERFORMANCE.md](PERFORMANCE.md).
+
+## Requirements
+
+| Dependency | Notes |
+|---|---|
+| C++17 compiler, CMake ≥ 3.15, MPI | |
+| [PETSc](https://petsc.org) | Complex scalars (`--with-scalar-type=complex`), HDF5; MUMPS for direct solves |
+| [SLEPc](https://slepc.upv.es) | Installed in the PETSc prefix |
+| [PetIGA](https://github.com/dalcinl/PetIGA) | Installed in the PETSc prefix |
+| [muParser](https://github.com/beltoforion/muparser) | Expression parsing |
+| Python 3 with pytest, numpy, scipy, h5py and [zkit](https://github.com/dahbiz/zkit) | Tests and post-processing (optional) |
+
+A PETSc configuration known to work:
 
 ```bash
-# 1. Build (PETSc/SLEPc/PetIGA must be installed and discoverable)
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
-
-# 2. Run
-mpirun -np 4 ./tdsez.x -inp tests/inputs/ho1d.inp
+./configure --prefix=$HOME/petsc --with-scalar-type=complex --with-64-bit-indices \
+            --with-cxx-dialect=c++17 --with-debugging=0 \
+            --download-slepc --download-hdf5 --download-mumps --download-scalapack \
+            --download-metis --download-parmetis --download-muparser --download-openblas
 ```
 
-## What It Does
+PetIGA is then built against this PETSc and installed into the same prefix.
+CMake reads the compiler flags, BLAS/LAPACK libraries and optional CUDA and OpenMP
+settings from the PETSc installation; no further configuration is needed.
 
-TDSE-Z solves the time-dependent Schrödinger equation for single-particle quantum systems:
+## Building
 
-- **Static spectrum** — bound-state eigenvalues and eigenstates
-- **Time propagation** — evolve an initial state under arbitrary laser fields
-- **Dipole matrix** — transition elements $d_{ij} = \langle\psi_i|x|\psi_j\rangle$
-- **Population tracking** — time-dependent bound-state occupations
-- **Current / autocorrelation** — time-dependent observables
-- **Absorbing boundary (CAP)** — open-system dynamics
+```bash
+export PETSC_DIR=/path/to/petsc        # the PETSc install prefix
+cmake -S . -B build
+cmake --build build -j
+```
 
-## Code Layout
+This produces `build/tdsez.x` and the post-processing tools `tdmprocessor`,
+`tdmselect` and `drecprocessor`.
 
-| Component | Responsibility |
-|-----------|----------------|
-| `include/tdsez_parser.hpp`, `src/parser.cpp`, `src/parser_validation.cpp` | Input fields, file parsing, expression setup, and validation |
-| `include/tdsez_info.hpp` | Shared terminal output formatting |
-| `include/tdsez_core.hpp`, `src/core.cpp`, `src/core_knots.cpp` | Grid construction and bound-state solve |
-| `include/tdsez_assembler.hpp`, `src/assembly/`, `src/assembler_class.cpp` | Operator assembly |
-| `include/tdsez_manager.hpp`, `include/tdsez_propagator.hpp`, `src/manager.cpp`, `src/propagator.cpp`, `src/monitor.cpp` | Time evolution and output |
-| `src/diagnostics.cpp` | Physics diagnostics |
+## Running
 
-`include/tdsez_internal.hpp` collects shared solver types and function
-declarations. Individual class headers can be included separately.
+```bash
+mpirun -np 4 build/tdsez.x -inp tests/inputs/ho1d.inp
+```
 
-## Key Features
-
-- B-spline basis functions via PetIGA for high-accuracy spatial discretisation
-- SLEPc eigensolvers (EPS/PEP) for eigenvalue problems
-- PETSc time-stepping (TS) for propagation: Crank–Nicolson, plus unitary
-  Padé(2,2) and commutator-free fourth-order Magnus propagators
-- MPI parallelism across multiple nodes
-- Optimised propagation and output path; measured speed-ups are documented in
-  [PERFORMANCE.md](PERFORMANCE.md)
-- HDF5 output with full provenance metadata
-- muParser for user-defined potentials, laser fields, and mass profiles
+The input file sets the dimension, domain, B-spline space, potential, mass,
+laser field, propagator and outputs. Bound states are written to
+`static/EigenData_<input>.h5`. With `EnablePropagation = 1`, time-dependent
+observables go to `td/TimeEvolutionData_<input>.h5`, alongside wavefunction
+snapshots and the autocorrelation. PETSc and SLEPc options (`-eps_*`, `-ksp_*`,
+`-log_view`, ...) can be added on the command line. See the
+[input reference](https://dahbiz.github.io/tdsez/docs/Input-File.html) and the
+[examples](https://dahbiz.github.io/tdsez/docs/Examples.html).
 
 ## Tests
 
 ```bash
-# From the build directory
-cd build && make test          # builds + runs pytest with 5 MPI procs
-
-# Or directly
-pytest tests/ -v -s
+cmake --build build --target test      # or: pytest tests/ -v
 ```
 
-The suite validates eigenvalue convergence, propagation, and observables against
-analytical references (1D/2D/3D harmonic oscillators). See [tests/README.md](tests/README.md).
+The suite runs `tdsez.x` on small inputs with 1–5 MPI ranks and finishes in under a
+minute. It checks:
+- spectra and degeneracies against analytic or independent references (harmonic
+  oscillators in 1D/2D/3D, box and infinite well, double quantum well,
+  position-dependent and step masses);
+- driven dynamics against the exact solution, including the convergence order of
+  each propagator, and Ehrenfest and gauge consistency at a mass step;
+- sum-factorised against per-point assembly, MPI-layout independence, absorbing
+  boundaries, initial states, output metadata and input validation.
 
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| PETSc 3.x | Portable, Extensible Toolkit for Scientific Computation |
-| SLEPc | Scalable Library for Eigenvalue Problem Computations |
-| PetIGA | Isogeometric Analysis with PETSc |
-| muParser | Fast C++ expression parser |
-| CMake 3.15+ | Build system |
-| MPI (OpenMPI/MPICH) | Distributed parallelism |
-| HDF5 | Simulation output |
-| Python 3 + pytest + numpy + h5py | Tests (optional) |
+See [tests/README.md](tests/README.md).
 
 ## Documentation
 
-The documentation is split into a user guide and a generated C++ API reference.
-The user guide explains the model, input format, solver workflow, output schema,
-and reproducible examples. The API reference follows the ownership boundaries
-of the parser, core, assembler, manager, and propagator.
+The [user guide](https://dahbiz.github.io/tdsez/docs/index.html) covers the
+physical model, input format, solvers, observables, output schema and examples.
+The C++ API reference is generated with Doxygen. Both can be built locally:
 
 ```bash
-# User guide
-cmake --build build --target docs-sphinx
-
-# C++ API reference
-cmake --build build --target docs
+cmake --build build --target docs-sphinx   # user guide -> docs/docs_sphinx/_build/html
+cmake --build build --target docs          # API reference -> docs/doxygen/html
 ```
 
-The generated pages are written to `docs/docs_sphinx/_build/html/` and
-`docs/doxygen/html/`. See [Architecture](docs/docs_sphinx/Architecture.rst),
-[API Reference](docs/docs_sphinx/API-Reference.rst), and
-[Compilation](docs/docs_sphinx/Compilation.rst) for the supported build and
-ownership model. The `Publish documentation` GitHub Actions workflow rebuilds
-these pages and publishes them to [GitHub Pages](https://dahbiz.github.io/tdsez/docs/index.html)
-when documentation-related changes reach `main`; it can also be started from
-the Actions tab with `workflow_dispatch`.
+## Repository layout
 
-## Citing
+| Path | Contents |
+|---|---|
+| `src/parser.cpp`, `src/parser_validation.cpp` | Input parsing, expressions, validation |
+| `src/core.cpp`, `src/core_knots.cpp` | B-spline space, knot sequences, bound-state solve |
+| `src/assembly/` | Operator assembly (sum factorisation, banded insertion) |
+| `src/manager.cpp`, `src/propagator.cpp`, `src/monitor.cpp` | Time propagation, observables, HDF5 output |
+| `src/diagnostics.cpp` | Transition matrices and consistency checks |
+| `include/` | Public headers; `tdsez_internal.hpp` collects shared declarations |
+| `tests/` | Regression and analytic test suite |
+| `docs/` | User guide sources and website |
 
-If you use TDSE-Z in your research, please cite:
+## Citation
 
-> Dahbi, Zakaria, and Amelle Zaïr. “Unified Strong-Field Dynamics Simulations
-> from Atoms to Heterostructures.” *arXiv preprint* arXiv:2608.18472 (2026).
-> [arXiv:2608.18472](https://arxiv.org/abs/2608.18472)
+If you use TDSE-Z in your work, please cite:
 
-The same metadata is available in [`CITATION.cff`](CITATION.cff), which GitHub
-uses to display the repository's “Cite this repository” information.
+> Z. Dahbi and A. Zaïr, *Unified Strong-Field Dynamics Simulations from Atoms to
+> Heterostructures*, arXiv:2608.18472 (2026).
 
-## License & Commercial Use
+```bibtex
+@article{dahbi2026unified,
+  title   = {Unified Strong-Field Dynamics Simulations from Atoms to Heterostructures},
+  author  = {Dahbi, Zakaria and Za{\"\i}r, Amelle},
+  journal = {arXiv preprint arXiv:2608.18472},
+  year    = {2026}
+}
+```
 
-This software is released under the **PolyForm Noncommercial License 1.0.0**.
+Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).
 
-* **Academic & Non-Commercial Use:** Free to use, modify, and distribute for
-  non-commercial research and educational purposes.
-* **Commercial Use:** For-profit companies or commercial projects require a
-  separate commercial license. Please contact [zdahbi@outlook.es](mailto:zdahbi@outlook.es).
+## License
 
-See [LICENSE](LICENSE) and the [full PolyForm terms](https://polyformproject.org/licenses/noncommercial/1.0.0)
-for details.
+TDSE-Z is released under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+Use, modification and redistribution for non-commercial research and teaching are
+permitted. Commercial use requires a separate license; please contact
+[zdahbi@outlook.es](mailto:zdahbi@outlook.es).
 
 ## Contact
 
-Dr. Zakaria Dahbi
+Dr Zakaria Dahbi, King's College London —
+[zakaria.dahbi@kcl.ac.uk](mailto:zakaria.dahbi@kcl.ac.uk)
 
-[zakaria.dahbi@kcl.ac.uk](mailto:zakaria.dahbi@kcl.ac.uk) /
-[zdahbi@outlook.es](mailto:zdahbi@outlook.es)
-
-## Funding acknowledgement
+## Acknowledgements
 
 Z.D. acknowledges funding from UK Research and Innovation (UKRI) under the UK
-government’s Horizon Europe funding guarantee [Grant No. EP/Z000807/1].
+government's Horizon Europe funding guarantee (Grant No. EP/Z000807/1).
 
 <p align="center">
-  <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/UKRI_EPSR_Council-Logo_Horiz-RGB.png" alt="UKRI Engineering and Physical Sciences Research Council" width="240" />
+  <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/UKRI_EPSR_Council-Logo_Horiz-RGB.png" alt="UKRI Engineering and Physical Sciences Research Council" width="220" />
 </p>
