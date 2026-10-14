@@ -291,6 +291,13 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
 PetscErrorCode TDSEZElementWork(IGA iga, IGAElement element, TDSEZPhysicsKernel kernel,
                                 PetscInt nmat, PetscScalar *work[], void *ctx);
 
+/// Run BLAS single-threaded during an element loop and restore PETSc's BLAS
+/// thread count afterwards. Every MPI rank calls BLAS on small element-sized
+/// products; a threaded BLAS (OpenBLAS/MKL/BLIS) left at its default would
+/// start one thread per core in every rank. No-op before PETSc 3.21.
+PetscErrorCode TDSEZBlasSerialBegin(PetscInt *saved);
+PetscErrorCode TDSEZBlasSerialEnd(PetscInt saved);
+
 /// Remove the rows and columns of the Dirichlet wall DoFs (recorded by
 /// TDSEZCompOperatorsDirichlet) from an operator, with @p diag on the
 /// diagonal. No-op for Neumann boundaries or a NULL matrix.

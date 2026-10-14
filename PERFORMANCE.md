@@ -33,8 +33,8 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | Monitor products + batched HDF5 writes | 1D HO, $`5\times10^4`$ steps | 15.8 s | 12.3 s | $`-22\%`$ |
 | | 1D with CAP, $`2.2\times10^4`$ steps | 5.6 s | 4.1 s | $`-27\%`$ |
 | | 3D variable mass, 100 steps | 3.42 s | 3.24 s | $`-5\%`$ |
-| Sum-factorised assembly | 3D, $`p=7`$, $`10^3`$ elements: $`\mathbf H,\mathbf M`$ | 114 s | 8.5 s | $`13\times`$ |
-| | same, time-dependent operators | 464 s | 36 s | $`13\times`$ |
+| Sum-factorised assembly (BLAS contractions) | 3D, $`p=7`$, $`10^3`$ elements: $`\mathbf H,\mathbf M`$ | 114 s | 8.0 s | $`14\times`$ |
+| | same, time-dependent operators | 464 s | 32 s | $`14\times`$ |
 | | 3D $`z`$-polarisation, $`p=5`$: whole run | 62.6 s | 7.1 s | $`8.9\times`$ |
 
 ## 1. Crank–Nicolson solver set-up
@@ -252,18 +252,45 @@ in the force operator (variable mass with the operator-form acceleration, and
 polarisations are now assembled in one batched pass instead of six separate
 per-operator passes. Options: `-tdsez_sumfact 0` disables it;
 `-tdsez_sumfact_check` computes every element both ways and prints the largest
-relative difference ($`\le 3\times10^{-15}`$ in all tests).
+relative difference ($`\le 5\times10^{-15}`$ in all tests).
+
+**Matrix products (BLAS).** Each axis contraction is a dense matrix product
+and is evaluated with the BLAS that PETSc was configured with (through PETSc's
+`BLASREALgemm_` macro, so OpenBLAS, MKL, BLIS, ESSL, Cray LibSci, 32- or 64-bit
+BLAS integers all work; CMake links PETSc's `BLASLAPACK_LIB`). In 3D, with
+$`m = n^2`$ products per axis,
+
+```math
+egin{aligned}
+\mathbf T_1 &= \mathbf P_1\,\mathbf C^{\mathsf T} && (m 	imes Q^2,\ 	ext{inner } Q),\
+\mathbf T_2 &= \mathbf T_1\,\mathbf P_2^{\mathsf T} && (mQ 	imes m,\ 	ext{inner } Q),\
+\mathbf E &= \mathbf V\,\mathbf P_3^{\mathsf T} && (m^2 	imes m,\ 	ext{inner } Q),
+\end{aligned}
+```
+
+where $`\mathbf V`$ is $`\mathbf T_2`$ with the $`q_3`$ and $`a_2b_2`$ indices
+swapped. All terms of one operator (the three kinetic terms and, for
+$`\mathbf H`$, the potential) accumulate into the same real buffer in the last
+product ($`eta = 1`$), and the buffer is written into the complex element
+matrix once per operator, symmetrised ($`	frac12(\mathbf E+\mathbf E^{\mathsf T})`$)
+or, for the velocity, antisymmetrised ($`\mathbf E-\mathbf E^{\mathsf T}`$) in
+the same pass. During the element loops BLAS is set to one thread
+(`PetscBLASSetNumThreads`, PETSc $`\ge 3.21`$) and restored afterwards, so a
+threaded BLAS does not start one thread per core in every MPI rank.
 
 **Element work only** ($`\mathbf H, \mathbf M`$, one rank, time per element):
 
-| $`p`$ | per-point kernels | sum factorised | measured gain | flop ratio |
-|---|---|---|---|---|
-| 5 | 7.1 ms | 0.48 ms | 15× | 23× |
-| 7 | 75.6 ms | 4.4 ms | 17× | 38× |
+| $`p`$ | per-point kernels | sum factorised, loops | sum factorised, BLAS | total gain | flop ratio |
+|---|---|---|---|---|---|
+| 5 | 7.1 ms | 0.44 ms | 0.18 ms | 39× | 23× |
+| 7 | 75.6 ms | 4.5 ms | 1.27 ms | 60× | 38× |
 
 The per-point kernels scale as $`Q^3 n^6 \sim p^9`$ (measured growth $`10.7`$
-from $`p=5`$ to $`7`$, predicted $`11.0`$); the sum-factorised kernels as
-$`\sim p^7`$, with some loss to cache effects at $`p=7`$.
+from $`p=5`$ to $`7`$, predicted $`11.0`$). The gain exceeds the flop ratio
+because the matrix products run near the floating-point peak while the
+per-point kernels are limited by memory traffic; the remaining element time is
+mostly the symmetrised write into the complex element matrix
+($`2n^6`$ reads per operator).
 
 **Whole assembly phases** (3D harmonic oscillator, $`10^3`$ elements, 4 ranks):
 
@@ -272,10 +299,12 @@ $`\sim p^7`$, with some loss to cache effects at $`p=7`$.
 | $`x`$-pol., $`p=3`$ | 0.12 → 0.08 s | 0.52 → 0.32 s | 1.04 → 0.80 s |
 | $`x`$-pol., $`p=5`$ | 2.89 → 1.00 s | 9.75 → 4.07 s | 14.6 → 7.0 s |
 | $`x`$-pol., $`p=7`$ | 114 → 8.5 s | 464 → 36 s | |
+| $`x`$-pol., $`p=7`$, BLAS contractions | 8.5 → 8.0 s | 36 → 32 s | 53 → 49 s |
 | $`z`$-pol., $`p=3`$ | 0.12 → 0.08 s | 2.47 → 0.31 s | 3.00 → 0.78 s |
 | $`z`$-pol., $`p=5`$ | 2.81 → 1.05 s | 57.9 → 4.0 s | 62.6 → 7.1 s |
 
-After this change the remaining assembly cost is the insertion of the element
+With the BLAS contractions the element work is about 0.3 s of the 8 s for
+$`\mathbf H,\mathbf M`$ in the $`p=7`$ case; the remaining assembly cost is the insertion of the element
 matrices into PETSc ($`(p+1)^6`$ values per element and matrix, about 25 ns each)
 and the communication of entries owned by other ranks.
 
@@ -303,7 +332,7 @@ residuals of $`10^{-11}`$–$`10^{-13}`$ and agree between the two assembly path
   previous code to $`\le 3\times10^{-14}`$.
 * **Batched writes** do not change any written value.
 * **Sum-factorised assembly** uses the same quadrature points and coefficients;
-  element matrices agree with the per-point kernels to $`\le 3\times10^{-15}`$
+  element matrices agree with the per-point kernels to $`\le 5\times10^{-15}`$
   relative. On the 28 repository test inputs, energies, dipoles and spectra
   agree to $`\le 5\times10^{-14}`$; individual eigenvectors inside degenerate
   shells can rotate (any rounding change does this), which does not affect

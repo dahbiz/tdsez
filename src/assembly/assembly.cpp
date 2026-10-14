@@ -133,6 +133,7 @@ PetscErrorCode TDSEZCompOperators(
     void              *ctx)
 {
     MPI_Comm comm;
+    PetscInt blasThreads;
 
     PetscFunctionBegin;
 
@@ -197,6 +198,7 @@ PetscErrorCode TDSEZCompOperators(
         work[k] = work_storage + (size_t)k * n2_max;
     }
 
+    PetscCall(TDSEZBlasSerialBegin(&blasThreads));
     ierr = IGABeginElement(iga, &element);
     if (PetscUnlikely(ierr)) goto cleanup;
     element_open = PETSC_TRUE;
@@ -250,6 +252,10 @@ cleanup:
 
     {
         PetscErrorCode ierr2 = PetscFree(work_storage);
+        if (!ierr) ierr = ierr2;
+    }
+    {
+        PetscErrorCode ierr2 = TDSEZBlasSerialEnd(blasThreads);
         if (!ierr) ierr = ierr2;
     }
 
@@ -361,6 +367,7 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
     void              *ctx)
 {
     MPI_Comm comm;
+    PetscInt blasThreads;
 
     PetscFunctionBegin;
 
@@ -416,6 +423,7 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
     PetscCall(PetscMalloc1(alloc_cnt, &work_storage));
     for (PetscInt k = 0; k < nmat; ++k) work[k] = work_storage + (size_t)k * n2_max;
 
+    PetscCall(TDSEZBlasSerialBegin(&blasThreads));
     ierr = IGABeginElement(iga, &element);
     if (PetscUnlikely(ierr)) goto cleanup;
     element_open = PETSC_TRUE;
@@ -507,6 +515,10 @@ cleanup:
     }
     {
         PetscErrorCode ierr2 = PetscFree(work_storage);
+        if (!ierr) ierr = ierr2;
+    }
+    {
+        PetscErrorCode ierr2 = TDSEZBlasSerialEnd(blasThreads);
         if (!ierr) ierr = ierr2;
     }
 

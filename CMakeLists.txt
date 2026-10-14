@@ -124,6 +124,35 @@ if(PETSC_CXXFLAGS_EXTRA STREQUAL "" AND EXISTS "${_petsc_variables}")
     string(STRIP "${PETSC_CUDAFLAGS_EXTRA}"  PETSC_CUDAFLAGS_EXTRA)
 endif()
 
+# --- 2b) BLAS/LAPACK link line PETSc was configured with (MKL, OpenBLAS,
+#          ESSL, libsci, ...). TDSEZ calls BLAS directly (sum-factorised
+#          assembly) through PETSc's mangling macros, so it links the same
+#          libraries explicitly; macOS two-level namespaces and Linux
+#          --as-needed do not re-export them through libpetsc.
+set(PETSC_BLASLAPACK_LIB "")
+set(_pv_blas "")
+foreach(_pv "${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/petscvariables" "${_petsc_variables}")
+    if(NOT _pv_blas AND EXISTS "${_pv}")
+        file(STRINGS "${_pv}" _pv_blas REGEX "^BLASLAPACK_LIB[ \t]*=")
+    endif()
+endforeach()
+if(_pv_blas)
+    list(GET _pv_blas 0 _pv_blas)
+    string(REGEX REPLACE "^BLASLAPACK_LIB[ \t]*=[ \t]*" "" PETSC_BLASLAPACK_LIB "${_pv_blas}")
+    string(STRIP "${PETSC_BLASLAPACK_LIB}" PETSC_BLASLAPACK_LIB)
+    separate_arguments(PETSC_BLASLAPACK_LIB UNIX_COMMAND "${PETSC_BLASLAPACK_LIB}")
+    list(REMOVE_ITEM PETSC_BLASLAPACK_LIB "-Wl,-rpath,${PETSC_DIR}/lib")   # already set for petsc
+endif()
+if(NOT PETSC_BLASLAPACK_LIB)
+    find_package(BLAS QUIET)
+    if(BLAS_FOUND)
+        set(PETSC_BLASLAPACK_LIB ${BLAS_LIBRARIES})
+    else()
+        message(WARNING "BLASLAPACK_LIB not found in petscvariables and no system "
+                        "BLAS found; relying on libpetsc to provide the BLAS symbols.")
+    endif()
+endif()
+
 # --- 3) petscconf.h feature macros (CUDA, HDF5, OpenMP, 64-bit indices) ---
 if(EXISTS "${_petsc_conf}")
     file(STRINGS "${_petsc_conf}" _conf_lines)
@@ -296,6 +325,7 @@ endif()
 message(STATUS "================ PETSC DETECTION ================")
 message(STATUS "PETSc dir   : ${PETSC_DIR}")
 message(STATUS "PETSc arch  : ${PETSC_ARCH}")
+message(STATUS "PETSc BLAS  : ${PETSC_BLASLAPACK_LIB}")
 if(PETSC_VERSION)
     message(STATUS "PETSc version: ${PETSC_VERSION}")
 endif()
@@ -452,6 +482,7 @@ function(tdsez_add_target target)
     target_link_libraries(${target} PRIVATE
         MPI::MPI_CXX
         petsc
+        ${PETSC_BLASLAPACK_LIB}
         ${ARG_LINK_LIBS}
     )
 
