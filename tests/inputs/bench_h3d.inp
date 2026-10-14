@@ -9,7 +9,7 @@ NQuadratures      = 10
 KnotSequence      = uniform
 NSplines          = 100
 Mass              = 1.0
-Charge            = 1.0
+Charge            = -1.0
 
 UseDirectSolve    = 0
 TargetEigenvalue  = -0.3

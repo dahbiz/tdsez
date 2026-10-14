@@ -271,7 +271,8 @@ PetscErrorCode TDSEZPropagator::BuildStageMatrix(Mat A, PetscScalar g, const Pet
 {
     PetscFunctionBeginUser;
     const Mat       D[3]  = {manager_.Dx(), manager_.Dy(), manager_.Dz()};
-    const PetscBool on[3] = {manager_.hasX, manager_.hasY, manager_.hasZ};
+    const PetscBool on[3] = {(PetscBool)TDSEZParser::Coupled(0), (PetscBool)TDSEZParser::Coupled(1),
+                             (PetscBool)TDSEZParser::Coupled(2)};   // axes coupled to the field
     PetscCall(MatCopy(manager_.H(), A, SAME_NONZERO_PATTERN));
     PetscCall(MatScale(A, g));
     PetscCall(MatAXPY(A, 1.0, manager_.M(), SAME_NONZERO_PATTERN));
@@ -320,7 +321,8 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
     const PetscScalar g[2] = {h * (-s3 + 3.0 * PETSC_i) / 12.0,
                               h * ( s3 + 3.0 * PETSC_i) / 12.0};
     const Mat       D[3]  = {manager_.Dx(), manager_.Dy(), manager_.Dz()};
-    const PetscBool on[3] = {manager_.hasX, manager_.hasY, manager_.hasZ};
+    const PetscBool on[3] = {(PetscBool)TDSEZParser::Coupled(0), (PetscBool)TDSEZParser::Coupled(1),
+                             (PetscBool)TDSEZParser::Coupled(2)};   // axes coupled to the field
     Vec rhs = work_[0], Ax = work_[1];
 
     // A_k = B_k + g_k E.D for both stages.
@@ -374,7 +376,8 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
     const PetscReal dt   = TDSEZParser::TimeStep;
     const PetscReal endT = TDSEZParser::FinalTime;
     const bool      m4   = (TDSEZParser::Propagator == "magnus4");
-    const PetscBool on[3] = {manager_.hasX, manager_.hasY, manager_.hasZ};
+    const PetscBool on[3] = {(PetscBool)TDSEZParser::Coupled(0), (PetscBool)TDSEZParser::Coupled(1),
+                             (PetscBool)TDSEZParser::Coupled(2)};   // axes coupled to the field
     Vec psi = tdse_.initialPsi;
 
     PetscErrorCode (*monitor)(TS, PetscInt, PetscReal, Vec, void *) = NULL;
@@ -386,9 +389,8 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         default: SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Unsupported dimension");
     }
     auto field = [&](PetscReal t, PetscScalar E[3]) {
-        E[0] = on[0] ? TDSEZParser::Ex(t) : 0.0;
-        E[1] = on[1] ? TDSEZParser::Ey(t) : 0.0;
-        E[2] = on[2] ? TDSEZParser::Ez(t) : 0.0;
+        // field term of H, s E(t) (s = -Charge), on the coupled axes
+        for (int a = 0; a < 3; ++a) E[a] = on[a] ? TDSEZParser::Coupling(a, t) : 0.0;
     };
 
     // Stage matrices share the Crank-Nicolson Jacobian sparsity (that of H).

@@ -1510,6 +1510,11 @@ PetscErrorCode TDSEZCore::Output()
                     "\nTDSEZ FATAL: input validation failed:\n  %s\n", e.what());
                 MPI_Abort(PETSC_COMM_WORLD, 3);
             }
+            if (TDSEZParser::Q > 0.0)
+                PetscPrintf(PETSC_COMM_WORLD,
+                    "\n  NOTE: Charge = %+g (hole-like carrier): the Potential and the field term enter\n"
+                    "        H = K - q (V + r.E), i.e. with inverted sign. Charge = -1 is the electron.\n\n",
+                    (double)TDSEZParser::Q);
 
             // EnableGPU is a complete device request. Configure PetIGA before
             // IGACreate/IGASetFromOptions so every assembled matrix and vector

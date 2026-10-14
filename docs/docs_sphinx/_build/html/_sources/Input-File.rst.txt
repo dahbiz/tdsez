@@ -86,8 +86,12 @@ Global Settings
      - 1 = print solver progress to stdout. 0 = minimal output.
    * - Charge / ParticleCharge
      - real
-     - 1.0
-     - Scale factor q of the reported dipole, current and acceleration (q⟨r⟩, q⟨v⟩, q d⟨v⟩/dt); the propagated coupling is always +E·r (electron convention, see Physics Conventions). Aliases: Charge, ParticleCharge. muParser constant.
+     - -1.0
+     - Carrier charge q in units of e: -1 electron (default), +1 hole. H = K - q (V + r·E): Potential and field are written for an electron and inverted for q > 0 (a notice is printed). Outputs are q⟨r⟩, q⟨v⟩, q d⟨v⟩/dt. Aliases: Charge, ParticleCharge. muParser constant.
+   * - ObserveAllAxes
+     - bool
+     - 1
+     - 1 = dipole, current and acceleration on every spatial axis (cross-polarized response); 0 = only on the polarised axes (fewer operators, less memory).
 
 Domain and Grid
 ---------------

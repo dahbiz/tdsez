@@ -27,18 +27,6 @@ PetscErrorCode TDSEZManager::PolarizationSelector()
     {
         SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "The polarization choice is not compatible with the  dimension of the problem. Please check your input file.");
     }
-    {
-        // Observables are computed only on the coupled axes (their operators are
-        // assembled only there); say so when some spatial axes are left out.
-        std::string missing;
-        for (PetscInt d = 0; d < TDSEZParser::Dimension; ++d)
-            if (polType.find("xyz"[d]) == std::string::npos && polType != "all") missing += "xyz"[d];
-        if (!missing.empty())
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                "      Note: Polarization = %s; dipole, current and acceleration along %s are not "
-                "computed (written as 0). Add the axis with a zero field (e.g. LaserY = 0) to record them.\n",
-                polType.c_str(), missing.c_str()));
-    }
 
         PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -716,12 +704,12 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
     }
     const Mat       D[3]   = {m_Dx, m_Dy, m_Dz};
     const Mat       Vel[3] = {m_VelX, m_VelY, m_VelZ};
-    const PetscBool on[3]  = {hasX, hasY, hasZ};
-    const PetscScalar E[3] = {on[0] ? TDSEZParser::Ex(t) : 0.0,
-                              on[1] ? TDSEZParser::Ey(t) : 0.0,
-                              on[2] ? TDSEZParser::Ez(t) : 0.0};
+    const PetscBool on[3]  = {hasX, hasY, hasZ};             // observed axes
+    // field term of H, s E(t), on the coupled axes only
+    const PetscScalar E[3] = {TDSEZParser::Coupling(0, t), TDSEZParser::Coupling(1, t),
+                              TDSEZParser::Coupling(2, t)};
     for (int a = 0; a < 3; ++a) {
-        if (!on[a] || D[a] == PETSC_NULLPTR) continue;
+        if (!TDSEZParser::Coupled(a) || D[a] == PETSC_NULLPTR) continue;
         PetscCall(MatMult(D[a], psi, s));
         PetscCall(VecAXPY(r, E[a], s));
     }

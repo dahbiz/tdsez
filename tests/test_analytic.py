@@ -98,7 +98,7 @@ def mass_step_dirichlet(m1, m2, nmin):
 HEAD_1D = """\
 Verbose           = 0
 Dimension         = 1
-Charge            = 1.0
+Charge            = -1.0
 UseDirectSolve    = 1
 EnableCAP         = 0
 Polarization      = x
@@ -253,7 +253,8 @@ def driven_error(tmp_path, prop, dt):
     _, _, td = run(tmp_path, f"ho_{prop}_{dt}", DRIVEN_HO + f"Propagator = {prop}\nTimeStep = {dt}\n")
     d = series(td, "dipoles", 4)
     e = series(td, "energies", 7)
-    return np.max(np.abs(d[:, 2] - x_exact(d[:, 0]))), np.max(np.abs(e[:, 6] - e[0, 6]))
+    x = -d[:, 2]   # dipole column = q<x> with q = Charge = -1 (electron)
+    return np.max(np.abs(x - x_exact(d[:, 0]))), np.max(np.abs(e[:, 6] - e[0, 6]))
 
 
 @pytest.mark.parametrize("prop,dt,order,tol", [
@@ -269,6 +270,73 @@ def test_driven_oscillator_accuracy_and_order(tmp_path, prop, dt, order, tol):
     observed = np.log2(err1 / err2)
     assert abs(observed - order) < 0.3, (prop, observed)
     assert max(norm1, norm2) < 1e-9, (norm1, norm2)
+
+
+def test_hole_inverts_potential_and_coupling(tmp_path):
+    """Charge = +1 (hole): H = K - (V + x E). With Potential = -x^2/2 the hole
+    sees +x^2/2 (oscillator spectrum) and is pushed by +E: exact
+    <x>(t) = +E0/(1-w^2)(cos wt - cos t); the dipole column is q<x> = +<x>
+    and the acceleration column q d<v>/dt."""
+    text = (DRIVEN_HO.replace("Charge            = -1.0", "Charge            = 1.0")
+            .replace("Potential = 0.5*x*x", "Potential = -0.5*x*x")
+            .replace("PotentialDerivativeX = x", "PotentialDerivativeX = -x")
+            + "Propagator = magnus4\nTimeStep = 0.05\n")
+    _, h5, td = run(tmp_path, "hole", text)
+    E = spectrum(h5)
+    assert np.allclose(E[:3], [0.5, 1.5, 2.5], atol=1e-8), E
+    d = series(td, "dipoles", 4)
+    t = d[:, 0]
+    x = -x_exact(t)                      # hole: opposite displacement
+    a = -x + 0.5 * np.cos(0.6 * t)       # x'' = -x + E
+    assert np.max(np.abs(d[:, 2] - x)) < 1e-4
+    assert np.max(np.abs(d[:, 3] - a)) < 1e-4
+
+
+CROSS_2D = """\
+Verbose = 0
+Dimension = 2
+Domain = -8.0, 8.0
+SplineDegree = 5
+NQuadratures = 6
+KnotSequence = uniform
+NSplines = 24
+Charge = -1.0
+Mass = 1.0
+MassIsConstant = 1
+UseDirectSolve = 1
+EnableCAP = 0
+Potential = 0.5*(x*x + y*y) + 0.2*x*y
+PotentialDerivativeX = x + 0.2*y
+PotentialDerivativeY = y + 0.2*x
+TargetEigenvalue = 0.0
+NBoundStates = 1
+InitialState = ground
+LaserX = 0.05*sin(0.5*t)
+EnablePropagation = 1
+Propagator = magnus4
+TimeStep = 0.05
+FinalTime = 10.0
+PhysicsOutput = dipole,energy
+OutputStrideTS = 1
+OutputStrideWFS = 1000000
+"""
+
+
+def test_cross_polarization_is_recorded(tmp_path):
+    """x-polarised drive of an anisotropic 2D oscillator (x-y coupling): the
+    induced <y>(t) is recorded although y carries no field, equals a run that
+    couples y with a zero field, and obeys Ehrenfest (A_y = D_y'')."""
+    _, _, td = run(tmp_path, "cross_x", CROSS_2D + "Polarization = x\n")
+    _, _, td2 = run(tmp_path, "cross_xy", CROSS_2D + "Polarization = xy\nLaserY = 0\n")
+    d = series(td, "dipoles", 7)
+    d2 = series(td2, "dipoles", 7)
+    t, Dy, Ay = d[:, 0], d[:, 4], d[:, 6]
+    assert np.max(np.abs(Dy)) > 1e-3                    # cross-polarized response present
+    assert np.max(np.abs(d - d2)) < 1e-10
+    h = t[1] - t[0]
+    Dyy = (np.roll(Dy, -1) - 2 * Dy + np.roll(Dy, 1)) / h**2
+    s = slice(3, -3)
+    assert np.max(np.abs(Ay - Dyy)[s]) < 1e-3 * np.max(np.abs(Ay))
 
 
 DRIVEN_STEP = HEAD_1D + """\

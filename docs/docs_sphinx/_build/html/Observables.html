@@ -284,11 +284,11 @@ gives the absorption spectrum.</p>
 of the bare Hamiltonian expectation and the interaction energy:</p>
 <div class="math notranslate nohighlight">
 \begin{equation}
-E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + \mathbf E(t)\cdot\langle \mathbf r \rangle
-\end{equation}</div><p>where <span class="math notranslate nohighlight">\(H_0 = K + V\)</span> is the field-free Hamiltonian, <span class="math notranslate nohighlight">\(E(t)\)</span> is the
+E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + s\,\mathbf E(t)\cdot\langle \mathbf r \rangle
+\end{equation}</div><p>where <span class="math notranslate nohighlight">\(H_0 = K + sV\)</span> is the field-free Hamiltonian, <span class="math notranslate nohighlight">\(E(t)\)</span> is the
 laser electric field, and the last term is the expectation value of the
-coupling term <span class="math notranslate nohighlight">\(\mathbf E\cdot\mathbf r\)</span> of the propagated Hamiltonian
-(see <a class="reference internal" href="Physics-Conventions.html"><span class="doc">Physics Conventions</span></a>; it does not contain <code class="docutils literal notranslate"><span class="pre">Charge</span></code>).</p>
+coupling term <span class="math notranslate nohighlight">\(s\,\mathbf E\cdot\mathbf r\)</span> of the propagated Hamiltonian
+(<span class="math notranslate nohighlight">\(s = -q\)</span>, see <a class="reference internal" href="Physics-Conventions.html"><span class="doc">Physics Conventions</span></a>).</p>
 <p>Additionally, kinetic and potential energy are stored separately:</p>
 <div class="math notranslate nohighlight">
 \begin{equation}
@@ -331,14 +331,14 @@ equivalent forms, chosen by <code class="docutils literal notranslate"><span cla
 <li><p><strong>operator</strong> (Ehrenfest force):</p>
 <div class="math notranslate nohighlight">
 \begin{equation}
-A_a(t) = q\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle + \text{(mass-gradient terms)}
+A_a(t) = q\,s\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle + \text{(mass-gradient terms)}
          - E_a(t)\,\Big\langle \frac{1}{m}\Big\rangle\right]
-\end{equation}</div><p>for the propagated Hamiltonian <span class="math notranslate nohighlight">\(H + \mathbf E\cdot\mathbf r\)</span>. It needs a
+\end{equation}</div><p>for the propagated Hamiltonian <span class="math notranslate nohighlight">\(K + s(V + \mathbf E\cdot\mathbf r)\)</span>, <span class="math notranslate nohighlight">\(s = -q\)</span>. It needs a
 smooth potential and mass and no reflecting wall reached by the wave packet.</p>
 </li>
 <li><p><strong>discrete</strong> (equation of motion of the Galerkin system
-<span class="math notranslate nohighlight">\(iM\dot c = (H + \mathbf E\cdot\mathbf D)c\)</span>):
-<span class="math notranslate nohighlight">\(A_a = -2q\,\mathrm{Im}\,(w^\dagger V_a \psi)\)</span>, <span class="math notranslate nohighlight">\(w = M^{-1}(H+\mathbf E\cdot\mathbf D)\psi\)</span>.
+<span class="math notranslate nohighlight">\(iM\dot c = (H + s\,\mathbf E\cdot\mathbf D)c\)</span>):
+<span class="math notranslate nohighlight">\(A_a = -2q\,\mathrm{Im}\,(w^\dagger V_a \psi)\)</span>, <span class="math notranslate nohighlight">\(w = M^{-1}(H+s\,\mathbf E\cdot\mathbf D)\psi\)</span>.
 Exact for the discrete dynamics, including sharp interfaces and walls; one
 solve with <span class="math notranslate nohighlight">\(M\)</span> per output step.</p></li>
 </ul>

@@ -282,21 +282,25 @@
 mass: m_e, charge: e</p></td>
 </tr>
 <tr class="row-odd"><td><p>Hamiltonian</p></td>
-<td><p><span class="math notranslate nohighlight">\(H = -\frac{1}{2} \nabla \cdot \left( \frac{1}{m(\mathbf{r})} \nabla \right) + V(\mathbf{r}) + \text{CAP}\)</span> (BenDaniel–Duke)</p></td>
+<td><p><span class="math notranslate nohighlight">\(H = -\frac{1}{2} \nabla \cdot \left( \frac{1}{m(\mathbf{r})} \nabla \right) + s\,V(\mathbf{r}) + \text{CAP}\)</span> (BenDaniel–Duke),
+<span class="math notranslate nohighlight">\(s = -q\)</span></p></td>
 </tr>
 <tr class="row-even"><td><p>TDSE (length gauge)</p></td>
-<td><p><span class="math notranslate nohighlight">\(i \frac{\partial \psi}{\partial t} = H\psi + \mathbf E(t)\cdot\mathbf r\,\psi\)</span>, i.e. the
-coupling of an electron (charge <span class="math notranslate nohighlight">\(-e\)</span>) to the field <span class="math notranslate nohighlight">\(\mathbf E(t)\)</span>
-given by <code class="docutils literal notranslate"><span class="pre">LaserX/Y/Z</span></code>; the force on the electron is <span class="math notranslate nohighlight">\(-\mathbf E\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(i \frac{\partial \psi}{\partial t} = H\psi + s\,\mathbf E(t)\cdot\mathbf r\,\psi\)</span>, with
+<span class="math notranslate nohighlight">\(\mathbf E(t)\)</span> given by <code class="docutils literal notranslate"><span class="pre">LaserX/Y/Z</span></code> on the polarised axes. <code class="docutils literal notranslate"><span class="pre">Potential</span></code>
+and the field are written for an electron: for <span class="math notranslate nohighlight">\(q = -1\)</span> (<span class="math notranslate nohighlight">\(s = 1\)</span>)
+they enter as written and the force of the field is <span class="math notranslate nohighlight">\(-\mathbf E\)</span></p></td>
 </tr>
 <tr class="row-odd"><td><p>Charge</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Charge</span></code> (<span class="math notranslate nohighlight">\(q\)</span>, default 1) scales the reported dipole
-<span class="math notranslate nohighlight">\(q\langle\mathbf r\rangle\)</span>, current <span class="math notranslate nohighlight">\(q\langle\mathbf v\rangle\)</span> and
-acceleration <span class="math notranslate nohighlight">\(q\,d\langle\mathbf v\rangle/dt\)</span> consistently. It does not
-change the propagated Hamiltonian.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Charge</span></code> <span class="math notranslate nohighlight">\(q\)</span> in units of <span class="math notranslate nohighlight">\(e\)</span>: <span class="math notranslate nohighlight">\(-1\)</span> electron (default),
+<span class="math notranslate nohighlight">\(+1\)</span> hole or positive quasiparticle, for which the potential and the
+field term are inverted, <span class="math notranslate nohighlight">\(H = K - (V + \mathbf r\cdot\mathbf E)\)</span>. General
+<span class="math notranslate nohighlight">\(q\)</span> scales both, <span class="math notranslate nohighlight">\(H = K - q\,(V + \mathbf r\cdot\mathbf E)\)</span>. The outputs are
+the dipole <span class="math notranslate nohighlight">\(q\langle\mathbf r\rangle\)</span>, current <span class="math notranslate nohighlight">\(q\langle\mathbf v\rangle\)</span> and
+acceleration <span class="math notranslate nohighlight">\(q\,d\langle\mathbf v\rangle/dt\)</span>.</p></td>
 </tr>
 <tr class="row-even"><td><p>Residual (Crank-Nicolson)</p></td>
-<td><p><span class="math notranslate nohighlight">\(F = iM \dot{\psi} - H\psi - E(t)D\psi\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(F = iM \dot{\psi} - H\psi - s\,\mathbf E(t)\cdot\mathbf D\,\psi\)</span></p></td>
 </tr>
 <tr class="row-odd"><td><p>Mass inner product</p></td>
 <td><p><span class="math notranslate nohighlight">\(\langle \phi | M | \psi \rangle\)</span> used for all projections, populations, norms</p></td>

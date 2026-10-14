@@ -28,8 +28,10 @@ Dataset ``dipoles``, one row per step. With :math:`q` = ``Charge``:
 
 where ``E*`` is the field at time ``t``, :math:`D_a = q\langle x_a\rangle` the
 dipole and :math:`A_a = q\, d\langle v_a\rangle/dt` the dipole acceleration
-(:math:`= \ddot D_a`; see :doc:`Observables`). Only the axes contained in
-``Polarization`` are computed; the columns of the other axes are zero.
+(:math:`= \ddot D_a`; see :doc:`Observables`). All spatial axes are recorded,
+including those not in ``Polarization`` (cross-polarized and asymmetric
+response); with ``ObserveAllAxes = 0`` only the polarised axes are computed and
+the other columns are zero.
 
 Energy Table
 ~~~~~~~~~~~~

@@ -67,45 +67,45 @@ class TDSEZParser
 
         // accessors
         /**
-         * @brief Evaluate the scalar potential V at the given coordinates.
+         * @brief Carrier sign s = -q of the potential and field terms in H:
+         *        H = K + s (V + r.E). q = Charge = -1 (electron, default) gives
+         *        s = +1, the Potential and field as written; q = +1 (hole)
+         *        inverts both.
+         */
+        inline static PetscReal CarrierSign() { return -Q; }
+        /**
+         * @brief Potential energy of the carrier, s V(r), at the given
+         *        coordinates (V = Potential expression, s = CarrierSign()).
          * @tparam Args Coordinate values (1D, 2D, or 3D).
          * @param args Coordinates to set before evaluating the potential.
-         * @return V(x[,y[,z]]) in atomic units.
+         * @return s V(x[,y[,z]]) in atomic units.
          */
         template<typename... Args>
-        inline static PetscReal V(Args... args)     { setVars(args...) ; return VPot.Eval(); }
-        /**
-         * @brief Evaluate dV/dx (alias of dVx) at the given coordinates.
-         * @tparam Args Coordinate values.
-         * @param args Coordinates to set before evaluating.
-         * @return dV/dx in atomic units.
-         */
-        template<typename... Args>
-        inline static PetscReal dV(Args... args)    { setVars(args...); return dVPotX.Eval(); }
+        inline static PetscReal V(Args... args)     { setVars(args...) ; return CarrierSign() * VPot.Eval(); }
         /**
          * @brief Evaluate dV/dx at the given coordinates.
          * @tparam Args Coordinate values.
          * @param args Coordinates to set before evaluating.
-         * @return dV/dx in atomic units.
+         * @return s dV/dx in atomic units (s = CarrierSign()).
          */
         template<typename... Args>
-        inline static PetscReal dVx(Args... args)      { setVars(args...); return dVPotX.Eval(); }
+        inline static PetscReal dVx(Args... args)      { setVars(args...); return CarrierSign() * dVPotX.Eval(); }
         /**
          * @brief Evaluate dV/dy at the given coordinates.
          * @tparam Args Coordinate values.
          * @param args Coordinates to set before evaluating.
-         * @return dV/dy in atomic units.
+         * @return s dV/dy in atomic units (s = CarrierSign()).
          */
         template<typename... Args>
-        inline static PetscReal dVy(Args... args)      { setVars(args...); return dVPotY.Eval(); }
+        inline static PetscReal dVy(Args... args)      { setVars(args...); return CarrierSign() * dVPotY.Eval(); }
         /**
          * @brief Evaluate dV/dz at the given coordinates.
          * @tparam Args Coordinate values.
          * @param args Coordinates to set before evaluating.
-         * @return dV/dz in atomic units.
+         * @return s dV/dz in atomic units (s = CarrierSign()).
          */
         template<typename... Args>
-        inline static PetscReal dVz(Args... args)      { setVars(args...); return dVPotZ.Eval(); }
+        inline static PetscReal dVz(Args... args)      { setVars(args...); return CarrierSign() * dVPotZ.Eval(); }
         /**
          * @brief Evaluate the x-component of the laser field at time @p t.
          * @param t Time in atomic units.
@@ -124,6 +124,22 @@ class TDSEZParser
          * @return Ez(t) in atomic units.
          */
         inline static PetscReal Ez(PetscReal t)      { varT_ = t; return LaserZexpr.Eval(); }
+        /// Record dipole/current/acceleration on every spatial axis (default),
+        /// or only on the coupled axes (ObserveAllAxes = 0, saves memory).
+        inline static PetscBool ObserveAllAxes = PETSC_TRUE;
+        /// Whether axis a (0, 1, 2) is observed (its operators are assembled).
+        inline static bool Observed(int a) { return a < (int)Dimension && (ObserveAllAxes || Coupled(a)); }
+        /// Whether axis a (0, 1, 2) is coupled to the field (in Polarization).
+        inline static bool Coupled(int a) { return Polarization.find("xyz"[a]) != std::string::npos; }
+        /// Physical field E_a(t) on axis a: the LaserX/Y/Z expression on a
+        /// coupled axis, 0 on the others.
+        inline static PetscReal Field(int a, PetscReal t)
+        {
+            if (!Coupled(a)) return 0.0;
+            return a == 0 ? Ex(t) : (a == 1 ? Ey(t) : Ez(t));
+        }
+        /// Field term as it enters H, s E_a(t) (s = CarrierSign()).
+        inline static PetscReal Coupling(int a, PetscReal t) { return CarrierSign() * Field(a, t); }
         /**
          * @brief Evaluate the position-dependent mass distribution M(x,y,z).
          * @param x Cartesian x coordinate.
@@ -142,8 +158,10 @@ class TDSEZParser
         inline static PetscBool MassIsConstant = PETSC_FALSE;
 
 
-        /// Particle charge q (atomic units, default 1.0).
-        inline static PetscReal Q         = 1.0;
+        /// Carrier charge q in units of e: -1 electron (default), +1 hole.
+        /// Scales the reported dipole, current and acceleration, and sets
+        /// the sign of the potential and field terms (CarrierSign()).
+        inline static PetscReal Q         = -1.0;
 
         /* Spatial grid */
         /// Whether to print verbose diagnostic output.

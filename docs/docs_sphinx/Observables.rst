@@ -32,13 +32,13 @@ of the bare Hamiltonian expectation and the interaction energy:
    :nowrap:
 
    \begin{equation}
-   E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + \mathbf E(t)\cdot\langle \mathbf r \rangle
+   E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + s\,\mathbf E(t)\cdot\langle \mathbf r \rangle
    \end{equation}
 
-where :math:`H_0 = K + V` is the field-free Hamiltonian, :math:`E(t)` is the
+where :math:`H_0 = K + sV` is the field-free Hamiltonian, :math:`E(t)` is the
 laser electric field, and the last term is the expectation value of the
-coupling term :math:`\mathbf E\cdot\mathbf r` of the propagated Hamiltonian
-(see :doc:`Physics-Conventions`; it does not contain ``Charge``).
+coupling term :math:`s\,\mathbf E\cdot\mathbf r` of the propagated Hamiltonian
+(:math:`s = -q`, see :doc:`Physics-Conventions`).
 
 Additionally, kinetic and potential energy are stored separately:
 
@@ -96,15 +96,15 @@ equivalent forms, chosen by ``AccelerationMethod``:
      :nowrap:
 
      \begin{equation}
-     A_a(t) = q\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle + \text{(mass-gradient terms)}
+     A_a(t) = q\,s\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle + \text{(mass-gradient terms)}
               - E_a(t)\,\Big\langle \frac{1}{m}\Big\rangle\right]
      \end{equation}
 
-  for the propagated Hamiltonian :math:`H + \mathbf E\cdot\mathbf r`. It needs a
+  for the propagated Hamiltonian :math:`K + s(V + \mathbf E\cdot\mathbf r)`, :math:`s = -q`. It needs a
   smooth potential and mass and no reflecting wall reached by the wave packet.
 - **discrete** (equation of motion of the Galerkin system
-  :math:`iM\dot c = (H + \mathbf E\cdot\mathbf D)c`):
-  :math:`A_a = -2q\,\mathrm{Im}\,(w^\dagger V_a \psi)`, :math:`w = M^{-1}(H+\mathbf E\cdot\mathbf D)\psi`.
+  :math:`iM\dot c = (H + s\,\mathbf E\cdot\mathbf D)c`):
+  :math:`A_a = -2q\,\mathrm{Im}\,(w^\dagger V_a \psi)`, :math:`w = M^{-1}(H+s\,\mathbf E\cdot\mathbf D)\psi`.
   Exact for the discrete dynamics, including sharp interfaces and walls; one
   solve with :math:`M` per output step.
 

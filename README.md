@@ -35,7 +35,9 @@ and MPI parallelism are built on [PETSc](https://petsc.org) and
   heterostructures.
 - Hermitian BenDaniel–Duke kinetic operator $`-\tfrac12\nabla\cdot m^{-1}(\mathbf r)\nabla`$
   for position-dependent masses.
-- Length-gauge coupling to user-defined laser fields along $`x`$, $`y`$ and $`z`$.
+- Length-gauge coupling to user-defined laser fields along $`x`$, $`y`$ and $`z`$; the
+  response is recorded on every axis, so cross-polarized emission is captured.
+- Electrons or holes: `Charge` sets the carrier, $`H = K - q\,(V + \mathbf r\cdot\mathbf E)`$.
 - Reflecting (Neumann) or hard-wall (Dirichlet) boundaries; complex absorbing
   potential.
 

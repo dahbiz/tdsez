@@ -33,7 +33,9 @@ inside the expression.
   same field).
 
 Every axis listed in ``Polarization`` must have a field (per-axis or ``Laser``);
-the input is rejected otherwise.
+the input is rejected otherwise. Only these axes are coupled to the field; the
+response (dipole, current, acceleration) is recorded on every spatial axis
+(``ObserveAllAxes = 0`` restricts it to the coupled axes).
 
 Example: a 4-cycle :math:`\sin^2` pulse at 800 nm,
 

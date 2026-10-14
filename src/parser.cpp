@@ -197,6 +197,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"Charge",    R(Q)},
                 {"ParticleCharge", R(Q)},     // intuitive alias
                 {"MassIsConstant", B(MassIsConstant)},
+                {"ObserveAllAxes", B(ObserveAllAxes)},
 
                 // --- solver ---
                 {"TargetEigenvalue", R(TargetEigenvalue)},

@@ -286,8 +286,10 @@ affects when rows reach the file.</p>
 </ul>
 <p>where <code class="docutils literal notranslate"><span class="pre">E*</span></code> is the field at time <code class="docutils literal notranslate"><span class="pre">t</span></code>, <span class="math notranslate nohighlight">\(D_a = q\langle x_a\rangle\)</span> the
 dipole and <span class="math notranslate nohighlight">\(A_a = q\, d\langle v_a\rangle/dt\)</span> the dipole acceleration
-(<span class="math notranslate nohighlight">\(= \ddot D_a\)</span>; see <a class="reference internal" href="Observables.html"><span class="doc">Observables</span></a>). Only the axes contained in
-<code class="docutils literal notranslate"><span class="pre">Polarization</span></code> are computed; the columns of the other axes are zero.</p>
+(<span class="math notranslate nohighlight">\(= \ddot D_a\)</span>; see <a class="reference internal" href="Observables.html"><span class="doc">Observables</span></a>). All spatial axes are recorded,
+including those not in <code class="docutils literal notranslate"><span class="pre">Polarization</span></code> (cross-polarized and asymmetric
+response); with <code class="docutils literal notranslate"><span class="pre">ObserveAllAxes</span> <span class="pre">=</span> <span class="pre">0</span></code> only the polarised axes are computed and
+the other columns are zero.</p>
 </section>
 <section id="energy-table">
 <h3>Energy Table<a class="headerlink" href="#energy-table" title="Link to this heading"></a></h3>

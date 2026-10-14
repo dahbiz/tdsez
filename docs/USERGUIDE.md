@@ -167,6 +167,8 @@ multiplied in.
 | `LaserX`, `LaserY`, `LaserZ` | muParser expr | — | Field E_x(t), E_y(t), E_z(t) on each polarised axis |
 | `Laser` | muParser expr | — | Used for every polarised axis without its own `LaserX/Y/Z` |
 | `Polarization` / `LaserPolarization` / `DriverPolarization` | string | — | Coupled axes: `x`, `y`, `z`, `xy`, `xz`, `yz`, `xyz` (`all` = `xyz`). Each needs a field |
+| `ObserveAllAxes` | bool | 1 | Record dipole, current and acceleration on every spatial axis (cross-polarized response). 0 = only the coupled axes, less memory |
+| `Charge` | real | -1 | Carrier charge q: -1 electron, +1 hole. H = K - q (V + r·E); Potential and field are written for an electron |
 | `Ampx/y/z`, `Omegax/y/z`, `CEPx/y/z` | real | 0 | Named constants for use inside the expressions; not applied on their own. Further constants via `Variables = T=440, t0=220` |
 
 Example (4-cycle sin² pulse, 800 nm):
@@ -292,7 +294,7 @@ Every step is recorded in a ring buffer of size `FLUSH_INTERVAL = 5000` steps an
 | 1 | Ex(t) | Electric field x-component (a.u.) |
 | 2 | Ey(t) | Electric field y-component (a.u.) |
 | 3 | Ez(t) | Electric field z-component (a.u.) — 3D only |
-| 4 | Dx | Dipole moment x-component (a.u.) = charge·<ψ\|x\|ψ> |
+| 4 | Dx | Dipole moment x-component (a.u.) = q·<ψ\|x\|ψ> |
 | 5 | Dy | Dipole moment y-component (a.u.) |
 | 6 | Dz | Dipole moment z-component (a.u.) — 3D only |
 | 7 | Ax | Acceleration x-component (a.u.) |
@@ -376,7 +378,7 @@ HDF5 multi-timestep dataset storing ⟨ψ(0)\|ψ(t)⟩. Only written at `OutputS
 - `units` — "energy: Hartree (a.u.); length: Bohr (a.u.); mass: electron mass"
 - `Dimension`, `SplineDegree`, `Nelements` — Grid parameters
 - `LMinX`, `LMaxX`, `LMinY`, `LMaxY`, `LMinZ`, `LMaxZ` — Domain bounds
-- `Charge` — Charge factor of the reported dipole, current and acceleration
+- `Charge` — Carrier charge q (-1 electron, +1 hole)
 - `TargetEigenvalue`, `NBoundStatesSave`, `NBoundStates` — Solver parameters
 - `state_format` — "complex" or "real"
 - `eig_residual` — SLEPc relative error estimate per eigenvalue

@@ -303,7 +303,9 @@ on each polarised axis.</p></li>
 same field).</p></li>
 </ul>
 <p>Every axis listed in <code class="docutils literal notranslate"><span class="pre">Polarization</span></code> must have a field (per-axis or <code class="docutils literal notranslate"><span class="pre">Laser</span></code>);
-the input is rejected otherwise.</p>
+the input is rejected otherwise. Only these axes are coupled to the field; the
+response (dipole, current, acceleration) is recorded on every spatial axis
+(<code class="docutils literal notranslate"><span class="pre">ObserveAllAxes</span> <span class="pre">=</span> <span class="pre">0</span></code> restricts it to the coupled axes).</p>
 <p>Example: a 4-cycle <span class="math notranslate nohighlight">\(\sin^2\)</span> pulse at 800 nm,</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Polarization</span> <span class="o">=</span> <span class="n">x</span>
 <span class="n">Ampx</span>   <span class="o">=</span> <span class="mf">0.0534</span>

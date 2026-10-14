@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Dipole <x>(t) of the 1D driven harmonic oscillator for the three propagators.
 
-Reads run_<prop>/td/TimeEvolutionData_*.h5 (dipoles dataset: [t, E_x, <x>, a_x])
+Reads run_<prop>/td/TimeEvolutionData_*.h5 (dipoles dataset: [t, E_x, q<x>, q a_x])
 and the propagation wall time from run_<prop>/run.log, and writes
 propagator_dipoles.png next to this script.
 """
@@ -15,6 +15,14 @@ E0, W = 1.0, 0.6
 def x_exact(t):
     return -E0 / (1.0 - W * W) * (np.cos(W * t) - np.cos(t))
 
+def charge(run_dir):
+    """Charge q of the run (dipole column = q<x>), from the EigenData metadata."""
+    for path in glob.glob(os.path.join(run_dir, 'static', 'EigenData_*.h5')):
+        with h5py.File(path, 'r') as g:
+            if 'run_metadata' in g and 'Charge' in g['run_metadata'].attrs:
+                return float(g['run_metadata'].attrs['Charge'])
+    return -1.0  # TDSE-Z default (electron)
+
 def load(prop):
     d = os.path.join(HERE, f'run_{prop}')
     f = h5py.File(glob.glob(os.path.join(d, 'td', 'TimeEvolutionData_*.h5'))[0], 'r')
@@ -22,7 +30,7 @@ def load(prop):
     log = open(os.path.join(d, 'run.log'), errors='ignore').read()
     m = re.search(r'^\s+Propagation\s+([0-9.]+)', log, re.M)
     dt = re.search(r'^TimeStep\s*=\s*([0-9.eE+-]+)', open(os.path.join(d, f'ho1d_{prop}.inp')).read(), re.M)
-    return dip[:, 0], dip[:, 2], float(m.group(1)) if m else np.nan, dt.group(1)
+    return dip[:, 0], dip[:, 2] / charge(d), float(m.group(1)) if m else np.nan, dt.group(1)
 
 mpl.rcParams.update({"font.family": "serif", "mathtext.fontset": "cm", "font.size": 10,
                      "axes.linewidth": 0.8, "xtick.direction": "in", "ytick.direction": "in",

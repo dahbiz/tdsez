@@ -94,9 +94,8 @@ PetscErrorCode TDSEZAssembleMatBatchTimed(
 ///        propagation and diagnostics: CAP, Hamiltonian (H), mass (M),
 ///        kinetic (K), potential (V), dipole (Dx/Dy/Dz), velocity
 ///        (VelX/VelY/VelZ), gradient (dVdx/dVdy/dVdz), mass-dist (Md),
-///        and angular momentum (Lz) — each only for the active polarization
-///        and dimension. Throws std::runtime_error on incompatible
-///        polarization/dimension combinations.
+///        and angular momentum (Lz). The per-axis operators are built for every
+///        spatial axis (the field couples only the polarised ones).
 /// @param iga  IGA context reference for matrix creation.
 TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
 {
@@ -143,37 +142,34 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         TDSEZAssembleMatrixTimed(iga, &Lz, TDSEZFormLz, "Angular Momentum Lz");
     }
 
-    // Construct dipole matrices based on specified polarization. Every case
-    // other than "x" assembles [K, V, Md] plus [D_d, Vel_d, dV_d] for each
-    // active axis in one batched pass (TDSEZFormPhyAxes, sum-factorised for a
-    // constant mass); the matrices are the same as with separate passes.
-    const bool batchAxes = (pol != "x") &&
-        ((pol == "y" && dim >= 2) || (pol == "z" && dim == 3) || (pol == "xy" && dim >= 2) ||
-         (pol == "xz" && dim == 3) || (pol == "yz" && dim == 3) ||
-         ((pol == "xyz" || pol == "all") && dim == 3));
-    if (batchAxes)
+    // Dipole, velocity and force operators on every spatial axis by default
+    // (ObserveAllAxes = 1): the field couples only the polarised axes, but the
+    // response (dipole, current, acceleration) is recorded on all of them, so
+    // cross-polarized emission and asymmetry effects are not lost. With
+    // ObserveAllAxes = 0 only the coupled axes are built (less memory). In 2D/3D
+    // [K, V, Md] plus [D_d, Vel_d, dV_d] for each axis are built in one batched
+    // pass (TDSEZFormPhyAxes, sum-factorised for a constant mass); 1D uses the
+    // x kernel.
+    if (dim == 1)
     {
-        TDSEZPhyAxesOn[0] = (pol == "xy" || pol == "xz" || pol == "xyz" || pol == "all") ? PETSC_TRUE : PETSC_FALSE;
-        TDSEZPhyAxesOn[1] = (pol == "y" || pol == "xy" || pol == "yz" || pol == "xyz" || pol == "all") ? PETSC_TRUE : PETSC_FALSE;
-        TDSEZPhyAxesOn[2] = (pol == "z" || pol == "xz" || pol == "yz" || pol == "xyz" || pol == "all") ? PETSC_TRUE : PETSC_FALSE;
+        Mat *mats[6] = {&K, &V, &Md, &Dx, &VelX, &dVdx};
+        TDSEZAssembleMatBatchTimed(iga, 6, mats, TDSEZFormPhyX, "Axis Ops (x)");
+    }
+    else if (dim == 2 || dim == 3)
+    {
+        for (int d = 0; d < 3; ++d) TDSEZPhyAxesOn[d] = TDSEZParser::Observed(d) ? PETSC_TRUE : PETSC_FALSE;
         Mat *mats[12];
         PetscInt n = 0;
         mats[n++] = &K; mats[n++] = &V; mats[n++] = &Md;
         Mat *Dm[3] = {&Dx, &Dy, &Dz}, *Vm[3] = {&VelX, &VelY, &VelZ}, *Gm[3] = {&dVdx, &dVdy, &dVdz};
-        for (int d = 0; d < 3; ++d)
-            if (TDSEZPhyAxesOn[d]) { mats[n++] = Dm[d]; mats[n++] = Vm[d]; mats[n++] = Gm[d]; }
-        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormPhyAxes, "Polarization Ops");
-    }
-    else if (pol == "x")
-    {
-        // Bulk assemble all 6 operators for x-polarization in one go
-        Mat *mats[6] = {&K, &V, &Md, &Dx, &VelX, &dVdx};
-        TDSEZAssembleMatBatchTimed(iga, 6, mats, TDSEZFormPhyX, "X-Polarization Ops");
-
+        std::string axes;
+        for (int d = 0; d < dim; ++d)
+            if (TDSEZPhyAxesOn[d]) { mats[n++] = Dm[d]; mats[n++] = Vm[d]; mats[n++] = Gm[d]; axes += "xyz"[d]; }
+        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormPhyAxes, ("Axis Ops (" + axes + ")").c_str());
     }
     else
     {
-        throw std::runtime_error("The polarization choice is not compatible with the  dimension of the problem. Please check your input file.");
+        throw std::runtime_error("Dimension must be 1, 2 or 3.");
     }
 
     // Dirichlet walls: the wall DoFs are pinned in H and M (core assembly), so

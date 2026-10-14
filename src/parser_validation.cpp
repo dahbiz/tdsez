@@ -450,6 +450,11 @@ void TDSEZParser::ValidateOrThrow()
             throw std::runtime_error(
                 "ValidateOrThrow: Polarization '" + Polarization + "' is invalid. "
                 "Use one of: none, x, y, z, xy, xz, yz, xyz (case-insensitive).");
+        for (int d = (int)Dimension; d < 3; ++d)
+            if (Polarization.find("xyz"[d]) != std::string::npos)
+                throw std::runtime_error("ValidateOrThrow: Polarization '" + Polarization + "' couples axis " +
+                    std::string(1, "xyz"[d]) + ", which does not exist in a " +
+                    std::to_string((int)Dimension) + "D problem.");
     }
 
     // BoundaryType: normalise aliases + reject unknown up front

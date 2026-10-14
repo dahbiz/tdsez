@@ -40,7 +40,7 @@ PetscErrorCode TDSEZIFunctionPolX(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F
 {
   (void)ts; (void)psi; (void)psidot;
   auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    PetscScalar Ex = TDSEZParser::Ex(t);
+    PetscScalar Ex = TDSEZParser::Coupling(0, t);
 
     MatMult(TDSEZ->H(),  psi,    TDSEZ->IFuncVec[0]); // vec1 = H * psi
     MatMult(TDSEZ->Dx(), psi,    TDSEZ->IFuncVec[1]); // vec2 = Dx * psi
@@ -62,7 +62,7 @@ PetscErrorCode TDSEZIFunctionPolY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F
 {
   (void)ts; (void)psi; (void)psidot;
   auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    PetscScalar Ey = TDSEZParser::Ey(t);
+    PetscScalar Ey = TDSEZParser::Coupling(1, t);
     MatMult(TDSEZ->H(),  psi,    TDSEZ->IFuncVec[0]); // vec1 = H * psi
     MatMult(TDSEZ->Dy(), psi,    TDSEZ->IFuncVec[1]); // vec2 = Dy * psi
     MatMult(TDSEZ->M(),  psidot, F);                // F    = M * psidot
@@ -82,7 +82,7 @@ PetscErrorCode TDSEZIFunctionPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F
 {
   (void)ts; (void)psi; (void)psidot;
   auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    PetscScalar Ez = TDSEZParser::Ez(t);
+    PetscScalar Ez = TDSEZParser::Coupling(2, t);
     MatMult(TDSEZ->H(),  psi,    TDSEZ->IFuncVec[0]); // vec1 = H * psi
     MatMult(TDSEZ->Dz(), psi,    TDSEZ->IFuncVec[1]); // vec2 = Dz * psi
     MatMult(TDSEZ->M(),  psidot, F);                // F    = M * psidot
@@ -102,8 +102,8 @@ PetscErrorCode TDSEZIFunctionPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec 
 {
   (void)ts; (void)psi; (void)psidot;
   auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    PetscScalar Ex = TDSEZParser::Ex(t);
-    PetscScalar Ey = TDSEZParser::Ey(t);
+    PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    PetscScalar Ey = TDSEZParser::Coupling(1, t);
     PetscFunctionBeginUser;
     // 1. MatMults (These stay the same)
     MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0]); // H0 * psi
@@ -129,8 +129,8 @@ PetscErrorCode TDSEZIFunctionPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec 
 {
   (void)ts; (void)psi; (void)psidot;
   auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ex = TDSEZParser::Ex(t);
-    const PetscScalar Ez = TDSEZParser::Ez(t);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
     PetscFunctionBeginUser;
     // We use slots 0, 1, and 2 for H, Dx, and Dz
     PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0])); // H0 * psi
@@ -154,8 +154,8 @@ PetscErrorCode TDSEZIFunctionPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec 
 {
   (void)ts; (void)psi; (void)psidot;
   auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ey = TDSEZParser::Ey(t);
-    const PetscScalar Ez = TDSEZParser::Ez(t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
     PetscFunctionBeginUser;
     // Mapping: slot 0 = H, slot 1 = Dy, slot 2 = Dz
     PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0])); // H0 * psi
@@ -182,9 +182,9 @@ PetscErrorCode TDSEZIFunctionPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec
 {
   (void)ts; (void)psi; (void)psidot;
   auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ex = TDSEZParser::Ex(t);
-    const PetscScalar Ey = TDSEZParser::Ey(t);
-    const PetscScalar Ez = TDSEZParser::Ez(t);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
     PetscFunctionBeginUser;
     // Mapping: slot 0=H, 1=Dx, 2=Dy, 3=Dz
     PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0])); 
@@ -209,7 +209,7 @@ PetscErrorCode TDSEZIJacobianPolX(TS ts, PetscReal t, Vec psi, Vec psidot, Petsc
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ex = TDSEZParser::Ex(t);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
     const PetscScalar ai = a * PETSC_i; 
     PetscFunctionBeginUser;
     // MatCopy is generally faster 
@@ -235,7 +235,7 @@ PetscErrorCode TDSEZIJacobianPolY(TS ts, PetscReal t, Vec psi, Vec psidot, Petsc
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ey = TDSEZParser::Ey(t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
     const PetscScalar ai = a * PETSC_i;
     PetscFunctionBeginUser;
     // We copy H and scale it by -1.0 immediately to get J = -H
@@ -260,7 +260,7 @@ PetscErrorCode TDSEZIJacobianPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, Petsc
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ez = TDSEZParser::Ez(t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
     const PetscScalar ai = a * PETSC_i;
     PetscFunctionBeginUser;
     // J = -H
@@ -286,8 +286,8 @@ PetscErrorCode TDSEZIJacobianPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, Pets
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ex = TDSEZParser::Ex(t);
-    const PetscScalar Ey = TDSEZParser::Ey(t);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
     const PetscScalar ai = a * PETSC_i; 
     PetscFunctionBeginUser;
     // Starting with H and negate it in one pass
@@ -312,8 +312,8 @@ PetscErrorCode TDSEZIJacobianPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pets
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ex = TDSEZParser::Ex(t);
-    const PetscScalar Ez = TDSEZParser::Ez(t);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
     const PetscScalar ai = a * PETSC_i;
     PetscFunctionBeginUser;
     // Starting with H and negate it immediately
@@ -338,8 +338,8 @@ PetscErrorCode TDSEZIJacobianPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pets
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ey = TDSEZParser::Ey(t);
-    const PetscScalar Ez = TDSEZParser::Ez(t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
     const PetscScalar ai = a * PETSC_i;
     PetscFunctionBeginUser;
     // Starting with H and negate it immediately
@@ -365,9 +365,9 @@ PetscErrorCode TDSEZIJacobianPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Pet
 {
     (void)ts; (void)psi; (void)psidot; (void)P;
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
-    const PetscScalar Ex = TDSEZParser::Ex(t);
-    const PetscScalar Ey = TDSEZParser::Ey(t);
-    const PetscScalar Ez = TDSEZParser::Ez(t);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
     const PetscScalar ai = a * PETSC_i;
     PetscFunctionBeginUser;
     // Startig with H and negate it in one pass
@@ -447,11 +447,11 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     if (TDSEZ->hasX)
     {
-        laserEx  = TDSEZParser::Ex(t);
+        laserEx  = TDSEZParser::Field(0, t);
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
         accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccX >= 0
-                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * laserEx) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
     }
 
 
@@ -463,7 +463,7 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         accelX = acc[0];
     }
 
-    const PetscScalar interactionE = laserEx*projDx;
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * laserEx*projDx;
     const PetscScalar totalEnergy  = expectationH + interactionE;
 
     // ------------------------
@@ -711,19 +711,19 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     if (idxDx >= 0) 
     {
-        laserEx  = TDSEZParser::Ex(t);
+        laserEx  = TDSEZParser::Field(0, t);
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
         accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccX >= 0
-                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * laserEx) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
     }
 
     if (idxDy >= 0) {
-        laserEy  = TDSEZParser::Ey(t);
+        laserEy  = TDSEZParser::Field(1, t);
         projDy   = res[idxDy];
         dipoleMY = TDSEZ->charge * projDy;
         accelY   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccY >= 0
-                   ? TDSEZ->charge * (res[idxAccY] - invMassAvg * laserEy) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccY] - invMassAvg * TDSEZParser::CarrierSign() * laserEy) : 0.0;
     }
     if (idxVx >= 0) Jx_total = res[idxVx];
     if (idxVy >= 0) Jy_total = res[idxVy];
@@ -736,7 +736,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         accelX = acc[0]; accelY = acc[1];
     }
 
-    const PetscScalar interactionE = laserEx*projDx + laserEy*projDy;
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * (laserEx*projDx + laserEy*projDy);
     const PetscScalar totalEnergy  = expectH + interactionE;
 
     /* ----------------------------------------------------------------
@@ -1008,26 +1008,26 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     PetscScalar projDx=0.0, projDy=0.0, projDz=0.0;
 
     if (TDSEZ->hasX) {
-        laserEx  = TDSEZParser::Ex(t);
+        laserEx  = TDSEZParser::Field(0, t);
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
         accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccX >= 0
-                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * laserEx) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
     }
     if (TDSEZ->hasY) {
-        laserEy  = TDSEZParser::Ey(t);
+        laserEy  = TDSEZParser::Field(1, t);
         projDy   = res[idxDy];
         dipoleMY = TDSEZ->charge * projDy;
         accelY   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccY >= 0
-                   ? TDSEZ->charge * (res[idxAccY] - invMassAvg * laserEy) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccY] - invMassAvg * TDSEZParser::CarrierSign() * laserEy) : 0.0;
     }
 
     if (TDSEZ->hasZ) {
-        laserEz  = TDSEZParser::Ez(t);
+        laserEz  = TDSEZParser::Field(2, t);
         projDz   = res[idxDz];
         dipoleMZ = TDSEZ->charge * projDz;
         accelZ   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccZ >= 0
-                   ? TDSEZ->charge * (res[idxAccZ] - invMassAvg * laserEz) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccZ] - invMassAvg * TDSEZParser::CarrierSign() * laserEz) : 0.0;
     }
 
     // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
@@ -1038,7 +1038,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         accelX = acc[0]; accelY = acc[1]; accelZ = acc[2];
     }
 
-    const PetscScalar interactionE = (laserEx*projDx) + (laserEy*projDy) + (laserEz*projDz);
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * ((laserEx*projDx) + (laserEy*projDy) + (laserEz*projDz));
     const PetscScalar totalEnergy  = expectationH + interactionE;
 
 
