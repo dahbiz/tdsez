@@ -32,11 +32,13 @@ of the bare Hamiltonian expectation and the interaction energy:
    :nowrap:
 
    \begin{equation}
-   E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + E(t)\, d_x(t)
+   E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + \mathbf E(t)\cdot\langle \mathbf r \rangle
    \end{equation}
 
 where :math:`H_0 = K + V` is the field-free Hamiltonian, :math:`E(t)` is the
-laser electric field amplitude, and :math:`d_x(t)` is the dipole moment.
+laser electric field, and the last term is the expectation value of the
+coupling term :math:`\mathbf E\cdot\mathbf r` of the propagated Hamiltonian
+(see :doc:`Physics-Conventions`; it does not contain ``Charge``).
 
 Additionally, kinetic and potential energy are stored separately:
 
@@ -84,19 +86,37 @@ diagnosing mass-profile effects.
 Acceleration
 ------------
 
-Acceleration is computed from the Ehrenfest theorem:
+The dipole acceleration :math:`A_a = q\,d\langle v_a\rangle/dt` (column ``A*``
+of the dipole table, equal to :math:`\ddot D_a`) is computed in one of two
+equivalent forms, chosen by ``AccelerationMethod``:
 
-.. math::
-   :nowrap:
+- **operator** (Ehrenfest force):
 
-   \begin{equation}
-   a_x(t) = \langle \psi(t) | -\nabla_x V | \psi(t) \rangle - \frac{q\,E(t)}{m_{\text{avg}}}
-   \end{equation}
+  .. math::
+     :nowrap:
 
-The first term :math:`\langle \psi | -\nabla V | \psi \rangle` is the force from
-the potential gradient. The second term subtracts the external field contribution
-scaled by the average inverse mass. This decomposition separates internal forces
-from the driving field.
+     \begin{equation}
+     A_a(t) = q\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle + \text{(mass-gradient terms)}
+              - E_a(t)\,\Big\langle \frac{1}{m}\Big\rangle\right]
+     \end{equation}
+
+  for the propagated Hamiltonian :math:`H + \mathbf E\cdot\mathbf r`. It needs a
+  smooth potential and mass and no reflecting wall reached by the wave packet.
+- **discrete** (equation of motion of the Galerkin system
+  :math:`iM\dot c = (H + \mathbf E\cdot\mathbf D)c`):
+  :math:`A_a = -2q\,\mathrm{Im}\,(w^\dagger V_a \psi)`, :math:`w = M^{-1}(H+\mathbf E\cdot\mathbf D)\psi`.
+  Exact for the discrete dynamics, including sharp interfaces and walls; one
+  solve with :math:`M` per output step.
+
+``auto`` uses the discrete form when the mass depends on position
+(``MassIsConstant = 0``), the operator form otherwise. Both agree to rounding
+for smooth problems; they differ once the wave packet reaches a reflecting
+wall, where only the discrete form contains the wall force. Use an absorbing
+potential for HHG.
+
+The current :math:`J_a = q\langle v_a\rangle` (current table) is
+:math:`\dot D_a`, so the HHG spectrum may be computed from
+:math:`|\tilde A(\omega)|^2 = \omega^2|\tilde J(\omega)|^2 = \omega^4|\tilde D(\omega)|^2`.
 
 Current Decomposition
 ---------------------

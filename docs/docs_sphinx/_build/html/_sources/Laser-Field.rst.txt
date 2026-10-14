@@ -22,12 +22,30 @@ Polarization
 Field Expression
 ----------------
 
-The field E(t) is specified via muParser expressions. Two modes:
+The field is exactly the muParser expression you give, as a function of ``t``
+(atomic units); TDSE-Z multiplies nothing into it. Write the pulse envelope
+inside the expression.
 
-- **Scalar form**: ``Laser = Amplitude*cos(Omega*t)*sin(pi*t/PulseDuration)^2``
-  -- single envelope for all axes
-- **Per-axis form**: ``LaserX = ...``, ``LaserY = ...``, ``LaserZ = ...``
-  -- overrides scalar form when set
+- **Per-axis form**: ``LaserX = ...``, ``LaserY = ...``, ``LaserZ = ...`` — the field
+  on each polarised axis.
+- **Scalar form**: ``Laser = ...`` — used for every polarised axis that has no
+  ``LaserX/Y/Z`` of its own (with ``Polarization = xy`` it drives x and y with the
+  same field).
+
+Every axis listed in ``Polarization`` must have a field (per-axis or ``Laser``);
+the input is rejected otherwise.
+
+Example: a 4-cycle :math:`\sin^2` pulse at 800 nm,
+
+::
+
+    Polarization = x
+    Ampx   = 0.0534
+    Omegax = 0.057
+    LaserX = Ampx*sin(Omegax*t/8)^2*cos(Omegax*t + CEPx)
+
+The parameters below are not used by the code directly; they are named
+constants available inside all expressions:
 
 .. list-table::
    :widths: 35 15 15 35
@@ -36,56 +54,21 @@ The field E(t) is specified via muParser expressions. Two modes:
    * - Key
      - Type
      - Default
-     - Description
-   * - Laser
-     - muParser
-     - 0.0
-     - Unified field E(t) for scalar form
-   * - LaserX / LaserY / LaserZ / DriverX / DriverY / DriverZ
-     - muParser
-     - 0.0
-     - Per-axis field E_i(t). Overrides scalar Laser when set
-   * - Amplitude
+     - Meaning (by convention)
+   * - Ampx/y/z, CEPx/y/z, Omegax/y/z
      - real
      - 0.0
-     - Peak field strength (scalar)
-   * - Omega / Omegax, Omegay, Omegaz
-     - real
-     - 0.056954
-     - Carrier frequency (omega=0.056954 approx 800 nm)
-   * - Phase / CEPx, CEPy, CEPz
-     - real
-     - 0.0
-     - Carrier-envelope phase (radians)
-   * - Ampx, Ampy, Ampz
-     - real
-     - 0.0
-     - Per-axis peak amplitude
-   * - PulseDuration
-     - real
-     - 0.0
-     - Pulse FWHM duration in a.u.
-   * - PulseCenter
-     - real
-     - 0.0
-     - Pulse center time
-
-Envelope
---------
-
-.. list-table::
-   :widths: 25 15 15 35
-   :header-rows: 1
-
-   * - Key
-     - Type
-     - Default
-     - Description
-   * - EnvelopeType
-     - string
-     - ``custom``
-     - Pre-built envelope form or custom expression
-   * - Envelope
-     - muParser
+     - Per-axis amplitude, CEP, frequency (``Omegax`` defaults to 0: set it)
+   * - LaserAmplitude, LaserFrequency, CarrierEnvelopePhase
+     - list
      - --
-     - Custom envelope F(t) expression
+     - Comma-separated per-axis values for Ampx/y/z, Omegax/y/z, CEPx/y/z
+
+Further constants (pulse length, centre, ...) are defined with
+``Variables = T=440, t0=220``.
+
+Removed keys: ``Envelope`` and ``EnvelopeType`` (never applied), and the legacy
+scalar ``Amplitude``, ``Omega``, ``Phase``, ``PulseDuration`` and ``PulseCenter``
+(use the per-axis constants or ``Variables``). ``EnvelopeType = custom`` in old
+inputs only prints a warning; the other removed keys stop the run with a message
+naming the replacement.

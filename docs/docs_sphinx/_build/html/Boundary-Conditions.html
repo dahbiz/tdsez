@@ -114,7 +114,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -199,10 +198,8 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -318,41 +315,44 @@ cause spurious reflections, while CAP allows outgoing flux to leave cleanly.</p>
 <td><p>0</p></td>
 <td><p>Enable complex absorbing potential for outgoing-wave boundary conditions</p></td>
 </tr>
-<tr class="row-odd"><td><p>CAPKmin / CapStrength</p></td>
+<tr class="row-odd"><td><p>CAPKmin</p></td>
 <td><p>real</p></td>
 <td><p>0.1</p></td>
-<td><p>Inner edge of CAP region (a.u.)</p></td>
-</tr>
-<tr class="row-even"><td><p>Gamma</p></td>
-<td><p>real</p></td>
-<td><p>5.0</p></td>
-<td><p>CAP strength <span class="math notranslate nohighlight">\(\gamma\)</span>. Higher = stronger absorption but more numerical reflection</p></td>
+<td><p>Lowest momentum absorbed efficiently; sets the layer width w = 6.555/CAPKmin (see below)</p></td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="how-cap-works">
 <h2>How CAP Works<a class="headerlink" href="#how-cap-works" title="Link to this heading"></a></h2>
-<p>The CAP adds an imaginary potential <span class="math notranslate nohighlight">\(-i\gamma(x)\)</span> near the domain edges:</p>
+<p>The CAP adds <span class="math notranslate nohighlight">\(-iW(\mathbf r)\)</span> to the Hamiltonian, with the reflection-free
+profile of Manolopoulos (J. Chem. Phys. 117, 9552 (2002)). Every axis gets an
+absorbing layer of width</p>
 <div class="math notranslate nohighlight">
-\[V_{\text{CAP}}(x) = -i\gamma \left(\frac{x - x_{\text{edge}}}{L_{\text{region}}}\right)^n \quad \text{for } x &gt; x_{\text{edge}}\]</div>
-<p>where <span class="math notranslate nohighlight">\(x_{\text{edge}}\)</span> is <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code>, <span class="math notranslate nohighlight">\(\gamma\)</span> is <code class="docutils literal notranslate"><span class="pre">Gamma</span></code>, and
-<span class="math notranslate nohighlight">\(n=2\)</span> by default. The imaginary part causes exponential decay of outgoing
-waves, mimicking an open boundary.</p>
-<section id="tuning-cap-parameters">
-<h3>Tuning CAP Parameters<a class="headerlink" href="#tuning-cap-parameters" title="Link to this heading"></a></h3>
-<ul class="simple">
-<li><p><strong>``CAPKmin``</strong>: Move inward to absorb more, outward to reduce reflections.
-Start with <code class="docutils literal notranslate"><span class="pre">0.1</span></code> and adjust based on reflected population.</p></li>
-<li><p><strong>``Gamma``</strong>: Higher values absorb more strongly but can cause numerical
-reflection at the CAP edge. Typical range: 1–10.</p></li>
-<li><p><strong>Higher Gamma</strong> → stronger absorption, but potential numerical reflections</p></li>
-<li><p><strong>Lower Gamma</strong> → less absorption, fewer reflections</p></li>
-</ul>
-<p>Recommendation: Set <code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span> <span class="pre">=</span> <span class="pre">population</span></code> to monitor bound-state
-population. If population decreases too quickly, lower Gamma. If population
-oscillates (reflecting), increase CAPKmin or Gamma.</p>
+\[w = \frac{c}{2\,\delta\,k_{\min}} \approx \frac{6.555}{k_{\min}}, \qquad c = 2.62206,\ \delta = 0.2,\]</div>
+<p>at both of its walls, <span class="math notranslate nohighlight">\(k_{\min}\)</span> = <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code>. Inside a layer, with
+<span class="math notranslate nohighlight">\(u\)</span> the distance from the layer’s inner edge and <span class="math notranslate nohighlight">\(r = c\,u/w\)</span>,</p>
+<div class="math notranslate nohighlight">
+\[W = E_{\min}\left(a r - b r^3 + \frac{4}{(c-r)^2} - \frac{4}{(c+r)^2}\right),
+\qquad E_{\min} = \tfrac12 k_{\min}^2 ,\]</div>
+<p>which starts at zero (no step at the inner edge) and diverges at the wall. The
+contributions of the axes add, so non-cubic and asymmetric boxes are absorbed on
+every face. Electrons with momentum above <span class="math notranslate nohighlight">\(k_{\min}\)</span> are absorbed with
+reflection below about 1%; slower ones are partly reflected. The layer may take
+at most 45% of each axis; the run stops otherwise.</p>
 </section>
+<section id="tuning-cap-parameters">
+<h2>Tuning CAP Parameters<a class="headerlink" href="#tuning-cap-parameters" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> sets both the lowest absorbed momentum and the layer width. Lower
+values absorb slower electrons but need a wider layer (a larger box).</p></li>
+<li><p>Keep the physically relevant region (for HHG, the electron excursion
+<span class="math notranslate nohighlight">\(E_0/\omega^2\)</span> and the returning trajectories) inside the free core,
+which is printed at start-up.</p></li>
+</ul>
+<p>Recommendation: set <code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span> <span class="pre">=</span> <span class="pre">population</span></code> to monitor the bound-state
+population, and compare HHG spectra with a larger box or a smaller <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code>
+to check that reflections are negligible.</p>
 </section>
 <section id="reflecting-vs-absorbing-boundaries">
 <h2>Reflecting vs Absorbing Boundaries<a class="headerlink" href="#reflecting-vs-absorbing-boundaries" title="Link to this heading"></a></h2>

@@ -18,7 +18,14 @@ Convention Reference
    * - Hamiltonian
      - :math:`H = -\frac{1}{2} \nabla \cdot \left( \frac{1}{m(\mathbf{r})} \nabla \right) + V(\mathbf{r}) + \text{CAP}` (BenDaniel–Duke)
    * - TDSE (length gauge)
-     - :math:`i \frac{\partial \psi}{\partial t} = H\psi + E(t)D\psi`
+     - :math:`i \frac{\partial \psi}{\partial t} = H\psi + \mathbf E(t)\cdot\mathbf r\,\psi`, i.e. the
+       coupling of an electron (charge :math:`-e`) to the field :math:`\mathbf E(t)`
+       given by ``LaserX/Y/Z``; the force on the electron is :math:`-\mathbf E`
+   * - Charge
+     - ``Charge`` (:math:`q`, default 1) scales the reported dipole
+       :math:`q\langle\mathbf r\rangle`, current :math:`q\langle\mathbf v\rangle` and
+       acceleration :math:`q\,d\langle\mathbf v\rangle/dt` consistently. It does not
+       change the propagated Hamiltonian.
    * - Residual (Crank-Nicolson)
      - :math:`F = iM \dot{\psi} - H\psi - E(t)D\psi`
    * - Mass inner product

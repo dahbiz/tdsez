@@ -59,10 +59,6 @@ Physical Constants
      - Type
      - Default
      - Description
-   * - Hbar / Planck
-     - real
-     - 1.0
-     - Reduced Planck constant (atomic units)
    * - Charge / ParticleCharge
      - real
      - 1.0
@@ -85,5 +81,5 @@ Custom Variables
        Potential, Laser, Mass.
 
 All scalar input parameters are automatically defined as muParser constants
-(e.g., Amplitude, Omega, TimeStep, LMin). No need to redefine them in
+(e.g., Ampx, Omegax, TimeStep, LMinX). No need to redefine them in
 Variables.

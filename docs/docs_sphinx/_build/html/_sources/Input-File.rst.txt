@@ -20,7 +20,7 @@ variables and functions are always available:
 - ``abs(x)``, ``sin(x)``, ``cos(x)``, ``tan(x)``, ``exp(x)``, ``log(x)``, ``sqrt(x)``, ``pow(x,y)``, ``min(x,y)``, ``max(x,y)``
 - ``fabs(x)`` is automatically converted to ``abs(x)``
 - ``pi`` — mathematical constant :math:`\pi = 3.14159265...`
-- Every scalar input parameter (e.g. ``Amplitude``, ``Omega``, ``LMin``, ``LMax``)
+- Every scalar input parameter (e.g. ``Ampx``, ``Omegax``, ``LMinX``, ``TimeStep``)
   is available as a muParser constant so you can reference it by name inside any
   expression. For example, ``Potential = V0*exp(-w*x^2)`` with
   ``Variables = V0=1.2, w=0.5`` works without any extra definition.
@@ -84,14 +84,10 @@ Global Settings
      - bool
      - 1 (true)
      - 1 = print solver progress to stdout. 0 = minimal output.
-   * - Hbar / Planck
-     - real
-     - 1.0
-     - Reduced Planck constant. Aliases: Hbar, Planck. muParser constant.
    * - Charge / ParticleCharge
      - real
      - 1.0
-     - Particle charge. Aliases: Charge, ParticleCharge. muParser constant.
+     - Scale factor q of the reported dipole, current and acceleration (q⟨r⟩, q⟨v⟩, q d⟨v⟩/dt); the propagated coupling is always +E·r (electron convention, see Physics Conventions). Aliases: Charge, ParticleCharge. muParser constant.
 
 Domain and Grid
 ---------------
@@ -108,14 +104,10 @@ Domain and Grid
      - string
      - (none)
      - Compact domain spec. Two forms: "LMin,LMax" for uniform bounds, or "[LMin,LMax],[LMinY,LMaxY],[LMinZ,LMaxZ]" for per-axis bounds.
-   * - LMin / LMax
-     - real
-     - -10, 10
-     - Default domain bounds (all axes). See Domain for per-axis spec.
    * - LMinX, LMaxX / LMinY, LMaxY / LMinZ, LMaxZ
      - real
      - -10, 10
-     - Per-axis domain bounds. Override LMin/LMax.
+     - Per-axis domain bounds (alternative to Domain).
    * - OffsetX, OffsetY, OffsetZ
      - real
      - 0.0
@@ -148,10 +140,6 @@ Potential and Mass
      - bool
      - false
      - 1 = mass is scalar constant 1.0 (skip spatial eval). Use when Mass = "1.0" to avoid unnecessary function calls.
-   * - dinvMassX / dinvMassY / dinvMassZ
-     - string
-     - "0.0"
-     - d(1/m)/dx, d(1/m)/dy, d(1/m)/dz. Required for BenDaniel-Duke kinetic operator when mass varies. Use "0.0" for auto-diff.
 
 Laser Field
 -----------
@@ -167,43 +155,15 @@ Laser Field
    * - Laser / Driver
      - string
      - (none)
-     - Single-field expression E(t). muParser expression in t. All time-dependent scalars are available as constants.
+     - Field E(t) for every polarised axis without its own LaserX/Y/Z. muParser expression in t, envelope included; all input scalars are available as constants.
    * - LaserX / DriverX / LaserY / DriverY / LaserZ / DriverZ
      - string
      - (none)
-     - Per-component laser expressions Ex(t), Ey(t), Ez(t). If any set, the others default to empty string.
+     - Field on each polarised axis, Ex(t), Ey(t), Ez(t), envelope included. Every axis in Polarization needs one (or Laser).
    * - Polarization / LaserPolarization / DriverPolarization
      - string
      - (none)
-     - Field polarization type. Accepted values: "x"=linear-x, "y"=linear-y, "z"=linear-z, "xy"=two-color linear, "xz", "yz", "xyz"=three-color linear, "right"/"left"=circular polarization (right/left).
-   * - Amplitude
-     - real
-     - 0.0
-     - Scalar field amplitude (legacy single-field form). muParser constant.
-   * - Omega
-     - real
-     - 0.056954
-     - Carrier frequency (a.u.). 0.056954 a.u. = 800 nm. muParser constant.
-   * - Phase
-     - real
-     - 0.0
-     - Carrier-envelope phase (radians). muParser constant.
-   * - PulseDuration
-     - real
-     - 0.0
-     - Envelope pulse duration (atomic units).
-   * - PulseCenter
-     - real
-     - 0.0
-     - Envelope pulse center time (atomic units).
-   * - EnvelopeType
-     - string
-     - "custom"
-     - Envelope type. Accepted values: "custom", "gaussian", "sech", "top-hat".
-   * - Envelope
-     - string
-     - (none)
-     - User-defined envelope F(t) expression in t. Required when EnvelopeType = custom. E.g. sin(pi*t/PulseDuration)^2 or exp(-4*log(2)*(t-PulseCenter)^2/PulseDuration^2).
+     - Field polarization type. Accepted values: "x"=linear-x, "y"=linear-y, "z"=linear-z, "xy", "xz", "yz", "xyz" (also "all") = several coupled axes, each with its own field (elliptical or circular fields are written through LaserX/Y).
    * - Ampx, Ampy, Ampz
      - real
      - 0.0
@@ -212,10 +172,6 @@ Laser Field
      - real
      - 0.0
      - Per-component carrier-envelope phases (radians).
-   * - Omegax, Omegay, Omegaz
-     - real
-     - 0.0
-     - Per-component carrier frequencies (a.u.).
    * - DriverAmplitude / LaserAmplitude
      - string
      - (none)
@@ -376,14 +332,10 @@ Boundary Conditions and CAP
      - bool
      - 0 (false)
      - 1 = enable complex absorbing potential for outgoing-wave boundary conditions.
-   * - CAPKmin / CapStrength
+   * - CAPKmin
      - real
      - 0.1
-     - Inner edge of CAP region (a.u.). Determines where absorption begins. Higher = more absorbing.
-   * - Gamma
-     - real
-     - 5.0
-     - CAP strength parameter gamma. Controls absorption intensity. Higher = stronger absorption but more numerical reflection at CAP edge.
+     - Lowest momentum (a.u.) absorbed efficiently by the Manolopoulos CAP. Sets the layer width at each wall, w = 6.555/CAPKmin (65.5 a.u. for 0.1); slower electrons are partly reflected. w must be at most 45% of each axis.
 
 Knot Sequences
 --------------
@@ -416,20 +368,4 @@ Knot Sequences
      - real[3]
      - 0.0,0,0
      - Size (a.u.) of the linear near-origin elements (hydrogenic); r_cross = HydrogenicNLin*HydrogenicR1 must be < Lmax. Per-axis. Aliases: InnerSpacing, HydrogenicInnerSpacing.
-   * - AdaptiveKappa
-     - real
-     - 1.0
-     - Reserved for adaptive knots; currently ignored while that mode uses uniform knots.
-   * - AdaptivePower
-     - real
-     - 1.0
-     - Reserved for adaptive knots; currently ignored.
-   * - AdaptiveWFCoarseN
-     - int
-     - 20
-     - Reserved for the adaptive_wf coarse solve; currently ignored.
-   * - AdaptiveWFKinLambda
-     - real
-     - 3.0
-     - Reserved for adaptive_wf density weighting; currently ignored.
 

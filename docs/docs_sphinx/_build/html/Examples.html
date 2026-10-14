@@ -114,7 +114,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -199,10 +198,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -322,7 +319,7 @@ V(x) = -\frac{\alpha}{|x| + \beta}, \quad \alpha = 1.0,\; \beta = 0.5
 <p><strong>Laser parameters:</strong></p>
 <ul class="simple">
 <li><p>Wavelength: <span class="math notranslate nohighlight">\(\lambda = 800\,\text{nm}\)</span> → <span class="math notranslate nohighlight">\(\omega = 0.056954\)</span> a.u.</p></li>
-<li><p>Intensity: <span class="math notranslate nohighlight">\(I \approx 2.2 \times 10^{13}\,\text{W/cm}^2\)</span> (<code class="docutils literal notranslate"><span class="pre">Amplitude</span> <span class="pre">=</span> <span class="pre">0.04</span></code>)</p></li>
+<li><p>Intensity: <span class="math notranslate nohighlight">\(I \approx 5.6 \times 10^{13}\,\text{W/cm}^2\)</span> (peak field <code class="docutils literal notranslate"><span class="pre">Ampx</span> <span class="pre">=</span> <span class="pre">0.04</span></code>)</p></li>
 <li><p>Pulse duration (FWHM): 6 fs = 247 a.u.</p></li>
 <li><p>CEP (carrier-envelope phase): 0</p></li>
 </ul>
@@ -331,11 +328,11 @@ V(x) = -\frac{\alpha}{|x| + \beta}, \quad \alpha = 1.0,\; \beta = 0.5
 <li><p>Ground-state population <span class="math notranslate nohighlight">\(P_0(t)\)</span> decays as the atom ionizes</p></li>
 <li><p>Autocorrelation <span class="math notranslate nohighlight">\(|A(t)|^2\)</span> drops from 1 to near 0 as electron escapes</p></li>
 <li><p>Dipole spectrum shows ionization continuum</p></li>
-<li><p>CAP at <code class="docutils literal notranslate"><span class="pre">CAPKmin</span> <span class="pre">=</span> <span class="pre">15.0</span></code> absorbs electrons beyond <span class="math notranslate nohighlight">\(|x| = 15\)</span></p></li>
+<li><p>CAP layer of width 6.555/CAPKmin at each wall absorbs the outgoing electrons</p></li>
 </ul>
 <p><strong>Key parameters:</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">CAPKmin</span> <span class="pre">=</span> <span class="pre">15.0</span></code>, <code class="docutils literal notranslate"><span class="pre">Gamma</span> <span class="pre">=</span> <span class="pre">10.0</span></code> — absorbing boundary</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">CAPKmin</span> <span class="pre">=</span> <span class="pre">0.3</span></code> — absorbing layer of width 21.9 a.u. at each wall</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span> <span class="pre">=</span> <span class="pre">all</span></code> — all diagnostics enabled</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">TimeStep</span> <span class="pre">=</span> <span class="pre">0.02</span></code>, <code class="docutils literal notranslate"><span class="pre">FinalTime</span> <span class="pre">=</span> <span class="pre">300.0</span></code> — propagate for ~7 fs</p></li>
 </ul>
@@ -377,7 +374,7 @@ any anharmonicity in the potential causes population exchange.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">InitialState</span> <span class="pre">=</span> <span class="pre">&quot;sup:</span> <span class="pre">0.6*0</span> <span class="pre">+</span> <span class="pre">0.8*1&quot;</span></code> — superposition of n=0 and n=1</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">NormalizeInitialState</span> <span class="pre">=</span> <span class="pre">1</span></code> — normalize after assembly</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Amplitude</span> <span class="pre">=</span> <span class="pre">0.0</span></code> — no driving field, free evolution</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LaserX</span> <span class="pre">=</span> <span class="pre">0</span></code> — no driving field, free evolution</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">OutputStrideWFS</span> <span class="pre">=</span> <span class="pre">20</span></code> — save wavefunction snapshots</p></li>
 </ul>
 <p>Run: <code class="docutils literal notranslate"><span class="pre">./tdsez.x</span> <span class="pre">-inp</span> <span class="pre">inps/superposition_1d.prm</span></code></p>

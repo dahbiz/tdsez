@@ -113,7 +113,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -198,10 +197,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -288,21 +285,29 @@ mass: m_e, charge: e</p></td>
 <td><p><span class="math notranslate nohighlight">\(H = -\frac{1}{2} \nabla \cdot \left( \frac{1}{m(\mathbf{r})} \nabla \right) + V(\mathbf{r}) + \text{CAP}\)</span> (BenDaniel–Duke)</p></td>
 </tr>
 <tr class="row-even"><td><p>TDSE (length gauge)</p></td>
-<td><p><span class="math notranslate nohighlight">\(i \frac{\partial \psi}{\partial t} = H\psi + E(t)D\psi\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(i \frac{\partial \psi}{\partial t} = H\psi + \mathbf E(t)\cdot\mathbf r\,\psi\)</span>, i.e. the
+coupling of an electron (charge <span class="math notranslate nohighlight">\(-e\)</span>) to the field <span class="math notranslate nohighlight">\(\mathbf E(t)\)</span>
+given by <code class="docutils literal notranslate"><span class="pre">LaserX/Y/Z</span></code>; the force on the electron is <span class="math notranslate nohighlight">\(-\mathbf E\)</span></p></td>
 </tr>
-<tr class="row-odd"><td><p>Residual (Crank-Nicolson)</p></td>
+<tr class="row-odd"><td><p>Charge</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Charge</span></code> (<span class="math notranslate nohighlight">\(q\)</span>, default 1) scales the reported dipole
+<span class="math notranslate nohighlight">\(q\langle\mathbf r\rangle\)</span>, current <span class="math notranslate nohighlight">\(q\langle\mathbf v\rangle\)</span> and
+acceleration <span class="math notranslate nohighlight">\(q\,d\langle\mathbf v\rangle/dt\)</span> consistently. It does not
+change the propagated Hamiltonian.</p></td>
+</tr>
+<tr class="row-even"><td><p>Residual (Crank-Nicolson)</p></td>
 <td><p><span class="math notranslate nohighlight">\(F = iM \dot{\psi} - H\psi - E(t)D\psi\)</span></p></td>
 </tr>
-<tr class="row-even"><td><p>Mass inner product</p></td>
+<tr class="row-odd"><td><p>Mass inner product</p></td>
 <td><p><span class="math notranslate nohighlight">\(\langle \phi | M | \psi \rangle\)</span> used for all projections, populations, norms</p></td>
 </tr>
-<tr class="row-odd"><td><p>Dipole operator</p></td>
+<tr class="row-even"><td><p>Dipole operator</p></td>
 <td><p><span class="math notranslate nohighlight">\(D_x = x\)</span> (position operator)</p></td>
 </tr>
-<tr class="row-even"><td><p>Velocity operator</p></td>
+<tr class="row-odd"><td><p>Velocity operator</p></td>
 <td><p><span class="math notranslate nohighlight">\(V_x = -\frac{i}{2m(\mathbf{r})} (\mathbf{B} \cdot \nabla - \nabla \cdot \mathbf{B})\)</span>, anti-symmetric</p></td>
 </tr>
-<tr class="row-odd"><td><p>Time stepper</p></td>
+<tr class="row-even"><td><p>Time stepper</p></td>
 <td><p>PETSc TS with Crank-Nicolson (theta = 0.5)</p></td>
 </tr>
 </tbody>

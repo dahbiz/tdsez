@@ -36,14 +36,10 @@ Spatial Bounds
      - Spatial bounds per axis. Format: comma-separated ``[min,max]``
        pairs, or single pair for all axes. E.g. ``Domain = [-10,10], [-8,8]``
        for 2D asymmetric y
-   * - LMin / LMax
-     - real
-     - -10.0 / 10.0
-     - Symmetric domain bounds (shorthand)
    * - LMinX, LMaxX, LMinY, LMaxY, LMinZ, LMaxZ
      - real
      - +/-10.0
-     - Per-axis bounds (default to LMin/LMax)
+     - Per-axis bounds (alternative to Domain)
    * - OffsetX, OffsetY, OffsetZ
      - real
      - 0.0

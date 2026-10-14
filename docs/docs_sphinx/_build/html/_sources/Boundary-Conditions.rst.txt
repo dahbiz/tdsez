@@ -37,40 +37,48 @@ Complex Absorbing Potential
      - bool
      - 0
      - Enable complex absorbing potential for outgoing-wave boundary conditions
-   * - CAPKmin / CapStrength
+   * - CAPKmin
      - real
      - 0.1
-     - Inner edge of CAP region (a.u.)
-   * - Gamma
-     - real
-     - 5.0
-     - CAP strength :math:`\gamma`. Higher = stronger absorption but more numerical reflection
+     - Lowest momentum absorbed efficiently; sets the layer width w = 6.555/CAPKmin (see below)
 
 How CAP Works
 -------------
 
-The CAP adds an imaginary potential :math:`-i\gamma(x)` near the domain edges:
+The CAP adds :math:`-iW(\mathbf r)` to the Hamiltonian, with the reflection-free
+profile of Manolopoulos (J. Chem. Phys. 117, 9552 (2002)). Every axis gets an
+absorbing layer of width
 
 .. math::
-   V_{\text{CAP}}(x) = -i\gamma \left(\frac{x - x_{\text{edge}}}{L_{\text{region}}}\right)^n \quad \text{for } x > x_{\text{edge}}
 
-where :math:`x_{\text{edge}}` is ``CAPKmin``, :math:`\gamma` is ``Gamma``, and
-:math:`n=2` by default. The imaginary part causes exponential decay of outgoing
-waves, mimicking an open boundary.
+   w = \frac{c}{2\,\delta\,k_{\min}} \approx \frac{6.555}{k_{\min}}, \qquad c = 2.62206,\ \delta = 0.2,
+
+at both of its walls, :math:`k_{\min}` = ``CAPKmin``. Inside a layer, with
+:math:`u` the distance from the layer's inner edge and :math:`r = c\,u/w`,
+
+.. math::
+
+   W = E_{\min}\left(a r - b r^3 + \frac{4}{(c-r)^2} - \frac{4}{(c+r)^2}\right),
+   \qquad E_{\min} = \tfrac12 k_{\min}^2 ,
+
+which starts at zero (no step at the inner edge) and diverges at the wall. The
+contributions of the axes add, so non-cubic and asymmetric boxes are absorbed on
+every face. Electrons with momentum above :math:`k_{\min}` are absorbed with
+reflection below about 1%; slower ones are partly reflected. The layer may take
+at most 45% of each axis; the run stops otherwise.
 
 Tuning CAP Parameters
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
-- **``CAPKmin``**: Move inward to absorb more, outward to reduce reflections.
-  Start with ``0.1`` and adjust based on reflected population.
-- **``Gamma``**: Higher values absorb more strongly but can cause numerical
-  reflection at the CAP edge. Typical range: 1–10.
-- **Higher Gamma** → stronger absorption, but potential numerical reflections
-- **Lower Gamma** → less absorption, fewer reflections
+- ``CAPKmin`` sets both the lowest absorbed momentum and the layer width. Lower
+  values absorb slower electrons but need a wider layer (a larger box).
+- Keep the physically relevant region (for HHG, the electron excursion
+  :math:`E_0/\omega^2` and the returning trajectories) inside the free core,
+  which is printed at start-up.
 
-Recommendation: Set ``PhysicsOutput = population`` to monitor bound-state
-population. If population decreases too quickly, lower Gamma. If population
-oscillates (reflecting), increase CAPKmin or Gamma.
+Recommendation: set ``PhysicsOutput = population`` to monitor the bound-state
+population, and compare HHG spectra with a larger box or a smaller ``CAPKmin``
+to check that reflections are negligible.
 
 Reflecting vs Absorbing Boundaries
 ----------------------------------

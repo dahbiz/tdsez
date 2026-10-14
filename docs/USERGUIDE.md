@@ -42,7 +42,7 @@ tdsez.cpp (main entry)
 ### Physics capabilities
 
 - Position-dependent mass: `Mass(x,y,z)` with full quantum corrections
-- Laser field: Gaussian-envelope carrier or user-defined `Laser(t)` / `LaserX(t)`, `LaserY(t)`, `LaserZ(t)` expressions
+- Laser field: user-defined `LaserX(t)`, `LaserY(t)`, `LaserZ(t)` (or `Laser(t)`) expressions, envelope included
 - Complex absorbing potential (CAP) for outgoing-wave boundary conditions
 - Length-gauge (dipole) interaction: `E(t)·D`
 - Velocity-gauge currents: intra-band, inter-band, bound-continuum decomposition
@@ -113,10 +113,9 @@ Keys that accept multi-axis values follow a standard convention:
 |-----|------|---------|-------------|
 | `Dimension` | int | 1 | Spatial dimension: 1, 2, or 3 |
 | `Domain` | string | `[-10,10]` | Spatial bounds per axis. Format: comma-separated `[min,max]` pairs, or a single pair applied to all axes. E.g., `Domain = [-10,10], [-8,8]` for 2D with asymmetric y-range. |
-| `LMin` / `LMax` | real | -10.0 / 10.0 | Symmetric domain bounds (shorthand; overrides are per-axis below) |
-| `LMinX`, `LMaxX` | real | -10.0 / 10.0 | X-axis bounds (default to LMin/LMax) |
-| `LMinY`, `LMaxY` | real | -10.0 / 10.0 | Y-axis bounds (default to LMin/LMax) |
-| `LMinZ`, `LMaxZ` | real | -10.0 / 10.0 | Z-axis bounds (default to LMin/LMax) |
+| `LMinX`, `LMaxX` | real | -10.0 / 10.0 | X-axis bounds (alternative to `Domain`) |
+| `LMinY`, `LMaxY` | real | -10.0 / 10.0 | Y-axis bounds |
+| `LMinZ`, `LMaxZ` | real | -10.0 / 10.0 | Z-axis bounds |
 | `OffsetX`, `OffsetY`, `OffsetZ` | real | 0.0 | Origin offset along each axis |
 | `Nelements` | int | 100 | Number of elements (knots) per axis. Also accepts aliases: `NSplines`, `NumberOfSplines`, `ElementCount`, `NumberOfElements` |
 | `SplineDegree` | int | 3 | B-spline polynomial degree (1–14). Must satisfy p >= 1. Higher = more accuracy per DOF but more fill-in |
@@ -134,11 +133,10 @@ Keys that accept multi-axis values follow a standard convention:
 | `PotentialDerivativeY` | muParser expr | 0.0 | Analytic dV/dy |
 | `PotentialDerivativeZ` | muParser expr | 0.0 | Analytic dV/dz |
 | `Mass` | muParser expr | `"1.0"` | Position-dependent mass M(x,y,z). Use `"1.0"` for constant mass |
-| `dinvMassX`, `dinvMassY`, `dinvMassZ` | muParser expr | `"0.0"` | Gradients of 1/M. If omitted, computed via finite-difference |
 | `MassIsConstant` | bool | auto-detected | Set to `1` for constant mass. Disables quantum-correction terms in dV/dx, speeding assembly |
 | `Variables` | string | — | User-defined muParser constants. Format: `V0=1.2, w=0.5`. These become available as constants in ALL expressions (Potential, Mass, Laser, etc.) |
 
-> **Note:** All muParser expressions support `pi`, `abs()` (alias for `fabs()`), and every scalar input parameter is automatically defined as a constant (e.g., `Amplitude`, `Omega`, `TimeStep`, `LMin`, etc.).
+> **Note:** All muParser expressions support `pi`, `abs()` (alias for `fabs()`), and every scalar input parameter is automatically defined as a constant (e.g., `Ampx`, `Omegax`, `TimeStep`, `LMinX`, etc.).
 
 ### 4.3 Eigensolver (TISE)
 
@@ -148,7 +146,7 @@ Keys that accept multi-axis values follow a standard convention:
 | `TargetEigenvalue` | real | 0.0 | Target eigenvalue for SLEPc EPS solver. States near this energy are prioritized |
 | `UseDirectSolve` / `DirectSolve` | bool | false | Use direct factorization instead of iterative eigensolver |
 | `NBoundStatesSave` / `SaveBoundStates` | bool | false | Whether to save eigenstates to `static/EigenData_*.h5` |
-| `BoundStateFormat` / `StateFormat` / `SaveStateFormat` | string | `"complex"` | Save format: `"complex"` (raw SLEPc eigenvectors) or `"real"` (phase-rotated to real canonical form via `TDSEZMakeStateReal2`) |
+| `BoundStateFormat` / `StateFormat` / `SaveStateFormat` | string | `"complex"` | Save format: `"complex"` (canonical eigenvectors with a fixed phase) or `"real"` (phase-rotated to real canonical form via `TDSEZMakeStateReal2`) |
 
 ### 4.4 Time Propagation
 
@@ -160,37 +158,27 @@ Keys that accept multi-axis values follow a standard convention:
 
 ### 4.5 Laser Field
 
+The field on each polarised axis is exactly the expression you give (atomic
+units, variable `t`); the pulse envelope is written inside it. Nothing is
+multiplied in.
+
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `Laser` | muParser expr | 0.0 | Unified field E(t) for scalar (1D) form |
-| `LaserX`, `LaserY`, `LaserZ` | muParser expr | 0.0 | Per-axis field E_x(t), E_y(t), E_z(t). Overrides scalar `Laser` when set |
-| `Amplitude` | real | 0.0 | Peak field strength |
-| `Omega` / `Omegax`, `Omegay`, `Omegaz` | real | 0.056954 | Carrier frequency (ω=0.056954 ≈ 800 nm) |
-| `Phase` / `CEPx`, `CEPy`, `CEPz` | real | 0.0 | Carrier-envelope phase (radians) |
-| `PulseDuration` | real | 0.0 | Pulse FWHM duration in atomic units |
-| `PulseCenter` | real | 0.0 | Pulse center time |
-| `Ampx`, `Ampy`, `Ampz` | real | 0.0 | Per-axis peak amplitude |
-| `EnvelopeType` | string | `"custom"` | Envelope type. Set to use pre-built envelope forms or provide `Envelope` expression |
-| `Envelope` | muParser expr | — | Custom envelope F(t) expression |
-| `Polarization` / `LaserPolarization` / `DriverPolarization` | string | — | Polarization axes: `"x"`, `"y"`, `"z"`, `"xy"`, `"xz"`, `"yz"`, `"xyz"`. Determines which dipole operators are assembled and which IFunction callback is used |
+| `LaserX`, `LaserY`, `LaserZ` | muParser expr | — | Field E_x(t), E_y(t), E_z(t) on each polarised axis |
+| `Laser` | muParser expr | — | Used for every polarised axis without its own `LaserX/Y/Z` |
+| `Polarization` / `LaserPolarization` / `DriverPolarization` | string | — | Coupled axes: `x`, `y`, `z`, `xy`, `xz`, `yz`, `xyz` (`all` = `xyz`). Each needs a field |
+| `Ampx/y/z`, `Omegax/y/z`, `CEPx/y/z` | real | 0 | Named constants for use inside the expressions; not applied on their own. Further constants via `Variables = T=440, t0=220` |
 
-**Scalar envelope form** (when using `Amplitude`, `Omega`, `Phase`, `PulseDuration`, `PulseCenter`):
+Example (4-cycle sin² pulse, 800 nm):
 
 ```
-E(t) = Amplitude * sin(Omega*t + Phase) * exp(-((t - PulseCenter) / (PulseDuration/2))^2)
+Polarization = x
+Ampx   = 0.0534
+Omegax = 0.057
+LaserX = Ampx*sin(Omegax*t/8)^2*cos(Omegax*t + CEPx)
 ```
 
-**Per-axis generalization** (when `Ampx`, `Ampy`, `Ampz`, `Omegax`, etc. are set):
-
-```
-E_i(t) = Ampi * sin(Omegai*t + CEPi) * exp(-((t - PulseCenter) / (PulseDuration/2))^2)
-```
-
-**Arbitrary field** (when `Laser(t)`, `LaserX(t)`, etc. are set):
-
-```
-E_i(t) = LaserX(t)   // User-defined expression in variable t
-```
+`Envelope` and `EnvelopeType` (never applied) and the legacy scalar `Amplitude`, `Omega`, `Phase`, `PulseDuration`, `PulseCenter` have been removed; inputs using them stop with a message naming the replacement (`EnvelopeType = custom` only warns).
 
 ### 4.6 Boundary Conditions & Absorbing Potentials
 
@@ -198,8 +186,7 @@ E_i(t) = LaserX(t)   // User-defined expression in variable t
 |-----|------|---------|-------------|
 | `BoundaryType` / `Boundary` | string | `"Neumann"` | `"Neumann"` / `"Natural"` = reflecting wall (free Galerkin, default). `"Dirichlet"` / `"Wall"` = ψ=0 enforced at boundary |
 | `EnableCAP` / `AbsorbingBoundary` | bool | 0 | Enable complex absorbing potential for outgoing-wave boundary conditions |
-| `CAPKmin` / `CapStrength` | real | 0.1 | Inner edge of CAP region in atomic units |
-| `Gamma` | real | 5.0 | CAP strength parameter. Higher = stronger absorption but more numerical reflection |
+| `CAPKmin` | real | 0.1 | Lowest momentum absorbed efficiently by the Manolopoulos CAP. Sets the absorbing layer at each wall, width 6.555/CAPKmin (65.5 a.u. for 0.1); at most 45% of each axis |
 
 ### 4.7 Knot Sequences
 
@@ -212,8 +199,6 @@ E_i(t) = LaserX(t)   // User-defined expression in variable t
 | `symlogtan` | Tangent map, mildly dense near origin | `KnotAlpha` |
 | `interface` (alias `interfaces`) | C0 knots (multiplicity p) at every potential/mass breakpoint; elements uniform within each layer, element count per layer proportional to its width | Breakpoints read from `x < c` / `abs(x) < c` comparisons in `Potential` and `Mass` |
 | `hydrogenic` | Linear near origin, exponential tail. For Coulombic problems | `HydrogenicR1`/`InnerSpacing`, `HydrogenicNLin`/`InnerElements`, `HydrogenicNExp`/`OuterElements` |
-| `adaptive` | Pending: currently falls back to uniform interior knots | (`AdaptiveKappa`, `AdaptivePower` currently ignored) |
-| `adaptive_wf` | Pending: currently falls back to uniform interior knots | (`AdaptiveWFCoarseN`, `AdaptiveWFKinLambda` currently ignored) |
 
 **Per-axis knot sequences** (comma-separated): `"symexp, uniform, symtann"` means X=symexp, Y=uniform, Z=symtann. Missing axes default to the first value.
 
@@ -229,12 +214,6 @@ InnerSpacing  = 0.1, 0.1, 0.1
 InnerElements = 15, 15, 15
 OuterElements = 47, 47, 152
 ```
-
-**Adaptive tuning**:
-- `AdaptiveKappa`: Weight of the |∇V| term in the adaptive knot indicator (default 1.0).
-- `AdaptivePower`: Sharpening exponent on importance weight (default 1.0; >1 concentrates knots more tightly).
-- `AdaptiveWFCoarseN`: Coarse-grid resolution for the bootstrap solve (default 20, enough for density shape).
-- `AdaptiveWFKinLambda`: Weight of kinetic-energy-density term in adaptive_wf indicator. Default 3.0. Formula: `w(x) = |ψ|² + λ·|∇ψ|²`. λ≥3 eliminates over-clustering on multi-center potentials.
 
 ### 4.8 Output Control
 
@@ -397,7 +376,7 @@ HDF5 multi-timestep dataset storing ⟨ψ(0)\|ψ(t)⟩. Only written at `OutputS
 - `units` — "energy: Hartree (a.u.); length: Bohr (a.u.); mass: electron mass"
 - `Dimension`, `SplineDegree`, `Nelements` — Grid parameters
 - `LMinX`, `LMaxX`, `LMinY`, `LMaxY`, `LMinZ`, `LMaxZ` — Domain bounds
-- `Hbar`, `Charge` — Physical constants
+- `Charge` — Charge factor of the reported dipole, current and acceleration
 - `TargetEigenvalue`, `NBoundStatesSave`, `NBoundStates` — Solver parameters
 - `state_format` — "complex" or "real"
 - `eig_residual` — SLEPc relative error estimate per eigenvalue
@@ -505,7 +484,7 @@ Accumulates in `manager.BerryPhase`.
 - Set `SplineDegree` between 1 and 14. Default is 3.
 
 **"Domain bound is not finite"**
-- Check `LMin*`/`LMax*` values. Must be finite numbers.
+- Check the `Domain` (or `LMinX`/`LMaxX`, ...) values. Must be finite numbers.
 
 **"Initial state index >= number of converged eigenstates"**
 - Increase `NBoundStates` to compute more eigenstates, or use a lower index in `InitialState`.
@@ -546,7 +525,6 @@ Accumulates in `manager.BerryPhase`.
 ## 11. Performance Notes
 
 - **Constant mass is much faster**: Setting `MassIsConstant = 1` disables all finite-difference gradient computations of 1/m, which are the dominant cost in the variable-mass assembly path.
-- **OutputStrideTS > 0 for streaming**: Without a non-zero stride, no diagnostic data is written. The ring buffer limits RAM to ~5000 steps worth of data.
+- **Output buffering**: every step is recorded; rows are appended to the HDF5 file at most every 2 s (at multiples of `OutputStrideTS`), every 5000 steps, when the buffer is full and at the end, so RAM stays bounded.
 - **EnableCAP for large domains**: Without CAP, waves reflect off domain boundaries. With CAP=1, outgoing waves are absorbed, allowing smaller domains.
-- **adaptive_wf for bound states**: For problems with localized bound states, `KnotSequence = adaptive_wf` gives better accuracy per DOF than uniform grids. Requires `NBoundStatesSave = 1` to bootstrap.
 - **LTO**: Link-time optimization is enabled by default in Release builds. Disabling with `-DENABLE_LTO=OFF` speeds compilation but may reduce performance by 5-15%.

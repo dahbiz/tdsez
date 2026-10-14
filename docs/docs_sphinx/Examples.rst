@@ -90,7 +90,7 @@ A hydrogen-like atom driven by a Gaussian-envelope laser pulse at 800 nm:
 **Laser parameters:**
 
 - Wavelength: :math:`\lambda = 800\,\text{nm}` → :math:`\omega = 0.056954` a.u.
-- Intensity: :math:`I \approx 2.2 \times 10^{13}\,\text{W/cm}^2` (``Amplitude = 0.04``)
+- Intensity: :math:`I \approx 5.6 \times 10^{13}\,\text{W/cm}^2` (peak field ``Ampx = 0.04``)
 - Pulse duration (FWHM): 6 fs = 247 a.u.
 - CEP (carrier-envelope phase): 0
 
@@ -99,11 +99,11 @@ A hydrogen-like atom driven by a Gaussian-envelope laser pulse at 800 nm:
 - Ground-state population :math:`P_0(t)` decays as the atom ionizes
 - Autocorrelation :math:`|A(t)|^2` drops from 1 to near 0 as electron escapes
 - Dipole spectrum shows ionization continuum
-- CAP at ``CAPKmin = 15.0`` absorbs electrons beyond :math:`|x| = 15`
+- CAP layer of width 6.555/CAPKmin at each wall absorbs the outgoing electrons
 
 **Key parameters:**
 
-- ``EnableCAP = 1``, ``CAPKmin = 15.0``, ``Gamma = 10.0`` — absorbing boundary
+- ``EnableCAP = 1``, ``CAPKmin = 0.3`` — absorbing layer of width 21.9 a.u. at each wall
 - ``PhysicsOutput = all`` — all diagnostics enabled
 - ``TimeStep = 0.02``, ``FinalTime = 300.0`` — propagate for ~7 fs
 
@@ -172,7 +172,7 @@ any anharmonicity in the potential causes population exchange.
 
 - ``InitialState = "sup: 0.6*0 + 0.8*1"`` — superposition of n=0 and n=1
 - ``NormalizeInitialState = 1`` — normalize after assembly
-- ``Amplitude = 0.0`` — no driving field, free evolution
+- ``LaserX = 0`` — no driving field, free evolution
 - ``OutputStrideWFS = 20`` — save wavefunction snapshots
 
 Run: ``./tdsez.x -inp inps/superposition_1d.prm``

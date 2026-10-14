@@ -114,7 +114,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -199,10 +198,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -283,7 +280,7 @@ variables and functions are always available:</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">abs(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">sin(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">cos(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">tan(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">exp(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">log(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">sqrt(x)</span></code>, <code class="docutils literal notranslate"><span class="pre">pow(x,y)</span></code>, <code class="docutils literal notranslate"><span class="pre">min(x,y)</span></code>, <code class="docutils literal notranslate"><span class="pre">max(x,y)</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fabs(x)</span></code> is automatically converted to <code class="docutils literal notranslate"><span class="pre">abs(x)</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pi</span></code> — mathematical constant <span class="math notranslate nohighlight">\(\pi = 3.14159265...\)</span></p></li>
-<li><p>Every scalar input parameter (e.g. <code class="docutils literal notranslate"><span class="pre">Amplitude</span></code>, <code class="docutils literal notranslate"><span class="pre">Omega</span></code>, <code class="docutils literal notranslate"><span class="pre">LMin</span></code>, <code class="docutils literal notranslate"><span class="pre">LMax</span></code>)
+<li><p>Every scalar input parameter (e.g. <code class="docutils literal notranslate"><span class="pre">Ampx</span></code>, <code class="docutils literal notranslate"><span class="pre">Omegax</span></code>, <code class="docutils literal notranslate"><span class="pre">LMinX</span></code>, <code class="docutils literal notranslate"><span class="pre">TimeStep</span></code>)
 is available as a muParser constant so you can reference it by name inside any
 expression. For example, <code class="docutils literal notranslate"><span class="pre">Potential</span> <span class="pre">=</span> <span class="pre">V0*exp(-w*x^2)</span></code> with
 <code class="docutils literal notranslate"><span class="pre">Variables</span> <span class="pre">=</span> <span class="pre">V0=1.2,</span> <span class="pre">w=0.5</span></code> works without any extra definition.</p></li>
@@ -358,15 +355,10 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <td><p>1 (true)</p></td>
 <td><p>1 = print solver progress to stdout. 0 = minimal output.</p></td>
 </tr>
-<tr class="row-even"><td><p>Hbar / Planck</p></td>
+<tr class="row-even"><td><p>Charge / ParticleCharge</p></td>
 <td><p>real</p></td>
 <td><p>1.0</p></td>
-<td><p>Reduced Planck constant. Aliases: Hbar, Planck. muParser constant.</p></td>
-</tr>
-<tr class="row-odd"><td><p>Charge / ParticleCharge</p></td>
-<td><p>real</p></td>
-<td><p>1.0</p></td>
-<td><p>Particle charge. Aliases: Charge, ParticleCharge. muParser constant.</p></td>
+<td><p>Scale factor q of the reported dipole, current and acceleration (q⟨r⟩, q⟨v⟩, q d⟨v⟩/dt); the propagated coupling is always +E·r (electron convention, see Physics Conventions). Aliases: Charge, ParticleCharge. muParser constant.</p></td>
 </tr>
 </tbody>
 </table>
@@ -394,17 +386,12 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <td><p>(none)</p></td>
 <td><p>Compact domain spec. Two forms: “LMin,LMax” for uniform bounds, or “[LMin,LMax],[LMinY,LMaxY],[LMinZ,LMaxZ]” for per-axis bounds.</p></td>
 </tr>
-<tr class="row-odd"><td><p>LMin / LMax</p></td>
+<tr class="row-odd"><td><p>LMinX, LMaxX / LMinY, LMaxY / LMinZ, LMaxZ</p></td>
 <td><p>real</p></td>
 <td><p>-10, 10</p></td>
-<td><p>Default domain bounds (all axes). See Domain for per-axis spec.</p></td>
+<td><p>Per-axis domain bounds (alternative to Domain).</p></td>
 </tr>
-<tr class="row-even"><td><p>LMinX, LMaxX / LMinY, LMaxY / LMinZ, LMaxZ</p></td>
-<td><p>real</p></td>
-<td><p>-10, 10</p></td>
-<td><p>Per-axis domain bounds. Override LMin/LMax.</p></td>
-</tr>
-<tr class="row-odd"><td><p>OffsetX, OffsetY, OffsetZ</p></td>
+<tr class="row-even"><td><p>OffsetX, OffsetY, OffsetZ</p></td>
 <td><p>real</p></td>
 <td><p>0.0</p></td>
 <td><p>Spatial shift of grid (basis function centers only, not physical domain).</p></td>
@@ -450,11 +437,6 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <td><p>false</p></td>
 <td><p>1 = mass is scalar constant 1.0 (skip spatial eval). Use when Mass = “1.0” to avoid unnecessary function calls.</p></td>
 </tr>
-<tr class="row-even"><td><p>dinvMassX / dinvMassY / dinvMassZ</p></td>
-<td><p>string</p></td>
-<td><p>“0.0”</p></td>
-<td><p>d(1/m)/dx, d(1/m)/dy, d(1/m)/dz. Required for BenDaniel-Duke kinetic operator when mass varies. Use “0.0” for auto-diff.</p></td>
-</tr>
 </tbody>
 </table>
 </section>
@@ -479,67 +461,27 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <tr class="row-even"><td><p>Laser / Driver</p></td>
 <td><p>string</p></td>
 <td><p>(none)</p></td>
-<td><p>Single-field expression E(t). muParser expression in t. All time-dependent scalars are available as constants.</p></td>
+<td><p>Field E(t) for every polarised axis without its own LaserX/Y/Z. muParser expression in t, envelope included; all input scalars are available as constants.</p></td>
 </tr>
 <tr class="row-odd"><td><p>LaserX / DriverX / LaserY / DriverY / LaserZ / DriverZ</p></td>
 <td><p>string</p></td>
 <td><p>(none)</p></td>
-<td><p>Per-component laser expressions Ex(t), Ey(t), Ez(t). If any set, the others default to empty string.</p></td>
+<td><p>Field on each polarised axis, Ex(t), Ey(t), Ez(t), envelope included. Every axis in Polarization needs one (or Laser).</p></td>
 </tr>
 <tr class="row-even"><td><p>Polarization / LaserPolarization / DriverPolarization</p></td>
 <td><p>string</p></td>
 <td><p>(none)</p></td>
-<td><p>Field polarization type. Accepted values: “x”=linear-x, “y”=linear-y, “z”=linear-z, “xy”=two-color linear, “xz”, “yz”, “xyz”=three-color linear, “right”/”left”=circular polarization (right/left).</p></td>
+<td><p>Field polarization type. Accepted values: “x”=linear-x, “y”=linear-y, “z”=linear-z, “xy”, “xz”, “yz”, “xyz” (also “all”) = several coupled axes, each with its own field (elliptical or circular fields are written through LaserX/Y).</p></td>
 </tr>
-<tr class="row-odd"><td><p>Amplitude</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Scalar field amplitude (legacy single-field form). muParser constant.</p></td>
-</tr>
-<tr class="row-even"><td><p>Omega</p></td>
-<td><p>real</p></td>
-<td><p>0.056954</p></td>
-<td><p>Carrier frequency (a.u.). 0.056954 a.u. = 800 nm. muParser constant.</p></td>
-</tr>
-<tr class="row-odd"><td><p>Phase</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Carrier-envelope phase (radians). muParser constant.</p></td>
-</tr>
-<tr class="row-even"><td><p>PulseDuration</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Envelope pulse duration (atomic units).</p></td>
-</tr>
-<tr class="row-odd"><td><p>PulseCenter</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Envelope pulse center time (atomic units).</p></td>
-</tr>
-<tr class="row-even"><td><p>EnvelopeType</p></td>
-<td><p>string</p></td>
-<td><p>“custom”</p></td>
-<td><p>Envelope type. Accepted values: “custom”, “gaussian”, “sech”, “top-hat”.</p></td>
-</tr>
-<tr class="row-odd"><td><p>Envelope</p></td>
-<td><p>string</p></td>
-<td><p>(none)</p></td>
-<td><p>User-defined envelope F(t) expression in t. Required when EnvelopeType = custom. E.g. sin(pi*t/PulseDuration)^2 or exp(-4*log(2)*(t-PulseCenter)^2/PulseDuration^2).</p></td>
-</tr>
-<tr class="row-even"><td><p>Ampx, Ampy, Ampz</p></td>
+<tr class="row-odd"><td><p>Ampx, Ampy, Ampz</p></td>
 <td><p>real</p></td>
 <td><p>0.0</p></td>
 <td><p>Per-component field amplitudes.</p></td>
 </tr>
-<tr class="row-odd"><td><p>CEPx, CEPy, CEPz</p></td>
+<tr class="row-even"><td><p>CEPx, CEPy, CEPz</p></td>
 <td><p>real</p></td>
 <td><p>0.0</p></td>
 <td><p>Per-component carrier-envelope phases (radians).</p></td>
-</tr>
-<tr class="row-even"><td><p>Omegax, Omegay, Omegaz</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Per-component carrier frequencies (a.u.).</p></td>
 </tr>
 <tr class="row-odd"><td><p>DriverAmplitude / LaserAmplitude</p></td>
 <td><p>string</p></td>
@@ -771,15 +713,10 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <td><p>0 (false)</p></td>
 <td><p>1 = enable complex absorbing potential for outgoing-wave boundary conditions.</p></td>
 </tr>
-<tr class="row-odd"><td><p>CAPKmin / CapStrength</p></td>
+<tr class="row-odd"><td><p>CAPKmin</p></td>
 <td><p>real</p></td>
 <td><p>0.1</p></td>
-<td><p>Inner edge of CAP region (a.u.). Determines where absorption begins. Higher = more absorbing.</p></td>
-</tr>
-<tr class="row-even"><td><p>Gamma</p></td>
-<td><p>real</p></td>
-<td><p>5.0</p></td>
-<td><p>CAP strength parameter gamma. Controls absorption intensity. Higher = stronger absorption but more numerical reflection at CAP edge.</p></td>
+<td><p>Lowest momentum (a.u.) absorbed efficiently by the Manolopoulos CAP. Sets the layer width at each wall, w = 6.555/CAPKmin (65.5 a.u. for 0.1); slower electrons are partly reflected. w must be at most 45% of each axis.</p></td>
 </tr>
 </tbody>
 </table>
@@ -826,26 +763,6 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <td><p>real[3]</p></td>
 <td><p>0.0,0,0</p></td>
 <td><p>Size (a.u.) of the linear near-origin elements (hydrogenic); r_cross = HydrogenicNLin*HydrogenicR1 must be &lt; Lmax. Per-axis. Aliases: InnerSpacing, HydrogenicInnerSpacing.</p></td>
-</tr>
-<tr class="row-odd"><td><p>AdaptiveKappa</p></td>
-<td><p>real</p></td>
-<td><p>1.0</p></td>
-<td><p>Reserved for adaptive knots; currently ignored while that mode uses uniform knots.</p></td>
-</tr>
-<tr class="row-even"><td><p>AdaptivePower</p></td>
-<td><p>real</p></td>
-<td><p>1.0</p></td>
-<td><p>Reserved for adaptive knots; currently ignored.</p></td>
-</tr>
-<tr class="row-odd"><td><p>AdaptiveWFCoarseN</p></td>
-<td><p>int</p></td>
-<td><p>20</p></td>
-<td><p>Reserved for the adaptive_wf coarse solve; currently ignored.</p></td>
-</tr>
-<tr class="row-even"><td><p>AdaptiveWFKinLambda</p></td>
-<td><p>real</p></td>
-<td><p>3.0</p></td>
-<td><p>Reserved for adaptive_wf density weighting; currently ignored.</p></td>
 </tr>
 </tbody>
 </table>

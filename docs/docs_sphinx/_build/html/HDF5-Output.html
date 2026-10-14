@@ -114,7 +114,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -199,10 +198,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -271,66 +268,26 @@
 eigenstates.</p>
 <section id="ring-buffer">
 <h2>Ring Buffer<a class="headerlink" href="#ring-buffer" title="Link to this heading"></a></h2>
-<p>Output is buffered in a ring buffer of <strong>5000 steps</strong>. Flushed every
-<code class="docutils literal notranslate"><span class="pre">OutputStrideTS</span></code> steps or every 5000 steps, whichever comes first.</p>
+<p>Rows are buffered in memory and appended to the file at most every 2 s of wall
+time (at multiples of <code class="docutils literal notranslate"><span class="pre">OutputStrideTS</span></code>), every 5000 steps, whenever the buffer
+is full, and at the end of the run. Every step is recorded; the buffering only
+affects when rows reach the file.</p>
 </section>
 <section id="time-evolution-data">
 <h2>Time Evolution Data<a class="headerlink" href="#time-evolution-data" title="Link to this heading"></a></h2>
 <p>File: <code class="docutils literal notranslate"><span class="pre">td/TimeEvolutionData_*.h5</span></code></p>
 <section id="dipole-table">
 <h3>Dipole Table<a class="headerlink" href="#dipole-table" title="Link to this heading"></a></h3>
-<table class="docutils align-default">
-<colgroup>
-<col />
-<col />
-<col />
-<col />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Col</p></th>
-<th class="head"><p>1D / 2D</p></th>
-<th class="head"><p>3D</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>t</p></td>
-<td><p>t</p></td>
-<td><p>Time (a.u.)</p></td>
-</tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>Ex(t)</p></td>
-<td><p>Ex(t)</p></td>
-<td><p>Electric field x-component</p></td>
-</tr>
-<tr class="row-even"><td><p>2</p></td>
-<td><p>Ey(t)</p></td>
-<td><p>Ey(t)</p></td>
-<td><p>Electric field y-component</p></td>
-</tr>
-<tr class="row-odd"><td><p>3</p></td>
-<td><p>–</p></td>
-<td><p>Ez(t)</p></td>
-<td><p>Electric field z-component</p></td>
-</tr>
-<tr class="row-even"><td><p>4</p></td>
-<td><p>Dx</p></td>
-<td><p>Dx</p></td>
-<td><p>Dipole moment x = <span class="math notranslate nohighlight">\(q \langle \psi | x | \psi \rangle\)</span></p></td>
-</tr>
-<tr class="row-odd"><td><p>5</p></td>
-<td><p>Dy</p></td>
-<td><p>Dy</p></td>
-<td><p>Dipole moment y</p></td>
-</tr>
-<tr class="row-even"><td><p>6</p></td>
-<td><p>Ax</p></td>
-<td><p>Dz / Az</p></td>
-<td><p>Acceleration x / Dipole z / Acceleration z</p></td>
-</tr>
-</tbody>
-</table>
+<p>Dataset <code class="docutils literal notranslate"><span class="pre">dipoles</span></code>, one row per step. With <span class="math notranslate nohighlight">\(q\)</span> = <code class="docutils literal notranslate"><span class="pre">Charge</span></code>:</p>
+<ul class="simple">
+<li><p><strong>1D</strong> (4 columns): <code class="docutils literal notranslate"><span class="pre">t,</span> <span class="pre">Ex,</span> <span class="pre">Dx,</span> <span class="pre">Ax</span></code></p></li>
+<li><p><strong>2D</strong> (7 columns): <code class="docutils literal notranslate"><span class="pre">t,</span> <span class="pre">Ex,</span> <span class="pre">Ey,</span> <span class="pre">Dx,</span> <span class="pre">Dy,</span> <span class="pre">Ax,</span> <span class="pre">Ay</span></code></p></li>
+<li><p><strong>3D</strong> (10 columns): <code class="docutils literal notranslate"><span class="pre">t,</span> <span class="pre">Ex,</span> <span class="pre">Ey,</span> <span class="pre">Ez,</span> <span class="pre">Dx,</span> <span class="pre">Dy,</span> <span class="pre">Dz,</span> <span class="pre">Ax,</span> <span class="pre">Ay,</span> <span class="pre">Az</span></code></p></li>
+</ul>
+<p>where <code class="docutils literal notranslate"><span class="pre">E*</span></code> is the field at time <code class="docutils literal notranslate"><span class="pre">t</span></code>, <span class="math notranslate nohighlight">\(D_a = q\langle x_a\rangle\)</span> the
+dipole and <span class="math notranslate nohighlight">\(A_a = q\, d\langle v_a\rangle/dt\)</span> the dipole acceleration
+(<span class="math notranslate nohighlight">\(= \ddot D_a\)</span>; see <a class="reference internal" href="Observables.html"><span class="doc">Observables</span></a>). Only the axes contained in
+<code class="docutils literal notranslate"><span class="pre">Polarization</span></code> are computed; the columns of the other axes are zero.</p>
 </section>
 <section id="energy-table">
 <h3>Energy Table<a class="headerlink" href="#energy-table" title="Link to this heading"></a></h3>
@@ -355,7 +312,7 @@ eigenstates.</p>
 <td><p>Pot – potential energy <span class="math notranslate nohighlight">\(\langle \psi | V | \psi \rangle\)</span></p></td>
 </tr>
 <tr class="row-odd"><td><p>3</p></td>
-<td><p>Int – interaction energy <span class="math notranslate nohighlight">\(E(t) \cdot d(t)\)</span></p></td>
+<td><p>Int – interaction energy <span class="math notranslate nohighlight">\(\mathbf E(t) \cdot \langle \mathbf r \rangle\)</span>, the expectation of the coupling term</p></td>
 </tr>
 <tr class="row-even"><td><p>4</p></td>
 <td><p>Tot – total energy <span class="math notranslate nohighlight">\(E_{\text{total}} = \text{Kin} + \text{Pot} + \text{Int}\)</span></p></td>
@@ -371,40 +328,16 @@ eigenstates.</p>
 </section>
 <section id="current-table">
 <h3>Current Table<a class="headerlink" href="#current-table" title="Link to this heading"></a></h3>
-<table class="docutils align-default">
-<colgroup>
-<col />
-<col />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Col</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>t</p></td>
-</tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>Lz – angular momentum z-expectation <span class="math notranslate nohighlight">\(\langle L_z \rangle\)</span></p></td>
-</tr>
-<tr class="row-even"><td><p>2</p></td>
-<td><p>dGamma – Berry phase increment per step</p></td>
-</tr>
-<tr class="row-odd"><td><p>3–5</p></td>
-<td><p>Jx_tot, Jy_tot, Jz_tot – total currents</p></td>
-</tr>
-<tr class="row-even"><td><p>6–8</p></td>
-<td><p>J_intra – intra-band currents</p></td>
-</tr>
-<tr class="row-odd"><td><p>9–11</p></td>
-<td><p>J_inter – inter-band currents</p></td>
-</tr>
-<tr class="row-even"><td><p>12–14</p></td>
-<td><p>J_bc – bound-continuum currents (remainder)</p></td>
-</tr>
-</tbody>
-</table>
+<p>Dataset <code class="docutils literal notranslate"><span class="pre">currents</span></code>. Columns 0–2 are <code class="docutils literal notranslate"><span class="pre">t</span></code>, <span class="math notranslate nohighlight">\(\langle L_z\rangle\)</span> (2D/3D;
+0 in 1D) and the Berry-phase increment <span class="math notranslate nohighlight">\(d\Gamma\)</span>. The remaining columns are
+the current <span class="math notranslate nohighlight">\(J_a = q\langle v_a\rangle\)</span> (<span class="math notranslate nohighlight">\(= \dot D_a\)</span>) and its
+decomposition into intra-band, inter-band and bound–continuum parts:</p>
+<ul class="simple">
+<li><p><strong>1D and 2D</strong> (11 columns): <code class="docutils literal notranslate"><span class="pre">t,</span> <span class="pre">Lz,</span> <span class="pre">dGamma,</span> <span class="pre">Jx,</span> <span class="pre">Jy,</span> <span class="pre">Jx_intra,</span> <span class="pre">Jy_intra,</span>
+<span class="pre">Jx_inter,</span> <span class="pre">Jy_inter,</span> <span class="pre">Jx_bc,</span> <span class="pre">Jy_bc</span></code> (<code class="docutils literal notranslate"><span class="pre">Jy*</span></code> are 0 in 1D)</p></li>
+<li><p><strong>3D</strong> (15 columns): <code class="docutils literal notranslate"><span class="pre">t,</span> <span class="pre">Lz,</span> <span class="pre">dGamma,</span> <span class="pre">Jx,</span> <span class="pre">Jy,</span> <span class="pre">Jz,</span> <span class="pre">Jx_intra,</span> <span class="pre">Jy_intra,</span>
+<span class="pre">Jz_intra,</span> <span class="pre">Jx_inter,</span> <span class="pre">Jy_inter,</span> <span class="pre">Jz_inter,</span> <span class="pre">Jx_bc,</span> <span class="pre">Jy_bc,</span> <span class="pre">Jz_bc</span></code></p></li>
+</ul>
 </section>
 <section id="population-table">
 <h3>Population Table<a class="headerlink" href="#population-table" title="Link to this heading"></a></h3>

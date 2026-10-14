@@ -114,7 +114,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -199,10 +198,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -287,9 +284,11 @@ gives the absorption spectrum.</p>
 of the bare Hamiltonian expectation and the interaction energy:</p>
 <div class="math notranslate nohighlight">
 \begin{equation}
-E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + E(t)\, d_x(t)
+E_{\text{total}}(t) = \langle \psi(t) | H_0 | \psi(t) \rangle + \mathbf E(t)\cdot\langle \mathbf r \rangle
 \end{equation}</div><p>where <span class="math notranslate nohighlight">\(H_0 = K + V\)</span> is the field-free Hamiltonian, <span class="math notranslate nohighlight">\(E(t)\)</span> is the
-laser electric field amplitude, and <span class="math notranslate nohighlight">\(d_x(t)\)</span> is the dipole moment.</p>
+laser electric field, and the last term is the expectation value of the
+coupling term <span class="math notranslate nohighlight">\(\mathbf E\cdot\mathbf r\)</span> of the propagated Hamiltonian
+(see <a class="reference internal" href="Physics-Conventions.html"><span class="doc">Physics Conventions</span></a>; it does not contain <code class="docutils literal notranslate"><span class="pre">Charge</span></code>).</p>
 <p>Additionally, kinetic and potential energy are stored separately:</p>
 <div class="math notranslate nohighlight">
 \begin{equation}
@@ -325,14 +324,32 @@ diagnosing mass-profile effects.</p>
 </section>
 <section id="acceleration">
 <h2>Acceleration<a class="headerlink" href="#acceleration" title="Link to this heading"></a></h2>
-<p>Acceleration is computed from the Ehrenfest theorem:</p>
+<p>The dipole acceleration <span class="math notranslate nohighlight">\(A_a = q\,d\langle v_a\rangle/dt\)</span> (column <code class="docutils literal notranslate"><span class="pre">A*</span></code>
+of the dipole table, equal to <span class="math notranslate nohighlight">\(\ddot D_a\)</span>) is computed in one of two
+equivalent forms, chosen by <code class="docutils literal notranslate"><span class="pre">AccelerationMethod</span></code>:</p>
+<ul>
+<li><p><strong>operator</strong> (Ehrenfest force):</p>
 <div class="math notranslate nohighlight">
 \begin{equation}
-a_x(t) = \langle \psi(t) | -\nabla_x V | \psi(t) \rangle - \frac{q\,E(t)}{m_{\text{avg}}}
-\end{equation}</div><p>The first term <span class="math notranslate nohighlight">\(\langle \psi | -\nabla V | \psi \rangle\)</span> is the force from
-the potential gradient. The second term subtracts the external field contribution
-scaled by the average inverse mass. This decomposition separates internal forces
-from the driving field.</p>
+A_a(t) = q\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle + \text{(mass-gradient terms)}
+         - E_a(t)\,\Big\langle \frac{1}{m}\Big\rangle\right]
+\end{equation}</div><p>for the propagated Hamiltonian <span class="math notranslate nohighlight">\(H + \mathbf E\cdot\mathbf r\)</span>. It needs a
+smooth potential and mass and no reflecting wall reached by the wave packet.</p>
+</li>
+<li><p><strong>discrete</strong> (equation of motion of the Galerkin system
+<span class="math notranslate nohighlight">\(iM\dot c = (H + \mathbf E\cdot\mathbf D)c\)</span>):
+<span class="math notranslate nohighlight">\(A_a = -2q\,\mathrm{Im}\,(w^\dagger V_a \psi)\)</span>, <span class="math notranslate nohighlight">\(w = M^{-1}(H+\mathbf E\cdot\mathbf D)\psi\)</span>.
+Exact for the discrete dynamics, including sharp interfaces and walls; one
+solve with <span class="math notranslate nohighlight">\(M\)</span> per output step.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">auto</span></code> uses the discrete form when the mass depends on position
+(<code class="docutils literal notranslate"><span class="pre">MassIsConstant</span> <span class="pre">=</span> <span class="pre">0</span></code>), the operator form otherwise. Both agree to rounding
+for smooth problems; they differ once the wave packet reaches a reflecting
+wall, where only the discrete form contains the wall force. Use an absorbing
+potential for HHG.</p>
+<p>The current <span class="math notranslate nohighlight">\(J_a = q\langle v_a\rangle\)</span> (current table) is
+<span class="math notranslate nohighlight">\(\dot D_a\)</span>, so the HHG spectrum may be computed from
+<span class="math notranslate nohighlight">\(|\tilde A(\omega)|^2 = \omega^2|\tilde J(\omega)|^2 = \omega^4|\tilde D(\omega)|^2\)</span>.</p>
 </section>
 <section id="current-decomposition">
 <h2>Current Decomposition<a class="headerlink" href="#current-decomposition" title="Link to this heading"></a></h2>

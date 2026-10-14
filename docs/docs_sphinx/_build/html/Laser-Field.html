@@ -17,6 +17,9 @@
       <script src="_static/documentation_options.js?v=01f34227"></script>
       <script src="_static/doctools.js?v=fd6eb6e6"></script>
       <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}})</script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "displayMath": [["$$", "$$"], ["\\[", "\\]"]], "processEscapes": true}, "options": {"skipHtmlTags": ["script", "noscript", "style", "textarea", "pre"]}}</script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="_static/custom.js?v=3ae78d1c"></script>
     
     <link rel="index" title="Index" href="genindex.html" />
@@ -111,7 +114,6 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -196,10 +198,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -292,13 +292,27 @@
 </section>
 <section id="field-expression">
 <h2>Field Expression<a class="headerlink" href="#field-expression" title="Link to this heading"></a></h2>
-<p>The field E(t) is specified via muParser expressions. Two modes:</p>
+<p>The field is exactly the muParser expression you give, as a function of <code class="docutils literal notranslate"><span class="pre">t</span></code>
+(atomic units); TDSE-Z multiplies nothing into it. Write the pulse envelope
+inside the expression.</p>
 <ul class="simple">
-<li><p><strong>Scalar form</strong>: <code class="docutils literal notranslate"><span class="pre">Laser</span> <span class="pre">=</span> <span class="pre">Amplitude*cos(Omega*t)*sin(pi*t/PulseDuration)^2</span></code>
-– single envelope for all axes</p></li>
-<li><p><strong>Per-axis form</strong>: <code class="docutils literal notranslate"><span class="pre">LaserX</span> <span class="pre">=</span> <span class="pre">...</span></code>, <code class="docutils literal notranslate"><span class="pre">LaserY</span> <span class="pre">=</span> <span class="pre">...</span></code>, <code class="docutils literal notranslate"><span class="pre">LaserZ</span> <span class="pre">=</span> <span class="pre">...</span></code>
-– overrides scalar form when set</p></li>
+<li><p><strong>Per-axis form</strong>: <code class="docutils literal notranslate"><span class="pre">LaserX</span> <span class="pre">=</span> <span class="pre">...</span></code>, <code class="docutils literal notranslate"><span class="pre">LaserY</span> <span class="pre">=</span> <span class="pre">...</span></code>, <code class="docutils literal notranslate"><span class="pre">LaserZ</span> <span class="pre">=</span> <span class="pre">...</span></code> — the field
+on each polarised axis.</p></li>
+<li><p><strong>Scalar form</strong>: <code class="docutils literal notranslate"><span class="pre">Laser</span> <span class="pre">=</span> <span class="pre">...</span></code> — used for every polarised axis that has no
+<code class="docutils literal notranslate"><span class="pre">LaserX/Y/Z</span></code> of its own (with <code class="docutils literal notranslate"><span class="pre">Polarization</span> <span class="pre">=</span> <span class="pre">xy</span></code> it drives x and y with the
+same field).</p></li>
 </ul>
+<p>Every axis listed in <code class="docutils literal notranslate"><span class="pre">Polarization</span></code> must have a field (per-axis or <code class="docutils literal notranslate"><span class="pre">Laser</span></code>);
+the input is rejected otherwise.</p>
+<p>Example: a 4-cycle <span class="math notranslate nohighlight">\(\sin^2\)</span> pulse at 800 nm,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Polarization</span> <span class="o">=</span> <span class="n">x</span>
+<span class="n">Ampx</span>   <span class="o">=</span> <span class="mf">0.0534</span>
+<span class="n">Omegax</span> <span class="o">=</span> <span class="mf">0.057</span>
+<span class="n">LaserX</span> <span class="o">=</span> <span class="n">Ampx</span><span class="o">*</span><span class="n">sin</span><span class="p">(</span><span class="n">Omegax</span><span class="o">*</span><span class="n">t</span><span class="o">/</span><span class="mi">8</span><span class="p">)</span><span class="o">^</span><span class="mi">2</span><span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="n">Omegax</span><span class="o">*</span><span class="n">t</span> <span class="o">+</span> <span class="n">CEPx</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The parameters below are not used by the code directly; they are named
+constants available inside all expressions:</p>
 <table class="docutils align-default">
 <colgroup>
 <col />
@@ -310,82 +324,29 @@
 <tr class="row-odd"><th class="head"><p>Key</p></th>
 <th class="head"><p>Type</p></th>
 <th class="head"><p>Default</p></th>
-<th class="head"><p>Description</p></th>
+<th class="head"><p>Meaning (by convention)</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Laser</p></td>
-<td><p>muParser</p></td>
-<td><p>0.0</p></td>
-<td><p>Unified field E(t) for scalar form</p></td>
-</tr>
-<tr class="row-odd"><td><p>LaserX / LaserY / LaserZ / DriverX / DriverY / DriverZ</p></td>
-<td><p>muParser</p></td>
-<td><p>0.0</p></td>
-<td><p>Per-axis field E_i(t). Overrides scalar Laser when set</p></td>
-</tr>
-<tr class="row-even"><td><p>Amplitude</p></td>
+<tr class="row-even"><td><p>Ampx/y/z, CEPx/y/z, Omegax/y/z</p></td>
 <td><p>real</p></td>
 <td><p>0.0</p></td>
-<td><p>Peak field strength (scalar)</p></td>
+<td><p>Per-axis amplitude, CEP, frequency (<code class="docutils literal notranslate"><span class="pre">Omegax</span></code> defaults to 0: set it)</p></td>
 </tr>
-<tr class="row-odd"><td><p>Omega / Omegax, Omegay, Omegaz</p></td>
-<td><p>real</p></td>
-<td><p>0.056954</p></td>
-<td><p>Carrier frequency (omega=0.056954 approx 800 nm)</p></td>
-</tr>
-<tr class="row-even"><td><p>Phase / CEPx, CEPy, CEPz</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Carrier-envelope phase (radians)</p></td>
-</tr>
-<tr class="row-odd"><td><p>Ampx, Ampy, Ampz</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Per-axis peak amplitude</p></td>
-</tr>
-<tr class="row-even"><td><p>PulseDuration</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Pulse FWHM duration in a.u.</p></td>
-</tr>
-<tr class="row-odd"><td><p>PulseCenter</p></td>
-<td><p>real</p></td>
-<td><p>0.0</p></td>
-<td><p>Pulse center time</p></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="envelope">
-<h2>Envelope<a class="headerlink" href="#envelope" title="Link to this heading"></a></h2>
-<table class="docutils align-default">
-<colgroup>
-<col />
-<col />
-<col />
-<col />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Key</p></th>
-<th class="head"><p>Type</p></th>
-<th class="head"><p>Default</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>EnvelopeType</p></td>
-<td><p>string</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">custom</span></code></p></td>
-<td><p>Pre-built envelope form or custom expression</p></td>
-</tr>
-<tr class="row-odd"><td><p>Envelope</p></td>
-<td><p>muParser</p></td>
+<tr class="row-odd"><td><p>LaserAmplitude, LaserFrequency, CarrierEnvelopePhase</p></td>
+<td><p>list</p></td>
 <td><p>–</p></td>
-<td><p>Custom envelope F(t) expression</p></td>
+<td><p>Comma-separated per-axis values for Ampx/y/z, Omegax/y/z, CEPx/y/z</p></td>
 </tr>
 </tbody>
 </table>
+<p>Further constants (pulse length, centre, …) are defined with
+<code class="docutils literal notranslate"><span class="pre">Variables</span> <span class="pre">=</span> <span class="pre">T=440,</span> <span class="pre">t0=220</span></code>.</p>
+<p>Removed keys: <code class="docutils literal notranslate"><span class="pre">Envelope</span></code> and <code class="docutils literal notranslate"><span class="pre">EnvelopeType</span></code> (never applied), and the legacy
+scalar <code class="docutils literal notranslate"><span class="pre">Amplitude</span></code>, <code class="docutils literal notranslate"><span class="pre">Omega</span></code>, <code class="docutils literal notranslate"><span class="pre">Phase</span></code>, <code class="docutils literal notranslate"><span class="pre">PulseDuration</span></code> and <code class="docutils literal notranslate"><span class="pre">PulseCenter</span></code>
+(use the per-axis constants or <code class="docutils literal notranslate"><span class="pre">Variables</span></code>). <code class="docutils literal notranslate"><span class="pre">EnvelopeType</span> <span class="pre">=</span> <span class="pre">custom</span></code> in old
+inputs only prints a warning; the other removed keys stop the run with a message
+naming the replacement.</p>
 </section>
 </section>
 

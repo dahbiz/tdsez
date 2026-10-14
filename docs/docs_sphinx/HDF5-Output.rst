@@ -7,8 +7,10 @@ eigenstates.
 Ring Buffer
 -----------
 
-Output is buffered in a ring buffer of **5000 steps**. Flushed every
-``OutputStrideTS`` steps or every 5000 steps, whichever comes first.
+Rows are buffered in memory and appended to the file at most every 2 s of wall
+time (at multiples of ``OutputStrideTS``), every 5000 steps, whenever the buffer
+is full, and at the end of the run. Every step is recorded; the buffering only
+affects when rows reach the file.
 
 Time Evolution Data
 -------------------
@@ -18,42 +20,16 @@ File: ``td/TimeEvolutionData_*.h5``
 Dipole Table
 ~~~~~~~~~~~~
 
-.. list-table::
-   :widths: 8 20 20 52
-   :header-rows: 1
+Dataset ``dipoles``, one row per step. With :math:`q` = ``Charge``:
 
-   * - Col
-     - 1D / 2D
-     - 3D
-     - Description
-   * - 0
-     - t
-     - t
-     - Time (a.u.)
-   * - 1
-     - Ex(t)
-     - Ex(t)
-     - Electric field x-component
-   * - 2
-     - Ey(t)
-     - Ey(t)
-     - Electric field y-component
-   * - 3
-     - --
-     - Ez(t)
-     - Electric field z-component
-   * - 4
-     - Dx
-     - Dx
-     - Dipole moment x = :math:`q \langle \psi | x | \psi \rangle`
-   * - 5
-     - Dy
-     - Dy
-     - Dipole moment y
-   * - 6
-     - Ax
-     - Dz / Az
-     - Acceleration x / Dipole z / Acceleration z
+- **1D** (4 columns): ``t, Ex, Dx, Ax``
+- **2D** (7 columns): ``t, Ex, Ey, Dx, Dy, Ax, Ay``
+- **3D** (10 columns): ``t, Ex, Ey, Ez, Dx, Dy, Dz, Ax, Ay, Az``
+
+where ``E*`` is the field at time ``t``, :math:`D_a = q\langle x_a\rangle` the
+dipole and :math:`A_a = q\, d\langle v_a\rangle/dt` the dipole acceleration
+(:math:`= \ddot D_a`; see :doc:`Observables`). Only the axes contained in
+``Polarization`` are computed; the columns of the other axes are zero.
 
 Energy Table
 ~~~~~~~~~~~~
@@ -71,7 +47,7 @@ Energy Table
    * - 2
      - Pot -- potential energy :math:`\langle \psi | V | \psi \rangle`
    * - 3
-     - Int -- interaction energy :math:`E(t) \cdot d(t)`
+     - Int -- interaction energy :math:`\mathbf E(t) \cdot \langle \mathbf r \rangle`, the expectation of the coupling term
    * - 4
      - Tot -- total energy :math:`E_{\text{total}} = \text{Kin} + \text{Pot} + \text{Int}`
    * - 5
@@ -82,26 +58,15 @@ Energy Table
 Current Table
 ~~~~~~~~~~~~~
 
-.. list-table::
-   :widths: 10 90
-   :header-rows: 1
+Dataset ``currents``. Columns 0–2 are ``t``, :math:`\langle L_z\rangle` (2D/3D;
+0 in 1D) and the Berry-phase increment :math:`d\Gamma`. The remaining columns are
+the current :math:`J_a = q\langle v_a\rangle` (:math:`= \dot D_a`) and its
+decomposition into intra-band, inter-band and bound–continuum parts:
 
-   * - Col
-     - Description
-   * - 0
-     - t
-   * - 1
-     - Lz -- angular momentum z-expectation :math:`\langle L_z \rangle`
-   * - 2
-     - dGamma -- Berry phase increment per step
-   * - 3--5
-     - Jx_tot, Jy_tot, Jz_tot -- total currents
-   * - 6--8
-     - J_intra -- intra-band currents
-   * - 9--11
-     - J_inter -- inter-band currents
-   * - 12--14
-     - J_bc -- bound-continuum currents (remainder)
+- **1D and 2D** (11 columns): ``t, Lz, dGamma, Jx, Jy, Jx_intra, Jy_intra,
+  Jx_inter, Jy_inter, Jx_bc, Jy_bc`` (``Jy*`` are 0 in 1D)
+- **3D** (15 columns): ``t, Lz, dGamma, Jx, Jy, Jz, Jx_intra, Jy_intra,
+  Jz_intra, Jx_inter, Jy_inter, Jz_inter, Jx_bc, Jy_bc, Jz_bc``
 
 Population Table
 ~~~~~~~~~~~~~~~~

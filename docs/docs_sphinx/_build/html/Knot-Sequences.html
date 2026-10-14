@@ -111,7 +111,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -196,10 +195,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -265,9 +262,9 @@
   <section id="knot-sequences">
 <h1>Knot Sequences<a class="headerlink" href="#knot-sequences" title="Link to this heading"></a></h1>
 <p>B-spline knot vector generation supports uniform, symmetric exponential and
-tangent, logarithmic tangent, hydrogenic, and interface-aligned sequences. The
-<code class="docutils literal notranslate"><span class="pre">adaptive</span></code> and <code class="docutils literal notranslate"><span class="pre">adaptive_wf</span></code> names currently select uniform interior knots;
-their specialized generators are pending implementation.</p>
+tangent, logarithmic tangent, hydrogenic, and interface-aligned sequences. Any
+other name (including the removed placeholders <code class="docutils literal notranslate"><span class="pre">adaptive</span></code> and
+<code class="docutils literal notranslate"><span class="pre">adaptive_wf</span></code>) stops the run with a message.</p>
 <section id="knot-sequence-types">
 <h2>Knot Sequence Types<a class="headerlink" href="#knot-sequence-types" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -310,14 +307,6 @@ their specialized generators are pending implementation.</p>
 <tr class="row-even"><td><p><strong>hydrogenic</strong></p></td>
 <td><p>Per half-axis: NLin linear elements of size R1 up to r_cross = NLin*R1, then NExp exponentially growing elements up to Lmax; mirrored about the origin. For Coulombic problems</p></td>
 <td><p>HydrogenicR1 (alias InnerSpacing, HydrogenicInnerSpacing), HydrogenicNLin (alias InnerElements, HydrogenicInnerElements), HydrogenicNExp (alias OuterElements, HydrogenicOuterElements); per-axis lists</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>adaptive</strong></p></td>
-<td><p>Pending: currently uses uniform interior knots, without potential-driven clustering</p></td>
-<td><p>AdaptiveKappa and AdaptivePower are currently ignored</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>adaptive_wf</strong></p></td>
-<td><p>Pending: currently skips the coarse solve and uses uniform interior knots</p></td>
-<td><p>AdaptiveWFCoarseN and AdaptiveWFKinLambda are currently ignored</p></td>
 </tr>
 </tbody>
 </table>

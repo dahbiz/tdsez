@@ -111,7 +111,6 @@
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#envelope">Envelope</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
@@ -196,10 +195,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
 </ul>
@@ -348,12 +345,7 @@ speeding assembly</p></td>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Hbar / Planck</p></td>
-<td><p>real</p></td>
-<td><p>1.0</p></td>
-<td><p>Reduced Planck constant (atomic units)</p></td>
-</tr>
-<tr class="row-odd"><td><p>Charge / ParticleCharge</p></td>
+<tr class="row-even"><td><p>Charge / ParticleCharge</p></td>
 <td><p>real</p></td>
 <td><p>1.0</p></td>
 <td><p>Particle charge</p></td>
@@ -385,7 +377,7 @@ Potential, Laser, Mass.</p></td>
 </tbody>
 </table>
 <p>All scalar input parameters are automatically defined as muParser constants
-(e.g., Amplitude, Omega, TimeStep, LMin). No need to redefine them in
+(e.g., Ampx, Omegax, TimeStep, LMinX). No need to redefine them in
 Variables.</p>
 </section>
 </section>

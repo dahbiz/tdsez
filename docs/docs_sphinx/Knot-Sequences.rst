@@ -2,9 +2,9 @@ Knot Sequences
 ==============
 
 B-spline knot vector generation supports uniform, symmetric exponential and
-tangent, logarithmic tangent, hydrogenic, and interface-aligned sequences. The
-``adaptive`` and ``adaptive_wf`` names currently select uniform interior knots;
-their specialized generators are pending implementation.
+tangent, logarithmic tangent, hydrogenic, and interface-aligned sequences. Any
+other name (including the removed placeholders ``adaptive`` and
+``adaptive_wf``) stops the run with a message.
 
 Knot Sequence Types
 -------------------
@@ -37,12 +37,6 @@ Knot Sequence Types
    * - **hydrogenic**
      - Per half-axis: NLin linear elements of size R1 up to r_cross = NLin*R1, then NExp exponentially growing elements up to Lmax; mirrored about the origin. For Coulombic problems
      - HydrogenicR1 (alias InnerSpacing, HydrogenicInnerSpacing), HydrogenicNLin (alias InnerElements, HydrogenicInnerElements), HydrogenicNExp (alias OuterElements, HydrogenicOuterElements); per-axis lists
-   * - **adaptive**
-     - Pending: currently uses uniform interior knots, without potential-driven clustering
-     - AdaptiveKappa and AdaptivePower are currently ignored
-   * - **adaptive_wf**
-     - Pending: currently skips the coarse solve and uses uniform interior knots
-     - AdaptiveWFCoarseN and AdaptiveWFKinLambda are currently ignored
 
 Per-Axis Assignment
 -------------------
