@@ -122,7 +122,7 @@ Keys that accept multi-axis values follow a standard convention:
 | `SplineDegree` | int | 3 | B-spline polynomial degree (1–14). Must satisfy p >= 1. Higher = more accuracy per DOF but more fill-in |
 | `NQuadratures` | int | 8 | Quadrature points per element. Should be at least 2p+1 for full integration of degree-2p integrands |
 | `KnotSequence` | string | `"uniform"` | Knot-vector distribution (see §4.5) |
-| `KnotAlpha` | real | 0.0 | Exponential grading parameter for symexp/symtanu sequences |
+| `KnotAlpha` | real | 0.0 | Grading strength for symexp/symtanu/symtann (0.9 when unset) and symlogtan (0.5 when unset). Aliases: `KnotGrading`, `GradingStrength` |
 | `NQuadratures` | int | 8 | Gauss-Legendre quadrature order per element. Higher = better integration of spatially-varying operators |
 
 ### 4.2 Potential & Mass
@@ -207,20 +207,28 @@ E_i(t) = LaserX(t)   // User-defined expression in variable t
 |----------|-------------|-------------|
 | `uniform` | Uniform spacing | — |
 | `symexp` | Symmetric exponential: dense near origin, sparse at edges | `KnotAlpha` (grading), `KnotSequence` = `"symexp, uniform, uniform"` for per-axis |
-| `symtanu` | Symmetric tangent, unbounded: tanh-compressed near origin | `KnotAlpha` |
-| `symtan` | Symmetric tangent, bounded (in [Lmin,Lmax]) | `KnotAlpha` |
-| `logtan` | Logarithmic tangent knot vector | `KnotAlpha` |
+| `symtanu` | Inverse-tanh map: dense near origin, sparse at edges | `KnotAlpha` |
+| `symtann` | tanh map: dense near the edges, sparse at origin | `KnotAlpha` |
+| `symlogtan` | Tangent map, mildly dense near origin | `KnotAlpha` |
 | `interface` (alias `interfaces`) | C0 knots (multiplicity p) at every potential/mass breakpoint; elements uniform within each layer, element count per layer proportional to its width | Breakpoints read from `x < c` / `abs(x) < c` comparisons in `Potential` and `Mass` |
-| `hydrogenic` | Linear near origin, exponential tail. For Coulombic problems | `HydrogenicNLin[d]`, `HydrogenicNExp[d]`, `HydrogenicR1[d]` |
-| `adaptive` | Potential-driven: clusters knots where |∇V| + wells are strong | `AdaptiveKappa`, `AdaptivePower` |
-| `adaptive_wf` | Density-driven (two-pass): first coarse solve, then cluster on \|ψ₀\|² | `AdaptiveWFCoarseN`, `AdaptiveWFKinLambda` |
+| `hydrogenic` | Linear near origin, exponential tail. For Coulombic problems | `HydrogenicR1`/`InnerSpacing`, `HydrogenicNLin`/`InnerElements`, `HydrogenicNExp`/`OuterElements` |
+| `adaptive` | Pending: currently falls back to uniform interior knots | (`AdaptiveKappa`, `AdaptivePower` currently ignored) |
+| `adaptive_wf` | Pending: currently falls back to uniform interior knots | (`AdaptiveWFCoarseN`, `AdaptiveWFKinLambda` currently ignored) |
 
-**Per-axis knot sequences** (comma-separated): `"symexp, uniform, symtan"` means X=symexp, Y=uniform, Z=symtan. Missing axes default to the first value.
+**Per-axis knot sequences** (comma-separated): `"symexp, uniform, symtann"` means X=symexp, Y=uniform, Z=symtann. Missing axes default to the first value.
 
-**Hydrogenic sequence parameters** (per-axis, comma-separated like `Nelements`):
-- `HydrogenicNLin[d]`: Number of linear knots near origin (spacing = `HydrogenicR1[d]`). Default 0 = use Nelements-1.
-- `HydrogenicNExp[d]`: Number of exponential-graded knots from r_cross to Lmax.
-- `HydrogenicR1[d]`: Near-origin knot spacing in Bohr. Default 0.1.
+**Hydrogenic sequence parameters** (per-axis, comma-separated like `Nelements`; each half-axis gets exactly `NLin` linear + `NExp` exponential elements, mirrored about the origin):
+- `HydrogenicR1` (alias `InnerSpacing`, `HydrogenicInnerSpacing`): size of the linear near-origin elements in bohr. Default 0.1.
+- `HydrogenicNLin` (alias `InnerElements`, `HydrogenicInnerElements`): number of linear elements; r_cross = NLin*R1 must be < Lmax. Default 0 = use Nelements-1.
+- `HydrogenicNExp` (alias `OuterElements`, `HydrogenicOuterElements`): number of exponentially growing elements from r_cross to Lmax. Default 10.
+
+Example:
+```
+KnotSequence  = hydrogenic
+InnerSpacing  = 0.1, 0.1, 0.1
+InnerElements = 15, 15, 15
+OuterElements = 47, 47, 152
+```
 
 **Adaptive tuning**:
 - `AdaptiveKappa`: Weight of the |∇V| term in the adaptive knot indicator (default 1.0).

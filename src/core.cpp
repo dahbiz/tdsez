@@ -1276,7 +1276,11 @@ PetscErrorCode TDSEZCore::Output()
             PetscReal LminZ = TDSEZParser::LMinZ + TDSEZParser::OffsetZ;
             PetscReal LmaxZ = TDSEZParser::LMaxZ + TDSEZParser::OffsetZ;
 
-            PetscReal alphax = 0.9, alphay = 0.9, alphaz = 0.9;
+            // Grading strength of symexp/symtanu/symtann (alpha or beta in the
+            // knot maps) and of symlogtan. KnotAlpha > 0 overrides the defaults.
+            const PetscReal alphaDefault = (TDSEZParser::KnotAlpha > 0.0) ? TDSEZParser::KnotAlpha : 0.9;
+            const PetscReal alphaLogTan  = (TDSEZParser::KnotAlpha > 0.0) ? TDSEZParser::KnotAlpha : 0.5;
+            PetscReal alphax = alphaDefault, alphay = alphaDefault, alphaz = alphaDefault;
             IGAAxis axisx, axisy, axisz;
 
             // ── KNOT VECTOR SETUP ──────────────────────────────────────────────
@@ -1316,7 +1320,7 @@ PetscErrorCode TDSEZCore::Output()
                     else if (seq == "symtann")
                         knots_x = TDSEZTanNSymKnots(LminX, LmaxX, TDSEZParser::Nelements - 1, alphax, TDSEZParser::SplineDegree);
                     else if (seq == "symlogtan")
-                        knots_x = TDSEZLogTanKnots(LminX, LmaxX, TDSEZParser::Nelements - 1, 0.5, TDSEZParser::SplineDegree);
+                        knots_x = TDSEZLogTanKnots(LminX, LmaxX, TDSEZParser::Nelements - 1, alphaLogTan, TDSEZParser::SplineDegree);
                     else if (seq == "hydrogenic")
                         knots_x = TDSEZHydrogenicKnots(LmaxX,
                             TDSEZParser::HydrogenicNLin[0] > 0 ? TDSEZParser::HydrogenicNLin[0] : TDSEZParser::Nelements - 1,
@@ -1390,7 +1394,7 @@ PetscErrorCode TDSEZCore::Output()
                         else if (seq == "symtann")
                             knots_y = TDSEZTanNSymKnots(LminY, LmaxY, TDSEZParser::Nelements - 1, alphay, TDSEZParser::SplineDegree);
                         else if (seq == "symlogtan")
-                            knots_y = TDSEZLogTanKnots(LminY, LmaxY, TDSEZParser::Nelements - 1, 0.5, TDSEZParser::SplineDegree);
+                            knots_y = TDSEZLogTanKnots(LminY, LmaxY, TDSEZParser::Nelements - 1, alphaLogTan, TDSEZParser::SplineDegree);
                         else if (seq == "hydrogenic")
                             knots_y = TDSEZHydrogenicKnots(LmaxY,
                                 TDSEZParser::HydrogenicNLin[1] > 0 ? TDSEZParser::HydrogenicNLin[1] : TDSEZParser::Nelements - 1,
@@ -1450,6 +1454,8 @@ PetscErrorCode TDSEZCore::Output()
                             knots_z = TDSEZTanUSymKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1, alphaz, TDSEZParser::SplineDegree);
                         else if (seq == "symtann")
                             knots_z = TDSEZTanNSymKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1, alphaz, TDSEZParser::SplineDegree);
+                        else if (seq == "symlogtan")
+                            knots_z = TDSEZLogTanKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1, alphaLogTan, TDSEZParser::SplineDegree);
                         else if (seq == "hydrogenic")
                             knots_z = TDSEZHydrogenicKnots(LmaxZ,
                                 TDSEZParser::HydrogenicNLin[2] > 0 ? TDSEZParser::HydrogenicNLin[2] : TDSEZParser::Nelements - 1,

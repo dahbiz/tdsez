@@ -403,19 +403,19 @@ Knot Sequences
    * - KnotAlpha
      - real
      - 0.0
-     - Primary tuning parameter for symexp and tangent-based sequences. Controls compression rate near origin.
+     - Grading strength of symexp/symtanu/symtann (default 0.9 when unset) and symlogtan (default 0.5). Aliases: KnotGrading, GradingStrength.
    * - HydrogenicNLin
      - int[3]
      - 0,0,0
-     - Number of linear segments near origin for hydrogenic knot sequence. Per-axis (comma-separated) or single value (replicated).
+     - Number of linear elements per half-axis near the origin for the hydrogenic sequence. Per-axis (comma-separated) or single value (replicated). Aliases: InnerElements, HydrogenicInnerElements.
    * - HydrogenicNExp
      - int[3]
      - 0,0,0
-     - Number of exponential segments for hydrogenic knot sequence. Per-axis.
+     - Number of exponentially growing elements per half-axis from r_cross to Lmax (hydrogenic). Per-axis. Aliases: OuterElements, HydrogenicOuterElements.
    * - HydrogenicR1
      - real[3]
      - 0.0,0,0
-     - Transition radius (a.u.) between linear and exponential regions of hydrogenic knot sequence. Per-axis.
+     - Size (a.u.) of the linear near-origin elements (hydrogenic); r_cross = HydrogenicNLin*HydrogenicR1 must be < Lmax. Per-axis. Aliases: InnerSpacing, HydrogenicInnerSpacing.
    * - AdaptiveKappa
      - real
      - 1.0

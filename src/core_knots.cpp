@@ -435,11 +435,12 @@ std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     for (PetscInt i = 0; i <= n_lin; ++i)
         half.push_back(clean(i * r1));
 
-    // exp grading from r_cross up to (but NOT reaching) Lmax: use k=0..n_exp-1
-    // so the largest knot is r_cross*exp((n_exp-1)*log_ratio/n_exp) < Lmax.
-    // Reaching Lmax exactly would collide with the p+1 boundary repeats below
-    // and trip PetIGA's "multiplicity > degree" check.
-    for (PetscInt k = 0; k < n_exp; ++k)
+    // Exponential grading from r_cross towards Lmax: k = 1..n_exp-1, so each
+    // half-axis has exactly n_lin linear and n_exp exponential elements.
+    // k = 0 would repeat r_cross (already the last linear knot); the clamp
+    // below then turned the duplicate into a 1e-9*Lmax micro-element. k = n_exp
+    // would land on Lmax and collide with the p+1 boundary repeats.
+    for (PetscInt k = 1; k < n_exp; ++k)
         half.push_back(clean(r_cross * std::exp(k * log_ratio / n_exp)));
 
     PetscInt n_half = (PetscInt)half.size();

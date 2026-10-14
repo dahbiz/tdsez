@@ -17,6 +17,7 @@
 #include "petscmat.h"
 #include <algorithm>
 #include <functional>
+#include <type_traits>
 #include <set>
 #include <unordered_map>
 #include <petscblaslapack.h>
@@ -28,6 +29,25 @@
  * @brief Read input files and initialize muParser expressions.
  * @author TDSEZ Project
  */
+
+/// @brief Parse a comma-separated per-axis list "a,b,c" into arr[0..2]. A
+///        single token replicates to all axes (as for the hydrogenic keys).
+template <typename T>
+static void ParseAxisList(const std::string &val, T (&arr)[3])
+{
+    std::string s = val;
+    s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+    size_t p = 0, n = 0;
+    while (p < s.size() && n < 3) {
+        const size_t c = s.find(',', p);
+        const std::string tok = (c == std::string::npos) ? s.substr(p) : s.substr(p, c - p);
+        if constexpr (std::is_integral_v<T>) arr[n++] = (T)std::stol(tok);
+        else                                 arr[n++] = (T)std::stod(tok);
+        if (c == std::string::npos) break;
+        p = c + 1;
+    }
+    if (n == 1) for (int i = 1; i < 3; ++i) arr[i] = arr[0];
+}
 
 /// @brief Build a handler lambda that parses a comma-separated "a,b,c"
 ///        per-axis list string into three PetscReal references. A single
@@ -157,36 +177,17 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 }}},
                 // Per-axis integer list (comma-separated, single value replicates
                 // to all axes). Used by the hydrogenic knot-sequence tuning keys.
-                {"HydrogenicNLin", H{[](const std::string &val){
-                    std::string s = val; s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
-                    size_t p = 0, n = 0;
-                    while (p < s.size() && n < 3) {
-                        size_t c = s.find(',', p);
-                        std::string tok = (c == std::string::npos) ? s.substr(p) : s.substr(p, c - p);
-                        HydrogenicNLin[n++] = std::stoi(tok); if (c == std::string::npos) break; p = c + 1;
-                    }
-                    if (n == 1) for (int i = 1; i < 3; ++i) HydrogenicNLin[i] = HydrogenicNLin[0];
-                }}},
-                {"HydrogenicNExp", H{[](const std::string &val){
-                    std::string s = val; s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
-                    size_t p = 0, n = 0;
-                    while (p < s.size() && n < 3) {
-                        size_t c = s.find(',', p);
-                        std::string tok = (c == std::string::npos) ? s.substr(p) : s.substr(p, c - p);
-                        HydrogenicNExp[n++] = std::stoi(tok); if (c == std::string::npos) break; p = c + 1;
-                    }
-                    if (n == 1) for (int i = 1; i < 3; ++i) HydrogenicNExp[i] = HydrogenicNExp[0];
-                }}},
-                {"HydrogenicR1", H{[](const std::string &val){
-                    std::string s = val; s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
-                    size_t p = 0, n = 0;
-                    while (p < s.size() && n < 3) {
-                        size_t c = s.find(',', p);
-                        std::string tok = (c == std::string::npos) ? s.substr(p) : s.substr(p, c - p);
-                        HydrogenicR1[n++] = std::stod(tok); if (c == std::string::npos) break; p = c + 1;
-                    }
-                    if (n == 1) for (int i = 1; i < 3; ++i) HydrogenicR1[i] = HydrogenicR1[0];
-                }}},
+                // Hydrogenic tuning (per-axis lists, single value replicates).
+                // Long names and descriptive aliases map to the same storage.
+                {"HydrogenicNLin",          H{[](const std::string &v){ ParseAxisList(v, HydrogenicNLin); }}},
+                {"HydrogenicInnerElements", H{[](const std::string &v){ ParseAxisList(v, HydrogenicNLin); }}},
+                {"InnerElements",           H{[](const std::string &v){ ParseAxisList(v, HydrogenicNLin); }}},
+                {"HydrogenicNExp",          H{[](const std::string &v){ ParseAxisList(v, HydrogenicNExp); }}},
+                {"HydrogenicOuterElements", H{[](const std::string &v){ ParseAxisList(v, HydrogenicNExp); }}},
+                {"OuterElements",           H{[](const std::string &v){ ParseAxisList(v, HydrogenicNExp); }}},
+                {"HydrogenicR1",            H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
+                {"HydrogenicInnerSpacing",  H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
+                {"InnerSpacing",            H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
                 // Adaptive (KnotSequence = adaptive) tuning. Single value applies
                 // to all axes; no per-axis form needed (weight is auto-scaled).
                 {"AdaptiveKappa", R(AdaptiveKappa)},
@@ -255,6 +256,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"CAPKmin",    R(CAPKmin)},
                 {"CapStrength", R(CAPKmin)},           // intuitive alias
                 {"KnotAlpha",  R(KnotAlpha)},
+                {"KnotGrading", R(KnotAlpha)},         // intuitive alias
+                {"GradingStrength", R(KnotAlpha)},     // intuitive alias
                 {"NBoundStates",      I(NBoundStates)},
                 {"NumberOfBoundStates",I(NBoundStates)}, // intuitive alias
                 {"NBoundStatesSave",   B(NBoundStatesSave)},
