@@ -261,18 +261,18 @@ BLAS integers all work; CMake links PETSc's `BLASLAPACK_LIB`). In 3D, with
 $`m = n^2`$ products per axis,
 
 ```math
-egin{aligned}
-\mathbf T_1 &= \mathbf P_1\,\mathbf C^{\mathsf T} && (m 	imes Q^2,\ 	ext{inner } Q),\
-\mathbf T_2 &= \mathbf T_1\,\mathbf P_2^{\mathsf T} && (mQ 	imes m,\ 	ext{inner } Q),\
-\mathbf E &= \mathbf V\,\mathbf P_3^{\mathsf T} && (m^2 	imes m,\ 	ext{inner } Q),
+\begin{aligned}
+\mathbf T_1 &= \mathbf P_1\,\mathbf C^{\mathsf T} && (m \times Q^2,\ \text{inner } Q),\\
+\mathbf T_2 &= \mathbf T_1\,\mathbf P_2^{\mathsf T} && (mQ \times m,\ \text{inner } Q),\\
+\mathbf E &= \mathbf V\,\mathbf P_3^{\mathsf T} && (m^2 \times m,\ \text{inner } Q),
 \end{aligned}
 ```
 
 where $`\mathbf V`$ is $`\mathbf T_2`$ with the $`q_3`$ and $`a_2b_2`$ indices
 swapped. All terms of one operator (the three kinetic terms and, for
 $`\mathbf H`$, the potential) accumulate into the same real buffer in the last
-product ($`eta = 1`$), and the buffer is written into the complex element
-matrix once per operator, symmetrised ($`	frac12(\mathbf E+\mathbf E^{\mathsf T})`$)
+product ($`\beta = 1`$), and the buffer is written into the complex element
+matrix once per operator, symmetrised ($`\tfrac12(\mathbf E+\mathbf E^{\mathsf T})`$)
 or, for the velocity, antisymmetrised ($`\mathbf E-\mathbf E^{\mathsf T}`$) in
 the same pass. During the element loops BLAS is set to one thread
 (`PetscBLASSetNumThreads`, PETSc $`\ge 3.21`$) and restored afterwards, so a
