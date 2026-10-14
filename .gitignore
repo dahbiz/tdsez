@@ -116,3 +116,6 @@ benchmarks/
 inps/
 # Few-level export tool, kept local for now
 src/fewlevelprocessor.cpp
+
+# docs/perf benchmark run directories
+docs/perf/run_*/
