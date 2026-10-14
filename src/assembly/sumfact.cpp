@@ -198,7 +198,7 @@ PetscBool SumFactCheck()
 /// axis. Only for a constant mass: the per-axis force kernels then have
 /// exactly zero mass-gradient corrections (finite differences of a constant),
 /// so dV_d is the classical term -B_a (dV/dx_d)(1/m) B_b.
-bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[])
+bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsigned need)
 {
     const PetscInt dim = e->dim;
     if (dim < 2 || dim > 3 || e->dof != 1 || e->geometry || e->rational) return false;
@@ -248,27 +248,40 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[])
     Scratch &S = scratch;
     Offsets(A, dim, S);
     const int V0[3] = {0, 0, 0};
-    for (PetscInt d = 0; d < dim; ++d) {
-        int ad[3] = {0, 0, 0};
-        ad[d] = 1;
-        Contract(A, dim, ad, ad, cK.data(), d > 0, S);
+    auto want = [need](PetscInt k) { return ((need >> k) & 1u) != 0; };
+    if (want(0)) {
+        for (PetscInt d = 0; d < dim; ++d) {
+            int ad[3] = {0, 0, 0};
+            ad[d] = 1;
+            Contract(A, dim, ad, ad, cK.data(), d > 0, S);
+        }
+        Store(S, nen, 1.0, Sym::Symmetric, work[0]);
     }
-    Store(S, nen, 1.0, Sym::Symmetric, work[0]);
-    Contract(A, dim, V0, V0, cV.data(), false, S);
-    Store(S, nen, 1.0, Sym::Symmetric, work[1]);
-    Contract(A, dim, V0, V0, cM.data(), false, S);
-    Store(S, nen, 1.0, Sym::Symmetric, work[2]);
+    if (want(1)) {
+        Contract(A, dim, V0, V0, cV.data(), false, S);
+        Store(S, nen, 1.0, Sym::Symmetric, work[1]);
+    }
+    if (want(2)) {
+        Contract(A, dim, V0, V0, cM.data(), false, S);
+        Store(S, nen, 1.0, Sym::Symmetric, work[2]);
+    }
     PetscInt k = 3;
     for (int d = 0; d < 3; ++d) {
         if (!TDSEZPhyAxesOn[d]) continue;
         int ad[3] = {0, 0, 0};
         ad[d] = 1;
-        Contract(A, dim, V0, V0, cD[d].data(), false, S);
-        Store(S, nen, 1.0, Sym::Symmetric, work[k]);
-        Contract(A, dim, V0, ad, cVel.data(), false, S);
-        Store(S, nen, PETSC_i, Sym::AntiSymmetric, work[k + 1]);
-        Contract(A, dim, V0, V0, cG[d].data(), false, S);
-        Store(S, nen, 1.0, Sym::Symmetric, work[k + 2]);
+        if (want(k)) {
+            Contract(A, dim, V0, V0, cD[d].data(), false, S);
+            Store(S, nen, 1.0, Sym::Symmetric, work[k]);
+        }
+        if (want(k + 1)) {
+            Contract(A, dim, V0, ad, cVel.data(), false, S);
+            Store(S, nen, PETSC_i, Sym::AntiSymmetric, work[k + 1]);
+        }
+        if (want(k + 2)) {
+            Contract(A, dim, V0, V0, cG[d].data(), false, S);
+            Store(S, nen, 1.0, Sym::Symmetric, work[k + 2]);
+        }
         k += 3;
     }
     return true;
@@ -278,7 +291,7 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[])
 /// TDSEZFormHam / TDSEZFormPhyX. Returns false if the kernel/configuration is
 /// not handled (the caller then uses the per-point kernel).
 bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
-                    PetscInt nmat, PetscScalar *work[])
+                    PetscInt nmat, PetscScalar *work[], unsigned need)
 {
     const PetscInt dim = e->dim;
     if (dim < 2 || dim > 3 || e->dof != 1 || e->geometry || e->rational) return false;
@@ -286,7 +299,7 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
     const bool ham  = (kernel == TDSEZFormHam && nmat >= 2);
     const bool phy  = (kernel == TDSEZFormPhyX && nmat >= 6);
     const bool axes = (kernel == TDSEZFormPhyAxes);
-    if (axes) return SumFactAxes(iga, e, nmat, work);
+    if (axes) return SumFactAxes(iga, e, nmat, work, need);
     if (!ham && !phy) return false;
     if (phy) {
         // Same switches as TDSEZFormPhyX: the mass-gradient corrections of
@@ -334,30 +347,44 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
     Scratch &S = scratch;
     Offsets(A, dim, S);
     const int V0[3] = {0, 0, 0};
-    for (PetscInt d = 0; d < dim; ++d) {               // kinetic: sum_d (D_d, D_d)
-        int ad[3] = {0, 0, 0};
-        ad[d] = 1;
-        Contract(A, dim, ad, ad, cK.data(), d > 0, S);
+    auto want = [need](PetscInt k) { return ((need >> k) & 1u) != 0; };
+    if (want(0)) {
+        for (PetscInt d = 0; d < dim; ++d) {           // kinetic: sum_d (D_d, D_d)
+            int ad[3] = {0, 0, 0};
+            ad[d] = 1;
+            Contract(A, dim, ad, ad, cK.data(), d > 0, S);
+        }
+        if (ham) Contract(A, dim, V0, V0, cV.data(), true, S);    // H = K + V
+        Store(S, nen, 1.0, Sym::Symmetric, work[0]);              // H or K
     }
     if (ham) {
-        Contract(A, dim, V0, V0, cV.data(), true, S);             // H = K + V
-        Store(S, nen, 1.0, Sym::Symmetric, work[0]);
-        Contract(A, dim, V0, V0, cM.data(), false, S);            // M
-        Store(S, nen, 1.0, Sym::Symmetric, work[1]);
+        if (want(1)) {
+            Contract(A, dim, V0, V0, cM.data(), false, S);        // M
+            Store(S, nen, 1.0, Sym::Symmetric, work[1]);
+        }
         return true;
     }
-    Store(S, nen, 1.0, Sym::Symmetric, work[0]);                  // K
     const int Dx[3] = {1, 0, 0};
-    Contract(A, dim, V0, V0, cV.data(), false, S);                // V
-    Store(S, nen, 1.0, Sym::Symmetric, work[1]);
-    Contract(A, dim, V0, V0, cM.data(), false, S);                // Md
-    Store(S, nen, 1.0, Sym::Symmetric, work[2]);
-    Contract(A, dim, V0, V0, cX.data(), false, S);                // X
-    Store(S, nen, 1.0, Sym::Symmetric, work[3]);
-    Contract(A, dim, V0, Dx, cVel.data(), false, S);              // f B_a dB_b/dx
-    Store(S, nen, PETSC_i, Sym::AntiSymmetric, work[4]);          // VelX = i f (B dB_x - dB_x B)
-    Contract(A, dim, V0, V0, cDV.data(), false, S);               // dVdx (classical)
-    Store(S, nen, 1.0, Sym::Symmetric, work[5]);
+    if (want(1)) {
+        Contract(A, dim, V0, V0, cV.data(), false, S);            // V
+        Store(S, nen, 1.0, Sym::Symmetric, work[1]);
+    }
+    if (want(2)) {
+        Contract(A, dim, V0, V0, cM.data(), false, S);            // Md
+        Store(S, nen, 1.0, Sym::Symmetric, work[2]);
+    }
+    if (want(3)) {
+        Contract(A, dim, V0, V0, cX.data(), false, S);            // X
+        Store(S, nen, 1.0, Sym::Symmetric, work[3]);
+    }
+    if (want(4)) {
+        Contract(A, dim, V0, Dx, cVel.data(), false, S);          // f B_a dB_b/dx
+        Store(S, nen, PETSC_i, Sym::AntiSymmetric, work[4]);      // VelX = i f (B dB_x - dB_x B)
+    }
+    if (want(5)) {
+        Contract(A, dim, V0, V0, cDV.data(), false, S);           // dVdx (classical)
+        Store(S, nen, 1.0, Sym::Symmetric, work[5]);
+    }
     return true;
 }
 
@@ -366,14 +393,17 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
 
 /// Element matrices of @p kernel for @p element into work[0..nmat-1] (zeroed
 /// by the caller): sum-factorised when supported, otherwise via the per-point
-/// kernel. With -tdsez_sumfact_check both paths are run and compared.
+/// kernel. Only the matrices flagged in @p need (bit k = work[k]) have to be
+/// produced; the sum-factorised path skips the others, the per-point kernels
+/// compute all of them. With -tdsez_sumfact_check both paths are run and the
+/// needed matrices compared.
 PetscErrorCode TDSEZElementWork(IGA iga, IGAElement element, TDSEZPhysicsKernel kernel,
-                                PetscInt nmat, PetscScalar *work[], void *ctx)
+                                PetscInt nmat, PetscScalar *work[], void *ctx, unsigned need)
 {
     PetscFunctionBeginUser;
     const PetscBool check = SumFactCheck();
     bool done = false;
-    if (SumFactEnabled()) done = SumFactElement(iga, element, kernel, nmat, work);
+    if (SumFactEnabled()) done = SumFactElement(iga, element, kernel, nmat, work, need);
 
     if (!done || check) {
         const size_t n2 = (size_t)element->nen * element->nen;
@@ -394,6 +424,7 @@ PetscErrorCode TDSEZElementWork(IGA iga, IGAElement element, TDSEZPhysicsKernel 
             static PetscReal maxRel = 0.0;
             static PetscInt  nEl = 0;
             for (PetscInt k = 0; k < nmat; ++k) {
+                if (!((need >> k) & 1u)) continue;
                 PetscReal dmax = 0.0, ref_max = 0.0;
                 for (size_t i = 0; i < n2; ++i) {
                     dmax    = PetscMax(dmax, PetscAbsScalar(work[k][i] - dst[k][i]));

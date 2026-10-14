@@ -289,7 +289,31 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
 /// caller): sum-factorised for tensor-product elements where supported,
 /// per-point kernel otherwise. See src/assembly/sumfact.cpp.
 PetscErrorCode TDSEZElementWork(IGA iga, IGAElement element, TDSEZPhysicsKernel kernel,
-                                PetscInt nmat, PetscScalar *work[], void *ctx);
+                                PetscInt nmat, PetscScalar *work[], void *ctx,
+                                unsigned need = ~0u);
+
+/// Banded accumulation of element matrices on the ghosted tensor node box,
+/// inserted row by row (see src/assembly/band.cpp). Falls back to
+/// element-by-element insertion when not applicable or with -tdsez_band 0.
+struct TDSEZBandAssembler {
+    PetscErrorCode Setup(IGA iga, PetscInt nmat);
+    PetscErrorCode BeginGroup(unsigned mask);
+    PetscErrorCode Add(IGAElement e, PetscInt k, const PetscScalar *K, Mat mat);
+    PetscErrorCode EndGroup(Mat mats[]);
+    void Release();
+
+    std::vector<unsigned> groups;   // matrix masks, one element pass each
+    bool active = false;
+
+  private:
+    bool verified = false;
+    PetscInt dim = 0, nmat = 0, perGroup = 0;
+    PetscInt gstart[3] = {0, 0, 0}, gwidth[3] = {1, 1, 1}, half[3] = {0, 0, 0}, bw[3] = {1, 1, 1};
+    size_t nrows = 0, nband = 0;
+    unsigned current = 0;
+    std::vector<PetscInt> slot;
+    std::vector<PetscScalar> buf;
+};
 
 /// Run BLAS single-threaded during an element loop and restore PETSc's BLAS
 /// thread count afterwards. Every MPI rank calls BLAS on small element-sized
@@ -405,7 +429,7 @@ PetscErrorCode MakeStatesReal(std::vector<Vec>& states, Mat M);
 /// @return PetscErrorCode (0 on success).
 PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ);
 
-/// @brief Precompute the momentum matrix for t-SURFF / PES reconstruction.
+/// @brief Precompute the velocity (momentum) matrix elements between bound states.
 /// @param TDSEZ Pointer to the TDSEZManager.
 /// @return PetscErrorCode (0 on success).
 PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ);

@@ -134,6 +134,7 @@ PetscErrorCode TDSEZCompOperators(
 {
     MPI_Comm comm;
     PetscInt blasThreads;
+    TDSEZBandAssembler band;
 
     PetscFunctionBegin;
 
@@ -198,45 +199,60 @@ PetscErrorCode TDSEZCompOperators(
         work[k] = work_storage + (size_t)k * n2_max;
     }
 
+    PetscCall(band.Setup(iga, nmat));
     PetscCall(TDSEZBlasSerialBegin(&blasThreads));
-    ierr = IGABeginElement(iga, &element);
-    if (PetscUnlikely(ierr)) goto cleanup;
-    element_open = PETSC_TRUE;
+    // One element pass per group of matrices (all of them in one pass unless
+    // the banded accumulation buffer would exceed its memory budget).
+    for (size_t g = 0; g < band.groups.size(); ++g) {
+        const unsigned group = band.groups[g];
+        const unsigned need  = group;
+        ierr = band.BeginGroup(group);
+        if (PetscUnlikely(ierr)) goto cleanup;
+        ierr = IGABeginElement(iga, &element);
+        if (PetscUnlikely(ierr)) goto cleanup;
+        element_open = PETSC_TRUE;
 
-    while (IGANextElement(iga, element)) {
-        const PetscInt nen = element->nen;
-        const size_t   n2  = (size_t)nen * (size_t)nen;
+        while (IGANextElement(iga, element)) {
+            const PetscInt nen = element->nen;
+            const size_t   n2  = (size_t)nen * (size_t)nen;
 
-#if defined(PETSC_USE_DEBUG)
-        if (PetscUnlikely((size_t)nen > nen_max)) {
-            ierr = PetscError(comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__,
-                              PETSC_ERR_ARG_WRONGSTATE, PETSC_ERROR_INITIAL,
-                              "element->nen=%" PetscInt_FMT
-                              " exceeds computed nen_max=%zu", nen, nen_max);
-            goto cleanup;
-        }
-#endif
+    #if defined(PETSC_USE_DEBUG)
+            if (PetscUnlikely((size_t)nen > nen_max)) {
+                ierr = PetscError(comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__,
+                                  PETSC_ERR_ARG_WRONGSTATE, PETSC_ERROR_INITIAL,
+                                  "element->nen=%" PetscInt_FMT
+                                  " exceeds computed nen_max=%zu", nen, nen_max);
+                goto cleanup;
+            }
+    #endif
 
-        if (PetscLikely(n2 == n2_max)) {
-            ierr = PetscMemzero(work_storage, alloc_bytes);
+            if (PetscLikely(n2 == n2_max)) {
+                ierr = PetscMemzero(work_storage, alloc_bytes);
+                if (PetscUnlikely(ierr)) goto cleanup;
+            } else {
+                const size_t active_bytes = n2 * sizeof(PetscScalar);
+                for (PetscInt k = 0; k < nmat; ++k) {
+                    ierr = PetscMemzero(work[k], active_bytes);
+                    if (PetscUnlikely(ierr)) goto cleanup;
+                }
+            }
+
+            // Element matrices: sum-factorised where supported, per-point kernel
+            // otherwise (TDSEZElementWork, sumfact.cpp).
+            ierr = TDSEZElementWork(iga, element, kernel, nmat, work, ctx, need);
             if (PetscUnlikely(ierr)) goto cleanup;
-        } else {
-            const size_t active_bytes = n2 * sizeof(PetscScalar);
+
             for (PetscInt k = 0; k < nmat; ++k) {
-                ierr = PetscMemzero(work[k], active_bytes);
+                if (!((group >> k) & 1u)) continue;
+                ierr = band.Add(element, k, work[k], mats[k]);
                 if (PetscUnlikely(ierr)) goto cleanup;
             }
         }
-
-        // Element matrices: sum-factorised where supported, per-point kernel
-        // otherwise (TDSEZElementWork, sumfact.cpp).
-        ierr = TDSEZElementWork(iga, element, kernel, nmat, work, ctx);
+        element_open = PETSC_FALSE;
+        ierr = IGAEndElement(iga, &element);
         if (PetscUnlikely(ierr)) goto cleanup;
-
-        for (PetscInt k = 0; k < nmat; ++k) {
-            ierr = IGAElementAssembleMat(element, work[k], mats[k]);
-            if (PetscUnlikely(ierr)) goto cleanup;
-        }
+        ierr = band.EndGroup(mats);
+        if (PetscUnlikely(ierr)) goto cleanup;
     }
 
 cleanup:
@@ -254,6 +270,7 @@ cleanup:
         PetscErrorCode ierr2 = PetscFree(work_storage);
         if (!ierr) ierr = ierr2;
     }
+    band.Release();
     {
         PetscErrorCode ierr2 = TDSEZBlasSerialEnd(blasThreads);
         if (!ierr) ierr = ierr2;
@@ -368,6 +385,7 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
 {
     MPI_Comm comm;
     PetscInt blasThreads;
+    TDSEZBandAssembler band;
 
     PetscFunctionBegin;
 
@@ -423,85 +441,100 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
     PetscCall(PetscMalloc1(alloc_cnt, &work_storage));
     for (PetscInt k = 0; k < nmat; ++k) work[k] = work_storage + (size_t)k * n2_max;
 
+    PetscCall(band.Setup(iga, nmat));
     PetscCall(TDSEZBlasSerialBegin(&blasThreads));
-    ierr = IGABeginElement(iga, &element);
-    if (PetscUnlikely(ierr)) goto cleanup;
-    element_open = PETSC_TRUE;
+    // One element pass per group of matrices (all of them in one pass unless
+    // the banded accumulation buffer would exceed its memory budget).
+    for (size_t g = 0; g < band.groups.size(); ++g) {
+        const unsigned group = band.groups[g];
+        const unsigned need  = group | 3u;   // the wall pinning reads H and M
+        ierr = band.BeginGroup(group);
+        if (PetscUnlikely(ierr)) goto cleanup;
+        ierr = IGABeginElement(iga, &element);
+        if (PetscUnlikely(ierr)) goto cleanup;
+        element_open = PETSC_TRUE;
 
-    while (IGANextElement(iga, element)) {
-        const PetscInt nen = element->nen;
-        const size_t   n2  = (size_t)nen * (size_t)nen;
+        while (IGANextElement(iga, element)) {
+            const PetscInt nen = element->nen;
+            const size_t   n2  = (size_t)nen * (size_t)nen;
 
-#if defined(PETSC_USE_DEBUG)
-        if (PetscUnlikely((size_t)nen > nen_max)) {
-            ierr = PetscError(comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__,
-                              PETSC_ERR_ARG_WRONGSTATE, PETSC_ERROR_INITIAL,
-                              "element->nen=%" PetscInt_FMT " exceeds computed nen_max=%zu", nen, nen_max);
-            goto cleanup;
-        }
-#endif
+    #if defined(PETSC_USE_DEBUG)
+            if (PetscUnlikely((size_t)nen > nen_max)) {
+                ierr = PetscError(comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__,
+                                  PETSC_ERR_ARG_WRONGSTATE, PETSC_ERROR_INITIAL,
+                                  "element->nen=%" PetscInt_FMT " exceeds computed nen_max=%zu", nen, nen_max);
+                goto cleanup;
+            }
+    #endif
 
-        if (PetscLikely(n2 == n2_max)) {
-            ierr = PetscMemzero(work_storage, alloc_bytes);
+            if (PetscLikely(n2 == n2_max)) {
+                ierr = PetscMemzero(work_storage, alloc_bytes);
+                if (PetscUnlikely(ierr)) goto cleanup;
+            } else {
+                const size_t active_bytes = n2 * sizeof(PetscScalar);
+                for (PetscInt k = 0; k < nmat; ++k) {
+                    ierr = PetscMemzero(work[k], active_bytes);
+                    if (PetscUnlikely(ierr)) goto cleanup;
+                }
+            }
+
+            // Element matrices: sum-factorised where supported, per-point kernel
+            // otherwise (TDSEZElementWork, sumfact.cpp).
+            ierr = TDSEZElementWork(iga, element, kernel, nmat, work, ctx, need);
             if (PetscUnlikely(ierr)) goto cleanup;
-        } else {
-            const size_t active_bytes = n2 * sizeof(PetscScalar);
+
+            // ---- Homogeneous Dirichlet: pin the wall DoFs symmetrically ----
+            // PetIGA lists the wall DoFs of this element (IGASetBoundaryValue) in
+            // element->ifix. Their rows and columns are removed from H and M, so
+            // psi is exactly zero there and the remaining problem is the conforming
+            // H_0^1 Galerkin problem. Pinning H alone (the previous behaviour) left
+            // the wall DoF coupled through M, which shifted the eigenvalues below
+            // the exact ones. The decoupled diagonals give each wall DoF the
+            // spurious eigenvalue kDirichletSpuriousFactor * max_a(H_aa/M_aa), taken
+            // over the free DoFs of the element (the wall DoF's own entry can be
+            // huge for potentials singular at the wall), i.e. near the top of the
+            // discrete spectrum and away from the shift-invert target.
+            ierr = IGAElementBuildFix(element);
+            if (PetscUnlikely(ierr)) goto cleanup;
+            if (element->nfix > 0) {
+                PetscReal mDiag = 0.0, ratio = 1.0;
+                for (PetscInt a = 0; a < nen; ++a) {
+                    PetscBool isWall = PETSC_FALSE;
+                    for (PetscInt f = 0; f < element->nfix; ++f) if (element->ifix[f] == a) isWall = PETSC_TRUE;
+                    if (isWall) continue;
+                    const PetscReal maa = PetscRealPart(work[1][a*nen + a]);
+                    const PetscReal haa = PetscAbsScalar(work[0][a*nen + a]);
+                    if (maa > 0.0) { mDiag = PetscMax(mDiag, maa); ratio = PetscMax(ratio, haa / maa); }
+                }
+                if (mDiag <= 0.0) mDiag = 1.0;
+                PetscInt nen_e;
+                const PetscInt *rowmap = NULL;   // local (ghosted) DoF indices of the element
+                ierr = IGAElementGetClosure(element, &nen_e, &rowmap);
+                if (PetscUnlikely(ierr)) goto cleanup;
+                for (PetscInt f = 0; f < element->nfix; ++f) {
+                    const PetscInt i = element->ifix[f];
+                    for (PetscInt k = 0; k < nmat; ++k)
+                        for (PetscInt j = 0; j < nen; ++j) {
+                            work[k][i*nen + j] = 0.0;
+                            work[k][j*nen + i] = 0.0;
+                        }
+                    work[0][i*nen + i] = kDirichletSpuriousFactor * ratio * mDiag;
+                    work[1][i*nen + i] = mDiag;
+                    if (g == 0) wallLocal.push_back(rowmap[i]);
+                }
+            }
+
             for (PetscInt k = 0; k < nmat; ++k) {
-                ierr = PetscMemzero(work[k], active_bytes);
+                if (!((group >> k) & 1u)) continue;
+                ierr = band.Add(element, k, work[k], mats[k]);
                 if (PetscUnlikely(ierr)) goto cleanup;
             }
         }
-
-        // Element matrices: sum-factorised where supported, per-point kernel
-        // otherwise (TDSEZElementWork, sumfact.cpp).
-        ierr = TDSEZElementWork(iga, element, kernel, nmat, work, ctx);
+        element_open = PETSC_FALSE;
+        ierr = IGAEndElement(iga, &element);
         if (PetscUnlikely(ierr)) goto cleanup;
-
-        // ---- Homogeneous Dirichlet: pin the wall DoFs symmetrically ----
-        // PetIGA lists the wall DoFs of this element (IGASetBoundaryValue) in
-        // element->ifix. Their rows and columns are removed from H and M, so
-        // psi is exactly zero there and the remaining problem is the conforming
-        // H_0^1 Galerkin problem. Pinning H alone (the previous behaviour) left
-        // the wall DoF coupled through M, which shifted the eigenvalues below
-        // the exact ones. The decoupled diagonals give each wall DoF the
-        // spurious eigenvalue kDirichletSpuriousFactor * max_a(H_aa/M_aa), taken
-        // over the free DoFs of the element (the wall DoF's own entry can be
-        // huge for potentials singular at the wall), i.e. near the top of the
-        // discrete spectrum and away from the shift-invert target.
-        ierr = IGAElementBuildFix(element);
+        ierr = band.EndGroup(mats);
         if (PetscUnlikely(ierr)) goto cleanup;
-        if (element->nfix > 0) {
-            PetscReal mDiag = 0.0, ratio = 1.0;
-            for (PetscInt a = 0; a < nen; ++a) {
-                PetscBool isWall = PETSC_FALSE;
-                for (PetscInt f = 0; f < element->nfix; ++f) if (element->ifix[f] == a) isWall = PETSC_TRUE;
-                if (isWall) continue;
-                const PetscReal maa = PetscRealPart(work[1][a*nen + a]);
-                const PetscReal haa = PetscAbsScalar(work[0][a*nen + a]);
-                if (maa > 0.0) { mDiag = PetscMax(mDiag, maa); ratio = PetscMax(ratio, haa / maa); }
-            }
-            if (mDiag <= 0.0) mDiag = 1.0;
-            PetscInt nen_e;
-            const PetscInt *rowmap = NULL;   // local (ghosted) DoF indices of the element
-            ierr = IGAElementGetClosure(element, &nen_e, &rowmap);
-            if (PetscUnlikely(ierr)) goto cleanup;
-            for (PetscInt f = 0; f < element->nfix; ++f) {
-                const PetscInt i = element->ifix[f];
-                for (PetscInt k = 0; k < nmat; ++k)
-                    for (PetscInt j = 0; j < nen; ++j) {
-                        work[k][i*nen + j] = 0.0;
-                        work[k][j*nen + i] = 0.0;
-                    }
-                work[0][i*nen + i] = kDirichletSpuriousFactor * ratio * mDiag;
-                work[1][i*nen + i] = mDiag;
-                wallLocal.push_back(rowmap[i]);
-            }
-        }
-
-        for (PetscInt k = 0; k < nmat; ++k) {
-            ierr = IGAElementAssembleMat(element, work[k], mats[k]);
-            if (PetscUnlikely(ierr)) goto cleanup;
-        }
     }
 
 cleanup:
@@ -517,6 +550,7 @@ cleanup:
         PetscErrorCode ierr2 = PetscFree(work_storage);
         if (!ierr) ierr = ierr2;
     }
+    band.Release();
     {
         PetscErrorCode ierr2 = TDSEZBlasSerialEnd(blasThreads);
         if (!ierr) ierr = ierr2;
