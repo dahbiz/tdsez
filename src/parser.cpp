@@ -102,7 +102,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
         std::string val = line.substr(delimPos + 1);
         trim(key); 
         trim(val);
-        if (!seenKeys.insert(key).second) dupKeys.push_back(key);
+        // Variables lines accumulate (documented); every other key may appear once.
+        if (key != "Variables" && !seenKeys.insert(key).second) dupKeys.push_back(key);
 
         /* ---- Modular O(1) key dispatch ------------------------------------ */
         /* Keys are resolved through a single unordered_map (hash lookup) instead */

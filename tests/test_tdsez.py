@@ -516,6 +516,19 @@ def test_removed_keys_with_no_effect_only_warn():
     _step("warning printed", "has been removed" in out and "WARNING" in out, out[-800:])
 
 
+def test_multiple_variables_lines_accumulate():
+    """Several Variables lines add up (they are not duplicates)."""
+    binary = zkit.find_binary()
+    text = (BOX1D.replace("Potential         =", "#Potential         =")
+                 .replace("PotentialDerivativeX =", "#PotentialDerivativeX =")
+            + "\nVariables = A0=0.02\nVariables = B0=2.0\n"
+            + "Potential = A0 * x * x\nPotentialDerivativeX = B0 * A0 * x\n")
+    path = _write_tmp("variables_twice.inp", text, raw=True)
+    r = _run_guard(path, binary)
+    out = r.stdout.decode() + r.stderr.decode()
+    _step("zero exit", r.returncode == 0, f"rc={r.returncode}\n{out[-800:]}")
+
+
 def test_guard_duplicate_key():
     """A key given twice (the last value would win silently) is rejected."""
     binary = zkit.find_binary()
