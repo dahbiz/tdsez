@@ -423,12 +423,17 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
     const PetscReal c1 = 0.5 - s3 / 6.0, c2 = 0.5 + s3 / 6.0;
     const PetscReal a1 = (3.0 - 2.0 * s3) / 12.0, a2 = (3.0 + 2.0 * s3) / 12.0;
 
+    // Step times t_k = k dt (not accumulated, which drifts over many steps);
+    // the last step ends exactly at endT.
+    const PetscInt nSteps = (PetscInt)PetscCeilReal(endT / dt - 1e-9);
     PetscReal t = 0.0;
     PetscInt  step = 0;
     PetscCall(monitor(NULL, step, t, psi, &manager_));
-    const PetscReal tol = 1e-12 * PetscMax(1.0, endT);
-    while (t < endT - tol) {
-        const PetscReal h = PetscMin(dt, endT - t);
+    while (step < nSteps) {
+        const PetscReal t1 = (step + 1 == nSteps) ? endT : (step + 1) * dt;
+        PetscReal h = t1 - step * dt;
+        if (PetscAbsReal(h - dt) <= 1e-12 * dt) h = dt;   // keep the cached stage matrices
+        t = step * dt;
         if (!m4) {
             PetscScalar Em[3];
             field(t + 0.5 * h, Em);
@@ -444,7 +449,7 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
             PetscCall(Pade22Step(0.5 * h, Ea, psi, 0));
             PetscCall(Pade22Step(0.5 * h, Eb, psi, 1));
         }
-        t = (h < dt) ? endT : t + h;
+        t = t1;
         ++step;
         PetscCall(monitor(NULL, step, t, psi, &manager_));
     }

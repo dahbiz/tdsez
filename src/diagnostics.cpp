@@ -329,61 +329,6 @@ PetscErrorCode TDSEZMakeStateReal2(Vec v_complex, Vec Vre, Mat M)
 }
 
 
-/// @brief Make all bound-state eigenstates real-valued by applying
-///        TDSEZMakeStateReal2 to each state. Real states simplify the
-///        dipole matrix computation and are required for certain
-///        post-processing tools.
-/// @param states  Vector of bound-state eigenvectors (modified in place).
-/// @param M       Mass (overlap) matrix.
-/// @return PetscErrorCode — PETSC_SUCCESS on success.
-PetscErrorCode MakeStatesReal(std::vector<Vec>& states, Mat M)
-{
-    PetscFunctionBeginUser;
-
-    Vec Mpsi;
-    PetscCall(VecDuplicate(states[0], &Mpsi));
-
-    for (auto& psi : states) {
-
-        // 1. Find global phase via <psi_conj|M|psi_conj> = sum conj(psi_i)^2 * M_ij
-        Vec psi_conj;
-        PetscCall(VecDuplicate(psi, &psi_conj));
-        PetscCall(VecCopy(psi, psi_conj));
-        PetscCall(VecConjugate(psi_conj));
-
-        // M|psi_conj>
-        PetscCall(MatMult(M, psi_conj, Mpsi));
-
-        // <psi_conj|M|psi_conj>
-        PetscScalar dot;
-        PetscCall(VecDot(Mpsi, psi_conj, &dot));
-
-        // Extract global phase and fix
-        PetscReal dotMag = PetscAbsScalar(dot);
-        if (dotMag > 1e-12) {
-            PetscReal   angle = 0.5 * PetscAtan2Real(
-                                    PetscImaginaryPart(PetscConj(dot / (PetscScalar)dotMag)),
-                                    PetscRealPart(PetscConj(dot / (PetscScalar)dotMag)));
-            PetscScalar fix   = PetscCMPLX(PetscCosReal(angle), PetscSinReal(angle));
-            PetscCall(VecScale(psi, fix));
-        }
-        PetscCall(VecDestroy(&psi_conj));
-
-        // Zero imaginary part
-        PetscCall(VecRealPart(psi));
-
-        // Renormalize with M: norm = sqrt(<psi|M|psi>)
-        PetscCall(MatMult(M, psi, Mpsi));
-        PetscScalar norm_sq;
-        PetscCall(VecDot(Mpsi, psi, &norm_sq));
-        PetscReal norm = PetscSqrtReal(PetscRealPart(norm_sq));
-        if (norm > 1e-12)
-            PetscCall(VecScale(psi, 1.0 / (PetscScalar)norm));
-    }
-
-    PetscCall(VecDestroy(&Mpsi));
-    PetscFunctionReturn(PETSC_SUCCESS);
-}
 /// @brief Verify length-velocity gauge consistency: checks that the
 ///        momentum matrix v_mn satisfies [D, H] = i*omega*v (the
 ///        commutator relation linking the length and velocity gauges).

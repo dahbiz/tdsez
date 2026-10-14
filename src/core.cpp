@@ -1290,7 +1290,6 @@ PetscErrorCode TDSEZCore::Output()
                 write_real("LMinX", TDSEZParser::LMinX); write_real("LMaxX", TDSEZParser::LMaxX);
                 write_real("LMinY", TDSEZParser::LMinY); write_real("LMaxY", TDSEZParser::LMaxY);
                 write_real("LMinZ", TDSEZParser::LMinZ); write_real("LMaxZ", TDSEZParser::LMaxZ);
-                write_real("Hbar",  TDSEZParser::Hbar);
                 write_real("Charge",TDSEZParser::Q);
                 write_real("TargetEigenvalue", TDSEZParser::TargetEigenvalue);
                 write_int ("NBoundStatesSave", (PetscInt)TDSEZParser::NBoundStatesSave);
@@ -1556,37 +1555,7 @@ PetscErrorCode TDSEZCore::Output()
             IGASetDof(iga, 1);
             IGASetOrder(iga, TDSEZParser::SplineDegree);
 
-            // ── adaptive_wf two-pass bootstrap ───────────────────────────────
-            // If any axis requests KnotSequence = adaptive_wf, run a cheap coarse
-            // ground-state solve now to obtain the electron-density marginals
-            // rho_x_/rho_y_/rho_z_ that the knot generator below consumes. This
-            // must happen BEFORE the knot block. No-op for other sequences.
-            {
-                bool need_wf = (TDSEZParser::KnotSeq[0] == "adaptive_wf")
-                             || (TDSEZParser::KnotSeq[1] == "adaptive_wf")
-                             || (TDSEZParser::KnotSeq[2] == "adaptive_wf");
-                if (need_wf) {
-                    // Wrap in try/catch: BootstrapDensity() runs a coarse solve
-                    // and may throw a C++ exception (e.g. TDSEZAdaptiveKnots
-                    // hitting an empty PotentialDerivativeX under adaptive_wf).
-                    // PetscCallAbort only catches PETSc error codes, not C++
-                    // exceptions, so without this the throw escapes to
-                    // std::terminate + SIGABRT + MPI abort. Convert to a clean
-                    // TDSEZ FATAL instead.
-                    PetscErrorCode ierr_b = PETSC_SUCCESS;
-                    try {
-                        ierr_b = BootstrapDensity();
-                    } catch (const std::exception &be) {
-                        PetscPrintf(PETSC_COMM_WORLD,
-                            "\nTDSEZ FATAL: adaptive_wf bootstrap failed:\n  %s\n",
-                            be.what());
-                        ierr_b = PETSC_ERR_LIB;
-                    }
-                    PetscCallAbort(PETSC_COMM_WORLD, ierr_b);
-                }
-            }
-
-            // Modified LMin/Lmax (offset + per-axis support).
+            // Domain bounds per axis, shifted by the offsets.
             PetscReal LminX = TDSEZParser::LMinX + TDSEZParser::OffsetX;
             PetscReal LmaxX = TDSEZParser::LMaxX + TDSEZParser::OffsetX;
             PetscReal LminY = TDSEZParser::LMinY + TDSEZParser::OffsetY;
@@ -1645,13 +1614,6 @@ PetscErrorCode TDSEZCore::Output()
                             TDSEZParser::HydrogenicR1[0] > 0.0 ? TDSEZParser::HydrogenicR1[0] : 0.1,
                             TDSEZParser::HydrogenicNExp[0] > 0 ? TDSEZParser::HydrogenicNExp[0] : 10,
                             TDSEZParser::SplineDegree);
-                    else if (seq == "adaptive")
-                        knots_x = TDSEZAdaptiveKnots(LminX, LmaxX, TDSEZParser::Nelements - 1,
-                            TDSEZParser::SplineDegree, 0,
-                            TDSEZParser::AdaptiveKappa, TDSEZParser::AdaptivePower);
-                    else if (seq == "adaptive_wf")
-                        knots_x = TDSEZAdaptiveWFKnots(LminX, LmaxX, TDSEZParser::Nelements - 1,
-                            TDSEZParser::SplineDegree, rho_x_);
                     else
                     {
                         PetscPrintf(PETSC_COMM_WORLD,
@@ -1719,13 +1681,6 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicR1[1] > 0.0 ? TDSEZParser::HydrogenicR1[1] : 0.1,
                                 TDSEZParser::HydrogenicNExp[1] > 0 ? TDSEZParser::HydrogenicNExp[1] : 10,
                                 TDSEZParser::SplineDegree);
-                        else if (seq == "adaptive")
-                            knots_y = TDSEZAdaptiveKnots(LminY, LmaxY, TDSEZParser::Nelements - 1,
-                                TDSEZParser::SplineDegree, 1,
-                                TDSEZParser::AdaptiveKappa, TDSEZParser::AdaptivePower);
-                        else if (seq == "adaptive_wf")
-                            knots_y = TDSEZAdaptiveWFKnots(LminY, LmaxY, TDSEZParser::Nelements - 1,
-                                TDSEZParser::SplineDegree, rho_y_);
                         else
                         {
                             PetscPrintf(PETSC_COMM_WORLD,
@@ -1780,13 +1735,6 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicR1[2] > 0.0 ? TDSEZParser::HydrogenicR1[2] : 0.1,
                                 TDSEZParser::HydrogenicNExp[2] > 0 ? TDSEZParser::HydrogenicNExp[2] : 10,
                                 TDSEZParser::SplineDegree);
-                        else if (seq == "adaptive")
-                            knots_z = TDSEZAdaptiveKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1,
-                                TDSEZParser::SplineDegree, 2,
-                                TDSEZParser::AdaptiveKappa, TDSEZParser::AdaptivePower);
-                        else if (seq == "adaptive_wf")
-                            knots_z = TDSEZAdaptiveWFKnots(LminZ, LmaxZ, TDSEZParser::Nelements - 1,
-                                TDSEZParser::SplineDegree, rho_z_);
                         else
                         {
                             PetscPrintf(PETSC_COMM_WORLD,
@@ -1844,34 +1792,3 @@ PetscErrorCode TDSEZCore::Output()
 
             boundstates.clear();
         };
-// ============================================================================
-// adaptive_wf two-pass bootstrap support
-// Full implementations saved in dev/core_bootstrap_implementations.cpp for a
-// future push. Stubs are no-ops (return success, leave rho_*_ empty).
-// ============================================================================
-
-/// @brief Bootstrap a coarse-grid solve to obtain a reference density for
-///        adaptive wavefunction-based knot placement.
-/// @note Full implementation saved in dev/core_bootstrap_implementations.cpp
-///       for a future push. Stub is a no-op (returns PETSC_SUCCESS).
-/// @return PetscErrorCode — PETSC_SUCCESS on success.
-PetscErrorCode TDSEZCore::BootstrapDensity()
-{
-    PetscFunctionBegin;
-    PetscPrintf(PETSC_COMM_WORLD,
-        "  adaptive_wf BOOTSTRAP: implementation pending — skipping coarse solve.\n");
-    PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/// @brief Sample |psi|^2 and marginalise to 1D per-axis density histograms.
-/// @note Full implementation saved in dev/core_bootstrap_implementations.cpp
-///       for a future push. Stub is a no-op.
-/// @param iga  IGA context used for volume evaluation.
-/// @param psi  Wavefunction vector to sample.
-/// @return PetscErrorCode — PETSC_SUCCESS on success.
-PetscErrorCode TDSEZCore::SampleDensity(IGA iga, Vec psi)
-{
-    PetscFunctionBegin;
-    (void)iga; (void)psi;
-    PetscFunctionReturn(PETSC_SUCCESS);
-}

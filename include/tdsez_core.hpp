@@ -14,11 +14,10 @@ class TDSEZAssembler;
 /**
  * @brief IGA setup, ground-state solver, and eigenstate computation.
  * @details Creates the IGA context, generates knot vectors (uniform, symmetric
- * exponential/tangent, logarithmic-tangent, interface-aligned, hydrogenic,
- * adaptive potential- or density-driven), assembles and solves the
+ * exponential/tangent, logarithmic-tangent, interface-aligned, hydrogenic),
+ * assembles and solves the
  * time-independent Schrödinger equation via SLEPc, and stores the resulting
- * bound states and energies. Also supports the two-pass adaptive_wf
- * density-driven mesh via BootstrapDensity/SampleDensity.
+ * bound states and energies.
  */
 class TDSEZCore
 {
@@ -128,47 +127,6 @@ class TDSEZCore
          * @return Vector of knot coordinates.
          */
         static std::vector<PetscReal> TDSEZHydrogenicKnots(PetscReal Lmax, PetscInt n_lin, PetscReal r1, PetscInt n_exp, PetscInt p);
-        // Adaptive (potential-driven, single-pass) knot vector: clusters knots
-        // where the potential is "interesting" (steep gradient + deep wells) by
-        // CDF-inverting a tanh-compressed importance weight. axis selects which
-        // derivative parser to use (0->x,1->y,2->z); kappa weights the gradient
-        // term, power sharpens the weight. See core_knots.cpp for details.
-        /**
-         * @brief Generate an adaptive (potential-driven, single-pass) knot vector.
-         * @details Clusters knots where the potential is "interesting" (steep
-         * gradient + deep wells) by CDF-inverting a tanh-compressed importance
-         * weight.
-         * @param Lmin Lower domain bound.
-         * @param Lmax Upper domain bound.
-         * @param ninterior Number of interior knots.
-         * @param p Spline degree.
-         * @param axis Which derivative parser to use (0=x, 1=y, 2=z).
-         * @param kappa Weight of the |grad V| term (default 1.0).
-         * @param power Sharpening exponent on the importance weight (default 1.0).
-         * @return Vector of knot coordinates.
-         */
-        static std::vector<PetscReal> TDSEZAdaptiveKnots(PetscReal Lmin, PetscReal Lmax,
-            PetscInt ninterior, PetscInt p, PetscInt axis,
-            PetscReal kappa = 1.0, PetscReal power = 1.0);
-        // Adaptive (density-driven, two-pass) knot vector: clusters knots where
-        // the ELECTRON DENSITY is large. rho_axis is a precomputed 1D marginal
-        // |psi0|^2 (obtained from a cheap coarse ground-state solve — see
-        // BootstrapDensity). CDF-inverts the density so knots concentrate where
-        // the wavefunction lives. Same clamped p+1 boundary convention.
-        /**
-         * @brief Generate an adaptive (density-driven, two-pass) knot vector.
-         * @details Clusters knots where the electron density |psi0|^2 is large,
-         * CDF-inverting a precomputed 1D marginal density.
-         * @param Lmin Lower domain bound.
-         * @param Lmax Upper domain bound.
-         * @param ninterior Number of interior knots.
-         * @param p Spline degree.
-         * @param rho_axis Precomputed 1D marginal density |psi0|^2.
-         * @return Vector of knot coordinates.
-         */
-        static std::vector<PetscReal> TDSEZAdaptiveWFKnots(PetscReal Lmin, PetscReal Lmax,
-            PetscInt ninterior, PetscInt p,
-            const std::vector<PetscReal>& rho_axis);
         // Auto interface-aligned knots: extract breakpoints from a piecewise
         // (?:) Potential/Mass expression and pin a knot line there, grading the
         // rest by a CDF that clusters resolution at the material boundaries.
@@ -190,30 +148,6 @@ class TDSEZCore
          */
         PetscErrorCode Output();
 
-        // ── adaptive_wf (two-pass density-driven) support ──────────────
-        // BootstrapDensity(): if any axis uses KnotSequence = adaptive_wf, run a
-        // CHEAP coarse ground-state solve (uniform mesh, AdaptiveWFCoarseN
-        // knots/axis), sample the 1D marginal electron density |psi0|^2 onto
-        // rho_x_/rho_y_/rho_z_, then tear down the coarse IGA/matrices. The real
-        // knot build below then consumes these marginals. No-op otherwise.
-        /**
-         * @brief Bootstrap the 1D marginal density for adaptive_wf meshing.
-         * @details If any axis uses KnotSequence = adaptive_wf, runs a cheap
-         * coarse ground-state solve, samples |psi0|^2 onto rho_x_/rho_y_/rho_z_,
-         * then tears down the coarse IGA/matrices. No-op otherwise.
-         * @return PetscErrorCode (0 on success).
-         */
-        PetscErrorCode BootstrapDensity();
-        // Sample |psi|^2 on the coarse volume grid and marginalise to 1D
-        // histograms per axis (normalised to unit integral) into rho_*_.
-        /**
-         * @brief Sample |psi|^2 and marginalise to 1D per-axis density histograms.
-         * @param iga Coarse IGA context to sample on.
-         * @param psi Wavefunction vector to sample.
-         * @return PetscErrorCode (0 on success).
-         */
-        PetscErrorCode SampleDensity(IGA iga, Vec psi);
-
         // friend classes
         /// @cond PRIVATE
         friend class TDSEZAssembler;
@@ -227,10 +161,6 @@ class TDSEZCore
         /// Knot vectors along x, y, and z.
         std::vector<PetscReal> knots_x, knots_y, knots_z;
 
-        // adaptive_wf: 1D marginal electron densities |psi0|^2, filled by
-        // BootstrapDensity() (one vector per axis, normalised to unit integral).
-        /// 1D marginal electron densities |psi0|^2 per axis (adaptive_wf).
-        std::vector<PetscReal> rho_x_, rho_y_, rho_z_;
 
         /// Initial state vector psi(0).
         // initial state

@@ -101,11 +101,31 @@ def _run_guard(input_file, binary):
     return r
 
 
-def _write_tmp(name, text):
-    """Write a generated input outside the source tree and return its path."""
+def _override_keys(text):
+    """Tests extend a template by appending 'Key = value' lines. TDSE-Z rejects
+    a key given twice, so keep only the last definition of each key (in the
+    position of its first occurrence)."""
+    lines = text.split("\n")
+    def key(l):
+        body = l.split("#", 1)[0]
+        return body.split("=", 1)[0].strip() if "=" in body else None
+    last = {key(l): i for i, l in enumerate(lines) if key(l)}
+    out, done = [], set()
+    for i, l in enumerate(lines):
+        k = key(l)
+        if not k:
+            out.append(l)
+        elif k not in done:
+            out.append(lines[last[k]]); done.add(k)
+    return "\n".join(out)
+
+
+def _write_tmp(name, text, raw=False):
+    """Write a generated input outside the source tree and return its path
+    (raw=True writes the text unchanged, e.g. to test duplicate keys)."""
     path = os.path.join(_TEMP_INPUTS.name, name)
     with open(path, "w") as fh:
-        fh.write(text)
+        fh.write(text if raw else _override_keys(text))
     return path
 
 
@@ -140,7 +160,7 @@ EXPECTED_META_KEYS = [
     "code_version", "input_file", "units",
     "Dimension", "SplineDegree",
     "LMinX", "LMaxX",
-    "Hbar", "Charge",
+    "Charge",
 ]
 
 # Expected residual bound for eigenvalue convergence
@@ -166,7 +186,6 @@ SplineDegree      = 5
 NQuadratures      = 8
 KnotSequence      = uniform
 NSplines          = 80
-Planck            = 1.0
 Charge            = 1.0
 Mass              = 1.0
 MassIsConstant    = 1
@@ -269,21 +288,12 @@ def test_cap_absorbs_without_norm_growth():
 
 # "interface" is implemented (C0 knots at mass/potential breakpoints) and is
 # tested against exact solutions in test_analytic.py.
-@pytest.mark.parametrize("mode", ["adaptive", "adaptive_wf"])
-def test_pending_knot_modes_are_uniform_fallbacks(mode):
-    """Lock down the current fallback so specialized placement cannot be claimed."""
-    binary = zkit.find_binary()
+@pytest.mark.parametrize("mode", ["adaptive", "adaptive_wf", "bogus"])
+def test_removed_or_unknown_knot_modes_are_rejected(mode):
+    """A knot sequence that is not implemented must stop the run, not silently
+    fall back to uniform knots."""
     text = BOX1D.replace("KnotSequence      = uniform", f"KnotSequence      = {mode}")
-    path = _write_tmp(f"knot_fallback_{mode}.inp", text)
-    r, out_h5, _ = _run(path, binary, 1)
-    _step(f"{mode} fallback run succeeds", r.returncode == 0,
-          r.stdout.decode()[-800:] + r.stderr.decode()[-800:])
-    with h5py.File(out_h5) as f:
-        knots = np.asarray(f["knots_x"])
-    interior = knots[(knots > -20.0) & (knots < 20.0)]
-    expected = np.linspace(-20.0, 20.0, len(interior) + 2)[1:-1]
-    _step(f"{mode} uses exactly uniform interior knots",
-          np.allclose(interior, expected, atol=1e-12), str(knots))
+    _expect_fatal(text, f"knot_{mode}")
 
 
 def test_postprocessor_harmonic_oscillator_dipoles():
@@ -377,9 +387,9 @@ def test_knot_partition_of_unity():
 def test_muparser_scalar_reference():
     """Verify a Potential expression referencing an input scalar works.
 
-    Scalar parameters (e.g. Amplitude) are auto-bound to every muParser
-    instance, so they can be referenced by name inside any expression.
-    This test builds a smooth HO via Amplitude to verify that binding.
+    Input scalars (e.g. Ampx) and user constants (Variables = name=value) are
+    bound in every muParser instance, so they can be referenced by name inside
+    any expression. This test builds a smooth HO via a user constant.
     """
     print("\n  --- test_muparser_scalar_reference ---")
     binary = zkit.find_binary()
@@ -391,13 +401,12 @@ SplineDegree      = 5
 NQuadratures      = 8
 KnotSequence      = uniform
 NSplines          = 80
-Planck            = 1.0
 Charge            = 1.0
 Mass              = 1.0
 MassIsConstant    = 1
-Amplitude         = 0.02
-Potential         = Amplitude * x * x
-PotentialDerivativeX = 2.0 * Amplitude * x
+Variables         = A0=0.02
+Potential         = A0 * x * x
+PotentialDerivativeX = 2.0 * A0 * x
 UseDirectSolve    = 0
 TargetEigenvalue  = 0.0
 NBoundStates      = 3
@@ -443,9 +452,10 @@ def _expect_fatal(text, label):
     has_fatal = "FATAL" in out
     _step(f"'{label}' -> FATAL in output", has_fatal,
           f"no FATAL message; rc={r.returncode}\n{out[-800:]}")
-    has_validation = "validation failed" in out or "unknown input key" in out
+    has_validation = any(m in out for m in ("validation failed", "unknown input key",
+                                             "has been removed", "given more than once"))
     _step(f"'{label}' -> validation/parser path", has_validation,
-          f"no 'validation failed' or 'unknown input key'\n{out[-800:]}")
+          f"no validation/parser message\n{out[-800:]}")
 
 
 def test_guard_unknown_key():
@@ -487,49 +497,33 @@ def test_guard_bad_degree():
     _expect_fatal(text, "bad_degree")
 
 
-def test_guard_adaptive_missing_derivative():
-    """Verify 'adaptive' knot sequence without PotentialDerivativeX falls back
-    to uniform knots (implementation pending) instead of crashing.
+@pytest.mark.parametrize("key", ["Omega = 0.057", "Gamma = 5.0", "Envelope = 1",
+                                 "EnvelopeType = gaussian", "Planck = 2.0", "dinvMassX = 0.0",
+                                 "AdaptiveKappa = 1.0", "TSurff = 1"])
+def test_guard_removed_keys(key):
+    """Keys of removed features or parameters that had no effect are rejected
+    with a message saying why (StrictInput, the default)."""
+    _expect_fatal(BOX1D + "\n" + key + "\n", "removed_" + key.split()[0])
 
-    The full TDSEZAdaptiveKnots implementation requires PotentialDerivativeX,
-    but the stub falls back to uniform interior knots without evaluating it.
-    This test locks that behavior: zero rc + no crash / no FATAL.
-    """
-    print("\n  --- guard: adaptive_missing_derivative ---")
+
+def test_removed_keys_with_no_effect_only_warn():
+    """Planck = 1 and EnvelopeType = custom changed nothing; old inputs keep running."""
     binary = zkit.find_binary()
-    text = (BOX1D
-            .replace("KnotSequence      = uniform", "KnotSequence      = adaptive")
-            .replace("PotentialDerivativeX = 0.2 * 0.2 * x", ""))
-    path = _write_tmp("bad_adaptive_nodv.inp", text)
+    path = _write_tmp("removed_harmless.inp", BOX1D + "\nPlanck = 1.0\nEnvelopeType = custom\n")
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
-    _step("zero exit (stub fallback)", r.returncode == 0, f"binary failed: rc={r.returncode}\n{out[-800:]}")
-    _step("NO 'TDSEZ FATAL'", "TDSEZ FATAL" not in out, f"REGRESSION:\n{out[-800:]}")
-    _step("NO std::terminate", "terminate called" not in out, f"REGRESSION:\n{out[-800:]}")
-    _step("NO SIGABRT", "SIGABRT" not in out, f"REGRESSION:\n{out[-800:]}")
-    _step("NO raw mu::ParserError", "mu::ParserError" not in out, f"REGRESSION:\n{out[-800:]}")
+    _step("zero exit", r.returncode == 0, f"rc={r.returncode}\n{out[-800:]}")
+    _step("warning printed", "has been removed" in out and "WARNING" in out, out[-800:])
 
 
-def test_guard_adaptive_wf_missing_derivative():
-    """Verify 'adaptive_wf' knot sequence without PotentialDerivativeX falls
-    back to uniform knots (implementation pending) instead of crashing.
-
-    The full TDSEZAdaptiveWFKnots bootstrap requires PotentialDerivativeX, but
-    the stub falls back to uniform interior knots without evaluating it.
-    This test locks that behavior: zero rc + no crash / no FATAL.
-    """
-    print("\n  --- guard: adaptive_wf_missing_derivative ---")
+def test_guard_duplicate_key():
+    """A key given twice (the last value would win silently) is rejected."""
     binary = zkit.find_binary()
-    text = (BOX1D
-            .replace("KnotSequence      = uniform", "KnotSequence      = adaptive_wf")
-            .replace("PotentialDerivativeX = 0.2 * 0.2 * x", ""))
-    path = _write_tmp("bad_adaptivewf_nodv.inp", text)
+    path = _write_tmp("bad_duplicate_key.inp", BOX1D + "\nNBoundStates = 2\nNBoundStates = 3\n", raw=True)
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
-    _step("zero exit (stub fallback)", r.returncode == 0, f"binary failed: rc={r.returncode}\n{out[-800:]}")
-    _step("NO 'TDSEZ FATAL'", "TDSEZ FATAL" not in out, f"REGRESSION:\n{out[-800:]}")
-    _step("NO std::terminate", "terminate called" not in out, f"REGRESSION:\n{out[-800:]}")
-    _step("NO SIGABRT", "SIGABRT" not in out, f"REGRESSION:\n{out[-800:]}")
+    _step("non-zero exit", r.returncode != 0, out[-800:])
+    _step("duplicate reported", "given more than once" in out and "NBoundStates" in out, out[-800:])
 
 
 def test_strictinput_off_tolerates_unknown():

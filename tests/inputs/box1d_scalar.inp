@@ -5,13 +5,12 @@ SplineDegree      = 5
 NQuadratures      = 8
 KnotSequence      = uniform
 NSplines          = 80
-Planck            = 1.0
 Charge            = 1.0
 Mass              = 1.0
 MassIsConstant    = 1
-Amplitude         = 0.02
-Potential         = Amplitude * x * x
-PotentialDerivativeX = 2.0 * Amplitude * x
+Variables         = A0=0.02
+Potential         = A0 * x * x
+PotentialDerivativeX = 2.0 * A0 * x
 UseDirectSolve    = 0
 TargetEigenvalue  = 0.0
 NBoundStates      = 3

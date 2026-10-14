@@ -13,6 +13,7 @@
  */
 
 #include <petsc.h>
+#include <algorithm>
 #include <petscviewerhdf5.h>
 #include <hdf5.h>
 #include <cstring>
@@ -84,7 +85,11 @@ static PetscErrorCode loadState(PetscViewer viewer, Mat Dx,
     Vec tmpl;
     PetscCall(MatCreateVecs(Dx, &tmpl, NULL));
     PetscCall(VecDuplicate(tmpl, v));
-    std::string name = "psi_" + std::to_string(i);
+    // coeff_i: natural ordering, the ordering of the saved Dx (psi_i for old files)
+    std::string name = "coeff_" + std::to_string(i);
+    PetscBool has = PETSC_FALSE;
+    PetscCall(PetscViewerHDF5HasDataset(viewer, name.c_str(), &has));
+    if (!has) name = "psi_" + std::to_string(i);
     PetscCall(PetscObjectSetName((PetscObject)(*v), name.c_str()));
     PetscCall(VecLoad(*v, viewer));
     PetscCall(VecDestroy(&tmpl));
@@ -153,17 +158,17 @@ int main(int argc, char **argv)
         SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE,
                 "bra state -i out of range");
 
-    // --- Compute High-Precision Density of States (DOS) for all states ---
+    // --- Density of states rho_j = 1/(E_next - E_j) over energy-sorted neighbours
+    // (the file stores states by distance to TargetEigenvalue, not by energy) ---
+    std::vector<PetscInt> ord(nStates);
+    for (PetscInt k = 0; k < nStates; ++k) ord[k] = k;
+    std::sort(ord.begin(), ord.end(), [&](PetscInt a, PetscInt b) { return energies[a] < energies[b]; });
     std::vector<PetscReal> rho(nStates, 0.0);
-    for (PetscInt j = 0; j < nStates - 1; ++j) {
-        PetscReal dE = energies[j+1] - energies[j];
-        if (dE > 1e-15) { // tighter threshold for high-precision steps
-            rho[j] = 1.0 / dE;
-        }
+    for (PetscInt k = 0; k + 1 < nStates; ++k) {
+        PetscReal dE = energies[ord[k+1]] - energies[ord[k]];
+        if (dE > 1e-15) rho[ord[k]] = 1.0 / dE;
     }
-    if (nStates > 1) {
-        rho[nStates - 1] = rho[nStates - 2]; 
-    }
+    if (nStates > 1) rho[ord[nStates - 1]] = rho[ord[nStates - 2]];
 
     PetscViewer ev;
     PetscCall(PetscViewerHDF5Open(PETSC_COMM_WORLD, eigPath.c_str(),

@@ -5,7 +5,6 @@ SplineDegree      = 5
 NQuadratures      = 8
 KnotSequence      = adaptive_wf
 NSplines          = 80
-Planck            = 1.0
 Charge            = 1.0
 Mass              = 1.0
 MassIsConstant    = 1

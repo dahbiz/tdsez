@@ -523,58 +523,6 @@ std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
 
 
 
-// ── Adaptive (potential-driven, single-pass) knot vector ────────────────────
-// Full implementation saved in dev/core_knots_implementations.cpp for a future
-// push. Stub falls back to uniform interior knots.
-/// @brief Generate an adaptive knot vector driven by the potential gradient.
-/// @note Full implementation saved in dev/core_knots_implementations.cpp
-///       for a future push. Falls back to uniform interior knots.
-std::vector<PetscReal> TDSEZCore::TDSEZAdaptiveKnots(
-    PetscReal Lmin, PetscReal Lmax,
-    PetscInt  ninterior, PetscInt p,
-    PetscInt  axis,            // 0->x, 1->y, 2->z selects dVPotX/Y/Z
-    PetscReal kappa,           // gradient-weighting strength (default 1.0)
-    PetscReal power)           // sharpening exponent (default 1.0)
-{
-    (void)axis; (void)kappa; (void)power;
-    const PetscInt nbnd   = p + 1;
-    const PetscInt nknots = ninterior + 2 * nbnd;
-    std::vector<PetscReal> knots(nknots);
-    for (PetscInt i = 0; i < nbnd; ++i) knots[i] = Lmin;
-    for (PetscInt i = nbnd + ninterior; i < nknots; ++i) knots[i] = Lmax;
-    for (PetscInt i = 0; i < ninterior; ++i)
-        knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
-    PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZAdaptiveKnots[%d]: implementation pending — using uniform interior.\n",
-        (int)axis);
-    return knots;
-}
-
-
-// ── Adaptive (density-driven, two-pass) knot vector ──────────────────────────
-// Full implementation saved in dev/core_knots_implementations.cpp for a future
-// push. Stub falls back to uniform interior knots.
-/// @brief Generate an adaptive knot vector from a pre-computed wavefunction
-///        density histogram.
-/// @note Full implementation saved in dev/core_knots_implementations.cpp
-///       for a future push. Falls back to uniform interior knots.
-std::vector<PetscReal> TDSEZCore::TDSEZAdaptiveWFKnots(
-    PetscReal Lmin, PetscReal Lmax,
-    PetscInt  ninterior, PetscInt p,
-    const std::vector<PetscReal>& rho_axis)
-{
-    (void)rho_axis;
-    const PetscInt nbnd   = p + 1;
-    const PetscInt nknots = ninterior + 2 * nbnd;
-    std::vector<PetscReal> knots(nknots);
-    for (PetscInt i = 0; i < nbnd; ++i) knots[i] = Lmin;
-    for (PetscInt i = nbnd + ninterior; i < nknots; ++i) knots[i] = Lmax;
-    for (PetscInt i = 0; i < ninterior; ++i)
-        knots[nbnd + i] = Lmin + (i + 1.0) / (ninterior + 1.0) * (Lmax - Lmin);
-    PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZAdaptiveWFKnots: implementation pending — using uniform interior.\n");
-    return knots;
-}
 
 
 

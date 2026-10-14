@@ -27,6 +27,18 @@ PetscErrorCode TDSEZManager::PolarizationSelector()
     {
         SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "The polarization choice is not compatible with the  dimension of the problem. Please check your input file.");
     }
+    {
+        // Observables are computed only on the coupled axes (their operators are
+        // assembled only there); say so when some spatial axes are left out.
+        std::string missing;
+        for (PetscInt d = 0; d < TDSEZParser::Dimension; ++d)
+            if (polType.find("xyz"[d]) == std::string::npos && polType != "all") missing += "xyz"[d];
+        if (!missing.empty())
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+                "      Note: Polarization = %s; dipole, current and acceleration along %s are not "
+                "computed (written as 0). Add the axis with a zero field (e.g. LaserY = 0) to record them.\n",
+                polType.c_str(), missing.c_str()));
+    }
 
         PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -642,6 +654,11 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
 bool TDSEZManager::FlushDue()
 {
     if (recordedSteps <= 0) return false;
+    // Buffer full (more steps than planned, e.g. with -ts_adapt): write now,
+    // otherwise the ring buffer would overwrite rows not yet written.
+    if (maxAllocatedSteps > 0 && recordedSteps - lastWrittenSteps >= maxAllocatedSteps) {
+        PetscTime(&lastFlushTime_); return true;
+    }
     if (recordedSteps % FLUSH_INTERVAL == 0) { PetscTime(&lastFlushTime_); return true; }
     const PetscInt stride = TDSEZParser::OutputStrideTS;
     if (stride > 0 && recordedSteps % stride == 0) {

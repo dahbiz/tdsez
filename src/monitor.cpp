@@ -451,7 +451,7 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
         accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccX >= 0
-                   ? res[idxAccX] - invMassAvg*(TDSEZ->charge*laserEx) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * laserEx) : 0.0;
     }
 
 
@@ -559,10 +559,10 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             for (PetscInt c = 0; c < 11; ++c) TDSEZ->currBuffer[cOff+c] = 0.0;
             TDSEZ->currBuffer[cOff+0] = t;
             TDSEZ->currBuffer[cOff+2] = dGamma;
-            TDSEZ->currBuffer[cOff+3] = PetscRealPart(Jx_total);
-            TDSEZ->currBuffer[cOff+5] = PetscRealPart(Jx_intra);
-            TDSEZ->currBuffer[cOff+7] = PetscRealPart(Jx_inter);
-            TDSEZ->currBuffer[cOff+9] = PetscRealPart(Jx_bc);
+            TDSEZ->currBuffer[cOff+3] = TDSEZ->charge * PetscRealPart(Jx_total);
+            TDSEZ->currBuffer[cOff+5] = TDSEZ->charge * PetscRealPart(Jx_intra);
+            TDSEZ->currBuffer[cOff+7] = TDSEZ->charge * PetscRealPart(Jx_inter);
+            TDSEZ->currBuffer[cOff+9] = TDSEZ->charge * PetscRealPart(Jx_bc);
         }
 
         // autocorrelation Table [t, Re<Psi(0)|Psi(t)>, Im<Psi(0)|Psi(t)>]
@@ -715,7 +715,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
         accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccX >= 0
-                   ? res[idxAccX] - invMassAvg * (TDSEZ->charge * laserEx) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * laserEx) : 0.0;
     }
 
     if (idxDy >= 0) {
@@ -723,7 +723,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         projDy   = res[idxDy];
         dipoleMY = TDSEZ->charge * projDy;
         accelY   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccY >= 0
-                   ? res[idxAccY] - invMassAvg * (TDSEZ->charge * laserEy) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccY] - invMassAvg * laserEy) : 0.0;
     }
     if (idxVx >= 0) Jx_total = res[idxVx];
     if (idxVy >= 0) Jy_total = res[idxVy];
@@ -865,14 +865,14 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             TDSEZ->currBuffer[cOff+0] = t;
             TDSEZ->currBuffer[cOff+1] = PetscRealPart(Lz_expect);
             TDSEZ->currBuffer[cOff+2] = dGamma;  
-            TDSEZ->currBuffer[cOff+3] = PetscRealPart(Jx_total);
-            TDSEZ->currBuffer[cOff+4] = PetscRealPart(Jy_total);
-            TDSEZ->currBuffer[cOff+5] = PetscRealPart(Jx_intra);
-            TDSEZ->currBuffer[cOff+6] = PetscRealPart(Jy_intra);
-            TDSEZ->currBuffer[cOff+7] = PetscRealPart(Jx_inter);
-            TDSEZ->currBuffer[cOff+8] = PetscRealPart(Jy_inter);
-            TDSEZ->currBuffer[cOff+9] = PetscRealPart(Jx_bc);
-            TDSEZ->currBuffer[cOff+10] = PetscRealPart(Jy_bc);
+            TDSEZ->currBuffer[cOff+3] = TDSEZ->charge * PetscRealPart(Jx_total);
+            TDSEZ->currBuffer[cOff+4] = TDSEZ->charge * PetscRealPart(Jy_total);
+            TDSEZ->currBuffer[cOff+5] = TDSEZ->charge * PetscRealPart(Jx_intra);
+            TDSEZ->currBuffer[cOff+6] = TDSEZ->charge * PetscRealPart(Jy_intra);
+            TDSEZ->currBuffer[cOff+7] = TDSEZ->charge * PetscRealPart(Jx_inter);
+            TDSEZ->currBuffer[cOff+8] = TDSEZ->charge * PetscRealPart(Jy_inter);
+            TDSEZ->currBuffer[cOff+9] = TDSEZ->charge * PetscRealPart(Jx_bc);
+            TDSEZ->currBuffer[cOff+10] = TDSEZ->charge * PetscRealPart(Jy_bc);
         }
 
         TDSEZ->recordedSteps++;
@@ -1012,14 +1012,14 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
         accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccX >= 0
-                   ? res[idxAccX] - invMassAvg*(TDSEZ->charge*laserEx) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * laserEx) : 0.0;
     }
     if (TDSEZ->hasY) {
         laserEy  = TDSEZParser::Ey(t);
         projDy   = res[idxDy];
         dipoleMY = TDSEZ->charge * projDy;
         accelY   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccY >= 0
-                   ? res[idxAccY] - invMassAvg*(TDSEZ->charge*laserEy) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccY] - invMassAvg * laserEy) : 0.0;
     }
 
     if (TDSEZ->hasZ) {
@@ -1027,7 +1027,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         projDz   = res[idxDz];
         dipoleMZ = TDSEZ->charge * projDz;
         accelZ   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccZ >= 0
-                   ? res[idxAccZ] - invMassAvg*(TDSEZ->charge*laserEz) : 0.0;
+                   ? TDSEZ->charge * (res[idxAccZ] - invMassAvg * laserEz) : 0.0;
     }
 
     // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
@@ -1169,6 +1169,28 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             TDSEZ->acBuffer[acOff+2] = PetscImaginaryPart(autocorr);
         }
 
+        // Stored before recordedSteps++ and the flush below: a row flushed
+        // on its own step must already hold its currents.
+        // Currents [t, Lz, dGamma, Jx_tot, Jy_tot, Jz_tot, Jx_intra, Jy_intra, Jz_intra, Jx_inter, Jy_inter, Jz_inter, Jx_bc, Jy_bc, Jz_bc]
+        if (TDSEZParser::out_current) {
+            PetscInt cOff = sIdx * 15;
+            TDSEZ->currBuffer[cOff+0]  = t;
+            TDSEZ->currBuffer[cOff+1]  = PetscRealPart(Lz_expect);
+            TDSEZ->currBuffer[cOff+2]  = dGamma;
+            TDSEZ->currBuffer[cOff+3]  = TDSEZ->charge * PetscRealPart(Jx_total);
+            TDSEZ->currBuffer[cOff+4]  = TDSEZ->charge * PetscRealPart(Jy_total);
+            TDSEZ->currBuffer[cOff+5]  = TDSEZ->charge * PetscRealPart(Jz_total);
+            TDSEZ->currBuffer[cOff+6]  = TDSEZ->charge * PetscRealPart(Jx_intra);
+            TDSEZ->currBuffer[cOff+7]  = TDSEZ->charge * PetscRealPart(Jy_intra);
+            TDSEZ->currBuffer[cOff+8]  = TDSEZ->charge * PetscRealPart(Jz_intra);
+            TDSEZ->currBuffer[cOff+9]  = TDSEZ->charge * PetscRealPart(Jx_inter);
+            TDSEZ->currBuffer[cOff+10] = TDSEZ->charge * PetscRealPart(Jy_inter);
+            TDSEZ->currBuffer[cOff+11] = TDSEZ->charge * PetscRealPart(Jz_inter);
+            TDSEZ->currBuffer[cOff+12] = TDSEZ->charge * PetscRealPart(Jx_bc);
+            TDSEZ->currBuffer[cOff+13] = TDSEZ->charge * PetscRealPart(Jy_bc);
+            TDSEZ->currBuffer[cOff+14] = TDSEZ->charge * PetscRealPart(Jz_bc);
+        }
+
         TDSEZ->recordedSteps++;
 
         // In-progress flush: write the new window every OutputStrideTS (if set)
@@ -1182,25 +1204,6 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             }
         }
 
-        // Currents [t, Lz, dGamma, Jx_tot, Jy_tot, Jz_tot, Jx_intra, Jy_intra, Jz_intra, Jx_inter, Jy_inter, Jz_inter, Jx_bc, Jy_bc, Jz_bc]
-        if (TDSEZParser::out_current) {
-            PetscInt cOff = sIdx * 15;
-            TDSEZ->currBuffer[cOff+0]  = t;
-            TDSEZ->currBuffer[cOff+1]  = PetscRealPart(Lz_expect);
-            TDSEZ->currBuffer[cOff+2]  = dGamma;
-            TDSEZ->currBuffer[cOff+3]  = PetscRealPart(Jx_total);
-            TDSEZ->currBuffer[cOff+4]  = PetscRealPart(Jy_total);
-            TDSEZ->currBuffer[cOff+5]  = PetscRealPart(Jz_total);
-            TDSEZ->currBuffer[cOff+6]  = PetscRealPart(Jx_intra);
-            TDSEZ->currBuffer[cOff+7]  = PetscRealPart(Jy_intra);
-            TDSEZ->currBuffer[cOff+8]  = PetscRealPart(Jz_intra);
-            TDSEZ->currBuffer[cOff+9]  = PetscRealPart(Jx_inter);
-            TDSEZ->currBuffer[cOff+10] = PetscRealPart(Jy_inter);
-            TDSEZ->currBuffer[cOff+11] = PetscRealPart(Jz_inter);
-            TDSEZ->currBuffer[cOff+12] = PetscRealPart(Jx_bc);
-            TDSEZ->currBuffer[cOff+13] = PetscRealPart(Jy_bc);
-            TDSEZ->currBuffer[cOff+14] = PetscRealPart(Jz_bc);
-        }
     }
 
     // SNAPSHOT WFS — set the timestep FIRST, then write ONCE (rank 0 only).

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cmath>
 #include <complex>
 #include <limits>
@@ -15,32 +16,6 @@
  */
 
 namespace {
-
-// Sample each active axis through the center of the other axes, plus every
-// corner. Finite sampling cannot prove a field is valid everywhere, but this
-// covers all coordinates without a costly 16^Dimension tensor grid.
-template <typename F>
-void sampleDomain(PetscInt dim, const std::array<PetscReal, 3>& lo,
-                  const std::array<PetscReal, 3>& hi, F&& evaluate)
-{
-    constexpr PetscInt samplesPerAxis = 16;
-    std::array<PetscReal, 3> center = {0.0, 0.0, 0.0};
-    for (PetscInt d = 0; d < dim; ++d) center[d] = (lo[d] + hi[d]) / 2.0;
-
-    for (PetscInt d = 0; d < dim; ++d) {
-        for (PetscInt i = 0; i < samplesPerAxis; ++i) {
-            auto point = center;
-            point[d] = lo[d] + (hi[d] - lo[d]) * i / (samplesPerAxis - 1);
-            evaluate(point[0], point[1], point[2]);
-        }
-    }
-    for (PetscInt corner = 0; corner < (1 << dim); ++corner) {
-        auto point = center;
-        for (PetscInt d = 0; d < dim; ++d)
-            point[d] = (corner & (1 << d)) ? hi[d] : lo[d];
-        evaluate(point[0], point[1], point[2]);
-    }
-}
 
 // The Galerkin volume quadrature never evaluates box endpoints.  Validate
 // coefficient fields in that same open domain so a physically valid endpoint
@@ -469,6 +444,7 @@ void TDSEZParser::ValidateOrThrow()
         static const std::set<std::string> valid = {
             "", "none", "x", "y", "z", "xy", "xz", "yz", "xyz"};
         std::string p = lower(Polarization);
+        if (p == "all") p = "xyz";
         Polarization = p;
         if (valid.find(p) == valid.end())
             throw std::runtime_error(
@@ -490,8 +466,6 @@ void TDSEZParser::ValidateOrThrow()
         BoundaryType = b;
     }
 
-    // EnvelopeType: normalise case only (kept permissive).
-    EnvelopeType = lower(EnvelopeType);
 
     // CAP requires kmin > 0: kmin<=0 makes the Manolopoulos absorb width
     // diverge (absorbs the ENTIRE domain) -> silent TS divergence.
@@ -501,42 +475,55 @@ void TDSEZParser::ValidateOrThrow()
             " <= 0. A zero/negative kmin makes the absorbing width diverge and the "
             "time stepper diverges. Set CAPKmin > 0 (e.g. 0.1) or disable CAP.");
 
-    // Propagation requires a field expression: an empty Laser/LaserX/Y/Z makes
-    // muParser throw on an empty expression inside the TS monitor (after assembly).
-    if (EnablePropagation)
-    {
-        bool hasField = !(LaserX.empty() && LaserY.empty() &&
-                          LaserZ.empty() && Laser.empty());
-        if (!hasField)
-            throw std::runtime_error(
-                "ValidateOrThrow: EnablePropagation=1 but no field expression is set "
-                "(LaserX/LaserY/LaserZ/Laser are all empty). Set e.g. "
-                "LaserX = Amplitude*sin(Omega*t).");
+    // The absorbing layer at each wall is w = c/(2 delta CAPKmin) = 6.555/CAPKmin
+    // wide. It must leave a free core: at most 45% of each axis per wall.
+    if (EnableCAP) {
+        const PetscReal w = 2.62206 / (2.0 * 0.2 * CAPKmin);
+        const PetscReal len[3] = {LMaxX - LMinX, LMaxY - LMinY, LMaxZ - LMinZ};
+        for (PetscInt d = 0; d < Dimension; ++d)
+            if (w > 0.45 * len[d])
+                throw std::runtime_error(
+                    "ValidateOrThrow: the CAP layer (width 6.555/CAPKmin = " + std::to_string(w) +
+                    " a.u. at each wall) exceeds 45% of the " + std::string(1, "xyz"[d]) +
+                    " extent (" + std::to_string(len[d]) + " a.u.). Increase CAPKmin "
+                    "(electrons slower than ~CAPKmin are then partly reflected) or enlarge the domain.");
     }
 
-    // The "adaptive" and "adaptive_wf" KnotSequences validation is disabled —
-    // implementations are saved in dev/ for a future push. The stubs fall back
-    // to uniform knots and do NOT evaluate the potential derivative, so the
-    // PotentialDerivativeX requirement no longer applies. Re-enable this block
-    // when restoring the full implementations from dev/.
-    // {
-    //     auto needs = [&](const std::string &seq) {
-    //         return seq == "adaptive" || seq == "adaptive_wf";
-    //     };
-    //     if (needs(KnotSeq[0]) && PotentialDerivativeX.empty())
-    //         throw std::runtime_error(
-    //             "ValidateOrThrow: KnotSequence='" + KnotSeq[0] + "' (X axis) requires "
-    //             "PotentialDerivativeX to be set (it is empty). Provide the analytic "
-    //             "derivative of the potential, e.g. PotentialDerivativeX = -2.0*x.");
-    //     if (Dimension >= 2 && needs(KnotSeq[1]) && PotentialDerivativeY.empty())
-    //         throw std::runtime_error(
-    //             "ValidateOrThrow: KnotSequence='" + KnotSeq[1] + "' (Y axis) requires "
-    //             "PotentialDerivativeY to be set (it is empty). Provide the analytic "
-    //             "derivative of the potential, e.g. PotentialDerivativeY = -2.0*y.");
-    //     if (Dimension >= 3 && needs(KnotSeq[2]) && PotentialDerivativeZ.empty())
-    //         throw std::runtime_error(
-    //             "ValidateOrThrow: KnotSequence='" + KnotSeq[2] + "' (Z axis) requires "
-    //             "PotentialDerivativeZ to be set (it is empty). Provide the analytic "
-    //             "derivative of the potential, e.g. PotentialDerivativeZ = -2.0*z.");
-    // }
+    // Propagation: every polarised axis needs a field expression (an empty one
+    // makes muParser throw inside the time stepper). Laser = ... has already
+    // been copied into the empty LaserX/Y/Z by initParsers().
+    if (EnablePropagation)
+    {
+        if (Polarization.empty() || Polarization == "none")
+            throw std::runtime_error(
+                "ValidateOrThrow: EnablePropagation=1 needs a Polarization (x, y, z, xy, xz, yz "
+                "or xyz). For field-free propagation use e.g. Polarization = x, LaserX = 0.");
+        const std::string *expr[3] = {&LaserX, &LaserY, &LaserZ};
+        for (int d = 0; d < 3; ++d)
+            if (Polarization.find("xyz"[d]) != std::string::npos && expr[d]->empty())
+                throw std::runtime_error(
+                    std::string("ValidateOrThrow: Polarization '") + Polarization + "' includes " +
+                    "xyz"[d] + " but Laser" + (char)std::toupper("xyz"[d]) + " (and Laser) is empty. "
+                    "Set e.g. Laser" + (char)std::toupper("xyz"[d]) + " = Ampx*sin(Omegax*t)*sin(pi*t/T)^2.");
+    }
+
+
+    // KnotSequence: every axis must name an implemented sequence (an unknown
+    // name used to fall back to uniform knots with only a warning).
+    {
+        static const std::set<std::string> known = {
+            "uniform", "symexp", "symtanu", "symtann", "symlogtan", "hydrogenic",
+            "interface", "interfaces"};
+        for (PetscInt d = 0; d < Dimension; ++d) {
+            const std::string &k = KnotSeq[d];
+            if (k == "adaptive" || k == "adaptive_wf")
+                throw std::runtime_error("ValidateOrThrow: KnotSequence '" + k + "' has been removed "
+                    "(it was a placeholder that produced uniform knots). Use uniform, symexp, symtanu, "
+                    "symtann, symlogtan, hydrogenic or interface.");
+            if (!known.count(k))
+                throw std::runtime_error("ValidateOrThrow: unknown KnotSequence '" + k + "' on axis " +
+                    std::string(1, "xyz"[d]) + ". Use uniform, symexp, symtanu, symtann, symlogtan, "
+                    "hydrogenic or interface.");
+        }
+    }
 }

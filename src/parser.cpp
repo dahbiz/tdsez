@@ -87,6 +87,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
     std::ifstream in(prm);
     if (!in) throw std::runtime_error("Cannot open file: " + prm);
     std::string line;
+    std::set<std::string> seenKeys;      // a key given twice: the last value would win silently
+    std::vector<std::string> dupKeys;
     while (std::getline(in, line))
     {
         /* To remove comments */
@@ -100,6 +102,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
         std::string val = line.substr(delimPos + 1);
         trim(key); 
         trim(val);
+        if (!seenKeys.insert(key).second) dupKeys.push_back(key);
 
         /* ---- Modular O(1) key dispatch ------------------------------------ */
         /* Keys are resolved through a single unordered_map (hash lookup) instead */
@@ -113,7 +116,11 @@ void TDSEZParser::PrmReader(const std::string &prm)
             // small helpers to keep entries terse (generic: deduce target type)
             static const auto I  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = std::stoi(v); }}; };
             static const auto R  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = std::stod(v); }}; };
-            static const auto B  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = static_cast<PetscBool>(std::stoi(v)); }}; };
+            static const auto B  = [](auto &dst){ return H{[&dst](const std::string &v){
+                std::string l = v; for (auto &c : l) c = (char)std::tolower((unsigned char)c);
+                if      (l == "true" || l == "yes" || l == "on")  dst = PETSC_TRUE;
+                else if (l == "false" || l == "no" || l == "off") dst = PETSC_FALSE;
+                else dst = static_cast<PetscBool>(std::stoi(v) != 0); }}; };
             static const auto S  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = v; }}; };
 
             static const std::unordered_map<std::string, H> m =
@@ -138,21 +145,18 @@ void TDSEZParser::PrmReader(const std::string &prm)
                         if (pairs.size() >= 1) parsePair(pairs[0], LMinX, LMaxX);
                         if (pairs.size() >= 2) parsePair(pairs[1], LMinY, LMaxY); else { LMinY = LMinX; LMaxY = LMaxX; }
                         if (pairs.size() >= 3) parsePair(pairs[2], LMinZ, LMaxZ); else { LMinZ = LMinX; LMaxZ = LMaxX; }
-                        LMin = LMinX; LMax = LMaxX;
                     } else {
                         auto commaPos = s.find(',');
                         if (commaPos != std::string::npos) {
-                            LMin = std::stod(s.substr(0, commaPos)); LMax = std::stod(s.substr(commaPos + 1));
-                            LMinX = LMinY = LMinZ = LMin; LMaxX = LMaxY = LMaxZ = LMax;
+                            LMinX = LMinY = LMinZ = std::stod(s.substr(0, commaPos));
+                            LMaxX = LMaxY = LMaxZ = std::stod(s.substr(commaPos + 1));
                         }
                     }
                 }}},
-                {"LMin",   R(LMin)},  {"LMax",   R(LMax)},
                 {"LMinX",  R(LMinX)}, {"LMinY",  R(LMinY)}, {"LMinZ",  R(LMinZ)},
                 {"LMaxX",  R(LMaxX)}, {"LMaxY",  R(LMaxY)}, {"LMaxZ",  R(LMaxZ)},
                 {"OffsetX",R(OffsetX)},{"OffsetY",R(OffsetY)},{"OffsetZ",R(OffsetZ)},
                 {"NQuadratures", I(NQuadratures)},
-                {"Gamma",  R(Gamma)},
                 {"SplineDegree", I(SplineDegree)},
                 {"Nelements",        I(Nelements)},
                 {"NSplines",         I(Nelements)},   // backward-compat alias
@@ -188,16 +192,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"HydrogenicR1",            H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
                 {"HydrogenicInnerSpacing",  H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
                 {"InnerSpacing",            H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
-                // Adaptive (KnotSequence = adaptive) tuning. Single value applies
-                // to all axes; no per-axis form needed (weight is auto-scaled).
-                {"AdaptiveKappa", R(AdaptiveKappa)},
-                {"AdaptivePower", R(AdaptivePower)},
-                {"AdaptiveWFCoarseN", I(AdaptiveWFCoarseN)},
-                {"AdaptiveWFKinLambda", R(AdaptiveWFKinLambda)},
                 {"Mass",     S(Mass)},
-                {"dinvMassX",S(dinvMassX)}, {"dinvMassY",S(dinvMassY)}, {"dinvMassZ",S(dinvMassZ)},
-                {"Planck",    R(Hbar)},       // backward-compat alias
-                {"Hbar",      R(Hbar)},
                 {"Charge",    R(Q)},
                 {"ParticleCharge", R(Q)},     // intuitive alias
                 {"MassIsConstant", B(MassIsConstant)},
@@ -215,13 +210,6 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"TotalTime", R(FinalTime)},    // intuitive alias
 
                 // --- field / envelope (legacy scalar form) ---
-                {"Amplitude",     R(Amplitude)},
-                {"Phase",         R(Phase)},
-                {"Omega",         R(Omega)},
-                {"PulseDuration", R(PulseDuration)},
-                {"PulseCenter",   R(PulseCenter)},
-                {"EnvelopeType",  S(EnvelopeType)},
-                {"Envelope",      S(Envelope)},    // muParser envelope expression (was a dead branch)
 
                 // --- field (per-component generalization) ---
                 {"Ampx",R(Ampx)},{"Ampy",R(Ampy)},{"Ampz",R(Ampz)},
@@ -254,7 +242,6 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"HDF5Compress",       B(HDF5Compress)},
                 {"HDF5CompressLevel",  I(HDF5CompressLevel)},
                 {"CAPKmin",    R(CAPKmin)},
-                {"CapStrength", R(CAPKmin)},           // intuitive alias
                 {"KnotAlpha",  R(KnotAlpha)},
                 {"KnotGrading", R(KnotAlpha)},         // intuitive alias
                 {"GradingStrength", R(KnotAlpha)},     // intuitive alias
@@ -317,17 +304,55 @@ void TDSEZParser::PrmReader(const std::string &prm)
             return m;
         };
 
-        // Keys of features that have been removed: say so instead of "unknown".
-        static const std::set<std::string> removedTSurff = {
-            "TSurff", "SurffNk", "SurffKmax", "OutputStrideSurff", "SurffCouplingSign", "SurffRadius"};
+        // Keys of removed features or parameters that had no effect: say why
+        // instead of "unknown". A removed key whose value changed nothing
+        // (e.g. Planck = 1, EnvelopeType = custom) only warns.
+        struct Removed { const char *why; bool (*harmless)(const std::string &); };
+        static const auto never = [](const std::string &) { return false; };
+        static const auto isOne = [](const std::string &v) {
+            try { return std::stod(v) == 1.0; } catch (...) { return false; } };
+        static const auto isCustom = [](const std::string &v) {
+            std::string l = v; for (auto &c : l) c = (char)std::tolower((unsigned char)c);
+            return l.empty() || l == "custom"; };
+        static const std::unordered_map<std::string, Removed> removed = {
+            {"TSurff",            {"t-SURFF has been removed", never}},
+            {"SurffNk",           {"t-SURFF has been removed", never}},
+            {"SurffKmax",         {"t-SURFF has been removed", never}},
+            {"OutputStrideSurff", {"t-SURFF has been removed", never}},
+            {"SurffCouplingSign", {"t-SURFF has been removed", never}},
+            {"SurffRadius",       {"t-SURFF has been removed", never}},
+            {"EnvelopeType",      {"the pulse envelope is written in the field expression (LaserX/Y/Z or Laser)", isCustom}},
+            {"Envelope",          {"the pulse envelope is written in the field expression (LaserX/Y/Z or Laser)", never}},
+            {"Hbar",              {"TDSE-Z works in atomic units (hbar = 1)", isOne}},
+            {"Planck",            {"TDSE-Z works in atomic units (hbar = 1)", isOne}},
+            {"Amplitude",         {"legacy scalar field parameter; use Ampx/Ampy/Ampz, or Variables = Name=value", never}},
+            {"Omega",             {"legacy scalar field parameter; use Omegax/Omegay/Omegaz, or Variables = Name=value", never}},
+            {"Phase",             {"legacy scalar field parameter; use CEPx/CEPy/CEPz, or Variables = Name=value", never}},
+            {"PulseDuration",     {"name constants for the field expression with Variables = PulseDuration=..., PulseCenter=...", never}},
+            {"PulseCenter",       {"name constants for the field expression with Variables = PulseDuration=..., PulseCenter=...", never}},
+            {"Gamma",             {"it had no effect; the CAP is set by CAPKmin", never}},
+            {"CapStrength",       {"use CAPKmin (lowest momentum absorbed by the CAP)", never}},
+            {"dinvMassX",         {"it had no effect; mass gradients are computed from Mass", never}},
+            {"dinvMassY",         {"it had no effect; mass gradients are computed from Mass", never}},
+            {"dinvMassZ",         {"it had no effect; mass gradients are computed from Mass", never}},
+            {"LMin",              {"use Domain = lo, hi (or LMinX/LMaxX, ...)", never}},
+            {"LMax",              {"use Domain = lo, hi (or LMinX/LMaxX, ...)", never}},
+            {"AdaptiveKappa",     {"the adaptive knot sequences have been removed", never}},
+            {"AdaptivePower",     {"the adaptive knot sequences have been removed", never}},
+            {"AdaptiveWFCoarseN", {"the adaptive knot sequences have been removed", never}},
+            {"AdaptiveWFKinLambda", {"the adaptive knot sequences have been removed", never}},
+        };
         auto it = table().find(key);
+        auto rm = removed.find(key);
         if (it != table().end()) it->second(val);
-        else if (removedTSurff.count(key)) {
+        else if (rm != removed.end()) {
+            const bool harmless = rm->second.harmless(val);
+            const bool fatal = !harmless && TDSEZParser::StrictInput;
             PetscPrintf(PETSC_COMM_WORLD,
-                "\nTDSEZParser %s: input key '%s' belongs to t-SURFF, which has been removed "
-                "from TDSE-Z; delete it from the input file.\n",
-                TDSEZParser::StrictInput ? "FATAL" : "WARNING", key.c_str());
-            if (TDSEZParser::StrictInput) MPI_Abort(PETSC_COMM_WORLD, 2);
+                "\nTDSEZParser %s: input key '%s' has been removed: %s.%s\n",
+                fatal ? "FATAL" : "WARNING", key.c_str(), rm->second.why,
+                harmless ? " This line has no effect; delete it." : "");
+            if (fatal) MPI_Abort(PETSC_COMM_WORLD, 2);
         }
         else if (TDSEZParser::StrictInput) {
             // A typo'd key silently changing nothing is a real hazard in a
@@ -343,6 +368,15 @@ void TDSEZParser::PrmReader(const std::string &prm)
             PetscPrintf(PETSC_COMM_WORLD,
                 "TDSEZParser: WARNING unknown key '%s' ignored\n", key.c_str());
         }
+    }
+
+    if (!dupKeys.empty()) {
+        std::string list;
+        for (const auto &k : dupKeys) list += (list.empty() ? "" : ", ") + k;
+        PetscPrintf(PETSC_COMM_WORLD,
+            "\nTDSEZParser %s: input key(s) given more than once: %s (the last value is used).\n",
+            TDSEZParser::StrictInput ? "FATAL" : "WARNING", list.c_str());
+        if (TDSEZParser::StrictInput) MPI_Abort(PETSC_COMM_WORLD, 2);
     }
 
     // Decode PhysicsOutput into per-quantity enable flags.
@@ -378,35 +412,20 @@ void TDSEZParser::PrmReader(const std::string &prm)
         };
         lowerInPlace(Polarization);
         lowerInPlace(BoundaryType);
-        lowerInPlace(EnvelopeType);
         if (BoundaryType == "natural") BoundaryType = "neumann";
         else if (BoundaryType == "wall")    BoundaryType = "dirichlet";
     }
 }
 
 /// @brief Initialize muParser instances and bind parser variables (V,
-///        MassDist, Ex/Ey/Ez, Envelope, and their derivatives) to the
+///        MassDist, Ex/Ey/Ez and their derivatives) to the
 ///        corresponding TDSEZParser static member expressions.
 void TDSEZParser::initParsers()
 {
     /* bind constant pi */
-    for (auto *p : {&VPot, &dVPotX, &dVPotY, &dVPotZ, &Field, &LaserXexpr, &LaserYexpr, &LaserZexpr, &Env})
+    for (auto *p : {&VPot, &dVPotX, &dVPotY, &dVPotZ, &LaserXexpr, &LaserYexpr, &LaserZexpr})
     {
         p->DefineConst("pi", PI);
-        p->DefineConst("Amplitude", Amplitude);
-        p->DefineConst("Phase", Phase);
-        p->DefineConst("Omega", Omega);
-
-        // generalization
-        p->DefineConst("Ampx", Ampx);
-        p->DefineConst("Ampy", Ampy);
-        p->DefineConst("Ampz", Ampz);
-        p->DefineConst("CEPx", CEPx);
-        p->DefineConst("CEPy", CEPy);
-        p->DefineConst("CEPz", CEPz);
-        p->DefineConst("Omegax", Omegax);
-        p->DefineConst("Omegay", Omegay);
-        p->DefineConst("Omegaz", Omegaz);
     }
 
     VPot.DefineVar("x", &varX_);
@@ -424,24 +443,6 @@ void TDSEZParser::initParsers()
     MassExpr.DefineVar("y", &varY_);
     MassExpr.DefineVar("z", &varZ_);
     MassExpr.SetExpr(norm_fabs(Mass));
-
-    // dMass/dx
-    dinvMassExprx.DefineVar("x", &varX_);
-    dinvMassExprx.DefineVar("y", &varY_);
-    dinvMassExprx.DefineVar("z", &varZ_);
-    dinvMassExprx.SetExpr(norm_fabs(dinvMassX));
-
-    // dMass/dy
-    dinvMassExpry.DefineVar("x", &varX_);
-    dinvMassExpry.DefineVar("y", &varY_);
-    dinvMassExpry.DefineVar("z", &varZ_);
-    dinvMassExpry.SetExpr(norm_fabs(dinvMassY));
-
-    // dMass/dz
-    dinvMassExprz.DefineVar("x", &varX_);
-    dinvMassExprz.DefineVar("y", &varY_);
-    dinvMassExprz.DefineVar("z", &varZ_);
-    dinvMassExprz.SetExpr(norm_fabs(dinvMassZ));
 
     // dVdx along x
     dVPotX.DefineVar("x", &varX_);
@@ -461,10 +462,6 @@ void TDSEZParser::initParsers()
     dVPotZ.DefineVar("z", &varZ_);
     dVPotZ.SetExpr(norm_fabs(PotentialDerivativeZ));
 
-    /* field E(t): in all three dirs */
-    Field.DefineVar("t", &varT_);
-    Field.SetExpr(Laser);
-
     // Bind EVERY scalar input parameter as a muParser constant so users may
     // reference them by name inside expressions, e.g.
     //   Potential = V0*(x<0) : V0 ...  ;  Mass = mbarrier
@@ -481,16 +478,13 @@ void TDSEZParser::initParsers()
         const PetscReal dNbs     = (PetscReal)NBoundStates;
         struct KV { const char *name; PetscReal v; };
         KV scalars[] = {
-            {"Hbar", Hbar}, {"Q", Q}, {"Planck", Hbar}, {"Charge", Q},
+            {"Q", Q}, {"Charge", Q},
             {"Dimension", dDim}, {"SplineDegree", dDeg},
             {"Nelements", dNelm}, {"NSplines", dNelm},
-            {"LMin", LMin}, {"LMax", LMax},
             {"LMinX", LMinX}, {"LMaxX", LMaxX},
             {"LMinY", LMinY}, {"LMaxY", LMaxY},
             {"LMinZ", LMinZ}, {"LMaxZ", LMaxZ},
             {"OffsetX", OffsetX}, {"OffsetY", OffsetY}, {"OffsetZ", OffsetZ},
-            {"Amplitude", Amplitude}, {"Omega", Omega}, {"Phase", Phase},
-            {"PulseDuration", PulseDuration}, {"PulseCenter", PulseCenter},
             {"Ampx", Ampx}, {"Ampy", Ampy}, {"Ampz", Ampz},
             {"CEPx", CEPx}, {"CEPy", CEPy}, {"CEPz", CEPz},
             {"Omegax", Omegax}, {"Omegay", Omegay}, {"Omegaz", Omegaz},
@@ -499,11 +493,10 @@ void TDSEZParser::initParsers()
             {"CAPKmin", CAPKmin}, {"KnotAlpha", KnotAlpha},
             {"NQuadratures", dNq},
             {"NBoundStates", dNbs},
-            {"Gamma", Gamma},
         };
         mu::Parser *parsers[] = {&VPot, &dVPotX, &dVPotY, &dVPotZ,
-                           &MassExpr, &dinvMassExprx, &dinvMassExpry, &dinvMassExprz,
-                           &Field, &LaserXexpr, &LaserYexpr, &LaserZexpr, &Env};
+                           &MassExpr,
+                           &LaserXexpr, &LaserYexpr, &LaserZexpr};
         for (auto *p : parsers) {
             for (auto &kv : scalars) {
                 p->DefineConst(kv.name, kv.v);
@@ -518,6 +511,11 @@ void TDSEZParser::initParsers()
         }
     }
 
+    // Scalar form: Laser = E(t) drives every axis that has no LaserX/Y/Z of its
+    // own (documented behaviour; the per-axis expressions override it).
+    for (std::string *ax : {&LaserX, &LaserY, &LaserZ})
+        if (ax->empty() && !Laser.empty()) *ax = Laser;
+
     /* laser Ex(t) */
     LaserXexpr.DefineVar("t", &varT_);
     LaserXexpr.SetExpr(LaserX);
@@ -529,10 +527,6 @@ void TDSEZParser::initParsers()
     /* laser Ez(t) */
     LaserZexpr.DefineVar("t", &varT_);
     LaserZexpr.SetExpr(LaserZ);
-
-    /* envelope f(t) */
-    Env.DefineVar("t", &varT_);
-    Env.SetExpr(Envelope);
 }
 
 /// @brief Trim leading and trailing whitespace from a string in place.
@@ -549,36 +543,6 @@ void TDSEZParser::trim(std::string &s)
 
 
 
-// Numerical gradient calculation 
-inline std::vector<PetscReal> gradientND(const std::vector<PetscReal>& x)
-{
-    PetscInt dim = x.size();
-    std::vector<PetscReal> grad(dim);
-    PetscReal h = 1e-5;
-
-    for (PetscInt i=0; i<dim; ++i) 
-    {
-        std::vector<PetscReal> x_plus = x;
-        std::vector<PetscReal> x_minus = x;
-        std::vector<PetscReal> x_plus2 = x;
-        std::vector<PetscReal> x_minus2 = x;
-
-        // move along i-th dimension
-        x_plus[i]  += h;
-        x_minus[i] -= h;
-        x_plus2[i] += 2*h;
-        x_minus2[i] -= 2*h;
-
-        // evaluate function
-        PetscReal Vp  = TDSEZParser::V(x_plus);
-        PetscReal Vm  = TDSEZParser::V(x_minus);
-        PetscReal Vpp = TDSEZParser::V(x_plus2);
-        PetscReal Vmm = TDSEZParser::V(x_minus2);
-
-        grad[i] = (-Vpp + 8*Vp - 8*Vm + Vmm)/(12*h); // 4th-order
-    }
-    return grad;
-}
 
 
 /// @brief Return the code version string for provenance tracking.

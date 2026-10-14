@@ -107,12 +107,6 @@ class TDSEZParser
         template<typename... Args>
         inline static PetscReal dVz(Args... args)      { setVars(args...); return dVPotZ.Eval(); }
         /**
-         * @brief Evaluate the total laser field E(t) at time @p t.
-         * @param t Time in atomic units.
-         * @return E(t) in atomic units.
-         */
-        inline static PetscReal E(PetscReal t)      { varT_ = t; return Field.Eval(); }
-        /**
          * @brief Evaluate the x-component of the laser field at time @p t.
          * @param t Time in atomic units.
          * @return Ex(t) in atomic units.
@@ -131,12 +125,6 @@ class TDSEZParser
          */
         inline static PetscReal Ez(PetscReal t)      { varT_ = t; return LaserZexpr.Eval(); }
         /**
-         * @brief Evaluate the envelope function F(t) at time @p t.
-         * @param t Time in atomic units.
-         * @return Envelope F(t) in atomic units.
-         */
-        inline static PetscReal F(PetscReal t)      { varT_ = t; return Env.Eval(); }
-        /**
          * @brief Evaluate the position-dependent mass distribution M(x,y,z).
          * @param x Cartesian x coordinate.
          * @param y Cartesian y coordinate.
@@ -144,49 +132,16 @@ class TDSEZParser
          * @return Mass M(x,y,z) in atomic units.
          */
         inline static PetscReal MassDist(PetscReal x, PetscReal y, PetscReal z) { setVars(x, y, z); return MassExpr.Eval(); }
-        /**
-         * @brief Evaluate d(1/M)/dx at the given coordinates.
-         * @param x Cartesian x coordinate.
-         * @param y Cartesian y coordinate.
-         * @param z Cartesian z coordinate.
-         * @return d(1/M)/dx in atomic units.
-         */
-        inline static PetscReal dinvMassDistx(PetscReal x, PetscReal y, PetscReal z) { setVars(x, y, z); return dinvMassExprx.Eval(); }
-        /**
-         * @brief Evaluate d(1/M)/dy at the given coordinates.
-         * @param x Cartesian x coordinate.
-         * @param y Cartesian y coordinate.
-         * @param z Cartesian z coordinate.
-         * @return d(1/M)/dy in atomic units.
-         */
-        inline static PetscReal dinvMassDisty(PetscReal x, PetscReal y, PetscReal z) { setVars(x, y, z); return dinvMassExpry.Eval(); }
-        /**
-         * @brief Evaluate d(1/M)/dz at the given coordinates.
-         * @param x Cartesian x coordinate.
-         * @param y Cartesian y coordinate.
-         * @param z Cartesian z coordinate.
-         * @return d(1/M)/dz in atomic units.
-         */
-        inline static PetscReal dinvMassDistz(PetscReal x, PetscReal y, PetscReal z) { setVars(x, y, z); return dinvMassExprz.Eval(); }
 
         // private:
         /// Mathematical constant pi.
         static constexpr PetscReal PI     = 3.14159265358979323846;
         /// Position-dependent mass expression string (default "1.0").
         inline static std::string Mass    = "1.0";
-        /// Inverse-mass x-gradient expression string.
-        inline static std::string dinvMassX  = "0.0";
-        /// Inverse-mass y-gradient expression string.
-        inline static std::string dinvMassY  = "0.0";
-        /// Inverse-mass z-gradient expression string.
-        inline static std::string dinvMassZ  = "0.0";
         /// Whether the mass is spatially constant (set in ValidateOrThrow).
         inline static PetscBool MassIsConstant = PETSC_FALSE;
 
 
-        // inline static PetscReal Mass      = 1.0;
-        /// Reduced Planck constant hbar (atomic units, default 1.0).
-        inline static PetscReal Hbar      = 1.0;
         /// Particle charge q (atomic units, default 1.0).
         inline static PetscReal Q         = 1.0;
 
@@ -204,13 +159,8 @@ class TDSEZParser
         inline static PetscInt  SplineDegree     = 3; // 1 to 14
         /// Number of elements per axis (uniform default).
         inline static PetscInt  Nelements         = 100;
-        /// Global lower bound of the spatial domain (symmetric default).
-        inline static PetscReal LMin             = -10.0;
-        /// Global upper bound of the spatial domain (symmetric default).
-        inline static PetscReal LMax             = +10.0;
-        // Per-axis bounds for rectangular/asymmetric boxes. LMin*/LMax* default to
-        // LMin/LMax when unset, so the symmetric (cube/parallelepiped) case needs
-        // only LMin/LMax. Domain = [Lminx,Lmaxx],[Lminy,Lmaxy],[Lminz,Lmaxz] sets these.
+        // Domain bounds per axis. Domain = lo, hi sets all axes;
+        // Domain = [lox,hix],[loy,hiy],[loz,hiz] sets them separately.
         /// Lower bound of the x-axis domain.
         inline static PetscReal LMinX            = -10.0;
         /// Lower bound of the y-axis domain.
@@ -242,19 +192,7 @@ class TDSEZParser
         /// Final propagation time (atomic units).
         inline static PetscReal FinalTime         = 100.0;
 
-        /* Field and envelope */
-        /// Peak field amplitude (atomic units).
-        inline static PetscReal Amplitude         = 0.0;
-        /// Carrier frequency omega (atomic units; 0.056954 ~ 800 nm).
-        inline static PetscReal Omega             = 0.056954; // 800 nm
-        /// Carrier-envelope phase (radians).
-        inline static PetscReal Phase             = 0.0;
-        /// Pulse duration (atomic units).
-        inline static PetscReal PulseDuration     = 0.0;
-        /// Pulse center time (atomic units).
-        inline static PetscReal PulseCenter       = 0.0;
-
-        // generalization
+        /* Field parameters: named constants for the field expressions */
         /// x-component peak amplitude.
         inline static PetscReal Ampx              = 0.0;
         /// y-component peak amplitude.
@@ -371,8 +309,6 @@ class TDSEZParser
         // (polarisation includes them) are written.
         /// Which dipole axes to persist ("x", "xy", "xyz", "all", etc.).
         inline static std::string           SaveDipoleAxes     = "";
-        /// Envelope type string ("custom", etc.).
-        inline static std::string           EnvelopeType       = "custom";
         /// Knot-sequence type string ("uniform", "symexp", etc.).
         inline static std::string           KnotSequence       = "uniform";
         // Per-axis knot sequences parsed from the single "KnotSequence" key.
@@ -410,35 +346,8 @@ class TDSEZParser
         /// Per-axis near-origin knot spacing for the hydrogenic sequence (a.u.).
         inline static PetscReal             HydrogenicR1[3]     = {0.0, 0.0, 0.0};
 
-        // Adaptive (KnotSequence = adaptive) tuning. Single value, all axes.
-        //   AdaptiveKappa -> weight of the |grad V| term (default 1.0)
-        //   AdaptivePower -> sharpening exponent on the importance weight
-        //                   (default 1.0; >1 concentrates knots more tightly
-        //                   on the most important regions)
-        /// Weight of the |grad V| term in the adaptive knot indicator.
-        inline static PetscReal             AdaptiveKappa      = 1.0;
-        /// Sharpening exponent on the adaptive importance weight.
-        inline static PetscReal             AdaptivePower      = 1.0;
-        // adaptive_wf (two-pass) coarse-bootstrap resolution: knots/axis on the
-        // cheap preliminary ground-state solve. Default 20 is plenty to capture
-        // the density SHAPE (which is all the re-mesh needs). 0 => auto (=20).
-        /// Coarse-bootstrap resolution (knots/axis) for the adaptive_wf two-pass.
-        inline static PetscInt              AdaptiveWFCoarseN   = 20;
-        // Weight of the kinetic-energy-density term in the adaptive_wf knot
-        // indicator:  w(x) = |psi|^2 + AdaptiveWFKinLambda * |grad psi|^2.
-        // Raw |psi|^2 alone starves the Coulomb cusps (density peaks BETWEEN
-        // nuclei) and the exponential tails; |grad psi|^2 fixes both because the
-        // gradient diverges at the cusps and is non-zero in the decay region.
-        // Default 3.0. 0.0 => pure density (legacy, worse for bound states).
-        // lambda>=3 eliminates the high-DOF over-clustering regression on
-        // multi-centre potentials, making adaptive_wf best at all DOF.
-        /// Weight of the kinetic-energy-density term in the adaptive_wf indicator.
-        inline static PetscReal             AdaptiveWFKinLambda = 3.0;
-
         /// Number of quadrature points per element.
         inline static PetscInt  NQuadratures      = 8;
-        /// CAP strength parameter Gamma.
-        inline static PetscReal Gamma             = 5.0;
 
         /* Expressions */
         /// muParser expression string for the scalar potential V.
@@ -449,10 +358,9 @@ class TDSEZParser
         inline static std::string PotentialDerivativeY;
         /// muParser expression string for dV/dz.
         inline static std::string PotentialDerivativeZ;
-        /// muParser expression string for the total laser field E(t).
+        /// Field E(t) used for every polarised axis without its own LaserX/Y/Z
+        /// (copied into them by initParsers()).
         inline static std::string Laser;
-        /// muParser expression string for the envelope F(t).
-        inline static std::string Envelope;
 
         /// Polarization direction string ("x", "y", "z", "xy", "xyz", etc.).
         // read polarization direction
@@ -460,8 +368,8 @@ class TDSEZParser
 
 
         /* Parser instances and bound vars */
-        /// muParser instances for V, dV/dx, dV/dy, dV/dz, E, Ex, Ey, Ez, envelope, mass, and inverse-mass gradients.
-        inline static mu::Parser VPot, dVPotX, dVPotY, dVPotZ, Field, LaserXexpr, LaserYexpr, LaserZexpr, Env, MassExpr, dinvMassExprx, dinvMassExpry, dinvMassExprz;
+        /// muParser instances for V, dV/dx, dV/dy, dV/dz, Ex, Ey, Ez and the mass.
+        inline static mu::Parser VPot, dVPotX, dVPotY, dVPotZ, LaserXexpr, LaserYexpr, LaserZexpr, MassExpr;
         /// Bound coordinate variables (x, y, z, t) shared across all parser instances.
         inline static PetscReal  varX_ = 0.0, varY_ = 0.0, varZ_ = 0.0, varT_ = 0.0;
 

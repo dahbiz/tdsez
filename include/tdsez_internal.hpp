@@ -418,16 +418,13 @@ PetscErrorCode TDSEZSaveOperatorMatrix(Mat mat, const std::string& filename);
 /// @return PetscErrorCode (0 on success).
 PetscErrorCode TDSEZMakeStateReal2(Vec v_complex, Vec Vre, Mat M);
 
-/// @brief Convert a set of state vectors to real form (calls TDSEZMakeStateReal2).
-/// @param states Vector of state vectors (modified in place).
-/// @param M Mass matrix.
-/// @return PetscErrorCode (0 on success).
-PetscErrorCode MakeStatesReal(std::vector<Vec>& states, Mat M);
-
 /// @brief Verify the length-velocity gauge consistency for dipole/velocity operators.
 /// @param TDSEZ Pointer to the TDSEZManager.
 /// @return PetscErrorCode (0 on success).
 PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ);
+
+/// Width of the Manolopoulos CAP layer at each wall, c / (2 delta CAPKmin).
+PetscReal TDSEZCapWidth();
 
 /// @brief Precompute the velocity (momentum) matrix elements between bound states.
 /// @param TDSEZ Pointer to the TDSEZManager.

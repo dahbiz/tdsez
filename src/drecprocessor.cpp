@@ -99,10 +99,32 @@ static PetscErrorCode loadState(Mat Dx, const std::string& h5path, PetscInt j, V
     PetscViewer view;
     ierr = PetscViewerHDF5Open(PETSC_COMM_SELF, h5path.c_str(), FILE_MODE_READ, &view); CHKERRQ(ierr);
     ierr = MatCreateVecs(Dx, v, NULL); CHKERRQ(ierr);
-    std::string name = "psi_" + std::to_string(j);
+    // coeff_j: natural ordering, the ordering of the saved Dx (psi_j for old files)
+    std::string name = "coeff_" + std::to_string(j);
+    PetscBool has = PETSC_FALSE;
+    ierr = PetscViewerHDF5HasDataset(view, name.c_str(), &has); CHKERRQ(ierr);
+    if (!has) name = "psi_" + std::to_string(j);
     ierr = PetscObjectSetName((PetscObject)(*v), name.c_str()); CHKERRQ(ierr);
     ierr = VecLoad(*v, view); CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&view); CHKERRQ(ierr);
+
+    // Phase convention that is smooth in E, needed by the finite difference
+    // d psi/dE of continuum (box) states: the B-spline coefficient at the right
+    // wall (= psi(L) for an open knot vector) is real and positive. Near a
+    // reflecting wall a box state is A cos(k (L - x)), so psi(L) > 0 for every
+    // E; at a Dirichlet wall psi(L) = 0 and the next coefficient (sign of
+    // -psi'(L)) is used. Bound states vanish at the wall (the coefficient is
+    // rounding noise) and keep the solver's canonical phase.
+    PetscInt n;
+    ierr = VecGetSize(*v, &n); CHKERRQ(ierr);
+    const PetscScalar *a;
+    ierr = VecGetArrayRead(*v, &a); CHKERRQ(ierr);
+    PetscReal amax = 0.0;
+    for (PetscInt i = 0; i < n; ++i) amax = PetscMax(amax, PetscAbsScalar(a[i]));
+    PetscScalar c = a[n - 1];
+    if (PetscAbsScalar(c) < 1e-10 * amax && n > 1) c = a[n - 2];   // Dirichlet wall
+    ierr = VecRestoreArrayRead(*v, &a); CHKERRQ(ierr);
+    if (PetscAbsScalar(c) > 1e-6 * amax) { ierr = VecScale(*v, PetscConj(c) / PetscAbsScalar(c)); CHKERRQ(ierr); }
     return 0;
 }
 
@@ -175,7 +197,12 @@ int main(int argc, char** argv)
               [&](PetscInt a, PetscInt b) { return Eall[a] < Eall[b]; });
     std::vector<PetscReal> E(N);
     for (PetscInt k = 0; k < N; ++k) E[k] = Eall[ord[k]];
-    g_E0 = E[0];
+    if (iBra < 0 || iBra >= N) {
+        PetscPrintf(comm, "drecprocessor: -i %lld out of range [0, %lld)\n", (long long)iBra, (long long)N);
+        PetscFinalize();
+        return 2;
+    }
+    g_E0 = E[iBra];   // energy of the bra (states are indexed in energy order)
 
     // density of states rho_j = dN/dE (central diff)
     std::vector<PetscReal> rho(N);

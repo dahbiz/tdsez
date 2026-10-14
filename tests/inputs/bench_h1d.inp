@@ -13,7 +13,6 @@ NQuadratures      = 10
 KnotSequence      = uniform
 NSplines          = 400
 Mass              = 1.0
-Planck            = 1.0
 Charge            = 1.0
 
 UseDirectSolve    = 0
@@ -41,7 +40,6 @@ Polarization     = x
 LaserX           = -0.0534 * ( (1.0/4.0)*sin(0.057*t/4.0)*sin(0.057*t) + sin(0.057*t/(2.0*4.0))*sin(0.057*t/(2.0*4.0)) * cos(0.057*t) )
 LaserY           = 0.0
 LaserZ           = 0.0
-EnvelopeType     = custom
 
 TimeStep         = 0.25
 FinalTime        = 740.0

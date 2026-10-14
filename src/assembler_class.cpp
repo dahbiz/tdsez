@@ -115,35 +115,24 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         TDSEZAssembleMatrixTimed(iga, &CAP, TDSEZformCap, "Absorbing CAP");
 
         // ── CAP absorption-region diagnostic (printed before propagation) ──
-        // Mirrors the geometry used inside TDSEZformCap / Manolopoulos_CAP_profile:
-        //   R_outer = |LMaxX|, R_inner = 0.90*R_outer, activated for r = max(|x|,|y|,|z|) > R_inner.
-        //   Manolopoulos absorb-region width w = c / (2*delta*kmin), c=2.62206, delta=0.2.
-        const PetscReal cap_c     = 2.62206;
-        const PetscReal cap_delta = 0.2;
-        const PetscReal R_outer  = PetscAbsReal(TDSEZParser::LMaxX);
-        const PetscReal R_inner  = 0.90 * R_outer;
-        const PetscReal cap_width = (TDSEZParser::CAPKmin > 0.0)
-                                  ? cap_c / (2.0 * cap_delta * TDSEZParser::CAPKmin)
-                                  : PETSC_INFINITY;
-        const PetscBool cap_width_inf = (TDSEZParser::CAPKmin <= 0.0);
+        // Mirrors TDSEZformCap: a Manolopoulos layer of width w = c/(2 delta kmin)
+        // at both walls of every active axis (separable, W = sum_d W_d).
+        const PetscReal cap_width = TDSEZCapWidth();
+        const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
+        const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
         PetscPrintf(PETSC_COMM_WORLD,
             "  ══════════════════════════════════════════════════════════════════════\n"
-            "    ▸ COMPLEX ABSORBING POTENTIAL (CAP) ACTIVATION REGION\n"
+            "    ▸ COMPLEX ABSORBING POTENTIAL (CAP)\n"
             "  ══════════════════════════════════════════════════════════════════════\n");
         PetscPrintf(PETSC_COMM_WORLD,
-            "      dimension            = %dD\n", (int)dim);
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      R_outer (|LMaxX|)     = %12.6f   (CAP off outside this radius)\n", R_outer);
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      R_inner (0.90*R_out)  = %12.6f   (CAP on for r = max(|x|,|y|,|z|) > R_inner)\n", R_inner);
-        if (cap_width_inf)
+            "      Manolopoulos layer w = %12.6f   (c/(2*delta*kmin), kmin=%g, Emin=%g)\n",
+            (double)cap_width, (double)TDSEZParser::CAPKmin,
+            (double)(0.5 * TDSEZParser::CAPKmin * TDSEZParser::CAPKmin));
+        for (PetscInt d = 0; d < dim; ++d)
             PetscPrintf(PETSC_COMM_WORLD,
-                "      Manolopoulos width w = INFINITE  (CAPKmin<=0 -> absorbs ENTIRE domain; divergence risk)\n");
-        else
-            PetscPrintf(PETSC_COMM_WORLD,
-                "      Manolopoulos width w = %12.6f   (c/(2*delta*kmin), kmin=%g)\n", cap_width, (double)TDSEZParser::CAPKmin);
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      active shell         = [%.6f, %.6f]  (width in r = %.6f)\n", R_inner, R_outer, R_outer - R_inner);
+                "      %c: absorbing for %c < %.6f and %c > %.6f  (free core %.6f a.u.)\n",
+                "xyz"[d], "xyz"[d], (double)(lo[d] + cap_width), "xyz"[d], (double)(hi[d] - cap_width),
+                (double)(hi[d] - lo[d] - 2.0 * cap_width));
         PetscPrintf(PETSC_COMM_WORLD,
             "  ══════════════════════════════════════════════════════════════════════\n");
     }

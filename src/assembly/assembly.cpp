@@ -1997,16 +1997,21 @@ PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx)
 
 /// Form kernel for the complex-absorbing-potential (CAP) matrix.
 /**
- * Computes CAP_ij = -i W(r) B_i B_j where W(r) is the Manolopoulos profile
- * evaluated at the maximum Cartesian extent of the quadrature point. The CAP
- * is active only outside an inner radius (90% of the box) and absorbs
- * outgoing flux near the boundary.
+ * Computes CAP_ij = -i W(r) B_i B_j with W the separable Manolopoulos CAP:
+ * a reflection-free layer of width c/(2 delta CAPKmin) at both walls of every
+ * active axis (see TDSEZformCap below).
  *
  * @param[in]  p   Quadrature point.
  * @param[out] CAP Element matrix (nen×nen).
  * @param[in]  ctx User context (unused).
  * @return 0 on success.
  */
+/// Width of the Manolopoulos absorbing layer, w = c / (2 delta kmin).
+PetscReal TDSEZCapWidth()
+{
+    return 2.62206 / (2.0 * 0.2 * TDSEZParser::CAPKmin);
+}
+
 PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx)
 {
     (void)ctx;
@@ -2017,21 +2022,23 @@ PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx)
     PetscReal xyz[3] = {0.0, 0.0, 0.0};
     IGAPointFormGeomMap(p, xyz);
 
-    // square (2D) or cube (3D)
-    PetscReal r_cubic = PetscAbsReal(xyz[0]);
-    for (PetscInt i = 1; i < TDSEZParser::Dimension; i++) {
-        r_cubic = PetscMax(r_cubic, PetscAbsReal(xyz[i]));
-    }
-
-    // setup Boundaries
-    PetscReal R_outer = PetscAbsReal(TDSEZParser::LMaxX);
-    PetscReal R_inner = 0.90 * R_outer;
-
+    // Separable Manolopoulos CAP: every active axis gets an absorbing layer of
+    // width w = c / (2 delta kmin) at both of its walls, W = sum_d W_d. The
+    // profile starts at zero at the inner edge of each layer (no jump: a jump
+    // reflects slow electrons back to the core) and uses each axis' own
+    // limits, so non-cubic and asymmetric boxes are absorbed on every face.
+    // TDSEZValidate checks that the layers leave a free core.
+    const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
+    const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
+    const PetscReal width = TDSEZCapWidth();
     PetscReal Wq = 0.0;
-    if (r_cubic > R_inner) {
-        // clamp to avoid the 1/(R_outer - r) singularity
-        PetscReal r_safe = PetscMin(r_cubic, R_outer - 1e-8);
-        Wq = Manolopoulos_CAP_profile(r_safe, R_inner, R_outer, TDSEZParser::CAPKmin);
+    for (PetscInt d = 0; d < TDSEZParser::Dimension; ++d) {
+        const PetscReal s_wall = PetscMin(xyz[d] - lo[d], hi[d] - xyz[d]);   // distance to the nearer wall
+        if (s_wall < width) {
+            // layer coordinate in [0, width), clamped below the 1/(c - r) pole
+            const PetscReal u = PetscMin(width - s_wall, width * (1.0 - 1e-10));
+            Wq += Manolopoulos_CAP_profile(u, 0.0, width, TDSEZParser::CAPKmin);
+        }
     }
 
     const PetscScalar iWq = -PETSC_i * Wq;

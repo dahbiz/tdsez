@@ -211,10 +211,7 @@ int main(int argc, char *argv[])
                 PetscCall(TDSEZOrthogonalizeDegenerates(&manager));
             }
 
-            // Make the states real-valued for the dipole matrix computation
-            PetscCallAbort(PETSC_COMM_WORLD,
-                           MakeStatesReal(manager.boundstates, manager.M()));
-
+            // The bound states are real with a fixed phase (TDSEZCanonicalEigenpairs).
             std::string dipPrefix = std::filesystem::path(manager.inputFile).filename().string();
             PetscCall(TDSEZCompUnifiedDipoleMatrix(manager.boundstates, manager.energies, manager.Dx(), manager.Dy(), manager.Dz(), "DipoleMatrix_" + dipPrefix));
             PetscCall(TDSEZPrecomputeMomentumMatrix(&manager));

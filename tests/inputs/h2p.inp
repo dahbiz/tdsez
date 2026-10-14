@@ -9,7 +9,6 @@ NQuadratures      = 8
 KnotSequence      = uniform
 NSplines          = 60
 Mass              = 1.0
-Planck            = 1.0
 Charge            = 1.0
 
 UseDirectSolve    = 0
@@ -22,8 +21,8 @@ PotentialDerivativeX = (x - 1.0) / ((x - 1.0)^2 + 1.44)^1.5 + (x + 1.0) / ((x + 
 PotentialDerivativeY = 0
 PotentialDerivativeZ = 0
 
-Ampz              = 0.0
-Ampz              = 0.0
+Ampx              = 0.02
+Ampy              = 0.0
 Ampz              = 0.0
 Omegax            = 0.05655
 Omegay            = 0.0
@@ -41,5 +40,4 @@ FinalTime         = 10.0
 EnablePropagation = 1
 EnableCAP         = 0
 OutputStrideWFS   = 1000
-EnvelopeType      = custom
 

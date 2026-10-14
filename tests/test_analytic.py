@@ -98,7 +98,6 @@ def mass_step_dirichlet(m1, m2, nmin):
 HEAD_1D = """\
 Verbose           = 0
 Dimension         = 1
-Hbar              = 1.0
 Charge            = 1.0
 UseDirectSolve    = 1
 EnableCAP         = 0
