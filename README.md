@@ -62,8 +62,11 @@ declarations. Individual class headers can be included separately.
 
 - B-spline basis functions via PetIGA for high-accuracy spatial discretisation
 - SLEPc eigensolvers (EPS/PEP) for eigenvalue problems
-- PETSc time-stepping (TS) for propagation
+- PETSc time-stepping (TS) for propagation: Crank–Nicolson, plus unitary
+  Padé(2,2) and commutator-free fourth-order Magnus propagators
 - MPI parallelism across multiple nodes
+- Optimised propagation and output path; measured speed-ups are documented in
+  [PERFORMANCE.md](PERFORMANCE.md)
 - HDF5 output with full provenance metadata
 - muParser for user-defined potentials, laser fields, and mass profiles
 
