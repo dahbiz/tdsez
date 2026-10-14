@@ -226,17 +226,9 @@ PetscErrorCode TDSEZCompOperators(
             }
         }
 
-        ierr = IGAElementBeginPoint(element, &point);
-        if (PetscUnlikely(ierr)) goto cleanup;
-        point_open = PETSC_TRUE;
-
-        while (IGAElementNextPoint(element, point)) {
-            ierr = kernel(point, nmat, work, ctx);
-            if (PetscUnlikely(ierr)) goto cleanup;
-        }
-
-        ierr = IGAElementEndPoint(element, &point);
-        point_open = PETSC_FALSE;
+        // Element matrices: sum-factorised where supported, per-point kernel
+        // otherwise (TDSEZElementWork, sumfact.cpp).
+        ierr = TDSEZElementWork(iga, element, kernel, nmat, work, ctx);
         if (PetscUnlikely(ierr)) goto cleanup;
 
         for (PetscInt k = 0; k < nmat; ++k) {
@@ -452,17 +444,9 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
             }
         }
 
-        ierr = IGAElementBeginPoint(element, &point);
-        if (PetscUnlikely(ierr)) goto cleanup;
-        point_open = PETSC_TRUE;
-
-        while (IGAElementNextPoint(element, point)) {
-            ierr = kernel(point, nmat, work, ctx);
-            if (PetscUnlikely(ierr)) goto cleanup;
-        }
-
-        ierr = IGAElementEndPoint(element, &point);
-        point_open = PETSC_FALSE;
+        // Element matrices: sum-factorised where supported, per-point kernel
+        // otherwise (TDSEZElementWork, sumfact.cpp).
+        ierr = TDSEZElementWork(iga, element, kernel, nmat, work, ctx);
         if (PetscUnlikely(ierr)) goto cleanup;
 
         // ---- Homogeneous Dirichlet: pin the wall DoFs symmetrically ----
@@ -2018,4 +2002,40 @@ PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx)
     }
 
     return 0;
+}
+
+
+// ---------------------------------------------------------------------------
+//  TDSEZFormPhyAxes — batched TD operators for y / z / multi-axis polarization
+// ---------------------------------------------------------------------------
+PetscBool TDSEZPhyAxesOn[3] = {PETSC_FALSE, PETSC_FALSE, PETSC_FALSE};
+
+/// Per-point kernel for the batch [K, V, Md, (D_d, Vel_d, dV_d) for active d].
+/// Each matrix is the corresponding single-operator integrand kernel times
+/// weight*detJac, the same contribution IGAComputeMatrix adds per point.
+PetscErrorCode TDSEZFormPhyAxes(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx)
+{
+    PetscFunctionBegin;
+    (void)ctx;
+    typedef PetscErrorCode (*Integrand)(IGAPoint, PetscScalar *, void *);
+    Integrand ops[12];
+    PetscInt n = 0;
+    ops[n++] = TDSEZFormKinetic; ops[n++] = TDSEZFormPotential; ops[n++] = TDSEZFormMassDist;
+    const Integrand D[3]  = {DipoleX, DipoleY, DipoleZ};
+    const Integrand Vl[3] = {VelocityX, VelocityY, VelocityZ};
+    const Integrand G[3]  = {TDSEZformPotentialGradX, TDSEZformPotentialGradY, TDSEZformPotentialGradZ};
+    for (int d = 0; d < 3; ++d)
+        if (TDSEZPhyAxesOn[d]) { ops[n++] = D[d]; ops[n++] = Vl[d]; ops[n++] = G[d]; }
+    PetscCheck(n == nmat, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ,
+               "TDSEZFormPhyAxes: %" PetscInt_FMT " matrices expected, %" PetscInt_FMT " given", n, nmat);
+
+    const PetscInt  nen = p->nen;
+    const PetscReal w   = p->weight[0] * p->detJac[0];
+    thread_local std::vector<PetscScalar> tmp;
+    tmp.resize((size_t)nen * nen);
+    for (PetscInt k = 0; k < nmat; ++k) {
+        PetscCall(ops[k](p, tmp.data(), NULL));
+        for (size_t i = 0; i < (size_t)nen * nen; ++i) M[k][i] += w * tmp[i];
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -493,6 +493,7 @@ set(TDSEZ_SOURCES
     src/parser.cpp
     src/parser_validation.cpp
     src/assembly/assembly.cpp
+    src/assembly/sumfact.cpp
     src/assembler_class.cpp
     src/core_knots.cpp
     src/core.cpp

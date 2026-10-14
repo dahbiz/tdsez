@@ -285,6 +285,12 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
     TDSEZPhysicsKernel kernel,
     void              *ctx);
 
+/// Element matrices of a physics kernel for one element (work zeroed by the
+/// caller): sum-factorised for tensor-product elements where supported,
+/// per-point kernel otherwise. See src/assembly/sumfact.cpp.
+PetscErrorCode TDSEZElementWork(IGA iga, IGAElement element, TDSEZPhysicsKernel kernel,
+                                PetscInt nmat, PetscScalar *work[], void *ctx);
+
 /// Remove the rows and columns of the Dirichlet wall DoFs (recorded by
 /// TDSEZCompOperatorsDirichlet) from an operator, with @p diag on the
 /// diagonal. No-op for Neumann boundaries or a NULL matrix.
@@ -297,6 +303,13 @@ PetscErrorCode TDSEZZeroDirichletRows(Mat A, PetscScalar diag);
 /// @{
 PetscErrorCode TDSEZFormHam(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx);       ///< Hamiltonian H = K + V
 PetscErrorCode TDSEZFormPhyX(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx);      ///< physical-position operator
+/// Batched TD operators for a general polarization: [K, V, Md] followed by
+/// [D_d, Vel_d, dV_d] for every active axis d (TDSEZPhyAxesOn). Per point it
+/// accumulates the single-operator integrand kernels times weight*detJac,
+/// i.e. exactly what separate IGAComputeMatrix passes assemble.
+PetscErrorCode TDSEZFormPhyAxes(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx);
+/// Active axes of TDSEZFormPhyAxes (set by the assembler before the batch).
+extern PetscBool TDSEZPhyAxesOn[3];
 PetscErrorCode TDSEZFormLz(IGAPoint p, PetscScalar *L, void *ctx);                        ///< angular momentum Lz
 PetscErrorCode TDSEZFormKinetic(IGAPoint p, PetscScalar*K, void *ctx);                    ///< kinetic energy -∇²/2m
 PetscErrorCode TDSEZFormPotential(IGAPoint p, PetscScalar*V, void *ctx);                  ///< potential V(x)

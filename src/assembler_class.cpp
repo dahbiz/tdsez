@@ -154,90 +154,33 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         TDSEZAssembleMatrixTimed(iga, &Lz, TDSEZFormLz, "Angular Momentum Lz");
     }
 
-    if (pol != "x")
+    // Construct dipole matrices based on specified polarization. Every case
+    // other than "x" assembles [K, V, Md] plus [D_d, Vel_d, dV_d] for each
+    // active axis in one batched pass (TDSEZFormPhyAxes, sum-factorised for a
+    // constant mass); the matrices are the same as with separate passes.
+    const bool batchAxes = (pol != "x") &&
+        ((pol == "y" && dim >= 2) || (pol == "z" && dim == 3) || (pol == "xy" && dim >= 2) ||
+         (pol == "xz" && dim == 3) || (pol == "yz" && dim == 3) ||
+         ((pol == "xyz" || pol == "all") && dim == 3));
+    if (batchAxes)
     {
-        TDSEZAssembleMatrixTimed(iga, &K, TDSEZFormKinetic, "Kinetic Term");
-        TDSEZAssembleMatrixTimed(iga, &V, TDSEZFormPotential, "Potential Term");
-        TDSEZAssembleMatrixTimed(iga, &Md, TDSEZFormMassDist, "Mass Distribution");
+        TDSEZPhyAxesOn[0] = (pol == "xy" || pol == "xz" || pol == "xyz" || pol == "all") ? PETSC_TRUE : PETSC_FALSE;
+        TDSEZPhyAxesOn[1] = (pol == "y" || pol == "xy" || pol == "yz" || pol == "xyz" || pol == "all") ? PETSC_TRUE : PETSC_FALSE;
+        TDSEZPhyAxesOn[2] = (pol == "z" || pol == "xz" || pol == "yz" || pol == "xyz" || pol == "all") ? PETSC_TRUE : PETSC_FALSE;
+        Mat *mats[12];
+        PetscInt n = 0;
+        mats[n++] = &K; mats[n++] = &V; mats[n++] = &Md;
+        Mat *Dm[3] = {&Dx, &Dy, &Dz}, *Vm[3] = {&VelX, &VelY, &VelZ}, *Gm[3] = {&dVdx, &dVdy, &dVdz};
+        for (int d = 0; d < 3; ++d)
+            if (TDSEZPhyAxesOn[d]) { mats[n++] = Dm[d]; mats[n++] = Vm[d]; mats[n++] = Gm[d]; }
+        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormPhyAxes, "Polarization Ops");
     }
-
-    // Construct dipole matrices based on specified polarization
-    if (pol == "x")
+    else if (pol == "x")
     {
         // Bulk assemble all 6 operators for x-polarization in one go
         Mat *mats[6] = {&K, &V, &Md, &Dx, &VelX, &dVdx};
         TDSEZAssembleMatBatchTimed(iga, 6, mats, TDSEZFormPhyX, "X-Polarization Ops");
 
-    }
-    else if (pol == "y" && dim >= 2)
-    {        // construct Dy
-        TDSEZAssembleMatrixTimed(iga, &Dy, DipoleY, "Dipole Y");
-        // construct VelY
-        TDSEZAssembleMatrixTimed(iga, &VelY, VelocityY, "Velocity Y");
-        // construct dVdy
-        TDSEZAssembleMatrixTimed(iga, &dVdy, TDSEZformPotentialGradY, "Potential Gradient Y");
-    }
-    else if (pol == "z" && dim == 3)
-    {
-        // construct Dz
-        TDSEZAssembleMatrixTimed(iga, &Dz, DipoleZ, "Dipole Z");
-        // construct VelZ
-        TDSEZAssembleMatrixTimed(iga, &VelZ, VelocityZ, "Velocity Z");
-        // construct dVdz
-        TDSEZAssembleMatrixTimed(iga, &dVdz, TDSEZformPotentialGradZ, "Potential Gradient Z");
-    }
-    else if (pol == "xy" && dim >= 2)
-    {
-        // construct Dx, Dy
-        TDSEZAssembleMatrixTimed(iga, &Dx, DipoleX, "Dipole X");
-        TDSEZAssembleMatrixTimed(iga, &Dy, DipoleY, "Dipole Y");
-        // construct VelX, VelY
-        TDSEZAssembleMatrixTimed(iga, &VelX, VelocityX, "Velocity X");
-        TDSEZAssembleMatrixTimed(iga, &VelY, VelocityY, "Velocity Y");
-        // construct dVdx, dVdy
-        TDSEZAssembleMatrixTimed(iga, &dVdx, TDSEZformPotentialGradX, "Potential Gradient X");
-        TDSEZAssembleMatrixTimed(iga, &dVdy, TDSEZformPotentialGradY, "Potential Gradient Y");
-    }
-    else if (pol == "xz" && dim == 3)
-    {
-        // construct Dx, Dz
-        TDSEZAssembleMatrixTimed(iga, &Dx, DipoleX, "Dipole X");
-        TDSEZAssembleMatrixTimed(iga, &Dz, DipoleZ, "Dipole Z");
-        // construct VelX, VelZ
-        TDSEZAssembleMatrixTimed(iga, &VelX, VelocityX, "Velocity X");
-        TDSEZAssembleMatrixTimed(iga, &VelZ, VelocityZ, "Velocity Z");
-        // construct dVdx, dVdz
-        TDSEZAssembleMatrixTimed(iga, &dVdx, TDSEZformPotentialGradX, "Potential Gradient X");
-        TDSEZAssembleMatrixTimed(iga, &dVdz, TDSEZformPotentialGradZ, "Potential Gradient Z");
-    }
-    else if (pol == "yz" && dim == 3)
-    {
-        // construct Dy, Dz
-        TDSEZAssembleMatrixTimed(iga, &Dy, DipoleY, "Dipole Y");
-        TDSEZAssembleMatrixTimed(iga, &Dz, DipoleZ, "Dipole Z");
-        // construct VelY, VelZ
-        TDSEZAssembleMatrixTimed(iga, &VelY, VelocityY, "Velocity Y");
-        TDSEZAssembleMatrixTimed(iga, &VelZ, VelocityZ, "Velocity Z");
-        // construct dVdy, dVdz
-        TDSEZAssembleMatrixTimed(iga, &dVdy, TDSEZformPotentialGradY, "Potential Gradient Y");
-        TDSEZAssembleMatrixTimed(iga, &dVdz, TDSEZformPotentialGradZ, "Potential Gradient Z");
-    }
-    else if ((pol == "xyz" || pol == "all") && dim == 3)
-    {
-        // construct Dx, Dy, Dz
-        TDSEZAssembleMatrixTimed(iga, &Dx, DipoleX, "Dipole X");
-        TDSEZAssembleMatrixTimed(iga, &Dy, DipoleY, "Dipole Y");
-        TDSEZAssembleMatrixTimed(iga, &Dz, DipoleZ, "Dipole Z");
-        // construct VelX, VelY, VelZ
-        TDSEZAssembleMatrixTimed(iga, &VelX, VelocityX, "Velocity X");
-        TDSEZAssembleMatrixTimed(iga, &VelY, VelocityY, "Velocity Y");
-        TDSEZAssembleMatrixTimed(iga, &VelZ, VelocityZ, "Velocity Z");
-        // construct dVdx, dVdy, dVdz
-        TDSEZAssembleMatrixTimed(iga, &dVdx, TDSEZformPotentialGradX, "Potential Gradient X");
-        TDSEZAssembleMatrixTimed(iga, &dVdy, TDSEZformPotentialGradY, "Potential Gradient Y");
-        TDSEZAssembleMatrixTimed(iga, &dVdz, TDSEZformPotentialGradZ, "Potential Gradient Z");
-
-        PetscPrintf(PETSC_COMM_WORLD, "----------------------------------------\n");
     }
     else
     {

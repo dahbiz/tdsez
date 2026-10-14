@@ -33,6 +33,9 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | Monitor products + batched HDF5 writes | 1D HO, $`5\times10^4`$ steps | 15.8 s | 12.3 s | $`-22\%`$ |
 | | 1D with CAP, $`2.2\times10^4`$ steps | 5.6 s | 4.1 s | $`-27\%`$ |
 | | 3D variable mass, 100 steps | 3.42 s | 3.24 s | $`-5\%`$ |
+| Sum-factorised assembly | 3D, $`p=7`$, $`10^3`$ elements: $`\mathbf H,\mathbf M`$ | 114 s | 8.5 s | $`13\times`$ |
+| | same, time-dependent operators | 464 s | 36 s | $`13\times`$ |
+| | 3D $`z`$-polarisation, $`p=5`$: whole run | 62.6 s | 7.1 s | $`8.9\times`$ |
 
 ## 1. Crank–Nicolson solver set-up
 
@@ -205,6 +208,84 @@ per run; the file contents and dataset shapes are identical.
 | 1D with CAP, $`2.2\times10^4`$ steps | 2.23 → 0.76 s | 22 051 → 4 (1.37 → 0.003 s) | 5.58 → 4.05 s |
 | 3D variable mass, 100 steps | 1.00 → 0.86 s | 101 → 2 | 3.42 → 3.24 s |
 
+## 5. Sum-factorised assembly
+
+The element matrices are integrals of the form
+
+```math
+E_{ab} = \sum_{q} c(\mathbf r_q)\, D^{\alpha} N_a(\mathbf r_q)\, D^{\beta} N_b(\mathbf r_q),
+```
+
+where $`c`$ contains the quadrature weight and the coefficient
+($`\tfrac{1}{2m}`$, $`V`$, $`m^{-1}`$, $`x_d`$, $`\partial_d V/m`$, ...) and
+$`D^\alpha, D^\beta`$ are values or first derivatives. The B-spline basis and the
+Gauss rule are tensor products,
+
+```math
+N_a(\mathbf r) = N_{a_1}(x)\,N_{a_2}(y)\,N_{a_3}(z),
+\qquad
+\mathbf r_q = (x_{q_1}, y_{q_2}, z_{q_3}),
+```
+
+so the sum over the $`Q^3`$ points can be contracted one axis at a time:
+
+```math
+\begin{aligned}
+T_1[a_1 b_1](q_2,q_3) &= \sum_{q_1} N^{\alpha_1}_{a_1}(x_{q_1})\,N^{\beta_1}_{b_1}(x_{q_1})\;c(q_1,q_2,q_3),\\
+T_2[a_1 b_1 a_2 b_2](q_3) &= \sum_{q_2} N^{\alpha_2}_{a_2}(y_{q_2})\,N^{\beta_2}_{b_2}(y_{q_2})\;T_1[a_1 b_1](q_2,q_3),\\
+E_{ab} &= \sum_{q_3} N^{\alpha_3}_{a_3}(z_{q_3})\,N^{\beta_3}_{b_3}(z_{q_3})\;T_2[a_1 b_1 a_2 b_2](q_3).
+\end{aligned}
+```
+
+With $`n = p+1`$ functions and $`Q`$ points per axis, the work per element and
+term drops from $`Q^3 n^6`$ to $`n^6 Q + n^4 Q^2 + n^2 Q^3`$ in 3D (from
+$`Q^2 n^4`$ to $`n^4 Q + n^2 Q^2`$ in 2D). The same quadrature points and the same
+pointwise coefficients are used, so the element matrices are identical up to
+rounding; symmetric matrices are symmetrised exactly and the velocity matrix is
+built as $`i(\mathbf E - \mathbf E^{\mathsf T})`$, exactly antisymmetric.
+
+Applies to $`\mathbf H, \mathbf M`$ and to the time-dependent operators
+$`\mathbf K, \mathbf V, \mathbf M_{m^{-1}}, \mathbf D_d, \mathbf{Vel}_d, \partial_d V`$
+for every polarisation, in 2D and 3D. The cases with mass-gradient corrections
+in the force operator (variable mass with the operator-form acceleration, and
+2D variable mass) keep the per-point kernels. The $`y`$/$`z`$/multi-axis
+polarisations are now assembled in one batched pass instead of six separate
+per-operator passes. Options: `-tdsez_sumfact 0` disables it;
+`-tdsez_sumfact_check` computes every element both ways and prints the largest
+relative difference ($`\le 3\times10^{-15}`$ in all tests).
+
+**Element work only** ($`\mathbf H, \mathbf M`$, one rank, time per element):
+
+| $`p`$ | per-point kernels | sum factorised | measured gain | flop ratio |
+|---|---|---|---|---|
+| 5 | 7.1 ms | 0.48 ms | 15× | 23× |
+| 7 | 75.6 ms | 4.4 ms | 17× | 38× |
+
+The per-point kernels scale as $`Q^3 n^6 \sim p^9`$ (measured growth $`10.7`$
+from $`p=5`$ to $`7`$, predicted $`11.0`$); the sum-factorised kernels as
+$`\sim p^7`$, with some loss to cache effects at $`p=7`$.
+
+**Whole assembly phases** (3D harmonic oscillator, $`10^3`$ elements, 4 ranks):
+
+| Case | $`\mathbf H,\mathbf M`$ | Time-dependent operators | Whole run |
+|---|---|---|---|
+| $`x`$-pol., $`p=3`$ | 0.12 → 0.08 s | 0.52 → 0.32 s | 1.04 → 0.80 s |
+| $`x`$-pol., $`p=5`$ | 2.89 → 1.00 s | 9.75 → 4.07 s | 14.6 → 7.0 s |
+| $`x`$-pol., $`p=7`$ | 114 → 8.5 s | 464 → 36 s | |
+| $`z`$-pol., $`p=3`$ | 0.12 → 0.08 s | 2.47 → 0.31 s | 3.00 → 0.78 s |
+| $`z`$-pol., $`p=5`$ | 2.81 → 1.05 s | 57.9 → 4.0 s | 62.6 → 7.1 s |
+
+After this change the remaining assembly cost is the insertion of the element
+matrices into PETSc ($`(p+1)^6`$ values per element and matrix, about 25 ns each)
+and the communication of entries owned by other ranks.
+
+**High-order eigensolves.** At $`p \ge 7`$ in 3D the B-spline overlap matrix is
+very ill-conditioned and $`\boldsymbol x^\dagger\mathbf M\boldsymbol x`$ carries a
+rounding-level imaginary part that exceeded SLEPc's default definiteness check
+($`\sim 10\,\varepsilon`$), aborting the eigensolve. The check is now set to a
+relative $`10^{-10}`$ (overridable with `-bv_definite_tol`); the eigenpairs have
+residuals of $`10^{-11}`$–$`10^{-13}`$ and agree between the two assembly paths.
+
 ## Effect on accuracy
 
 * **Cached and paired stages** are exact algebraic rewritings; results differ
@@ -221,6 +302,12 @@ per run; the file contents and dataset shapes are identical.
   regression set the written energies, dipoles and accelerations agree with the
   previous code to $`\le 3\times10^{-14}`$.
 * **Batched writes** do not change any written value.
+* **Sum-factorised assembly** uses the same quadrature points and coefficients;
+  element matrices agree with the per-point kernels to $`\le 3\times10^{-15}`$
+  relative. On the 28 repository test inputs, energies, dipoles and spectra
+  agree to $`\le 5\times10^{-14}`$; individual eigenvectors inside degenerate
+  shells can rotate (any rounding change does this), which does not affect
+  shell-summed or basis-independent observables.
 
 ## Reproducing the measurements
 

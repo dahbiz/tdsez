@@ -478,6 +478,18 @@ if (useDirect) {
     PetscCall(KSPSetFromOptions(ksp));
     PetscCall(PCSetFromOptions(pc));
     PetscCall(STSetFromOptions(st));
+    // The B-spline overlap matrix becomes very ill-conditioned at high degree
+    // (3D, p >= 7). x^H M x then carries a rounding-level imaginary part that
+    // exceeds SLEPc's default definiteness check (~10 eps) although M is
+    // symmetric positive definite by construction, and the solve aborts with
+    // "inner product is not well defined". A relative tolerance of 1e-10 is
+    // still strict; the eigenpairs are validated by their residuals.
+    // Overridable with -bv_definite_tol.
+    {
+        BV bv;
+        PetscCall(EPSGetBV(eps, &bv));
+        PetscCall(BVSetDefiniteTolerance(bv, 1e-10));
+    }
     PetscCall(EPSSetFromOptions(eps));
 
 
