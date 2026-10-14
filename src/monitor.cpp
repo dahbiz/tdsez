@@ -428,10 +428,13 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     }
 
     PetscInt nBatch = 5;
-    PetscInt idxDx=-1, idxAccX=-1;
+    PetscInt idxDx=-1, idxAccX=-1, idxVx=-1;
     if (TDSEZ->hasX) {
         idxDx   = nBatch++; PetscCall(MatMult(TDSEZ->Dx(),   psi, TDSEZ->tmpVec[idxDx]));
         if (!useDiscAcc) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
+    }
+    if (TDSEZParser::out_current && TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR) {
+        idxVx = nBatch++; PetscCall(MatMult(TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx]));
     }
 
     // ------------------------
@@ -474,6 +477,40 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     if (TDSEZParser::out_population || TDSEZParser::out_current) {
         PetscCall(VecMDot(TDSEZ->tmpVec[0], TDSEZ->NPOP, TDSEZ->boundstates.data(), TDSEZ->popDots.data()));
+    }
+
+    // ------------------------
+    // Berry phase and current decomposition (same layout as the 2D monitor;
+    // the y columns and <Lz> stay zero in 1D)
+    // ------------------------
+    const PetscInt N = TDSEZ->NPOP;
+    PetscReal   dGamma   = 0.0;
+    PetscScalar Jx_total = 0.0, Jx_intra = 0.0, Jx_inter = 0.0, Jx_bc = 0.0;
+    if (TDSEZParser::out_current) {
+        if (!TDSEZ->popDots_prev.empty()) {
+            PetscScalar overlap = 0.0;
+            for (PetscInt n = 0; n < N; n++)
+                overlap += PetscConj(TDSEZ->popDots_prev[n]) * TDSEZ->popDots[n];
+            dGamma = -PetscAtan2Real(PetscImaginaryPart(overlap), PetscRealPart(overlap));
+            TDSEZ->BerryPhase += dGamma;
+        }
+        TDSEZ->popDots_prev = TDSEZ->popDots;
+
+        if (idxVx >= 0) {
+            Jx_total = res[idxVx];
+            if (!TDSEZ->vMat_x.empty()) {
+                for (PetscInt n = 0; n < N; n++) {
+                    const PetscReal pop = PetscRealPart(PetscConj(TDSEZ->popDots[n]) * TDSEZ->popDots[n]);
+                    Jx_intra += pop * TDSEZ->vMat_x[n*N+n];
+                }
+                for (PetscInt m = 0; m < N; m++)
+                for (PetscInt n = 0; n < N; n++) {
+                    if (m == n) continue;
+                    Jx_inter += PetscConj(TDSEZ->popDots[m]) * TDSEZ->popDots[n] * TDSEZ->vMat_x[m*N+n];
+                }
+                Jx_bc = Jx_total - Jx_intra - Jx_inter;
+            }
+        }
     }
 
 
@@ -521,6 +558,19 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
             TDSEZ->energyBuffer[eOff+5] = invMassAvg;
             TDSEZ->energyBuffer[eOff+6] = (PetscScalar)normSq;
         }
+
+        // Currents [t, Lz, dGamma, Jx_tot, Jy_tot, Jx_intra, Jy_intra, Jx_inter, Jy_inter, Jx_bc, Jy_bc]
+        if (TDSEZParser::out_current) {
+            PetscInt cOff = sIdx * 11;
+            for (PetscInt c = 0; c < 11; ++c) TDSEZ->currBuffer[cOff+c] = 0.0;
+            TDSEZ->currBuffer[cOff+0] = t;
+            TDSEZ->currBuffer[cOff+2] = dGamma;
+            TDSEZ->currBuffer[cOff+3] = PetscRealPart(Jx_total);
+            TDSEZ->currBuffer[cOff+5] = PetscRealPart(Jx_intra);
+            TDSEZ->currBuffer[cOff+7] = PetscRealPart(Jx_inter);
+            TDSEZ->currBuffer[cOff+9] = PetscRealPart(Jx_bc);
+        }
+
         // autocorrelation Table [t, Re<Psi(0)|Psi(t)>, Im<Psi(0)|Psi(t)>]
         // MUST be filled BEFORE the per-step flush below: the flush writes the
         // autocorrelation dataset from acBuffer for the window

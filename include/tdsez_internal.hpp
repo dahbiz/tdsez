@@ -285,6 +285,11 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
     TDSEZPhysicsKernel kernel,
     void              *ctx);
 
+/// Remove the rows and columns of the Dirichlet wall DoFs (recorded by
+/// TDSEZCompOperatorsDirichlet) from an operator, with @p diag on the
+/// diagonal. No-op for Neumann boundaries or a NULL matrix.
+PetscErrorCode TDSEZZeroDirichletRows(Mat A, PetscScalar diag);
+
 /// @name IGA form kernels (pointwise callback functions)
 /// @brief These are the per-quadrature-point form kernels used by the
 /// IGA assembly.  Each computes a local matrix contribution at a single

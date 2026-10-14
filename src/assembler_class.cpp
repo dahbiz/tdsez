@@ -244,4 +244,9 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         throw std::runtime_error("The polarization choice is not compatible with the  dimension of the problem. Please check your input file.");
     }
 
+    // Dirichlet walls: the wall DoFs are pinned in H and M (core assembly), so
+    // they must not couple to the rest of the system through the time-dependent
+    // or diagnostic operators either. No-op for Neumann boundaries.
+    for (Mat A : {CAP, Lz, K, V, Md, Dx, Dy, Dz, VelX, VelY, VelZ, dVdx, dVdy, dVdz})
+        PetscCallAbort(PETSC_COMM_WORLD, TDSEZZeroDirichletRows(A, 0.0));
 }

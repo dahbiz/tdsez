@@ -347,7 +347,14 @@ PetscErrorCode TDSEZCore::Solve()
     PetscCall(EPSKrylovSchurSetRestart(eps, isHuge ? 0.3 : 0.5));
 
     PetscCall(EPSGetST(eps, &st));
-    PetscCall(STSetShift(st, targetEV));
+    // The shift-invert shift is offset slightly below the target. Inputs often
+    // set the target to a known eigenvalue (e.g. the exact ground state); a
+    // shift that coincides with an eigenvalue makes (H - sigma M) singular to
+    // rounding and pollutes every other computed eigenvector (residuals
+    // ~1e-2 instead of ~1e-15). The target itself is unchanged, so the
+    // selection of the eigenvalues nearest to it is unaffected.
+    const PetscReal shiftOffset = 1e-3 * PetscMax((PetscReal)1.0, PetscAbsScalar(targetEV));
+    PetscCall(STSetShift(st, targetEV - shiftOffset));
     PetscCall(STSetMatStructure(st, SAME_NONZERO_PATTERN));
     // PetscCall(STSetMatMode(st, ST_MATMODE_COPY));
     PetscCall(STSetType(st, STSINVERT));

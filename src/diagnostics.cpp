@@ -436,7 +436,7 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
             PetscCall(MatMult(TDSEZ->Dx(), TDSEZ->boundstates[n], tmp));
             PetscCall(VecMDot(tmp, N, states.data(), dots.data()));
             for (PetscInt m = 0; m < N; ++m) {
-                dMat_x[(size_t)m * N + n] = PetscConj(dots[m]);
+                dMat_x[(size_t)m * N + n] = dots[m];   // d_mn = <phi_m|D|phi_n>
             }
         }
 
@@ -444,7 +444,7 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
             PetscCall(MatMult(TDSEZ->Dy(), TDSEZ->boundstates[n], tmp));
             PetscCall(VecMDot(tmp, N, states.data(), dots.data()));
             for (PetscInt m = 0; m < N; ++m) {
-                dMat_y[(size_t)m * N + n] = PetscConj(dots[m]);
+                dMat_y[(size_t)m * N + n] = dots[m];   // d_mn = <phi_m|D|phi_n>
             }
         }
 
@@ -452,7 +452,7 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
             PetscCall(MatMult(TDSEZ->Dz(), TDSEZ->boundstates[n], tmp));
             PetscCall(VecMDot(tmp, N, states.data(), dots.data()));
             for (PetscInt m = 0; m < N; ++m) {
-                dMat_z[(size_t)m * N + n] = PetscConj(dots[m]);
+                dMat_z[(size_t)m * N + n] = dots[m];   // d_mn = <phi_m|D|phi_n>
             }
         }
     }
@@ -498,7 +498,8 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
             for (PetscInt n = 0; n < N; ++n) {
                 if (m == n) continue;
 
-                const PetscReal omega_mn = eps[n] - eps[m];
+                // v_mn = <m|i[H,r]|n> = i (eps_m - eps_n) d_mn
+                const PetscReal omega_mn = eps[m] - eps[n];
 
                 if (PetscAbsReal(omega_mn) < omega_abs_tol) {
                     ++skipped;
@@ -623,7 +624,8 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
             PetscCall(MatMult(TDSEZ->VelX(), TDSEZ->boundstates[n], tmp));
             for (PetscInt m = 0; m < N; m++) {
                 PetscScalar val;
-                PetscCall(VecDot(TDSEZ->boundstates[m], tmp, &val));
+                // VecDot(x, y) = y^H x, so this is <phi_m|Vel|phi_n> = v_mn
+                PetscCall(VecDot(tmp, TDSEZ->boundstates[m], &val));
                 TDSEZ->vMat_x[m*N+n] = val;
             }
         }
@@ -631,7 +633,8 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
             PetscCall(MatMult(TDSEZ->VelY(), TDSEZ->boundstates[n], tmp));
             for (PetscInt m = 0; m < N; m++) {
                 PetscScalar val;
-                PetscCall(VecDot(TDSEZ->boundstates[m], tmp, &val));
+                // VecDot(x, y) = y^H x, so this is <phi_m|Vel|phi_n> = v_mn
+                PetscCall(VecDot(tmp, TDSEZ->boundstates[m], &val));
                 TDSEZ->vMat_y[m*N+n] = val;
             }
         }
@@ -639,7 +642,8 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
             PetscCall(MatMult(TDSEZ->VelZ(), TDSEZ->boundstates[n], tmp));
             for (PetscInt m = 0; m < N; m++) {
                 PetscScalar val;
-                PetscCall(VecDot(TDSEZ->boundstates[m], tmp, &val));
+                // VecDot(x, y) = y^H x, so this is <phi_m|Vel|phi_n> = v_mn
+                PetscCall(VecDot(tmp, TDSEZ->boundstates[m], &val));
                 TDSEZ->vMat_z[m*N+n] = val;
             }
         }

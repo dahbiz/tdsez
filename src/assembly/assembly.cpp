@@ -29,6 +29,8 @@
  */
 
 #include "tdsez_internal.hpp"
+#include <algorithm>
+#include <vector>
 
 #include "tdsez_internal.hpp"
 
@@ -282,7 +284,69 @@ cleanup:
 //
 //  This is ADDITIVE: it does not change TDSEZCompOperators behaviour. The
 //  production core.cpp call site may opt in by switching to this function.
+//
+//  The wall DoFs are pinned symmetrically in H AND M: their rows and columns
+//  are removed and the decoupled diagonal entries give one spurious eigenvalue
+//  per pinned DoF near the top of the discrete spectrum. The global indices of the
+//  pinned DoFs are recorded so that the time-dependent operators (dipole,
+//  velocity, CAP, ...) can be restricted the same way by
+//  TDSEZZeroDirichletRows().
 // ---------------------------------------------------------------------------
+
+/// Global row indices of the Dirichlet-pinned wall DoFs (all ranks, sorted).
+static std::vector<PetscInt> g_dirichletRows;
+
+/// Spurious eigenvalue of a pinned DoF, relative to the largest diagonal
+/// Rayleigh quotient H_aa/M_aa over the free DoFs of its element (which lies
+/// near the top of the discrete spectrum). Kept at 1: a larger value inflates
+/// ||H||, and the shift-invert eigensolver's true residual grows with ||H||.
+static const PetscReal kDirichletSpuriousFactor = 1.0;
+
+/// Convert element-local wall indices to global rows and gather them on all ranks.
+static PetscErrorCode TDSEZStoreDirichletRows(Mat A, std::vector<PetscInt> &local)
+{
+    PetscFunctionBeginUser;
+    std::sort(local.begin(), local.end());
+    local.erase(std::unique(local.begin(), local.end()), local.end());
+    std::vector<PetscInt> glob(local.size());
+    if (!local.empty()) {
+        ISLocalToGlobalMapping rmap = NULL;
+        PetscCall(MatGetLocalToGlobalMapping(A, &rmap, NULL));
+        PetscCheck(rmap, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_WRONGSTATE,
+                   "matrix has no local-to-global mapping");
+        PetscCall(ISLocalToGlobalMappingApply(rmap, (PetscInt)local.size(), local.data(), glob.data()));
+    }
+    MPI_Comm    comm = PetscObjectComm((PetscObject)A);
+    PetscMPIInt size, n = (PetscMPIInt)glob.size();
+    PetscCallMPI(MPI_Comm_size(comm, &size));
+    std::vector<PetscMPIInt> counts(size), displs(size, 0);
+    PetscCallMPI(MPI_Allgather(&n, 1, MPI_INT, counts.data(), 1, MPI_INT, comm));
+    for (PetscMPIInt r = 1; r < size; ++r) displs[r] = displs[r - 1] + counts[r - 1];
+    g_dirichletRows.assign((size_t)(displs[size - 1] + counts[size - 1]), 0);
+    PetscCallMPI(MPI_Allgatherv(glob.data(), n, MPIU_INT, g_dirichletRows.data(),
+                                counts.data(), displs.data(), MPIU_INT, comm));
+    std::sort(g_dirichletRows.begin(), g_dirichletRows.end());
+    g_dirichletRows.erase(std::unique(g_dirichletRows.begin(), g_dirichletRows.end()), g_dirichletRows.end());
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/// Remove the rows and columns of the Dirichlet wall DoFs from an operator,
+/// putting @p diag on the diagonal. No-op when no Dirichlet assembly has run
+/// (Neumann boundaries) or when @p A is NULL.
+PetscErrorCode TDSEZZeroDirichletRows(Mat A, PetscScalar diag)
+{
+    PetscFunctionBeginUser;
+    if (!A || g_dirichletRows.empty()) PetscFunctionReturn(PETSC_SUCCESS);
+    PetscInt rs, re;
+    PetscCall(MatGetOwnershipRange(A, &rs, &re));
+    std::vector<PetscInt> own;
+    for (PetscInt r : g_dirichletRows)
+        if (r >= rs && r < re) own.push_back(r);
+    PetscCall(MatSetOption(A, MAT_KEEP_NONZERO_PATTERN, PETSC_TRUE));
+    PetscCall(MatSetOption(A, MAT_NO_OFF_PROC_ZERO_ROWS, PETSC_TRUE));
+    PetscCall(MatZeroRowsColumns(A, (PetscInt)own.size(), own.data(), diag, NULL, NULL));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
 /// Dirichlet-enforcing variant of TDSEZCompOperators.
 /**
  * Identical to TDSEZCompOperators except it applies homogeneous Dirichlet
@@ -311,8 +375,10 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
     PetscCheck(iga,    PETSC_COMM_SELF, PETSC_ERR_ARG_NULL, "IGA is NULL");
     PetscCheck(mats,   PETSC_COMM_SELF, PETSC_ERR_ARG_NULL, "mats[] is NULL");
     PetscCheck(kernel, PETSC_COMM_SELF, PETSC_ERR_ARG_NULL, "kernel is NULL");
-    PetscCheck(nmat >= 1 && nmat <= 12, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE,
-               "nmat %" PetscInt_FMT " must be in [1,12]", nmat);
+    PetscCheck(nmat >= 2 && nmat <= 12, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE,
+               "nmat %" PetscInt_FMT " must be in [2,12] (mats = {H, M, ...})", nmat);
+    PetscCheck(iga->dof == 1, PETSC_COMM_SELF, PETSC_ERR_SUP,
+               "Dirichlet assembly supports scalar problems (dof = 1) only");
 
     comm = PetscObjectComm((PetscObject)iga);
 
@@ -353,6 +419,7 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
     PetscBool  element_open = PETSC_FALSE;
     PetscBool  point_open   = PETSC_FALSE;
     PetscErrorCode ierr = PETSC_SUCCESS;
+    std::vector<PetscInt> wallLocal;   // element-local (ghosted) indices of wall DoFs
 
     PetscCall(PetscMalloc1(alloc_cnt, &work_storage));
     for (PetscInt k = 0; k < nmat; ++k) work[k] = work_storage + (size_t)k * n2_max;
@@ -398,21 +465,44 @@ PetscErrorCode TDSEZCompOperatorsDirichlet(
         point_open = PETSC_FALSE;
         if (PetscUnlikely(ierr)) goto cleanup;
 
-        // ---- Dirichlet enforcement: apply IGASetBoundaryValue via FixSystem ----
-        // (this is the step TDSEZCompOperators omits; IGAComputeSystem does it)
-        // NOTE: the mass matrix M (slot k==1 in the {H,M} convention) is the
-        // L^2 inner product and MUST stay unconstrained — pinning it too would
-        // create spurious unit eigenvalues in the generalized eigenproblem
-        // H psi = E M psi. Only the operator(s) that multiply psi (H, V, D, Lz)
-        // get the homogeneous-Dirichlet pin at the wall.
-        {
-            PetscScalar *B = NULL;
-            ierr = IGAElementGetWorkVec(element, &B);
+        // ---- Homogeneous Dirichlet: pin the wall DoFs symmetrically ----
+        // PetIGA lists the wall DoFs of this element (IGASetBoundaryValue) in
+        // element->ifix. Their rows and columns are removed from H and M, so
+        // psi is exactly zero there and the remaining problem is the conforming
+        // H_0^1 Galerkin problem. Pinning H alone (the previous behaviour) left
+        // the wall DoF coupled through M, which shifted the eigenvalues below
+        // the exact ones. The decoupled diagonals give each wall DoF the
+        // spurious eigenvalue kDirichletSpuriousFactor * max_a(H_aa/M_aa), taken
+        // over the free DoFs of the element (the wall DoF's own entry can be
+        // huge for potentials singular at the wall), i.e. near the top of the
+        // discrete spectrum and away from the shift-invert target.
+        ierr = IGAElementBuildFix(element);
+        if (PetscUnlikely(ierr)) goto cleanup;
+        if (element->nfix > 0) {
+            PetscReal mDiag = 0.0, ratio = 1.0;
+            for (PetscInt a = 0; a < nen; ++a) {
+                PetscBool isWall = PETSC_FALSE;
+                for (PetscInt f = 0; f < element->nfix; ++f) if (element->ifix[f] == a) isWall = PETSC_TRUE;
+                if (isWall) continue;
+                const PetscReal maa = PetscRealPart(work[1][a*nen + a]);
+                const PetscReal haa = PetscAbsScalar(work[0][a*nen + a]);
+                if (maa > 0.0) { mDiag = PetscMax(mDiag, maa); ratio = PetscMax(ratio, haa / maa); }
+            }
+            if (mDiag <= 0.0) mDiag = 1.0;
+            PetscInt nen_e;
+            const PetscInt *rowmap = NULL;   // local (ghosted) DoF indices of the element
+            ierr = IGAElementGetClosure(element, &nen_e, &rowmap);
             if (PetscUnlikely(ierr)) goto cleanup;
-            for (PetscInt k = 0; k < nmat; ++k) {
-                if (k == 1) continue;   // skip mass matrix M
-                ierr = IGAElementFixSystem(element, work[k], B);
-                if (PetscUnlikely(ierr)) goto cleanup;
+            for (PetscInt f = 0; f < element->nfix; ++f) {
+                const PetscInt i = element->ifix[f];
+                for (PetscInt k = 0; k < nmat; ++k)
+                    for (PetscInt j = 0; j < nen; ++j) {
+                        work[k][i*nen + j] = 0.0;
+                        work[k][j*nen + i] = 0.0;
+                    }
+                work[0][i*nen + i] = kDirichletSpuriousFactor * ratio * mDiag;
+                work[1][i*nen + i] = mDiag;
+                wallLocal.push_back(rowmap[i]);
             }
         }
 
@@ -444,6 +534,9 @@ cleanup:
     for (PetscInt k = 0; k < nmat; ++k) {
         PetscCall(MatAssemblyEnd(mats[k], MAT_FINAL_ASSEMBLY));
     }
+
+    // Record the global wall rows for TDSEZZeroDirichletRows().
+    PetscCall(TDSEZStoreDirichletRows(mats[0], wallLocal));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
