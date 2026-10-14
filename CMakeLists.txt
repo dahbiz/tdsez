@@ -551,7 +551,8 @@ tdsez_add_target(drecprocessor
 # ------------------------------------------------------------------------------
 # Testing (`make test`)
 # ------------------------------------------------------------------------------
-# `make test` runs the full pytest suite (tests/test_tdsez.py) which launches
+# `make test` runs the full pytest suite (tests/test_tdsez.py and the analytic
+# regression tests tests/test_analytic.py, about 20 s in total) which launches
 # the tdsez binary via mpirun --bind-to none -np 5 on small analytic inputs
 # (1D/2D/3D harmonic oscillator, box, input-validation guards) and asserts
 # computed spectra + degeneracies match hard-coded references.
@@ -559,7 +560,7 @@ tdsez_add_target(drecprocessor
 # Each individual check prints [PASS]/[FAIL] as it runs; output is streamed
 # live to the terminal (not captured by ctest).
 #
-# Requires: pytest + h5py + scipy + zkit-lib.
+# Requires: pytest + h5py + scipy + zkit (pip install git+https://github.com/dahbiz/zkit.git).
 execute_process(
     COMMAND ${Python3_EXECUTABLE} -c "import pytest, h5py, scipy, zkit"
     OUTPUT_QUIET ERROR_QUIET
@@ -571,7 +572,7 @@ if(_test_deps_rc EQUAL 0)
         COMMAND ${CMAKE_COMMAND} -E env PYTHONUNBUFFERED=1
                 TDSEZ_BINARY=$<TARGET_FILE:tdsez>
                 ${Python3_EXECUTABLE} -m pytest
-                ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_tdsez.py -v -s
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests -v -s
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         DEPENDS tdsez tdmprocessor tdmselect drecprocessor unit-test
         USES_TERMINAL
@@ -579,7 +580,7 @@ if(_test_deps_rc EQUAL 0)
     )
     message(STATUS "Testing enabled: `make test` runs pytest suite (5 MPI procs, live output)")
 else()
-    message(STATUS "Testing disabled: pip install pytest h5py scipy zkit-lib to enable `make test`")
+    message(STATUS "Testing disabled: pip install pytest h5py scipy git+https://github.com/dahbiz/zkit.git to enable `make test`")
 endif()
 
 # ------------------------------------------------------------------------------

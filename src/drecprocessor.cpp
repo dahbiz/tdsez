@@ -211,8 +211,8 @@ int main(int argc, char** argv)
     // load bra
     ierr = loadState(Dx, h5path, ord[iBra], &psi0); CHKERRQ(ierr);
 
-    // <psi0 | Dx | psi_k> = VecDot( conj(psi0), Dx psi_k ).
-    // In this PETSc build VecDot/VecTDot do NOT conjugate the first arg, so
+    // <psi0 | Dx | psi_k> = VecTDot( conj(psi0), Dx psi_k ): VecTDot(x, y) = y^T x
+    // does not conjugate (VecDot(x, y) = y^H x would conjugate Dx psi_k), so
     // the bra must be conjugated explicitly. Pre-conjugate once.
     Vec psi0_conj; ierr = VecDuplicate(psi0, &psi0_conj); CHKERRQ(ierr);
     ierr = VecCopy(psi0, psi0_conj); CHKERRQ(ierr);
@@ -239,10 +239,10 @@ int main(int argc, char** argv)
 
         // d_j = <psi0 | Dx | psi_k>   (bra conjugated explicitly)
         MatMult(Dx, pk, Dxpsi);
-        PetscScalar dj; VecDot(psi0_conj, Dxpsi, &dj);
+        PetscScalar dj; VecTDot(psi0_conj, Dxpsi, &dj);
         // d_w = <psi0 | Dx | w>
         MatMult(Dx, w, Dxw);
-        PetscScalar dw; VecDot(psi0_conj, Dxw, &dw);
+        PetscScalar dw; VecTDot(psi0_conj, Dxw, &dw);
 
         // d_rec = dj + i * gscale * (dE/2) * dw   (unit-flux combination)
         PetscScalar d = dj + PetscScalar(0.0, gscale * 0.5 * dE) * dw;

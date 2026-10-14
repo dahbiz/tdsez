@@ -11,7 +11,7 @@
 /// @brief Compute and print the unified transition dipole matrix
 ///        d_ij = <psi_i | D | psi_j> for all active dipole operators
 ///        (Dx, Dy, Dz). Explicitly conjugates the bra since this PETSc
-///        build's VecDot does not conjugate the first argument. Caches
+///        build's VecTDot does not conjugate either argument. Caches
 ///        the upper triangle and fills the lower by Hermitian conjugation.
 /// @param states    Vector of bound-state eigenvectors.
 /// @param energies  Corresponding energy eigenvalues.
@@ -51,8 +51,8 @@ PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
         if (Dz) { PetscCall(VecDuplicate(states[j], &Dz_s[j])); PetscCall(MatMult(Dz, states[j], Dz_s[j])); }
     }
 
-    // Pre-conjugate the bra states ONCE: <psi_i|D|psi_j> = VecDot(conj(psi_i), D psi_j).
-    // In this PETSc build VecDot/VecTDot do NOT conjugate the first argument,
+    // Pre-conjugate the bra states ONCE: <psi_i|D|psi_j> = VecTDot(conj(psi_i), D psi_j).
+    // VecTDot(x, y) = y^T x does not conjugate (VecDot(x, y) = y^H x would),
     // so the bra must be conjugated explicitly or complex eigenstates give the
     // wrong phase. (For real states conj is identity, so no change.)
     std::vector<Vec> statesConj(nStates, NULL);
@@ -71,12 +71,12 @@ PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
 
     for (PetscInt i = 0; i < nStates; i++) {
         for (PetscInt j = i; j < nStates; j++) {  // upper triangle only
-            // <psi_i | D | psi_j> = VecDot( conj(psi_i), D psi_j )
-            // (bra explicitly conjugated; VecDot/VecTDot do NOT conjugate
+            // <psi_i | D | psi_j> = VecTDot( conj(psi_i), D psi_j )
+            // (bra explicitly conjugated; VecTDot does NOT conjugate
             //  the first arg in this PETSc build).
-            if (Dx) PetscCall(VecDot(statesConj[i], Dx_s[j], &mat_x[i*nStates + j]));
-            if (Dy) PetscCall(VecDot(statesConj[i], Dy_s[j], &mat_y[i*nStates + j]));
-            if (Dz) PetscCall(VecDot(statesConj[i], Dz_s[j], &mat_z[i*nStates + j]));
+            if (Dx) PetscCall(VecTDot(statesConj[i], Dx_s[j], &mat_x[i*nStates + j]));
+            if (Dy) PetscCall(VecTDot(statesConj[i], Dy_s[j], &mat_y[i*nStates + j]));
+            if (Dz) PetscCall(VecTDot(statesConj[i], Dz_s[j], &mat_z[i*nStates + j]));
         }
     }
 

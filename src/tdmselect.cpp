@@ -191,7 +191,7 @@ int main(int argc, char **argv)
         if (gpu) PetscCall(VecSetType(psi_j, VECCUDA));
         PetscCall(MatMult(Dx, psi_j, tmp));
         PetscScalar d;
-        PetscCall(VecDot(psi_i_conj, tmp, &d));
+        PetscCall(VecTDot(psi_i_conj, tmp, &d));   // sum conj(psi_i) (D psi_j) = <psi_i|D|psi_j>
         rows.emplace_back(j, energies[j], d, rho[j]);
         ++kept;
         PetscCall(VecDestroy(&psi_j));

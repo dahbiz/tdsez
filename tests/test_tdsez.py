@@ -267,7 +267,9 @@ def test_cap_absorbs_without_norm_growth():
     _step("CAP has no norm growth", np.all(np.diff(norm) <= 1e-6), str(norm))
 
 
-@pytest.mark.parametrize("mode", ["interface", "adaptive", "adaptive_wf"])
+# "interface" is implemented (C0 knots at mass/potential breakpoints) and is
+# tested against exact solutions in test_analytic.py.
+@pytest.mark.parametrize("mode", ["adaptive", "adaptive_wf"])
 def test_pending_knot_modes_are_uniform_fallbacks(mode):
     """Lock down the current fallback so specialized placement cannot be claimed."""
     binary = zkit.find_binary()

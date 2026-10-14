@@ -17,7 +17,7 @@ import pytest
 _FUSED_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def _fused_find_binary(prefer="tdsez"):
+def _fused_find_binary(prefer=None):
     """Locate the built tdsez executable inside this build tree.
 
     Searches build/ then build-split/ so the tests always exercise
@@ -38,12 +38,14 @@ def _fused_find_binary(prefer="tdsez"):
             return explicit
         raise FileNotFoundError(f"TDSEZ_BINARY is not an executable file: {explicit}")
 
+    names = [prefer] if prefer else ["tdsez.x", "tdsez"]   # tdsez.x since the rename
     for d in ("build", "build-split"):
-        cands = sorted(glob.glob(os.path.join(_FUSED_ROOT, d, prefer)))
-        if cands:
-            return cands[0]
+        for name in names:
+            cands = sorted(glob.glob(os.path.join(_FUSED_ROOT, d, name)))
+            if cands:
+                return cands[0]
     raise FileNotFoundError(
-        f"could not find '{prefer}' binary. Build it first:\n"
+        f"could not find {' or '.join(names)} in build/ or build-split/. Build it first:\n"
         f"  cd {_FUSED_ROOT} && mkdir -p build && cd build && \\"
         f"  cmake .. -DPETSC_DIR=$PETSC_DIR -DPETSC_ARCH=$PETSC_ARCH && make -j"
     )
@@ -64,10 +66,11 @@ def pytest_configure(config):
             "|  ERROR: the 'zkit' package is required to run these tests.        |\n"
             "|                                                                    |\n"
             "|  Install it with pip:                                             |\n"
-            "|      pip install zkit-lib                                         |\n"
+            "|  pip install git+https://github.com/dahbiz/zkit.git              |\n"
             "|                                                                    |\n"
             "+====================================================================+\n\n"
         )
-        pytest.exit("missing dependency: zkit-lib (pip install zkit-lib)", returncode=2)
+        pytest.exit("missing dependency: zkit (pip install git+https://github.com/dahbiz/zkit.git)",
+                    returncode=2)
 
     zkit.find_binary = _fused_find_binary
