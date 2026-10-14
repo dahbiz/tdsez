@@ -58,8 +58,13 @@ class TDSEZCore
         IGA iga = PETSC_NULLPTR;
         /// SLEPc eigensolver context.
         EPS eps = PETSC_NULLPTR;
-        /// Number of converged eigenpairs from the last solve.
+        /// Number of kept eigenpairs (NBoundStates, extended to the end of a
+        /// degenerate shell) from the last solve.
         PetscInt nconv = 0;
+        /// Canonical eigenpairs (TDSEZCanonicalEigenpairs in core.cpp); every
+        /// consumer reads these instead of the raw SLEPc vectors.
+        std::vector<Vec> eigVecs;
+        std::vector<PetscReal> eigVals;
 
         // methods
         /**

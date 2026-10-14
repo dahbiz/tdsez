@@ -44,6 +44,36 @@ Key CLI Flags
      - string
      - Which dipole axes to save at runtime. Accepts ``x``, ``xy``, ``xyz``, ``all``, or ``none``.
 
+Assembly and Eigensolver Flags
+------------------------------
+
+.. list-table::
+   :widths: 30 12 58
+   :header-rows: 1
+
+   * - Flag
+     - Type
+     - Description
+   * - ``-tdsez_sumfact 0``
+     - bool
+     - Use the per-point element kernels instead of sum factorisation.
+   * - ``-tdsez_sumfact_check``
+     - flag
+     - Compute every element matrix both ways and print the largest relative
+       difference (diagnostic, slow).
+   * - ``-tdsez_band 0``
+     - bool
+     - Insert element matrices one element at a time instead of the banded
+       accumulation (one insertion per matrix row).
+   * - ``-tdsez_assembly_buffer_mb <MB>``
+     - real
+     - Memory budget per rank for the banded accumulation (default 1024). Larger
+       sets of matrices are assembled in several element passes.
+   * - ``-tdsez_degeneracy_tol <tol>``
+     - real
+     - Relative energy tolerance for treating eigenvalues as one degenerate
+       level (default ``1e-9``); see :doc:`Eigensolver`.
+
 Note: ``-mat_type`` and ``-vec_type`` are re-injected as ``-iga_mat_type`` /
 ``-iga_vec_type`` to reach PetIGA. The solver strips PETSc-known flags before
 processing.

@@ -1,4 +1,5 @@
 #include "tdsez_internal.hpp"
+#include <petscblaslapack.h>
 
 /**
  * @file core.cpp
@@ -116,62 +117,78 @@ PetscErrorCode TDSEZCore::Assemble()
 // depends on the solver run and the MPI decomposition. A superposition
 // sum_k c_k phi_k built from raw eigenvectors therefore has an arbitrary
 // relative phase between its terms. The helpers below fix the gauge of every
-// term: the phase makes phi real (as in MakeStatesReal), and the remaining sign
-// is chosen so that the overlap with a fixed smooth weight w(r) is positive.
+// state (TDSEZCanonicalEigenpairs): the phase makes phi real (as in
+// MakeStatesReal), and the remaining sign is chosen so that the overlap with a
+// fixed smooth weight w(r) is positive.
 
-/// @brief Assemble g_I = \int w(r) B_I(r) dr with the parity-mixing weight
-///        w = prod_d (1 + 0.3 * xhat_d), xhat_d the coordinate scaled to [-1,1].
-///        The weight contains every parity class (1, x, y, z, xy, ...), so any
-///        eigenstate of a reflection-symmetric problem has a nonzero overlap.
+/// @brief Assemble g_I = \int w(r) B_I(r) dr for a separable weight, xhat_d
+///        the coordinate scaled to [-1,1]:
+///        kind 0: w = prod_d (1 + 0.3 xhat_d), the primary weight. It contains
+///                every parity class (1, x, y, z, xy, ...), but only degree <= 1
+///                per axis, so a state whose factor along one axis is orthogonal
+///                to 1 and x (e.g. a box mode cos(2 pi x / L)) has zero overlap.
+///        kind 1: w = prod_d exp(a_d xhat_d), a = (0.37, 0.53, 0.71), the
+///                fallback for those states: not a polynomial, so no eigenmode is
+///                orthogonal to it.
 ///        Built from physical coordinates, it is independent of the MPI layout.
-static PetscErrorCode TDSEZGaugeWeightVector(IGA iga, Vec *g)
+static PetscErrorCode TDSEZGaugeWeightVector(IGA iga, Vec *g, int kind = 0)
 {
     PetscFunctionBeginUser;
+    // w and the B-spline basis are tensor products and so is the Gauss rule:
+    // g_I = prod_d \int (1 + 0.3 xhat_d) B_{i_d}(x_d) dx_d, from 1D integrals
+    // over each axis (the same quadrature as a full element loop).
     const PetscInt  dim = iga->dim;
     const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
     const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
-    PetscCall(IGACreateVec(iga, g));
-    PetscCall(VecSet(*g, 0.0));
-    IGAElement element = NULL;
-    IGAPoint   point   = NULL;
-    PetscCall(IGABeginElement(iga, &element));
-    while (IGANextElement(iga, element)) {
-        const PetscInt nen = element->nen;
-        PetscScalar   *F   = NULL;
-        PetscCall(IGAElementGetWorkVec(element, &F));
-        PetscCall(PetscArrayzero(F, nen));
-        PetscCall(IGAElementBeginPoint(element, &point));
-        while (IGAElementNextPoint(element, point)) {
-            PetscReal xyz[3] = {0.0, 0.0, 0.0};
-            PetscCall(IGAPointFormGeomMap(point, xyz));
-            PetscReal wt = 1.0;
-            for (PetscInt d = 0; d < dim; ++d) {
-                const PetscReal half = 0.5 * (hi[d] - lo[d]);
-                const PetscReal xhat = half > 0.0 ? (xyz[d] - 0.5 * (hi[d] + lo[d])) / half : 0.0;
-                wt *= 1.0 + 0.3 * xhat;
+    std::vector<PetscReal> g1[3];
+    for (PetscInt d = 0; d < 3; ++d) {
+        const PetscInt n = (d < dim) ? iga->node_lwidth[d] : 1;
+        g1[d].assign(n, d < dim ? 0.0 : 1.0);
+        if (d >= dim) continue;
+        const IGABasis B = iga->basis[d];
+        const PetscInt Q = B->nqp, nen = B->nen, i0 = iga->node_lstart[d];
+        const PetscReal half = 0.5 * (hi[d] - lo[d]), mid = 0.5 * (hi[d] + lo[d]);
+        for (PetscInt el = 0; el < B->nel; ++el) {
+            const PetscInt off = B->offset[el];
+            if (off + nen <= i0 || off >= i0 + n) continue;      // no owned function
+            for (PetscInt q = 0; q < Q; ++q) {
+                const PetscReal x    = B->point[el * Q + q];
+                const PetscReal xhat = half > 0.0 ? (x - mid) / half : 0.0;
+                const PetscReal a[3] = {0.37, 0.53, 0.71};
+                const PetscReal wq   = kind == 0 ? 1.0 + 0.3 * xhat : PetscExpReal(a[d] * xhat);
+                const PetscReal jw   = B->weight[el * Q + q] * B->detJac[el] * wq;
+                for (PetscInt a = 0; a < nen; ++a) {
+                    const PetscInt k = off + a - i0;
+                    if (k < 0 || k >= n) continue;
+                    g1[d][k] += jw * B->value[(((size_t)el * Q + q) * nen + a) * 5];
+                }
             }
-            const PetscReal *B = NULL;
-            PetscCall(IGAPointGetShapeFuns(point, 0, &B));
-            const PetscReal jw = point->weight[0] * point->detJac[0] * wt;
-            for (PetscInt a = 0; a < nen; ++a) F[a] += B[a] * jw;
         }
-        PetscCall(IGAElementEndPoint(element, &point));
-        PetscCall(IGAElementAssembleVec(element, F, *g));
     }
-    PetscCall(IGAEndElement(iga, &element));
-    PetscCall(VecAssemblyBegin(*g));
-    PetscCall(VecAssemblyEnd(*g));
+    PetscCall(IGACreateVec(iga, g));
+    PetscScalar *ga;
+    PetscInt nloc, idx = 0;
+    PetscCall(VecGetLocalSize(*g, &nloc));
+    PetscCall(VecGetArray(*g, &ga));
+    for (size_t k3 = 0; k3 < g1[2].size(); ++k3)
+    for (size_t k2 = 0; k2 < g1[1].size(); ++k2)
+    for (size_t k1 = 0; k1 < g1[0].size(); ++k1)
+        if (idx < nloc) ga[idx++] = g1[0][k1] * g1[1][k2] * g1[2][k3];
+    PetscCall(VecRestoreArray(*g, &ga));
+    PetscCheck(idx == nloc, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Gauge weight: node box does not match the vector layout");
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /// @brief Fix the gauge of an eigenvector in place: rotate its global phase so
 ///        that c^T M c is real and positive (c real for a nondegenerate state),
-///        then flip the sign so that \int w psi = g^T c > 0.
+///        then flip the sign so that \int w psi = g^T c > 0 (primary weight),
+///        or, when that overlap vanishes, \int w2 psi = g2^T c > 0.
 /// @param[in,out] c  Eigenvector coefficients.
 /// @param[in]     M  Overlap matrix.
-/// @param[in]     g  Weight vector from TDSEZGaugeWeightVector.
+/// @param[in]     g  Weight vector from TDSEZGaugeWeightVector (kind 0).
+/// @param[in]     g2 Fallback weight vector (kind 1).
 /// @param[in]     k  State index (for diagnostics).
-static PetscErrorCode TDSEZFixEigenvectorGauge(Vec c, Mat M, Vec g, PetscInt k)
+static PetscErrorCode TDSEZFixEigenvectorGauge(Vec c, Mat M, Vec g, Vec g2, PetscInt k)
 {
     PetscFunctionBeginUser;
     Vec Mc;
@@ -188,14 +205,298 @@ static PetscErrorCode TDSEZFixEigenvectorGauge(Vec c, Mat M, Vec g, PetscInt k)
     PetscReal nc, ng;
     PetscCall(VecNorm(c, NORM_2, &nc));
     PetscCall(VecNorm(g, NORM_2, &ng));
-    if (PetscAbsReal(PetscRealPart(ov)) < 1e-10 * nc * ng)
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZ: WARNING state %" PetscInt_FMT " has a near-zero gauge overlap; "
-            "its sign in the superposition may not be reproducible.\n", k));
+    if (PetscAbsReal(PetscRealPart(ov)) < 1e-8 * nc * ng) {
+        PetscCall(VecTDot(c, g2, &ov));                   // \int w2 psi
+        PetscCall(VecNorm(g2, NORM_2, &ng));
+        if (PetscAbsReal(PetscRealPart(ov)) < 1e-8 * nc * ng)
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+                "TDSEZ: WARNING state %" PetscInt_FMT " has a near-zero gauge overlap; "
+                "its sign may not be reproducible.\n", k));
+    }
     if (PetscRealPart(ov) < 0.0) PetscCall(VecScale(c, -1.0));
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+
+// ── Canonical eigenpairs ────────────────────────────────────────────────────
+// SLEPc's output is not a well-defined basis inside a degenerate eigenspace:
+// any rounding change (assembly order, MPI layout, BLAS) rotates the states of
+// a shell, which changes per-state populations, currents and saved
+// wavefunctions although every basis-independent quantity is unchanged. The
+// number of converged pairs also varies from run to run, and a request for
+// NBoundStates states can end in the middle of a shell. TDSEZCanonicalEigenpairs
+// replaces SLEPc's pairs by a reproducible set:
+//   1. exactly NBoundStates states, extended to the end of a degenerate shell
+//      when the request cuts through one (a converged state beyond the kept
+//      set must confirm the end of the shell; otherwise more pairs are solved);
+//   2. inside each degenerate shell, the basis that diagonalises a fixed
+//      position weight W (a generic quadratic polynomial of position evaluated
+//      at the Greville points), sorted by <W>;
+//   3. a deterministic global phase (TDSEZFixEigenvectorGauge).
+// The rotation stays inside each shell: energies and spanned eigenspaces are
+// unchanged, and all states remain M-orthonormal eigenvectors.
+// Degeneracy: |E_i - E_j| <= tol * max(1, |E_i|), tol = -tdsez_degeneracy_tol
+// (default 1e-9).
+
+/// Diagonal position weight w_I = f(Greville point of B_I) on the global Vec
+/// layout, f a generic quadratic of the scaled coordinates (no symmetry of a
+/// box or radial problem leaves its restriction to a shell degenerate).
+static PetscErrorCode TDSEZShellWeight(IGA iga, Vec w)
+{
+    PetscFunctionBeginUser;
+    const PetscInt  dim = iga->dim;
+    const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
+    const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
+    const PetscReal a[3]  = {0.137, 0.271, 0.389};          // linear
+    const PetscReal b[3]  = {1.000, 0.618, 0.382};          // quadratic
+    const PetscReal c[3]  = {0.213, 0.157, 0.101};          // xy, xz, yz
+    std::vector<PetscReal> g[3];
+    for (PetscInt d = 0; d < 3; ++d) {
+        const PetscInt n = (d < dim) ? iga->node_lwidth[d] : 1;
+        g[d].assign(n, 0.0);
+        if (d >= dim) continue;
+        const IGAAxis ax = iga->axis[d];
+        const PetscReal half = 0.5 * (hi[d] - lo[d]), mid = 0.5 * (hi[d] + lo[d]);
+        for (PetscInt k = 0; k < n; ++k) {
+            const PetscInt i = iga->node_lstart[d] + k;
+            PetscReal s = 0.0;
+            if (ax->p > 0) { for (PetscInt j = 1; j <= ax->p; ++j) s += ax->U[i + j]; s /= ax->p; }
+            else s = 0.5 * (ax->U[i] + ax->U[i + 1]);
+            g[d][k] = half > 0.0 ? (s - mid) / half : 0.0;
+        }
+    }
+    PetscScalar *wa;
+    PetscCall(VecGetArray(w, &wa));
+    PetscInt idx = 0;
+    for (size_t k3 = 0; k3 < g[2].size(); ++k3)
+    for (size_t k2 = 0; k2 < g[1].size(); ++k2)
+    for (size_t k1 = 0; k1 < g[0].size(); ++k1) {
+        const PetscReal x[3] = {g[0][k1], g[1][k2], g[2][k3]};
+        PetscReal f = 0.0;
+        for (int d = 0; d < 3; ++d) f += a[d] * x[d] + b[d] * x[d] * x[d];
+        f += c[0] * x[0] * x[1] + c[1] * x[0] * x[2] + c[2] * x[1] * x[2];
+        wa[idx++] = f;
+    }
+    PetscCall(VecRestoreArray(w, &wa));
+    PetscInt nloc;
+    PetscCall(VecGetLocalSize(w, &nloc));
+    PetscCheck(nloc == idx, PETSC_COMM_SELF, PETSC_ERR_PLIB,
+               "Shell weight: local size %" PetscInt_FMT " != node box %" PetscInt_FMT, nloc, idx);
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscReal TDSEZDegeneracyTol()
+{
+    PetscReal tol = 1e-9;
+    PetscOptionsGetReal(NULL, NULL, "-tdsez_degeneracy_tol", &tol, NULL);
+    return tol;
+}
+
+static PetscErrorCode TDSEZCanonicalEigenpairs(EPS eps, IGA iga, Mat M, PetscInt nev,
+                                               std::vector<Vec> &vecs, std::vector<PetscReal> &vals)
+{
+    PetscFunctionBeginUser;
+    for (auto &v : vecs) PetscCall(VecDestroy(&v));
+    vecs.clear(); vals.clear();
+    const PetscReal tol = TDSEZDegeneracyTol();
+    auto same = [tol](PetscReal x, PetscReal y) {
+        return PetscAbsReal(x - y) <= tol * PetscMax((PetscReal)1.0, PetscAbsReal(x));
+    };
+
+    // 1. Which states to keep. Pairs are ordered by distance to the target
+    //    (SLEPc's selection), ties by energy; the first nev are kept, extended
+    //    to the end of the shell of the last one.
+    const PetscReal target = PetscRealPart(TDSEZParser::TargetEigenvalue);
+    std::vector<std::pair<PetscReal, Vec>> L;                   // (E, vector)
+    PetscInt nconv = 0;
+    PetscCall(EPSGetConverged(eps, &nconv));
+    for (PetscInt i = 0; i < nconv; ++i) {
+        PetscScalar e;
+        Vec v;
+        PetscCall(IGACreateVec(iga, &v));
+        PetscCall(EPSGetEigenpair(eps, i, &e, NULL, v, NULL));
+        L.emplace_back(PetscRealPart(e), v);
+    }
+    auto before = [target](const std::pair<PetscReal, Vec> &x, const std::pair<PetscReal, Vec> &y) {
+        const PetscReal dx = PetscAbsReal(x.first - target), dy = PetscAbsReal(y.first - target);
+        return dx != dy ? dx < dy : x.first < y.first;
+    };
+    std::stable_sort(L.begin(), L.end(), before);
+    auto keepCount = [&]() {
+        PetscInt n = PetscMin(nev, (PetscInt)L.size());
+        while (n > 0 && n < (PetscInt)L.size() && same(L[n].first, L[n - 1].first)) ++n;
+        return n;
+    };
+    // Krylov solvers can miss copies of a repeated eigenvalue, and when every
+    // converged pair is kept the next eigenvalue is unknown. Whenever the kept
+    // set contains a degenerate shell or ends at the last converged pair,
+    // deflate the kept states and solve for the nearest remaining pair: if it
+    // is not farther from the target than the kept states, or has the energy
+    // of a kept shell, it was missed and is added; otherwise the kept set is
+    // complete. The test needs only the eigenvalue (Hermitian pencil: error
+    // ~ residual^2), so it runs at a loose tolerance; a missed pair is
+    // recomputed at the full tolerance before it is added.
+    {
+        PetscReal tolFull; PetscInt itFull;
+        PetscCall(EPSGetTolerances(eps, &tolFull, &itFull));
+        PetscInt added = 0;
+        for (int it = 0; it < 64; ++it) {
+            const PetscInt nkeep = keepCount();
+            if (nkeep == 0) break;
+            bool degenerate = nkeep == (PetscInt)L.size();
+            for (PetscInt i = 1; i < nkeep && !degenerate; ++i)
+                if (same(L[i].first, L[i - 1].first)) degenerate = true;
+            if (!degenerate) break;
+            std::vector<Vec> defl(nkeep);
+            for (PetscInt i = 0; i < nkeep; ++i) defl[i] = L[i].second;
+            PetscCall(EPSSetDeflationSpace(eps, nkeep, defl.data()));
+            PetscCall(EPSSetDimensions(eps, 1, PETSC_DETERMINE, PETSC_DETERMINE));
+            PetscCall(EPSSetTolerances(eps, PetscMax(tolFull, (PetscReal)1e-6), itFull));
+            PetscCall(EPSSolve(eps));
+            PetscInt nc = 0;
+            PetscCall(EPSGetConverged(eps, &nc));
+            if (nc == 0) {
+                PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+                    "      ⵣ WARNING: degenerate-shell check did not converge; the kept states may miss copies of a degenerate level\n"));
+                break;
+            }
+            PetscScalar e;
+            PetscCall(EPSGetEigenvalue(eps, 0, &e, NULL));
+            const PetscReal en = PetscRealPart(e);
+            bool missed = PetscAbsReal(en - target) <= PetscAbsReal(L[nkeep - 1].first - target);
+            for (PetscInt i = 0; i < nkeep && !missed; ++i) if (same(en, L[i].first)) missed = true;
+            if (!missed) break;                                   // kept set complete
+            PetscCall(EPSSetTolerances(eps, tolFull, itFull));
+            PetscCall(EPSSolve(eps));
+            PetscCall(EPSGetConverged(eps, &nc));
+            if (nc == 0) break;
+            Vec v;
+            PetscCall(IGACreateVec(iga, &v));
+            PetscCall(EPSGetEigenpair(eps, 0, &e, NULL, v, NULL));
+            L.emplace_back(PetscRealPart(e), v);
+            std::stable_sort(L.begin(), L.end(), before);
+            ++added;
+        }
+        PetscCall(EPSSetTolerances(eps, tolFull, itFull));
+        if (added)
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+                "      ⵣ Degenerate-shell check: added %" PetscInt_FMT " pair(s) missed by the solver\n", added));
+    }
+    const PetscInt nkeep = keepCount();
+    for (PetscInt i = 0; i < (PetscInt)L.size(); ++i) {
+        if (i < nkeep) { vecs.push_back(L[i].second); vals.push_back(L[i].first); }
+        else PetscCall(VecDestroy(&L[i].second));
+    }
+    std::vector<PetscReal> E(vals);
+    if (nkeep > nev)
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+            "      ⵣ NBoundStates = %" PetscInt_FMT " ends inside a degenerate shell; keeping %"
+            PetscInt_FMT " states (whole shell)\n", nev, nkeep));
+
+    // 2. Canonical basis inside each degenerate shell.
+    Vec w, Wv;
+    PetscCall(IGACreateVec(iga, &w));
+    PetscCall(TDSEZShellWeight(iga, w));
+    PetscCall(VecDuplicate(w, &Wv));
+    for (PetscInt s = 0; s < nkeep; ) {
+        PetscInt e = s + 1;
+        while (e < nkeep && same(E[e], E[s])) ++e;
+        const PetscInt g = e - s;
+        if (g > 1) {
+            // M-orthonormalise the shell (Gram-Schmidt in the M inner product),
+            // then O_ab = v_a^H W v_b.
+            Vec Mv;
+            PetscCall(VecDuplicate(w, &Mv));
+            for (PetscInt a = s; a < e; ++a) {
+                for (PetscInt b = s; b < a; ++b) {
+                    PetscScalar ov;
+                    PetscCall(MatMult(M, vecs[b], Mv));
+                    PetscCall(VecDot(vecs[a], Mv, &ov));          // v_b^H M v_a
+                    PetscCall(VecAXPY(vecs[a], -ov, vecs[b]));
+                }
+                PetscScalar nn;
+                PetscCall(MatMult(M, vecs[a], Mv));
+                PetscCall(VecDot(Mv, vecs[a], &nn));
+                PetscCall(VecScale(vecs[a], 1.0 / PetscSqrtReal(PetscRealPart(nn))));
+            }
+            PetscCall(VecDestroy(&Mv));
+            std::vector<PetscScalar> O((size_t)g * g);
+            for (PetscInt b = 0; b < g; ++b) {
+                PetscCall(VecPointwiseMult(Wv, w, vecs[s + b]));
+                for (PetscInt a = 0; a < g; ++a) {
+                    PetscScalar o;
+                    PetscCall(VecDot(Wv, vecs[s + a], &o));      // v_a^H W v_b
+                    O[(size_t)a + (size_t)g * b] = o;             // column-major
+                }
+            }
+            for (PetscInt b = 0; b < g; ++b)                      // exact Hermitian
+                for (PetscInt a = 0; a < b; ++a) {
+                    const PetscScalar m = 0.5 * (O[a + (size_t)g * b] + PetscConj(O[b + (size_t)g * a]));
+                    O[a + (size_t)g * b] = m; O[b + (size_t)g * a] = PetscConj(m);
+                }
+            PetscBLASInt n = (PetscBLASInt)g, lwork = (PetscBLASInt)(4 * g), info = 0;
+            std::vector<PetscReal> ev(g);
+            std::vector<PetscScalar> work(4 * g);
+#if defined(PETSC_USE_COMPLEX)
+            std::vector<PetscReal> rwork(3 * g);
+            LAPACKsyev_("V", "U", &n, O.data(), &n, ev.data(), work.data(), &lwork, rwork.data(), &info);
+#else
+            LAPACKsyev_("V", "U", &n, O.data(), &n, ev.data(), work.data(), &lwork, &info);
+#endif
+            PetscCheck(info == 0, PETSC_COMM_SELF, PETSC_ERR_LIB, "LAPACK syev/heev failed: %d", (int)info);
+            for (PetscInt k = 1; k < g; ++k)
+                if (ev[k] - ev[k - 1] <= 1e-8 * PetscMax((PetscReal)1.0, PetscAbsReal(ev[k])))
+                    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+                        "      ⵣ WARNING: shell at E = %.8g is not resolved by the canonical weight; "
+                        "its basis may not be reproducible\n", (double)E[s]));
+            // u_k = sum_a v_a U_ak (columns of O hold U), sorted by <W> ascending.
+            std::vector<Vec> u(g);
+            for (PetscInt k = 0; k < g; ++k) {
+                PetscCall(VecDuplicate(w, &u[k]));
+                PetscCall(VecSet(u[k], 0.0));
+                PetscCall(VecMAXPY(u[k], g, &O[(size_t)g * k], &vecs[s]));
+            }
+            PetscReal Emean = 0.0;                                 // one energy per shell
+            for (PetscInt k = 0; k < g; ++k) Emean += E[s + k] / g;
+            for (PetscInt k = 0; k < g; ++k) {
+                PetscCall(VecDestroy(&vecs[s + k]));
+                vecs[s + k] = u[k];
+                vals[s + k] = Emean;
+            }
+        }
+        s = e;
+    }
+    PetscCall(VecDestroy(&Wv));
+    PetscCall(VecDestroy(&w));
+
+    // 3. Deterministic phase for every kept state.
+    Vec gw = PETSC_NULLPTR, gw2 = PETSC_NULLPTR;
+    PetscCall(TDSEZGaugeWeightVector(iga, &gw, 0));
+    PetscCall(TDSEZGaugeWeightVector(iga, &gw2, 1));
+    for (PetscInt i = 0; i < nkeep; ++i) PetscCall(TDSEZFixEigenvectorGauge(vecs[i], M, gw, gw2, i));
+    PetscCall(VecDestroy(&gw));
+    PetscCall(VecDestroy(&gw2));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/// Relative residual ||H v - E M v|| / (|E| ||v||) (SLEPc's EPS_ERROR_RELATIVE).
+static PetscErrorCode TDSEZRelResidual(Mat H, Mat M, Vec v, PetscReal E, PetscReal *res)
+{
+    PetscFunctionBeginUser;
+    Vec r, Mv;
+    PetscCall(VecDuplicate(v, &r));
+    PetscCall(VecDuplicate(v, &Mv));
+    PetscCall(MatMult(H, v, r));
+    PetscCall(MatMult(M, v, Mv));
+    PetscCall(VecAXPY(r, -E, Mv));
+    PetscReal nr, nv;
+    PetscCall(VecNorm(r, NORM_2, &nr));
+    PetscCall(VecNorm(v, NORM_2, &nv));
+    *res = nr / (PetscMax(PetscAbsReal(E), (PetscReal)1e-300) * nv);
+    PetscCall(VecDestroy(&r));
+    PetscCall(VecDestroy(&Mv));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
 
 PetscErrorCode TDSEZCore::Solve()
 {
@@ -571,14 +872,18 @@ if (useDirect) {
         MPI_Abort(PETSC_COMM_WORLD, 1);
     }
 
+    // Reproducible eigenpairs: whole degenerate shells, canonical basis inside
+    // each shell, fixed phases. Every later use reads eigVecs / eigVals.
+    PetscCall(TDSEZCanonicalEigenpairs(eps, iga, M, nev, eigVecs, eigVals));
+    nconv = (PetscInt)eigVecs.size();
+
     // Print converged eigenvalues
     info.status("ⵣ", "Eigenvalues (converged):");
     info.blank();
-    for (PetscInt i = 0; i < nconv && i < nev; i++) {
-        PetscScalar eigr;
+    for (PetscInt i = 0; i < nconv; i++) {
+        PetscScalar eigr = eigVals[i];
         PetscReal   errest;
-        PetscCall(EPSGetEigenvalue(eps, i, &eigr, PETSC_NULLPTR));
-        PetscCall(EPSComputeError(eps, i, EPS_ERROR_RELATIVE, &errest));
+        PetscCall(TDSEZRelResidual(H, M, eigVecs[i], eigVals[i], &errest));
         char lbl[48], val[80];
         snprintf(lbl, sizeof(lbl), "  E[%" PetscInt_FMT "]", i);
         snprintf(val, sizeof(val), "%s a.u. | %s eV  (rtol: %.2e)",
@@ -600,7 +905,7 @@ if (useDirect) {
                     PetscInt_FMT " — increase NBoundStates or check solver convergence.",
                     k, nconv);
         PetscCall(IGACreateVec(iga, out));
-        PetscCall(EPSGetEigenvector(eps, k, *out, PETSC_NULLPTR));
+        PetscCall(VecCopy(eigVecs[k], *out));
         PetscFunctionReturn(PETSC_SUCCESS);
     };
 
@@ -608,15 +913,13 @@ if (useDirect) {
         // Assemble psi0 = sum_i coeff_i * eigenvector(idx_i)
         PetscCall(IGACreateVec(iga, &initialPsi));
         PetscCall(VecSet(initialPsi, 0.0));
-        Vec gaugeW = PETSC_NULLPTR;
-        PetscCall(TDSEZGaugeWeightVector(iga, &gaugeW));
+        // eigVecs already carry the fixed gauge (TDSEZCanonicalEigenpairs).
         std::string desc;
         for (const auto &term : TDSEZParser::InitialStateTerms) {
             PetscInt      k = term.first;
             PetscScalar   c = term.second;
             Vec evec = PETSC_NULLPTR;
             PetscCall(buildFromIndex(k, &evec));
-            PetscCall(TDSEZFixEigenvectorGauge(evec, M, gaugeW, k));
             PetscCall(VecAXPY(initialPsi, c, evec));
             PetscCall(VecDestroy(&evec));
             if (!desc.empty()) desc += " + ";
@@ -625,7 +928,6 @@ if (useDirect) {
                      TDSEZ_fmtZ(c).c_str(), k);
             desc += cbuf;
         }
-        PetscCall(VecDestroy(&gaugeW));
         // Normalize so <psi0|M|psi0> = 1 (physical convention for observables)
         if (TDSEZParser::NormalizeInitialState) {
             Vec Mpsi = PETSC_NULLPTR;
@@ -764,7 +1066,7 @@ if (useDirect) {
                     initIdx, nconv);
         Vec epsPsi;
         PetscCall(MatCreateVecs(H, &epsPsi, PETSC_NULLPTR));
-        PetscCall(EPSGetEigenvector(eps, initIdx, epsPsi, PETSC_NULLPTR));
+        PetscCall(VecCopy(eigVecs[initIdx], epsPsi));
         PetscCall(IGACreateVec(iga, &initialPsi));
         PetscCall(VecCopy(epsPsi, initialPsi));
         PetscCall(VecDestroy(&epsPsi));
@@ -787,8 +1089,8 @@ if (useDirect) {
         Vec psi_i = PETSC_NULLPTR;
         PetscCall(MatCreateVecs(H, &tmp, PETSC_NULLPTR));
         PetscCall(MatCreateVecs(H, &psi_i, PETSC_NULLPTR));
-        for (PetscInt i = 0; i < nconv && i < nev; ++i) {
-            PetscCall(EPSGetEigenvector(eps, i, psi_i, PETSC_NULLPTR));
+        for (PetscInt i = 0; i < nconv; ++i) {
+            PetscCall(VecCopy(eigVecs[i], psi_i));
             PetscCall(MatMult(M, psi_i, tmp));
             PetscScalar mnorm;
             PetscCall(VecDot(tmp, psi_i, &mnorm));
@@ -842,9 +1144,11 @@ PetscErrorCode TDSEZCore::Output()
         MPI_Abort(PETSC_COMM_WORLD, 1);
     }
 
-    PetscInt  nsave   = std::min((PetscInt)TDSEZParser::NBoundStates, nconv);
+    // nconv = canonical states kept by Solve(): NBoundStates, extended to the
+    // end of a degenerate shell.
+    PetscInt  nsave   = nconv;
     PetscBool savewfs = TDSEZParser::NBoundStatesSave;
-    PetscInt  nsavePop = std::min((PetscInt)TDSEZParser::NBoundStates, nconv);
+    PetscInt  nsavePop = nconv;
 
     // HDF5 setup — only if enabled
     std::string h5file = "static/EigenData_" + std::filesystem::path(inputFile).filename().string() + ".h5";
@@ -873,13 +1177,12 @@ PetscErrorCode TDSEZCore::Output()
     boundstates.clear();
 
     for (int i = 0; i < nsave; ++i) {
-        PetscScalar kr;
-        EPSGetEigenvalue(eps, i, &kr, PETSC_NULLPTR);
+        PetscScalar kr = eigVals[i];
         energies.push_back(PetscRealPart(kr));
 
         VecSetValue(spectrum, i, PetscRealPart(kr), INSERT_VALUES);
 
-        EPSGetEigenvector(eps, i, psi, PETSC_NULLPTR);
+        VecCopy(eigVecs[i], psi);
 
         if (savewfs) {
             // Choose what to persist: the raw complex solver state, or the
@@ -939,7 +1242,7 @@ PetscErrorCode TDSEZCore::Output()
         std::vector<double> errs(nres > 0 ? nres : 1, 0.0);
         for (PetscInt i = 0; i < nres; ++i) {
             PetscReal errest = 0.0;
-            PetscCall(EPSComputeError(eps, i, EPS_ERROR_RELATIVE, &errest));
+            PetscCall(TDSEZRelResidual(H, M, eigVecs[i], eigVals[i], &errest));
             errs[i] = (double)errest;
         }
 
@@ -1150,6 +1453,9 @@ PetscErrorCode TDSEZCore::Output()
 
     // Cleanup
     VecDestroy(&psi);
+    for (auto &v : eigVecs) VecDestroy(&v);
+    eigVecs.clear();
+    eigVals.clear();
     PetscCall(EPSDestroy(&eps));
 
     PetscFunctionReturn(PETSC_SUCCESS);

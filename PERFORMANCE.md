@@ -36,6 +36,9 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | Sum-factorised assembly (BLAS contractions) | 3D, $`p=7`$, $`10^3`$ elements: $`\mathbf H,\mathbf M`$ | 114 s | 8.0 s | $`14\times`$ |
 | | same, time-dependent operators | 464 s | 32 s | $`14\times`$ |
 | | 3D $`z`$-polarisation, $`p=5`$: whole run | 62.6 s | 7.1 s | $`8.9\times`$ |
+| Banded insertion | 3D, $`p=7`$, $`10^3`$ elements, 4 ranks: $`\mathbf H,\mathbf M`$ | 12.1 s | 2.1 s | $`5.9\times`$ |
+| | same, time-dependent operators | 54.2 s | 6.5 s | $`8.4\times`$ |
+| | 3D, $`p=7`$, $`20^3`$ elements, 4 ranks: $`\mathbf H,\mathbf M`$ | 258 s | 11.5 s | $`22\times`$ |
 
 ## 1. Crank–Nicolson solver set-up
 
@@ -306,7 +309,7 @@ mostly the symmetrised write into the complex element matrix
 With the BLAS contractions the element work is about 0.3 s of the 8 s for
 $`\mathbf H,\mathbf M`$ in the $`p=7`$ case; the remaining assembly cost is the insertion of the element
 matrices into PETSc ($`(p+1)^6`$ values per element and matrix, about 25 ns each)
-and the communication of entries owned by other ranks.
+and the communication of entries owned by other ranks; section 6 removes most of it.
 
 **High-order eigensolves.** At $`p \ge 7`$ in 3D the B-spline overlap matrix is
 very ill-conditioned and $`\boldsymbol x^\dagger\mathbf M\boldsymbol x`$ carries a
@@ -314,6 +317,55 @@ rounding-level imaginary part that exceeded SLEPc's default definiteness check
 ($`\sim 10\,\varepsilon`$), aborting the eigensolve. The check is now set to a
 relative $`10^{-10}`$ (overridable with `-bv_definite_tol`); the eigenpairs have
 residuals of $`10^{-11}`$–$`10^{-13}`$ and agree between the two assembly paths.
+
+## 6. Banded insertion of element matrices
+
+After sum factorisation the assembly time is the insertion of the element
+matrices into PETSc. Element-by-element insertion (`MatSetValuesLocal` per
+element) adds every stored entry once for each element that shares it, up to
+
+```math
+\frac{(p+1)^{2d}}{(2p+1)^{d}}
+```
+
+times ($`78`$ at $`p=7`$ in 3D). Each addition is a search in a row of
+$`(2p+1)^d`$ columns, plus a copy into the communication stash when the row
+belongs to another rank. With $`p=7`$ nearly every element touches rows of a
+neighbouring rank, so more ranks made the assembly slower.
+
+On a tensor-product B-spline space, function $`i = (i_1,i_2,i_3)`$ couples only
+to $`j`$ with $`|j_d - i_d| \le p_d`$. Each rank therefore sums its element
+matrices into a dense band over its ghosted node box,
+
+```math
+B\bigl[r(i)\bigr]\bigl[(j_1-i_1+p_1) + w_1\,\bigl((j_2-i_2+p_2) + w_2\,(j_3-i_3+p_3)\bigr)\bigr],
+\qquad w_d = 2p_d+1,
+```
+
+with $`r(i)`$ PetIGA's ghosted local index (checked against PetIGA's element
+mapping on the first element; on a mismatch the code falls back to element
+insertion). Each row is then inserted once. Rows of other ranks are still
+communicated by PETSc, once per entry. The matrices are the same sums of the
+same element matrices in a different order.
+
+The buffer holds (ghosted nodes) $`\times\ \prod_d (2p_d+1)`$ scalars per matrix,
+about the size of the assembled matrix. Matrices are accumulated in groups that
+fit in `-tdsez_assembly_buffer_mb` (default 1024 MB per rank, at least one matrix
+per group); each group is one element pass, and the sum-factorised element work
+computes only the matrices of the current group. `-tdsez_band 0` restores
+element-by-element insertion.
+
+| Case (4 ranks unless stated) | element insertion | banded | gain |
+|---|---|---|---|
+| 3D, $`p=7`$, $`10^3`$ elements, $`\mathbf H,\mathbf M`$ | 12.1 s | 2.1 s | $`5.9\times`$ |
+| same, time-dependent operators ($`x`$-pol.) | 54.2 s | 6.5 s | $`8.4\times`$ |
+| same, whole run | 81.4 s | 22.7 s | $`3.6\times`$ |
+| 3D, $`p=7`$, $`20^3`$ elements (19 683 DoFs), $`\mathbf H,\mathbf M`$ | 258 s | 11.5 s | $`22\times`$ |
+| same, 1 rank | 129 s | 16.8 s | $`7.7\times`$ |
+
+The first three rows were measured back to back on a partly loaded machine.
+On the $`20^3`$-element case the eigensolve (shift-invert with the iterative
+inner solver) now dominates the run.
 
 ## Effect on accuracy
 
@@ -334,9 +386,16 @@ residuals of $`10^{-11}`$–$`10^{-13}`$ and agree between the two assembly path
 * **Sum-factorised assembly** uses the same quadrature points and coefficients;
   element matrices agree with the per-point kernels to $`\le 5\times10^{-15}`$
   relative. On the 28 repository test inputs, energies, dipoles and spectra
-  agree to $`\le 5\times10^{-14}`$; individual eigenvectors inside degenerate
-  shells can rotate (any rounding change does this), which does not affect
-  shell-summed or basis-independent observables.
+  agree to $`\le 5\times10^{-14}`$.
+* **Banded insertion** sums the same element matrices in a different order.
+  Across the test inputs, outputs agree with element insertion to rounding
+  ($`\le 10^{-13}`$ in spectra and dipoles).
+* **Eigenpairs** are made reproducible independently of these changes (see the
+  eigensolver documentation): whole degenerate shells, a canonical basis inside
+  each shell and a fixed phase. Per-state populations, currents and saved
+  wavefunctions agree across assembly paths and MPI rank counts to
+  $`\le 5\times10^{-12}`$; before, any rounding change could rotate the states of a
+  degenerate shell.
 
 ## Reproducing the measurements
 
