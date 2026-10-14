@@ -1,3 +1,4 @@
+#include "tdsez_logo.hpp"
 #include "tdsez_internal.hpp"
 
 /**
@@ -73,48 +74,27 @@ int main(int argc, char *argv[])
     SlepcInitialize(&argc, &argv, PETSC_NULLPTR, PETSC_NULLPTR);
 
     // --- Branding banner (TDSE-Z logo) ---------------------------------
-    // Printed once on rank 0 from the checked-in TDSE-Z_logo.txt (the
-    // official Unicode ASCII-art banner), followed by the credit line.
-    // The logo path is resolved against the CWD (mpirun launches with a bare
-    // "./tdsez" program name, so the executable dir is NOT reliable) by
-    // searching a list of candidate locations.
+    // Printed once on rank 0 at launch. The logo (src/TDSE-Z_logo.txt) is
+    // embedded at build time (generated tdsez_logo.hpp), so it appears
+    // whatever the working directory of the run.
     /// Print the TDSE-Z ASCII-art banner and credit line on rank 0.
     {
         PetscMPIInt rank;
         PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
         if (rank == 0) {
-            const char *cands[] = {
-                "src/TDSE-Z_logo.txt",   // CWD is repo root
-                "TDSE-Z_logo.txt",       // CWD is src/
-                "../src/TDSE-Z_logo.txt", // CWD is build/
-                nullptr
-            };
-            const char *logo = nullptr;
-            for (int i = 0; cands[i]; ++i) {
-                FILE *pf = fopen(cands[i], "r");
-                if (pf) { fclose(pf); logo = cands[i]; break; }
+            std::vector<std::string> logoLines;
+            std::string line;
+            for (const char *c = TDSEZ_LOGO; *c; ++c) {
+                if (*c == '\n') { logoLines.push_back(line); line.clear(); }
+                else if (*c != '\r') line.push_back(*c);
             }
-            if (logo) {
-                // Load logo lines into a vector for TDSEZInfo::banner()
-                std::vector<std::string> logoLines;
-                FILE *lf = fopen(logo, "r");
-                if (lf) {
-                    char buf[512];
-                    while (fgets(buf, sizeof(buf), lf)) {
-                        size_t n = strlen(buf);
-                        while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r'))
-                            buf[--n] = '\0';
-                        logoLines.push_back(std::string(buf));
-                    }
-                    fclose(lf);
-                }
-                TDSEZInfo infoSelf(PETSC_COMM_SELF);
-                infoSelf.banner(logoLines, {
-                    "TDSE-Z - Time-Dependent Schrodinger Equation solver (B-spline / IGA)",
-                    "Dr. Zakaria Dahbi  |  zdahbi@outlook.es",
-                    "Attosecond Quantum Physics Lab, King's College London, UK"
-                });
-            }
+            if (!line.empty()) logoLines.push_back(line);
+            TDSEZInfo infoSelf(PETSC_COMM_SELF);
+            infoSelf.banner(logoLines, {
+                "TDSE-Z - Time-Dependent Schrodinger Equation solver (B-spline / IGA)",
+                "Dr. Zakaria Dahbi  |  zdahbi@outlook.es",
+                "Attosecond Quantum Physics Lab, King's College London, UK"
+            });
         }
     }
 

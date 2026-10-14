@@ -12,9 +12,9 @@ for one core -- **8-10x slowdown**.
 
 ::
 
-    $ mpirun --bind-to none -np 1 ./tdsez -inp model.prm
+    $ mpirun --bind-to none -np 1 ./tdsez.x -inp model.prm
     $ # or equivalently:
-    $ mpirun --oversubscribe -np 1 ./tdsez -inp model.prm
+    $ mpirun --oversubscribe -np 1 ./tdsez.x -inp model.prm
 
 Also Applies to Pytest
 ----------------------

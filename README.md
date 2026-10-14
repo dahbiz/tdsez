@@ -30,7 +30,7 @@ cmake ..
 make -j$(nproc)
 
 # 2. Run
-mpirun -np 4 ./tdsez -inp tests/inputs/ho1d.inp
+mpirun -np 4 ./tdsez.x -inp tests/inputs/ho1d.inp
 ```
 
 ## What It Does

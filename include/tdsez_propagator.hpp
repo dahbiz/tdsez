@@ -32,7 +32,10 @@ public:
         if (kspStage_[1]) KSPDestroy(&kspStage_[1]);
         if (Astage_[0]) MatDestroy(&Astage_[0]);
         if (Astage_[1]) MatDestroy(&Astage_[1]);
+        if (Base_[0]) MatDestroy(&Base_[0]);
+        if (Base_[1]) MatDestroy(&Base_[1]);
         for (Vec &v : work_) if (v) VecDestroy(&v);
+        for (Vec &v : guessDelta_) if (v) VecDestroy(&v);
         PetscFunctionReturnVoid();
     }
 
@@ -55,9 +58,18 @@ private:
     PetscErrorCode EvolveRational();
     /// psi <- R22(-i h M^{-1} H_E) psi, H_E = H + sum_a E_a D_a, as two
     /// unitary Cayley-type stages with complex shifts.
-    PetscErrorCode Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi);
+    PetscErrorCode Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi, int slot = 0);
     /// Set A = M + g (H + sum_a E_a D_a).
     PetscErrorCode BuildStageMatrix(Mat A, PetscScalar g, const PetscScalar E[3]);
+    /// Cache the field-independent parts B_k = M + g_k(h) H for step length h.
+    PetscErrorCode UpdateStageBase(PetscReal h);
+    Mat Base_[2]     = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< cached M + g_k H (field-free)
+    PetscReal baseH_ = -1.0;                            ///< step length of Base_
+    /// Initial-guess extrapolation: stage output minus input from the previous
+    /// step, per stage and per Pade call of a step (slot 0..3).
+    Vec  guessDelta_[4] = {PETSC_NULLPTR, PETSC_NULLPTR, PETSC_NULLPTR, PETSC_NULLPTR};
+    PetscBool guessValid_[4] = {PETSC_FALSE, PETSC_FALSE, PETSC_FALSE, PETSC_FALSE};
+    PetscBool extrapolateGuess_ = PETSC_TRUE;
     Mat Astage_[2]   = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< stage matrices M + g_k H_E
     KSP kspStage_[2] = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< one solver per stage shift
     Vec work_[3]     = {PETSC_NULLPTR, PETSC_NULLPTR, PETSC_NULLPTR};

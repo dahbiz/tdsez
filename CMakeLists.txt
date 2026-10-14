@@ -422,6 +422,14 @@ endif()
 #    threads when OpenMP/MPI are already using the cores)
 #  - output to ${CMAKE_BINARY_DIR}
 #
+# Embed the TDSE-Z logo (src/TDSE-Z_logo.txt) in the binary so the launch
+# banner is printed whatever the working directory of the run.
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/src/TDSE-Z_logo.txt TDSEZ_LOGO_TEXT)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/tdsez_logo.hpp.in
+               ${CMAKE_CURRENT_BINARY_DIR}/generated/tdsez_logo.hpp @ONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+             ${CMAKE_CURRENT_SOURCE_DIR}/src/TDSE-Z_logo.txt)
+
 # Usage: tdsez_add_target(<target> <src1> <src2> ...)
 #        tdsez_add_target(<target> <src1> <src2> ... LINK_LIBS slepc petiga hdf5)
 function(tdsez_add_target target)
@@ -436,6 +444,7 @@ function(tdsez_add_target target)
 
     target_include_directories(${target} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
         ${PETSC_DIR}/include
     )
 
@@ -498,6 +507,8 @@ set(TDSEZ_SOURCES
 tdsez_add_target(tdsez ${TDSEZ_SOURCES}
     LINK_LIBS slepc petiga ${MUPARSER_LINK} hdf5 hdf5_hl
 )
+# The solver executable is tdsez.x; the CMake target stays "tdsez" (make tdsez).
+set_target_properties(tdsez PROPERTIES OUTPUT_NAME tdsez.x)
 
 # Small, serial checks for parser invariants. They run without a simulation.
 tdsez_add_target(tdsez_parser_validation_test

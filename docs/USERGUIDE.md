@@ -67,7 +67,7 @@ Requirements: PETSc (with HDF5, SLEPc, PetIGA), MPI, OpenBLAS, muParser.
 ### 2.2 Running a Simulation
 
 ```bash
-mpirun -np 4 --bind-to none ./tdsez -inp ../inps/harmonic_oscillator_1d.prm
+mpirun -np 4 --bind-to none ./tdsez.x -inp ../inps/harmonic_oscillator_1d.prm
 ```
 
 > **Important:** Always use `--bind-to none` (or `--oversubscribe`) with OpenMPI. The default `--bind-to core` pins each process to one CPU core and makes the solver 8-10x slower.
@@ -263,7 +263,7 @@ Dipole operators are saved to `static/Dx_<input>.bin` (and Dy, Dz for multi-axis
 | `InitialState` / `StartState` | string | `"ground"` | Initial state selector. See below for formats |
 | `NormalizeInitialState` / `NormalizePsi0` | bool | 1 | Normalize the assembled initial state so <ψ₀\|M\|ψ₀> = 1 |
 | `AccelerationMethod` | string | `"auto"` | Dipole acceleration a(t): `operator` (Ehrenfest force −⟨(1/m)(∇V+E)⟩ plus mass-gradient terms; needs smooth m and V), `discrete` (a = d⟨v⟩/dt from the Galerkin equation of motion, one M solve per output step; exact for sharp interfaces and hard walls), `auto` (`discrete` when `Mass` depends on x, y or z and `MassIsConstant = 0`, otherwise `operator`) |
-| `Propagator` | string | `"cn"` | Time stepper. `cn`: Crank-Nicolson (Pade(1,1), second order, 1 sparse solve per step). `pade22`: exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, 2 solves per step). `magnus4`: commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, 4 solves per step). Both rational propagators are unitary for Hermitian H and allow much larger `TimeStep` for the same accuracy; stage solvers accept `-pade_stage1_` / `-pade_stage2_` PETSc options |
+| `Propagator` | string | `"cn"` | Time stepper. `cn`: Crank-Nicolson (Pade(1,1), second order, 1 sparse solve per step). `pade22`: exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, 2 solves per step). `magnus4`: commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, 4 solves per step). Both rational propagators are unitary for Hermitian H and allow much larger `TimeStep` for the same accuracy; stage solvers accept `-pade_stage1_` / `-pade_stage2_` PETSc options. Each stage solve starts from the previous step's stage increment (about 15% fewer GMRES iterations); `-pade_extrapolate_guess 0` restores the plain initial guess |
 
 **InitialState formats:**
 - `"ground"` — Use the 0th converged bound state (ground state)
@@ -303,7 +303,7 @@ CLI flags are processed before PETSc/SLEPc initialization and stripped from argv
 
 ### 6.1 Time Evolution Data (`td/TimeEvolutionData_<input>.h5`)
 
-Buffered in a ring buffer of size `FLUSH_INTERVAL = 5000` steps. Flushed to HDF5 every `OutputStrideTS` steps (if >0) or every 5000 steps.
+Every step is recorded in a ring buffer of size `FLUSH_INTERVAL = 5000` steps and written to HDF5 at multiples of `OutputStrideTS` steps (if >0), but at most once every 2 s of wall time, and in any case every 5000 steps and at the end of the run. The written data are the same for any stride; only how often the file on disk is updated during the run changes.
 
 **Dipole table** (`dipole` enabled):
 

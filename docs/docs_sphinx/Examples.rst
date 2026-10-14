@@ -59,7 +59,7 @@ degree :math:`n`.
 - ``NBoundStates = 5`` — compute first 5 eigenstates
 - ``TargetEigenvalue = 0.5`` — start search near ground state
 
-Run: ``./tdsez -inp inps/harmonic_oscillator_1d.prm``
+Run: ``./tdsez.x -inp inps/harmonic_oscillator_1d.prm``
 
 Results in ``static/EigenData_1d.prm.h5``: eigenvalues, eigenstates, energy
 spectrum.
@@ -107,7 +107,7 @@ A hydrogen-like atom driven by a Gaussian-envelope laser pulse at 800 nm:
 - ``PhysicsOutput = all`` — all diagnostics enabled
 - ``TimeStep = 0.02``, ``FinalTime = 300.0`` — propagate for ~7 fs
 
-Run: ``./tdsez -inp inps/atom_laser_1d.prm``
+Run: ``./tdsez.x -inp inps/atom_laser_1d.prm``
 
 Results in ``td/TimeEvolutionData_atom_laser_1d.h5``: dipole, population,
 energy, current, autocorrelation tables.
@@ -175,7 +175,7 @@ any anharmonicity in the potential causes population exchange.
 - ``Amplitude = 0.0`` — no driving field, free evolution
 - ``OutputStrideWFS = 20`` — save wavefunction snapshots
 
-Run: ``./tdsez -inp inps/superposition_1d.prm``
+Run: ``./tdsez.x -inp inps/superposition_1d.prm``
 
 2D Systems
 ----------
@@ -224,5 +224,5 @@ shows dominant inter-band current from the circular driving.
 - ``EnableLzDiag = 1`` — diagonalize :math:`L_z^2` within degenerate shells
 - ``PhysicsOutput = all``
 
-Run: ``./tdsez -inp inps/harmonic_2d_circular.prm``
+Run: ``./tdsez.x -inp inps/harmonic_2d_circular.prm``
 

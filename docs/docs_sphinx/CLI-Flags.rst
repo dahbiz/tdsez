@@ -9,10 +9,10 @@ Basic Usage
 
 ::
 
-    $ ./tdsez -inp file.prm          # specify input file
-    $ ./tdsez -ts_max_steps 0         # eigenvalues only, no propagation
-    $ ./tdsez -save_dipole xyz        # save dipole axes at runtime
-    $ ./tdsez -help                   # full PETSc options dump
+    $ ./tdsez.x -inp file.prm          # specify input file
+    $ ./tdsez.x -ts_max_steps 0         # eigenvalues only, no propagation
+    $ ./tdsez.x -save_dipole xyz        # save dipole axes at runtime
+    $ ./tdsez.x -help                   # full PETSc options dump
 
 Option Precedence
 -----------------
@@ -63,6 +63,6 @@ Help and Diagnostics
 
 ::
 
-    $ ./tdsez -help           # All available options
-    $ ./tdsez -help <term>    # Search for specific option
-    $ ./tdsez -help_group all # Grouped options list
+    $ ./tdsez.x -help           # All available options
+    $ ./tdsez.x -help <term>    # Search for specific option
+    $ ./tdsez.x -help_group all # Grouped options list

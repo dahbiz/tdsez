@@ -19,7 +19,7 @@ Build Steps
     mkdir build && cd build
     cmake .. # auto-detects PETSc/O3/march
     make -j $(nproc)
-    # -> produces build/tdsez, build/tdmprocessor, build/tdmselect, build/drecprocessor
+    # -> produces build/tdsez.x, build/tdmprocessor, build/tdmselect, build/drecprocessor
 
 Auto-Detection
 --------------
@@ -53,13 +53,13 @@ Execution Modes
 
 ::
 
-    $ ./tdsez -inp inps/harmonic_oscillator_1d.prm
+    $ ./tdsez.x -inp inps/harmonic_oscillator_1d.prm
 
 **Parallel Execution**
 
 ::
 
-    $ mpirun --bind-to none -np 4 ./tdsez -inp inps/model.prm
+    $ mpirun --bind-to none -np 4 ./tdsez.x -inp inps/model.prm
 
 **Eigenmode Only**
 
@@ -67,7 +67,7 @@ Solve TISE and produce eigenstates without time propagation.
 
 ::
 
-    $ ./tdsez -inp model.prm -ts_max_steps 0
+    $ ./tdsez.x -inp model.prm -ts_max_steps 0
 
 Output Directory Structure
 --------------------------

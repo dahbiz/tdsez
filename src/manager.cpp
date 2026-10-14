@@ -1321,6 +1321,82 @@ PetscBool TDSEZDiscreteAccelerationActive()
 }
 
 
+/// @brief Monitor products tmpVec[0..4] = (M, H, Md, K, V) psi.
+/// @details On the first call the full set of products is formed and two
+///          identities are checked on psi: H psi = K psi + V psi (holds when no
+///          CAP was merged into H) and Md psi = c M psi (constant mass). Each
+///          shortcut is used afterwards only if it holds to 1e-12 relative, so
+///          the written observables are unchanged up to rounding.
+PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
+{
+    PetscFunctionBeginUser;
+    PetscCall(MatMult(m_M, psi, tmpVec[0]));
+    if (!needKVMd) {
+        PetscCall(MatMult(m_H, psi, tmpVec[1]));
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
+    PetscCall(MatMult(m_K, psi, tmpVec[3]));
+    PetscCall(MatMult(m_V, psi, tmpVec[4]));
+    if (!monitorChecked_) {
+        PetscCall(MatMult(m_H,  psi, tmpVec[1]));
+        PetscCall(MatMult(m_Md, psi, tmpVec[2]));
+        Vec r;
+        PetscReal nr, nref;
+        PetscCall(VecDuplicate(psi, &r));
+        // H psi - K psi - V psi
+        PetscCall(VecWAXPY(r, 1.0, tmpVec[3], tmpVec[4]));
+        PetscCall(VecAYPX(r, -1.0, tmpVec[1]));
+        PetscCall(VecNorm(r, NORM_2, &nr));
+        PetscCall(VecNorm(tmpVec[1], NORM_2, &nref));
+        hFromKV_ = (!TDSEZParser::EnableCAP && nr <= 1e-12 * PetscMax(nref, (PetscReal)1e-300)) ? PETSC_TRUE : PETSC_FALSE;
+        // Md psi - c M psi with c = <psi|Md|psi>/<psi|M|psi>
+        PetscBool massConst = TDSEZParser::MassIsConstant;
+        try { if (TDSEZParser::MassExpr.GetUsedVar().empty()) massConst = PETSC_TRUE; }
+        catch (const mu::Parser::exception_type &) {}
+        invMassConst_ = 0.0;
+        if (massConst) {
+            PetscScalar a, b;
+            PetscCall(VecDot(tmpVec[2], psi, &a));
+            PetscCall(VecDot(tmpVec[0], psi, &b));
+            const PetscScalar c = (PetscAbsScalar(b) > 0.0) ? a / b : 0.0;
+            PetscCall(VecWAXPY(r, -c, tmpVec[0], tmpVec[2]));
+            PetscCall(VecNorm(r, NORM_2, &nr));
+            PetscCall(VecNorm(tmpVec[2], NORM_2, &nref));
+            if (c != 0.0 && nr <= 1e-12 * PetscMax(nref, (PetscReal)1e-300)) invMassConst_ = c;
+        }
+        PetscCall(VecDestroy(&r));
+        monitorChecked_ = PETSC_TRUE;
+        PetscCall(PetscInfo(NULL, "Monitor shortcuts: H=K+V %s, constant 1/m %s\n",
+                            hFromKV_ ? "on" : "off", invMassConst_ != 0.0 ? "on" : "off"));
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
+    if (hFromKV_) PetscCall(VecWAXPY(tmpVec[1], 1.0, tmpVec[3], tmpVec[4]));
+    else          PetscCall(MatMult(m_H, psi, tmpVec[1]));
+    if (invMassConst_ != 0.0) {
+        PetscCall(VecCopy(tmpVec[0], tmpVec[2]));
+        PetscCall(VecScale(tmpVec[2], invMassConst_));
+    } else {
+        PetscCall(MatMult(m_Md, psi, tmpVec[2]));
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// @brief Whether the time-series buffers should be written now (see header).
+bool TDSEZManager::FlushDue()
+{
+    if (recordedSteps <= 0) return false;
+    if (recordedSteps % FLUSH_INTERVAL == 0) { PetscTime(&lastFlushTime_); return true; }
+    const PetscInt stride = TDSEZParser::OutputStrideTS;
+    if (stride > 0 && recordedSteps % stride == 0) {
+        PetscLogDouble now;
+        PetscTime(&now);
+        if (now - lastFlushTime_ >= kMinFlushSeconds) { lastFlushTime_ = now; return true; }
+    }
+    return false;
+}
+
+
 /// @brief Dipole acceleration from the discrete equation of motion.
 /// @details With i M c' = H_t c and H_t = H + E.D, the exact time derivative
 ///          of <v> = c^H Vel c is d<v>/dt = -2 Im( w^H Vel c ),

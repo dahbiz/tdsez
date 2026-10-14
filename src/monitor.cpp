@@ -417,15 +417,10 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     // Compute temporary vectors
     // ------------------------
-    PetscCall(MatMult(TDSEZ->M(),  psi, TDSEZ->tmpVec[0]));
-    PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->tmpVec[1]));
+    // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
+    // dipole (accel needs invMassAvg); they are skipped when neither is on.
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)(TDSEZParser::out_energy || TDSEZParser::out_dipole)));
     const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
-    // Md/K/V feed energy AND dipole (accel needs invMassAvg); skip when neither is on.
-    if (TDSEZParser::out_energy || TDSEZParser::out_dipole) {
-        PetscCall(MatMult(TDSEZ->Md(), psi, TDSEZ->tmpVec[2]));
-        PetscCall(MatMult(TDSEZ->K(),  psi, TDSEZ->tmpVec[3]));
-        PetscCall(MatMult(TDSEZ->V(),  psi, TDSEZ->tmpVec[4]));
-    }
 
     PetscInt nBatch = 5;
     PetscInt idxDx=-1, idxAccX=-1, idxVx=-1;
@@ -590,9 +585,7 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         // In-progress flush: write the new window every OutputStrideTS (if set)
         // or every FLUSH_INTERVAL so RAM does not grow unbounded for long propagations.
         if (TDSEZ->recordedSteps > 0) {
-            PetscInt stride = TDSEZParser::OutputStrideTS;
-            if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
-                TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
+            if (TDSEZ->FlushDue()) {
                 PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
                 PetscCallAbort(PETSC_COMM_WORLD,
                                TDSEZ->WriteHDF5(TDSEZ->outputFilename));
@@ -672,15 +665,10 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     /* ----------------------------------------------------------------
        MatMults
        ---------------------------------------------------------------- */
-    PetscCall(MatMult(TDSEZ->M(),  psi, TDSEZ->tmpVec[0]));
-    PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->tmpVec[1]));
+    // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
+    // dipole (accel needs invMassAvg); they are skipped when neither is on.
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)(TDSEZParser::out_energy || TDSEZParser::out_dipole)));
     const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
-    // Md/K/V feed energy AND dipole (accel needs invMassAvg); skip when neither is on.
-    if (TDSEZParser::out_energy || TDSEZParser::out_dipole) {
-        PetscCall(MatMult(TDSEZ->Md(), psi, TDSEZ->tmpVec[2]));
-        PetscCall(MatMult(TDSEZ->K(),  psi, TDSEZ->tmpVec[3]));
-        PetscCall(MatMult(TDSEZ->V(),  psi, TDSEZ->tmpVec[4]));
-    }
 
     PetscInt nBatch = 5;
     PetscInt idxDx=-1, idxDy=-1, idxAccX=-1, idxAccY=-1;
@@ -903,9 +891,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         // In-progress flush: write the new window every OutputStrideTS (if set)
         // or every FLUSH_INTERVAL so RAM does not grow unbounded for long propagations.
         if (TDSEZ->recordedSteps > 0) {
-            PetscInt stride = TDSEZParser::OutputStrideTS;
-            if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
-                TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
+            if (TDSEZ->FlushDue()) {
                 PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
                 PetscCallAbort(PETSC_COMM_WORLD,
                                TDSEZ->WriteHDF5(TDSEZ->outputFilename));
@@ -979,15 +965,10 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     // Compute temporary vectors
     // ------------------------
-    PetscCall(MatMult(TDSEZ->M(),  psi, TDSEZ->tmpVec[0]));
-    PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->tmpVec[1]));
+    // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
+    // dipole (accel needs invMassAvg); they are skipped when neither is on.
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)(TDSEZParser::out_energy || TDSEZParser::out_dipole)));
     const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
-    // Md/K/V feed energy AND dipole (accel needs invMassAvg); skip when neither is on.
-    if (TDSEZParser::out_energy || TDSEZParser::out_dipole) {
-        PetscCall(MatMult(TDSEZ->Md(), psi, TDSEZ->tmpVec[2]));
-        PetscCall(MatMult(TDSEZ->K(),  psi, TDSEZ->tmpVec[3]));
-        PetscCall(MatMult(TDSEZ->V(),  psi, TDSEZ->tmpVec[4]));
-    }
 
     PetscInt nBatch = 5;
     PetscInt idxDx=-1, idxDy=-1, idxDz=-1, idxAccX=-1, idxAccY=-1, idxAccZ=-1;
@@ -1196,9 +1177,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         // In-progress flush: write the new window every OutputStrideTS (if set)
         // or every FLUSH_INTERVAL so RAM does not grow unbounded for long propagations.
         if (TDSEZ->recordedSteps > 0) {
-            PetscInt stride = TDSEZParser::OutputStrideTS;
-            if ((stride > 0 && TDSEZ->recordedSteps % stride == 0) ||
-                TDSEZ->recordedSteps % TDSEZ->FLUSH_INTERVAL == 0) {
+            if (TDSEZ->FlushDue()) {
                 PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
                 PetscCallAbort(PETSC_COMM_WORLD,
                                TDSEZ->WriteHDF5(TDSEZ->outputFilename));

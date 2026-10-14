@@ -138,6 +138,10 @@ class TDSEZManager
     /// @{
     PetscInt stride = 2000;                     ///< diagnostic write stride
     static constexpr PetscInt FLUSH_INTERVAL = 5000; ///< HDF5 flush interval (steps)
+    PetscBool      monitorChecked_ = PETSC_FALSE;  ///< MonitorProducts shortcuts verified
+    PetscBool      hFromKV_        = PETSC_FALSE;  ///< H psi = K psi + V psi holds
+    PetscScalar    invMassConst_   = 0.0;          ///< Md = invMassConst_ * M (0: not constant)
+    PetscLogDouble lastFlushTime_  = 0.0;          ///< wall time of the last HDF5 write
     PetscInt lastWrittenSteps = 0;              ///< last step flushed to HDF5
     std::string inputFile;                     ///< input file path
     std::string outputFilename;                 ///< HDF5 output filename
@@ -282,6 +286,19 @@ class TDSEZManager
     /// valid across sharp material interfaces. Inactive axes return 0.
     /// Hpsi, if not NULL, must hold H psi (as computed by the monitor) and saves a MatMult.
     PetscErrorCode DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi, PetscScalar acc[3]);
+
+    /// @brief Monitor products tmpVec[0..4] = (M, H, Md, K, V) psi; Md/K/V only
+    ///        when @p needKVMd. Uses H psi = K psi + V psi and
+    ///        Md psi = M psi / m when both are verified to rounding for this
+    ///        run (no CAP; constant mass), which saves up to two sparse products
+    ///        per step without changing any output.
+    PetscErrorCode MonitorProducts(Vec psi, PetscBool needKVMd);
+    /// @brief Whether the time-series buffers should be written now: always at
+    ///        multiples of FLUSH_INTERVAL; at multiples of OutputStrideTS only if
+    ///        at least kMinFlushSeconds have passed since the last write. Every
+    ///        recorded row is still written (the remainder at the end of the run).
+    bool FlushDue();
+    static constexpr PetscLogDouble kMinFlushSeconds = 2.0;
     /// Direct solver for the overlap matrix M (built on first use).
     KSP kspMass = PETSC_NULLPTR;
     /// Work vectors for DiscreteAcceleration (built on first use).

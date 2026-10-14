@@ -282,11 +282,38 @@ PetscErrorCode TDSEZPropagator::BuildStageMatrix(Mat A, PetscScalar g, const Pet
 }
 
 
+/// @brief Cache B_k = M + g_k H for the step length h. H (including any CAP)
+///        is fixed during propagation, so this is recomputed only when h
+///        changes (first step, and a shortened final step).
+PetscErrorCode TDSEZPropagator::UpdateStageBase(PetscReal h)
+{
+    PetscFunctionBeginUser;
+    if (h == baseH_) PetscFunctionReturn(PETSC_SUCCESS);
+    const PetscReal   s3   = PetscSqrtReal(3.0);
+    const PetscScalar g[2] = {h * (-s3 + 3.0 * PETSC_i) / 12.0,
+                              h * ( s3 + 3.0 * PETSC_i) / 12.0};
+    for (int k = 0; k < 2; ++k) {
+        if (!Base_[k]) PetscCall(MatDuplicate(manager_.H(), MAT_DO_NOT_COPY_VALUES, &Base_[k]));
+        PetscCall(MatCopy(manager_.H(), Base_[k], SAME_NONZERO_PATTERN));
+        PetscCall(MatScale(Base_[k], g[k]));
+        PetscCall(MatAXPY(Base_[k], 1.0, manager_.M(), SAME_NONZERO_PATTERN));
+    }
+    baseH_ = h;
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
 /// @brief psi <- R22(-i h M^{-1} H_E) psi with H_E = H + sum_a E_a D_a.
+/// @details The two stages are (M + g_k H_E) y = (M + conj(g_k) H_E) x with
+///          conj(g_1) = -g_2. The right-hand side of each stage is therefore
+///          2 M x - A_other x, where A_other = M + g_other H_E is the other
+///          stage matrix, so both stage matrices are built once per call
+///          (from the cached field-free parts) and no products with H or D
+///          are needed.
 /// @param[in]     h    Step length of this exponential.
 /// @param[in]     E    Field components used for H_E.
 /// @param[in,out] psi  State vector.
-PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi)
+PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi, int slot)
 {
     PetscFunctionBeginUser;
     const PetscReal   s3   = PetscSqrtReal(3.0);
@@ -294,22 +321,38 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
                               h * ( s3 + 3.0 * PETSC_i) / 12.0};
     const Mat       D[3]  = {manager_.Dx(), manager_.Dy(), manager_.Dz()};
     const PetscBool on[3] = {manager_.hasX, manager_.hasY, manager_.hasZ};
-    Vec rhs = work_[0], Hx = work_[1], tmp = work_[2];
+    Vec rhs = work_[0], Ax = work_[1];
+
+    // A_k = B_k + g_k E.D for both stages.
+    PetscCall(PetscLogEventBegin(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
+    PetscCall(UpdateStageBase(h));
+    for (int k = 0; k < 2; ++k) {
+        PetscCall(MatCopy(Base_[k], Astage_[k], SAME_NONZERO_PATTERN));
+        for (int a = 0; a < 3; ++a)
+            if (on[a] && D[a] && E[a] != 0.0)
+                PetscCall(MatAXPY(Astage_[k], g[k] * E[a], D[a], SAME_NONZERO_PATTERN));
+    }
+    PetscCall(PetscLogEventEnd(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
 
     for (int k = 0; k < 2; ++k) {
-        PetscCall(PetscLogEventBegin(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
-        PetscCall(BuildStageMatrix(Astage_[k], g[k], E));
-        PetscCall(PetscLogEventEnd(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
-        // rhs = M x + conj(g) H_E x
-        PetscCall(MatMult(manager_.H(), psi, Hx));
-        for (int a = 0; a < 3; ++a)
-            if (on[a] && D[a] && E[a] != 0.0) {
-                PetscCall(MatMult(D[a], psi, tmp));
-                PetscCall(VecAXPY(Hx, E[a], tmp));
-            }
+        // rhs = (M + conj(g_k) H_E) x = 2 M x - A_{1-k} x
         PetscCall(MatMult(manager_.M(), psi, rhs));
-        PetscCall(VecAXPY(rhs, PetscConj(g[k]), Hx));
-        PetscCall(KSPSolve(kspStage_[k], rhs, psi));        // psi is also the initial guess
+        PetscCall(MatMult(Astage_[1 - k], psi, Ax));
+        PetscCall(VecAXPBY(rhs, -1.0, 2.0, Ax));
+        // Initial guess: psi, plus the increment this stage produced on the
+        // previous step (the stage map changes by O(h) between steps, so this
+        // removes the leading part of the increment from the first residual).
+        const int s = 2 * slot + k;
+        if (extrapolateGuess_) {
+            if (!guessDelta_[s]) PetscCall(VecDuplicate(psi, &guessDelta_[s]));
+            PetscCall(VecCopy(psi, Ax));                     // Ax <- stage input x
+            if (guessValid_[s]) PetscCall(VecAXPY(psi, 1.0, guessDelta_[s]));
+        }
+        PetscCall(KSPSolve(kspStage_[k], rhs, psi));
+        if (extrapolateGuess_) {
+            PetscCall(VecWAXPY(guessDelta_[s], -1.0, Ax, psi));   // y - x
+            guessValid_[s] = PETSC_TRUE;
+        }
         KSPConvergedReason reason;
         PetscInt its = 0;
         PetscCall(KSPGetConvergedReason(kspStage_[k], &reason));
@@ -373,6 +416,8 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         TDSEZParser::Propagator.c_str(),
         m4 ? "s, commutator-free 4th-order Magnus" : ", exponential midpoint", m4 ? 4 : 2));
 
+    PetscCall(PetscOptionsGetBool(NULL, NULL, "-pade_extrapolate_guess", &extrapolateGuess_, NULL));
+
     // Commutator-free Magnus 4 constants.
     const PetscReal s3 = PetscSqrtReal(3.0);
     const PetscReal c1 = 0.5 - s3 / 6.0, c2 = 0.5 + s3 / 6.0;
@@ -396,8 +441,8 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
                 Ea[a] = 2.0 * (a2 * E1[a] + a1 * E2[a]);   // applied first
                 Eb[a] = 2.0 * (a1 * E1[a] + a2 * E2[a]);
             }
-            PetscCall(Pade22Step(0.5 * h, Ea, psi));
-            PetscCall(Pade22Step(0.5 * h, Eb, psi));
+            PetscCall(Pade22Step(0.5 * h, Ea, psi, 0));
+            PetscCall(Pade22Step(0.5 * h, Eb, psi, 1));
         }
         t = (h < dt) ? endT : t + h;
         ++step;
