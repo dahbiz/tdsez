@@ -283,6 +283,36 @@ state is exact to rounding (1D Rydberg states: relative residual
 $`1.6\times10^{-8}`$ before, backward error $`6\times10^{-15}`$ now).
 `-tdsez_eps_inner iterative` restores the iterative inner solve.
 
+## 1h. Propagation solver: alternatives measured and not adopted
+
+**Preconditioners.** Every `PCType` PETSc and PetIGA register was tried on the
+`pade22` stage solves (8 ranks): restricted ASM with ILU(0) stays the fastest.
+3D $`p=3`$, 32k DOFs, 40 steps / 2D $`p=4`$, 14k DOFs, 100 steps:
+`asm` 4.5 s, 5.5 its / 0.65 s, 5.0 its; `bjacobi`, `gasm`, `bjacobi`+ICC
+9.0–9.3 s, 25 its / 1.5–1.6 s, 19 its; `sor` 40 s / 6.8 s; `jacobi` 50 s / 9.5 s;
+PetIGA `igaebe` 69 s, 222 its / 7.2 s, 102 its; PetIGA `igabbb` did not converge
+(also with maximal overlap). Both PetIGA preconditioners invert small dense
+element or basis-function blocks: smoothers without global coupling. ASM with
+overlap 2 needs fewer iterations in 2D (3.3) but is not faster.
+
+**Accuracy** is set by the right-preconditioned GMRES tolerance, not by the
+preconditioner: against an exact MUMPS LU solve (2D, 100 steps) the ASM run
+differs by at most $`1.3\times10^{-11}`$ (dipoles), block Jacobi by
+$`2\times10^{-11}`$; norm drift $`8\times10^{-14}`$.
+
+**Load imbalance.** PetIGA gives the last rank of each axis the $`p`$ trailing
+basis functions (3D, 32 cubic elements per axis on 2×2×2 ranks: 16³ vs 19³
+owned rows, ASM blocks 19³–22³, ILU time ratio 1.6). The element count can
+shift one element per axis only. Rebalancing the element cuts after
+`IGASetUp_Stage1` made time stepping 7–12 % faster but the element-based
+monitors and assembly slower; the run changed by 0–5 % (noise level), so it
+was reverted. Details in the MPI Notes of the documentation.
+
+**Pipelined GMRES** (`-pade_stage{1,2}_ksp_type pgmres`, `MPI_Iallreduce`
+overlapped with the next product): 20–35 % slower on one machine (3D, 8 ranks,
+same 4.1 its/solve); reductions are cheap in shared memory. Possibly useful
+across many nodes.
+
 ## 2. Fourth-order propagators (`Propagator = pade22 | magnus4`)
 
 Both use the $`(2,2)`$ Padé approximant of the step exponential,

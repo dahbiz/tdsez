@@ -187,6 +187,7 @@
 <li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load Balance</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
@@ -425,6 +426,118 @@ known degree dependence of standard smoothers for B-spline discretisations.</p>
 one machine each V-cycle costs more than the iterations it saves. It is meant
 for large rank counts, where one-level ASM degrades because it has no coarse
 space; measure both on the target machine.</p>
+<p><strong>Other PETSc and PetIGA preconditioners.</strong> Any <code class="docutils literal notranslate"><span class="pre">PCType</span></code> can be selected per
+stage solver (<code class="docutils literal notranslate"><span class="pre">-pade_stage1_pc_type</span> <span class="pre">X</span> <span class="pre">-pade_stage2_pc_type</span> <span class="pre">X</span></code>). Measured with
+<code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 8 ranks, <span class="math notranslate nohighlight">\(\Delta t = 0.05\)</span>:</p>
+<table class="docutils align-default">
+<colgroup>
+<col />
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">pc_type</span></code></p></th>
+<th class="head"><p>3D, p = 3, 32k DOFs, 40 steps</p></th>
+<th class="head"><p>2D, p = 4, 14k DOFs, 100 steps</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> + ILU(0) (default)</p></td>
+<td><p>4.5 s, 5.5 its/solve</p></td>
+<td><p>0.65 s, 5.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code>, overlap 2</p></td>
+<td><p>–</p></td>
+<td><p>0.63 s, 3.3</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bjacobi</span></code> / <code class="docutils literal notranslate"><span class="pre">gasm</span></code> / <code class="docutils literal notranslate"><span class="pre">bjacobi</span></code> + ICC</p></td>
+<td><p>9.0-9.3 s, 25</p></td>
+<td><p>1.5-1.6 s, 19</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sor</span></code></p></td>
+<td><p>40 s, 91</p></td>
+<td><p>6.8 s, 95</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jacobi</span></code></p></td>
+<td><p>50 s, 320</p></td>
+<td><p>9.5 s, 238</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">igaebe</span></code> (PetIGA, element by element)</p></td>
+<td><p>69 s, 222</p></td>
+<td><p>7.2 s, 102</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">igabbb</span></code> (PetIGA, basis by basis)</p></td>
+<td><p>not converged in 1000 its</p></td>
+<td><p>not converged, also with <code class="docutils literal notranslate"><span class="pre">-pc_bbb_overlap</span> <span class="pre">4,4</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>(Before the extrapolated initial guess below; the ranking is unchanged.)
+<code class="docutils literal notranslate"><span class="pre">igaebe</span></code> and <code class="docutils literal notranslate"><span class="pre">igabbb</span></code> invert one small dense block per element or per basis
+function (overlap <span class="math notranslate nohighlight">\(p/2\)</span> by default): they damp local error like a
+multigrid smoother but have no global coupling, so on their own they need
+hundreds of iterations or stall. Block Jacobi, GASM and ICC lack the overlap of
+ASM and need about four times the iterations.</p>
+<p><strong>Accuracy does not depend on the preconditioner.</strong> GMRES is right
+preconditioned, so it stops on the true residual of the original system
+(<span class="math notranslate nohighlight">\(10^{-12}\)</span> relative) whatever the preconditioner. The same 2D run
+(100 <code class="docutils literal notranslate"><span class="pre">pade22</span></code> steps) against an exact solve (MUMPS LU), largest relative
+difference:</p>
+<table class="docutils align-default">
+<colgroup>
+<col />
+<col />
+<col />
+<col />
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Preconditioner</p></th>
+<th class="head"><p>dipoles</p></th>
+<th class="head"><p>energies</p></th>
+<th class="head"><p>currents</p></th>
+<th class="head"><p>populations</p></th>
+<th class="head"><p>autocorrelation</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> (default)</p></td>
+<td><p>1.3e-11</p></td>
+<td><p>8.1e-13</p></td>
+<td><p>1.3e-12</p></td>
+<td><p>1.3e-12</p></td>
+<td><p>6.0e-13</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bjacobi</span></code></p></td>
+<td><p>2.0e-11</p></td>
+<td><p>1.8e-12</p></td>
+<td><p>3.9e-12</p></td>
+<td><p>2.3e-12</p></td>
+<td><p>9.7e-13</p></td>
+</tr>
+</tbody>
+</table>
+<p>The norm drifts by <span class="math notranslate nohighlight">\(8\times10^{-14}\)</span> over the run. These differences are
+far below the time-step and grid error (about <span class="math notranslate nohighlight">\(10^{-5}\)</span> on validation
+grids).</p>
+<p><strong>Cost of the GMRES solves.</strong> Orthogonalisation is 1-2 % of a solve; the rest
+is preconditioner applications (ILU triangular solves, about 60 %) and
+matrix-vector products. What reduces it is fewer iterations:</p>
+<ul class="simple">
+<li><p>the stage solves start from the increment extrapolated from the last three
+steps (<code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span> <span class="pre">1..5</span></code>, default 3; 5.5 -&gt; 4.1 its/solve in 3D,
+5.0 -&gt; 3.4 in 2D);</p></li>
+<li><p>a looser tolerance, <code class="docutils literal notranslate"><span class="pre">-pade_stage1_ksp_rtol</span> <span class="pre">1e-11</span> <span class="pre">-pade_stage2_ksp_rtol</span>
+<span class="pre">1e-11</span></code>, saves another 10-13 % with output differences of
+<span class="math notranslate nohighlight">\(5\times10^{-11}\)</span> (default <span class="math notranslate nohighlight">\(10^{-12}\)</span>).</p></li>
+</ul>
+<p><strong>Pipelined GMRES</strong> (<code class="docutils literal notranslate"><span class="pre">-pade_stage{1,2}_ksp_type</span> <span class="pre">pgmres</span></code>) overlaps each
+iteration’s global reduction (<code class="docutils literal notranslate"><span class="pre">MPI_Iallreduce</span></code>) with the next product. On
+one machine a reduction costs microseconds through shared memory and the extra
+vector work dominates: 20-35 % slower in time stepping (3D, 8 ranks, same
+4.1 its/solve). It can pay off across many nodes, where reductions cross the
+network; measure it there. It does not remove load imbalance (see MPI Notes).</p>
 <p><strong>Strong fields.</strong> The operator is
 <span class="math notranslate nohighlight">\(M + i\tau(H + s\,\mathbf E\cdot\mathbf r)\)</span> (<span class="math notranslate nohighlight">\(\tau = \Delta t/2\)</span>
 for <code class="docutils literal notranslate"><span class="pre">cn</span></code>). When <span class="math notranslate nohighlight">\(\tau\max|\mathbf E\cdot\mathbf r|\)</span> exceeds about 1.5

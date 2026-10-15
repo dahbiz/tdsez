@@ -128,6 +128,97 @@ one machine each V-cycle costs more than the iterations it saves. It is meant
 for large rank counts, where one-level ASM degrades because it has no coarse
 space; measure both on the target machine.
 
+**Other PETSc and PetIGA preconditioners.** Any ``PCType`` can be selected per
+stage solver (``-pade_stage1_pc_type X -pade_stage2_pc_type X``). Measured with
+``pade22``, 8 ranks, :math:`\Delta t = 0.05`:
+
+.. list-table::
+   :widths: 30 35 35
+   :header-rows: 1
+
+   * - ``pc_type``
+     - 3D, p = 3, 32k DOFs, 40 steps
+     - 2D, p = 4, 14k DOFs, 100 steps
+   * - ``asm`` + ILU(0) (default)
+     - 4.5 s, 5.5 its/solve
+     - 0.65 s, 5.0
+   * - ``asm``, overlap 2
+     - --
+     - 0.63 s, 3.3
+   * - ``bjacobi`` / ``gasm`` / ``bjacobi`` + ICC
+     - 9.0-9.3 s, 25
+     - 1.5-1.6 s, 19
+   * - ``sor``
+     - 40 s, 91
+     - 6.8 s, 95
+   * - ``jacobi``
+     - 50 s, 320
+     - 9.5 s, 238
+   * - ``igaebe`` (PetIGA, element by element)
+     - 69 s, 222
+     - 7.2 s, 102
+   * - ``igabbb`` (PetIGA, basis by basis)
+     - not converged in 1000 its
+     - not converged, also with ``-pc_bbb_overlap 4,4``
+
+(Before the extrapolated initial guess below; the ranking is unchanged.)
+``igaebe`` and ``igabbb`` invert one small dense block per element or per basis
+function (overlap :math:`p/2` by default): they damp local error like a
+multigrid smoother but have no global coupling, so on their own they need
+hundreds of iterations or stall. Block Jacobi, GASM and ICC lack the overlap of
+ASM and need about four times the iterations.
+
+**Accuracy does not depend on the preconditioner.** GMRES is right
+preconditioned, so it stops on the true residual of the original system
+(:math:`10^{-12}` relative) whatever the preconditioner. The same 2D run
+(100 ``pade22`` steps) against an exact solve (MUMPS LU), largest relative
+difference:
+
+.. list-table::
+   :widths: 25 15 15 15 15 15
+   :header-rows: 1
+
+   * - Preconditioner
+     - dipoles
+     - energies
+     - currents
+     - populations
+     - autocorrelation
+   * - ``asm`` (default)
+     - 1.3e-11
+     - 8.1e-13
+     - 1.3e-12
+     - 1.3e-12
+     - 6.0e-13
+   * - ``bjacobi``
+     - 2.0e-11
+     - 1.8e-12
+     - 3.9e-12
+     - 2.3e-12
+     - 9.7e-13
+
+The norm drifts by :math:`8\times10^{-14}` over the run. These differences are
+far below the time-step and grid error (about :math:`10^{-5}` on validation
+grids).
+
+**Cost of the GMRES solves.** Orthogonalisation is 1-2 % of a solve; the rest
+is preconditioner applications (ILU triangular solves, about 60 %) and
+matrix-vector products. What reduces it is fewer iterations:
+
+- the stage solves start from the increment extrapolated from the last three
+  steps (``-pade_guess_order 1..5``, default 3; 5.5 -> 4.1 its/solve in 3D,
+  5.0 -> 3.4 in 2D);
+- a looser tolerance, ``-pade_stage1_ksp_rtol 1e-11 -pade_stage2_ksp_rtol
+  1e-11``, saves another 10-13 % with output differences of
+  :math:`5\times10^{-11}` (default :math:`10^{-12}`).
+
+**Pipelined GMRES** (``-pade_stage{1,2}_ksp_type pgmres``) overlaps each
+iteration's global reduction (``MPI_Iallreduce``) with the next product. On
+one machine a reduction costs microseconds through shared memory and the extra
+vector work dominates: 20-35 % slower in time stepping (3D, 8 ranks, same
+4.1 its/solve). It can pay off across many nodes, where reductions cross the
+network; measure it there. It does not remove load imbalance (see MPI Notes).
+
 **Strong fields.** The operator is
 :math:`M + i\tau(H + s\,\mathbf E\cdot\mathbf r)` (:math:`\tau = \Delta t/2`
 for ``cn``). When :math:`\tau\max|\mathbf E\cdot\mathbf r|` exceeds about 1.5
