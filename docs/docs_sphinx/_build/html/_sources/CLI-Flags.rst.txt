@@ -97,6 +97,10 @@ Propagation Flags
      - First inner solver of the shift-invert eigensolve (default: direct in
        1D/2D and small high-degree 3D, iterative otherwise); failed attempts
        fall back to the other one. See Eigensolver.
+   * - ``-pade_guess_order <q>``
+     - int
+     - Order of the extrapolated initial guess of the ``pade22``/``magnus4``
+       stage solves (1..5, default 3); ``-pade_extrapolate_guess 0`` disables it.
    * - ``-tdsez_quad_obs 0``
      - bool
      - Take <V>, <1/m>, <K>, the CAP, the forces dV/dx_a and the velocities

@@ -407,13 +407,18 @@ sparse matrices instead of in factorised (Kronecker) form (2D/3D).</p></td>
 1D/2D and small high-degree 3D, iterative otherwise); failed attempts
 fall back to the other one. See Eigensolver.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_quad_obs</span> <span class="pre">0</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span> <span class="pre">&lt;q&gt;</span></code></p></td>
+<td><p>int</p></td>
+<td><p>Order of the extrapolated initial guess of the <code class="docutils literal notranslate"><span class="pre">pade22</span></code>/<code class="docutils literal notranslate"><span class="pre">magnus4</span></code>
+stage solves (1..5, default 3); <code class="docutils literal notranslate"><span class="pre">-pade_extrapolate_guess</span> <span class="pre">0</span></code> disables it.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_quad_obs</span> <span class="pre">0</span></code></p></td>
 <td><p>bool</p></td>
 <td><p>Take &lt;V&gt;, &lt;1/m&gt;, &lt;K&gt;, the CAP, the forces dV/dx_a and the velocities
 of the monitors from the assembled matrices instead of from psi at the
 quadrature points (2D/3D).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
 <td><p>int</p></td>
 <td><p>ILU fill level of the ASM subdomain preconditioner of every propagator
 (default 0). Level 1 saves at most one GMRES iteration but its fill makes

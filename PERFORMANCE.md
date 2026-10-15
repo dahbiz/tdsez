@@ -370,14 +370,33 @@ right-hand side needs two sparse products ($`\mathbf M`$ and $`\mathbf A_{\text{
 instead of three ($`\mathbf H_0`$, $`\mathbf D`$, $`\mathbf M`$).
 
 **Extrapolated initial guess.** Each stage solve starts from the stage input
-plus the increment the same stage produced on the previous step,
+plus the increment $`\boldsymbol\delta = \mathbf y - \mathbf x`$ of the same
+stage extrapolated from the last $`q`$ steps (polynomial of degree $`q-1`$),
 
 ```math
-\mathbf y_0^{(n)} = \mathbf x^{(n)} + \bigl(\mathbf y^{(n-1)} - \mathbf x^{(n-1)}\bigr),
+\mathbf y_0^{(n)} = \mathbf x^{(n)} + \sum_{j=1}^{q} (-1)^{j-1}\binom{q}{j}\,\boldsymbol\delta^{(n-j)},
 ```
 
-which removes the leading part of the increment from the initial residual. It
-can be disabled with `-pade_extrapolate_guess 0`.
+so the initial residual is $`O(h^q)`$. $`q = 3`$ by default
+(`-pade_guess_order 1..5`; $`q=1`$ was the previous behaviour); orders above 3
+gain little. `-pade_extrapolate_guess 0` starts from $`\mathbf x`$ alone.
+
+**Fused stage update.** $`\mathbf A_k = \mathbf B_k + g_k \mathbf E\cdot\mathbf D`$
+is formed in one pass over the stored values instead of a copy and one
+`MatAXPY` per field axis; the matrices are checked once to share the exact
+sparsity structure (else the copy/AXPY path is used).
+
+| 8 ranks, `pade22`, $`\Delta t=0.05`$ | time stepping | GMRES its/solve | operator updates |
+|---|---|---|---|
+| 3D soft-core H, $`p=3`$, 32k DOFs, 40 steps, xy field: before | 3.40 s | 5.51 | 0.61 s |
+| same, after | 2.90 s | 4.11 | 0.35 s |
+| 2D soft-core H, $`p=4`$, 14k DOFs, 100 steps: before | 0.52 s | 5.01 | 0.072 s |
+| same, after | 0.41 s | 3.38 | 0.050 s |
+
+Outputs agree with the previous build to the solve tolerance (dipoles
+$`\le 9\times10^{-11}`$ relative, other columns $`\le 7\times10^{-12}`$).
+The solves stop at $`10^{-12}`$ relative; `-pade_stage{1,2}_ksp_rtol 1e-11`
+saves another 10–13 % (differences $`5\times10^{-11}`$).
 
 3D harmonic oscillator, $`19\,683`$ DoFs, `magnus4`, $`\Delta t = 0.05`$, 200 steps,
 4 ranks:

@@ -344,6 +344,89 @@ PetscErrorCode TDSEZPropagator::BuildStageMatrix(Mat A, PetscScalar g, const Pet
 }
 
 
+/// Local AIJ blocks of A (diagonal and off-diagonal for MPIAIJ, the matrix
+/// itself for SeqAIJ) and the off-diagonal column map; false for other types.
+static bool TDSEZAIJBlocks(Mat A, Mat blk[2], const PetscInt **colmap)
+{
+    PetscBool mpi = PETSC_FALSE, seq = PETSC_FALSE;
+    if (PetscObjectTypeCompare((PetscObject)A, MATMPIAIJ, &mpi) || PetscObjectTypeCompare((PetscObject)A, MATSEQAIJ, &seq)) return false;
+    blk[0] = blk[1] = NULL; *colmap = NULL;
+    if (seq) { blk[0] = A; return true; }
+    if (!mpi) return false;
+    return MatMPIAIJGetSeqAIJ(A, &blk[0], &blk[1], colmap) == PETSC_SUCCESS;
+}
+
+/// Whether A and B store the same sparsity structure (row pointers, column
+/// indices, off-diagonal column map) on every rank (collective).
+static PetscErrorCode TDSEZSameStructure(Mat A, Mat B, bool *same)
+{
+    PetscFunctionBeginUser;
+    Mat a[2], b[2];
+    const PetscInt *ca, *cb;
+    int ok = TDSEZAIJBlocks(A, a, &ca) && TDSEZAIJBlocks(B, b, &cb);
+    for (int k = 0; k < 2 && ok; ++k) {
+        if (!a[k] || !b[k]) { ok = !a[k] && !b[k]; continue; }
+        PetscInt na, nb;
+        const PetscInt *ia, *ja, *ib, *jb;
+        PetscBool da, db;
+        PetscCall(MatGetRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &na, &ia, &ja, &da));
+        PetscCall(MatGetRowIJ(b[k], 0, PETSC_FALSE, PETSC_FALSE, &nb, &ib, &jb, &db));
+        ok = da && db && na == nb && !memcmp(ia, ib, sizeof(PetscInt) * (na + 1)) &&
+             !memcmp(ja, jb, sizeof(PetscInt) * ia[na]);
+        if (ok && k == 1) {
+            PetscInt nc;
+            PetscCall(MatGetLocalSize(a[1], NULL, &nc));
+            PetscInt ncb;
+            PetscCall(MatGetLocalSize(b[1], NULL, &ncb));
+            ok = nc == ncb && (!nc || !memcmp(ca, cb, sizeof(PetscInt) * nc));
+        }
+        PetscCall(MatRestoreRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &na, &ia, &ja, &da));
+        PetscCall(MatRestoreRowIJ(b[k], 0, PETSC_FALSE, PETSC_FALSE, &nb, &ib, &jb, &db));
+    }
+    int all;
+    PetscCallMPI(MPI_Allreduce(&ok, &all, 1, MPI_INT, MPI_MIN, PetscObjectComm((PetscObject)A)));
+    *same = all != 0;
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/// A = B + sum_i c_i D_i in one pass over the stored values (same structure).
+static PetscErrorCode TDSEZFusedCombine(Mat A, Mat B, PetscInt n, const Mat D[], const PetscScalar c[])
+{
+    PetscFunctionBeginUser;
+    Mat a[2], b[2], d[3][2];
+    const PetscInt *cm;
+    TDSEZAIJBlocks(A, a, &cm);
+    TDSEZAIJBlocks(B, b, &cm);
+    for (PetscInt i = 0; i < n; ++i) TDSEZAIJBlocks(D[i], d[i], &cm);
+    for (int k = 0; k < 2; ++k) {
+        if (!a[k]) continue;
+        PetscInt nz;
+        {
+            PetscInt nr; const PetscInt *ia, *ja; PetscBool done;
+            PetscCall(MatGetRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &nr, &ia, &ja, &done));
+            nz = ia[nr];
+            PetscCall(MatRestoreRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &nr, &ia, &ja, &done));
+        }
+        PetscScalar *va;
+        const PetscScalar *vb, *vd[3] = {NULL, NULL, NULL};
+        PetscCall(MatSeqAIJGetArrayWrite(a[k], &va));
+        PetscCall(MatSeqAIJGetArrayRead(b[k], &vb));
+        for (PetscInt i = 0; i < n; ++i) PetscCall(MatSeqAIJGetArrayRead(d[i][k], &vd[i]));
+        switch (n) {
+        case 0: for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j]; break;
+        case 1: for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j] + c[0] * vd[0][j]; break;
+        case 2: for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j] + c[0] * vd[0][j] + c[1] * vd[1][j]; break;
+        default:
+            for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j] + c[0] * vd[0][j] + c[1] * vd[1][j] + c[2] * vd[2][j];
+        }
+        for (PetscInt i = 0; i < n; ++i) PetscCall(MatSeqAIJRestoreArrayRead(d[i][k], &vd[i]));
+        PetscCall(MatSeqAIJRestoreArrayRead(b[k], &vb));
+        PetscCall(MatSeqAIJRestoreArrayWrite(a[k], &va));
+    }
+    PetscCall(PetscObjectStateIncrease((PetscObject)A));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /// @brief Cache B_k = M + g_k H for the step length h. H (including any CAP)
 ///        is fixed during propagation, so this is recomputed only when h
 ///        changes (first step, and a shortened final step).
@@ -389,7 +472,25 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
     // A_k = B_k + g_k E.D for both stages.
     PetscCall(PetscLogEventBegin(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
     PetscCall(UpdateStageBase(h));
+    Mat      Dn[3];
+    PetscInt n = 0;
+    for (int a = 0; a < 3; ++a) if (on[a] && D[a] && E[a] != 0.0) Dn[n++] = D[a];
+    if (fusedUpdate_ < 0) {                 // once: every matrix in the sum has the stage structure
+        bool same = true;
+        for (int a = 0; a < 3 && same; ++a) if (D[a]) PetscCall(TDSEZSameStructure(Astage_[0], D[a], &same));
+        for (int k = 0; k < 2 && same; ++k) {
+            PetscCall(TDSEZSameStructure(Astage_[0], Base_[k], &same));
+            if (same) PetscCall(TDSEZSameStructure(Astage_[0], Astage_[k], &same));
+        }
+        fusedUpdate_ = same ? 1 : 0;
+    }
     for (int k = 0; k < 2; ++k) {
+        if (fusedUpdate_) {
+            PetscScalar c[3];
+            for (PetscInt i = 0, a = 0; a < 3; ++a) if (on[a] && D[a] && E[a] != 0.0) c[i++] = g[k] * E[a];
+            PetscCall(TDSEZFusedCombine(Astage_[k], Base_[k], n, Dn, c));
+            continue;
+        }
         PetscCall(MatCopy(Base_[k], Astage_[k], SAME_NONZERO_PATTERN));
         for (int a = 0; a < 3; ++a)
             if (on[a] && D[a] && E[a] != 0.0)
@@ -402,19 +503,27 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
         PetscCall(MatMult(manager_.M(), psi, rhs));
         PetscCall(MatMult(Astage_[1 - k], psi, Ax));
         PetscCall(VecAXPBY(rhs, -1.0, 2.0, Ax));
-        // Initial guess: psi, plus the increment this stage produced on the
-        // previous step (the stage map changes by O(h) between steps, so this
-        // removes the leading part of the increment from the first residual).
+        // Initial guess: psi plus the increment y - x of this stage
+        // extrapolated from the last steps (polynomial of order guessOrder_;
+        // the increment varies smoothly with t, so the first residual is
+        // O(h^q) smaller than with psi alone).
         const int s = 2 * slot + k;
+        Vec *hist = guessDelta_[s];
         if (extrapolateGuess_) {
-            if (!guessDelta_[s]) PetscCall(VecDuplicate(psi, &guessDelta_[s]));
+            for (PetscInt j = 0; j < guessOrder_; ++j) if (!hist[j]) PetscCall(VecDuplicate(psi, &hist[j]));
             PetscCall(VecCopy(psi, Ax));                     // Ax <- stage input x
-            if (guessValid_[s]) PetscCall(VecAXPY(psi, 1.0, guessDelta_[s]));
+            static const PetscScalar w[5][5] = {{1, 0, 0, 0, 0}, {2, -1, 0, 0, 0}, {3, -3, 1, 0, 0},
+                                                {4, -6, 4, -1, 0}, {5, -10, 10, -5, 1}};
+            const PetscInt q = PetscMin(guessOrder_, guessCount_[s]);
+            if (q > 0) PetscCall(VecMAXPY(psi, q, w[q - 1], hist));
         }
         PetscCall(KSPSolve(kspStage_[k], rhs, psi));
         if (extrapolateGuess_) {
-            PetscCall(VecWAXPY(guessDelta_[s], -1.0, Ax, psi));   // y - x
-            guessValid_[s] = PETSC_TRUE;
+            Vec oldest = hist[guessOrder_ - 1];
+            for (PetscInt j = guessOrder_ - 1; j > 0; --j) hist[j] = hist[j - 1];
+            hist[0] = oldest;
+            PetscCall(VecWAXPY(hist[0], -1.0, Ax, psi));     // y - x
+            guessCount_[s] = PetscMin(guessCount_[s] + 1, guessOrder_);
         }
         KSPConvergedReason reason;
         PetscInt its = 0;
@@ -486,6 +595,9 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         m4 ? "s, commutator-free 4th-order Magnus" : ", exponential midpoint", m4 ? 4 : 2));
 
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-pade_extrapolate_guess", &extrapolateGuess_, NULL));
+    PetscCall(PetscOptionsGetInt(NULL, NULL, "-pade_guess_order", &guessOrder_, NULL));
+    PetscCheck(guessOrder_ >= 1 && guessOrder_ <= 5, PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE,
+               "-pade_guess_order must be 1..5");
 
     // Commutator-free Magnus 4 constants.
     const PetscReal s3 = PetscSqrtReal(3.0);
