@@ -187,6 +187,7 @@
 <li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load Balance</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
@@ -213,6 +214,7 @@
 <li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#coulomb-potentials-hydrogenic-sequence">Coulomb Potentials (hydrogenic sequence)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -342,6 +344,12 @@ cause spurious reflections, while CAP allows outgoing flux to leave cleanly.</p>
 <td><p>0.1</p></td>
 <td><p>Lowest momentum absorbed efficiently; sets the layer width w = 6.555/CAPKmin (see below)</p></td>
 </tr>
+<tr class="row-even"><td><p>CAPWidth / CAPLayerWidth</p></td>
+<td><p>real</p></td>
+<td><p>0</p></td>
+<td><p>Width of the absorbing layer at each wall (a.u.). &gt; 0 sets the layer
+directly and CAPKmin = 6.555/CAPWidth follows; 0 uses CAPKmin.</p></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -366,11 +374,16 @@ at most 45% of each axis; the run stops otherwise.</p>
 <section id="tuning-cap-parameters">
 <h2>Tuning CAP Parameters<a class="headerlink" href="#tuning-cap-parameters" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> sets both the lowest absorbed momentum and the layer width. Lower
-values absorb slower electrons but need a wider layer (a larger box).</p></li>
+<li><p>The layer width and the lowest absorbed momentum are one parameter:
+<span class="math notranslate nohighlight">\(w\,k_{\min} = 6.555\)</span>. Set whichever you think in: <code class="docutils literal notranslate"><span class="pre">CAPWidth</span></code> (the
+box budget, a.u.) or <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> (the slowest electron to absorb). A wider
+layer absorbs slower electrons but needs a larger box.</p></li>
 <li><p>Keep the physically relevant region (for HHG, the electron excursion
-<span class="math notranslate nohighlight">\(E_0/\omega^2\)</span> and the returning trajectories) inside the free core,
-which is printed at start-up.</p></li>
+<span class="math notranslate nohighlight">\(\alpha = E_0/\omega^2\)</span> and the returning trajectories) inside the
+free core. With the CAP on, the start-up block prints the layer, the
+absorbed momentum range and, when propagating with a field, whether each
+driven axis has a free-core half width of at least <span class="math notranslate nohighlight">\(2\alpha + 10\)</span> a.u.
+(a warning otherwise). Nothing is printed with <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p></li>
 </ul>
 <p>Recommendation: set <code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span> <span class="pre">=</span> <span class="pre">population</span></code> to monitor the bound-state
 population, and compare HHG spectra with a larger box or a smaller <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code>

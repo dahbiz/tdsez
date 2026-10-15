@@ -503,6 +503,11 @@ void TDSEZParser::ValidateOrThrow()
     }
 
 
+    // CAPWidth > 0 sets the layer; the Manolopoulos kmin follows from it.
+    if (EnableCAP && CAPWidth < 0.0)
+        throw std::runtime_error("ValidateOrThrow: CAPWidth must be > 0 (or 0 to use CAPKmin)");
+    if (EnableCAP && CAPWidth > 0.0) CAPKmin = 2.62206 / (2.0 * 0.2 * CAPWidth);
+
     // CAP requires kmin > 0: kmin<=0 makes the Manolopoulos absorb width
     // diverge (absorbs the ENTIRE domain) -> silent TS divergence.
     if (EnableCAP && CAPKmin <= 0.0)
@@ -521,8 +526,8 @@ void TDSEZParser::ValidateOrThrow()
                 throw std::runtime_error(
                     "ValidateOrThrow: the CAP layer (width 6.555/CAPKmin = " + std::to_string(w) +
                     " a.u. at each wall) exceeds 45% of the " + std::string(1, "xyz"[d]) +
-                    " extent (" + std::to_string(len[d]) + " a.u.). Increase CAPKmin "
-                    "(electrons slower than ~CAPKmin are then partly reflected) or enlarge the domain.");
+                    " extent (" + std::to_string(len[d]) + " a.u.). Reduce CAPWidth (or increase CAPKmin; "
+                    "electrons slower than ~CAPKmin are then partly reflected) or enlarge the domain.");
     }
 
     // Propagation: every polarised axis needs a field expression (an empty one

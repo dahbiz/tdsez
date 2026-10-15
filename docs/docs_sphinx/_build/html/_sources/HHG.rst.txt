@@ -99,10 +99,11 @@ Checklist
   width at least about :math:`2\alpha + 10` a.u., with
   :math:`\alpha = E_0/\omega^2` (16.4 a.u. at 800 nm, :math:`10^{14}` W/cm²).
 - ``EnableCAP = 1``. The CAP removes the electrons that do not return; without
-  it they reflect from the wall and recollide at wrong times. ``CAPKmin`` sets
+  it they reflect from the wall and recollide at wrong times. ``CAPWidth`` (layer
+  width in a.u.) or, equivalently, ``CAPKmin`` sets
   the slowest momentum absorbed and the layer width (:math:`6.555/k_{\min}`):
-  0.2–0.3 a.u. is a good start; check that a smaller value (wider layer, larger
-  domain) does not change the spectrum.
+  ``CAPKmin`` 0.2–0.3 a.u. (``CAPWidth`` 22–33 a.u.) is a good start; check
+  that a wider layer (larger domain) does not change the spectrum.
 
 **Resolution**
 

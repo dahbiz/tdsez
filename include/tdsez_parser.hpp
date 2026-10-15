@@ -248,6 +248,11 @@ class TDSEZParser
         inline static PetscBool             EnableLzDiag      = PETSC_FALSE;
         /// Inner edge of the CAP region (atomic units).
         inline static PetscReal             CAPKmin           = 0.1;
+        /// Width (a.u.) of the absorbing layer at each wall. > 0 sets the layer
+        /// directly and CAPKmin = 2.62206/(2*0.2*CAPWidth) = 6.555/CAPWidth
+        /// (the slowest momentum absorbed without reflection) follows from it;
+        /// 0 (default): the width follows from CAPKmin.
+        inline static PetscReal             CAPWidth          = 0.0;
         /// Output stride (in steps) for wavefunction snapshots.
         inline static PetscInt              OutputStrideWFS       = 100;
         /// Output stride (in steps) for time-series diagnostics.

@@ -82,3 +82,18 @@ def test_hydrogenic_cap_from_the_field():
     rc, E, out = _run("hyd_nocap", deck + "HydrogenicHMax = -1, -1\n")
     _step("HydrogenicHMax < 0 disables the cap", rc == 0 and "(capped)" not in out and "from the field" not in out,
           out[-800:])
+
+
+def test_cap_width_and_field_resolution_report():
+    """CAPWidth sets the layer (kmin = 6.555/CAPWidth); a coarse grid under a field is reported per axis;
+    without the CAP no CAP block is printed."""
+    deck = HO2D.replace("Domain = -12.0, 12.0", "Domain = -40.0, 40.0").replace("NSplines = 24", "NSplines = 20")
+    deck = deck.replace("EnablePropagation = 0", "EnablePropagation = 1").replace("FinalTime = 0.05", "FinalTime = 0.5")
+    deck += "Polarization = x\nLaserX = 0.0534*sin(0.057*t)\nOmegax = 0.057\n"
+    rc, E, out = _run("cap_width", deck + "EnableCAP = 1\nCAPWidth = 12.5\n")
+    _step("CAPWidth run", rc == 0, out[-1200:])
+    _step("layer set by CAPWidth", "layer w = 12.5 a.u. per wall (CAPWidth)" in out, out[-2500:])
+    _step("kmin = 6.555/CAPWidth", "kmin = 0.5244 a.u." in out, out[-2500:])
+    _step("coarse axis reported", "WARNING: x axis: widest element 4.000 au" in out, out[-2500:])
+    rc, E, out = _run("cap_off", deck)
+    _step("no CAP block without the CAP", rc == 0 and "Manolopoulos" not in out, out[-800:])

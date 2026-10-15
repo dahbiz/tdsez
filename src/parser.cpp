@@ -261,6 +261,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"HDF5Compress",       B(HDF5Compress)},
                 {"HDF5CompressLevel",  I(HDF5CompressLevel)},
                 {"CAPKmin",    R(CAPKmin)},
+                {"CAPWidth",   R(CAPWidth)},
+                {"CAPLayerWidth", R(CAPWidth)},
                 {"KnotAlpha",  R(KnotAlpha)},
                 {"KnotGrading", R(KnotAlpha)},         // intuitive alias
                 {"GradingStrength", R(KnotAlpha)},     // intuitive alias

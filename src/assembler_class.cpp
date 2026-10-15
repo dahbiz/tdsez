@@ -144,14 +144,31 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
             "    ▸ COMPLEX ABSORBING POTENTIAL (CAP)\n"
             "  ══════════════════════════════════════════════════════════════════════\n");
         PetscPrintf(PETSC_COMM_WORLD,
-            "      Manolopoulos layer w = %12.6f   (c/(2*delta*kmin), kmin=%g, Emin=%g)\n",
-            (double)cap_width, (double)TDSEZParser::CAPKmin,
-            (double)(0.5 * TDSEZParser::CAPKmin * TDSEZParser::CAPKmin));
-        for (PetscInt d = 0; d < dim; ++d)
+            "      Manolopoulos layer w = %.4g a.u. per wall (%s)\n"
+            "      absorbs momenta k >= kmin = %.4g a.u. (energies >= %.4g a.u.) with little reflection;\n"
+            "      slower electrons are partly reflected. Wider layer (CAPWidth) = smaller kmin.\n",
+            (double)cap_width, TDSEZParser::CAPWidth > 0 ? "CAPWidth" : "6.555/CAPKmin",
+            (double)TDSEZParser::CAPKmin, (double)(0.5 * TDSEZParser::CAPKmin * TDSEZParser::CAPKmin));
+        const TDSEZFieldScales &fs = TDSEZEstimateFieldScales();
+        for (PetscInt d = 0; d < dim; ++d) {
+            const PetscReal core = hi[d] - lo[d] - 2.0 * cap_width;
             PetscPrintf(PETSC_COMM_WORLD,
-                "      %c: absorbing for %c < %.6f and %c > %.6f  (free core %.6f a.u.)\n",
-                "xyz"[d], "xyz"[d], (double)(lo[d] + cap_width), "xyz"[d], (double)(hi[d] - cap_width),
-                (double)(hi[d] - lo[d] - 2.0 * cap_width));
+                "      %c: absorbing for %c < %.4g and %c > %.4g  (free core %.4g a.u.)\n",
+                "xyz"[d], "xyz"[d], (double)(lo[d] + cap_width), "xyz"[d], (double)(hi[d] - cap_width), (double)core);
+            // returning electrons must stay in the free core: half width >= 2 alpha + 10
+            if (fs.valid && TDSEZParser::Coupled((int)d)) {
+                const PetscReal need = 2 * fs.alpha + 10;
+                if (0.5 * core < need)
+                    PetscPrintf(PETSC_COMM_WORLD,
+                        "      WARNING: %c free core half width %.4g a.u. < 2 alpha + 10 = %.4g a.u. (quiver amplitude "
+                        "alpha = E0/omega^2 = %.3g): returning electrons enter the absorber; enlarge the domain or "
+                        "reduce CAPWidth\n", "xyz"[d], (double)(0.5 * core), (double)need, (double)fs.alpha);
+                else
+                    PetscPrintf(PETSC_COMM_WORLD,
+                        "      %c free core half width %.4g a.u. >= 2 alpha + 10 = %.4g a.u. (alpha = %.3g)\n",
+                        "xyz"[d], (double)(0.5 * core), (double)need, (double)fs.alpha);
+            }
+        }
         PetscPrintf(PETSC_COMM_WORLD,
             "  ══════════════════════════════════════════════════════════════════════\n");
     }

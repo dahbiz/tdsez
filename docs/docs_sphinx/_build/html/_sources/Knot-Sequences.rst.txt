@@ -163,6 +163,14 @@ converged spectrum (median 0.007, max 0.031 decades). A short test run
 (small FinalTime) samples only the start of the pulse and gets a wider cap;
 set HMax explicitly when that matters. Bound-state-only runs are not capped.
 
+**Resolution check (every knot sequence).** When propagating with a field,
+TDSE-Z prints the required width :math:`\pi/(2k_{max})` and, for every axis,
+either the widest element (resolved) or a warning naming the axis, the widest
+element and its position. Grids are not changed; only ``hydrogenic`` caps its
+elements. :math:`\omega` is taken from ``Omegax/y/z`` when given, else
+estimated from the field's zero crossings (a few per cent off for short ramped
+pulses; the rule has a factor-two margin: 1.0 au converged, 2.0 au failed).
+
 **Quadrature.** The nucleus sits on a knot (an element corner), where Gauss
 points never fall. Gauss-Legendre integrates the corner singularity of
 :math:`1/r` with a relative error of 1.6e-4 (8 points) on the 8 elements that

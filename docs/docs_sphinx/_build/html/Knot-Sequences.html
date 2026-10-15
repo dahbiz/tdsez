@@ -477,6 +477,13 @@ zero crossings of the field, <span class="math notranslate nohighlight">\(I_p\)<
 converged spectrum (median 0.007, max 0.031 decades). A short test run
 (small FinalTime) samples only the start of the pulse and gets a wider cap;
 set HMax explicitly when that matters. Bound-state-only runs are not capped.</p>
+<p><strong>Resolution check (every knot sequence).</strong> When propagating with a field,
+TDSE-Z prints the required width <span class="math notranslate nohighlight">\(\pi/(2k_{max})\)</span> and, for every axis,
+either the widest element (resolved) or a warning naming the axis, the widest
+element and its position. Grids are not changed; only <code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> caps its
+elements. <span class="math notranslate nohighlight">\(\omega\)</span> is taken from <code class="docutils literal notranslate"><span class="pre">Omegax/y/z</span></code> when given, else
+estimated from the field’s zero crossings (a few per cent off for short ramped
+pulses; the rule has a factor-two margin: 1.0 au converged, 2.0 au failed).</p>
 <p><strong>Quadrature.</strong> The nucleus sits on a knot (an element corner), where Gauss
 points never fall. Gauss-Legendre integrates the corner singularity of
 <span class="math notranslate nohighlight">\(1/r\)</span> with a relative error of 1.6e-4 (8 points) on the 8 elements that

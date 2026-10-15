@@ -443,6 +443,20 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ);
 /// Width of the Manolopoulos CAP layer at each wall, c / (2 delta CAPKmin).
 PetscReal TDSEZCapWidth();
 
+/// Strong-field scales of the input field over [0, FinalTime] (propagation
+/// with a coupled field only): peak field E0, angular frequency omega
+/// (Omegax/y/z or the field's zero crossings), Up = E0^2/(4 omega^2), Ip
+/// (|TargetEigenvalue| if negative, else 0.5), k_max = sqrt(2 (3.17 Up + Ip)),
+/// quiver amplitude alpha = E0/omega^2 and the element width h = pi/(2 k_max)
+/// that resolves the returning electron (about 4 elements per wavelength;
+/// measured on 2D hydrogen-like HHG, see Knot Sequences). valid = false when
+/// there is no field or omega cannot be estimated. Computed once.
+struct TDSEZFieldScales {
+    bool valid = false;
+    PetscReal E0 = 0, omega = 0, Up = 0, Ip = 0, kmax = 0, alpha = 0, h = 0;
+};
+const TDSEZFieldScales &TDSEZEstimateFieldScales();
+
 /// @brief Precompute the velocity (momentum) matrix elements between bound states.
 /// @param TDSEZ Pointer to the TDSEZManager.
 /// @return PetscErrorCode (0 on success).

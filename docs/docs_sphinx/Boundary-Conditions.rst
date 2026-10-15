@@ -41,6 +41,11 @@ Complex Absorbing Potential
      - real
      - 0.1
      - Lowest momentum absorbed efficiently; sets the layer width w = 6.555/CAPKmin (see below)
+   * - CAPWidth / CAPLayerWidth
+     - real
+     - 0
+     - Width of the absorbing layer at each wall (a.u.). > 0 sets the layer
+       directly and CAPKmin = 6.555/CAPWidth follows; 0 uses CAPKmin.
 
 How CAP Works
 -------------
@@ -70,11 +75,16 @@ at most 45% of each axis; the run stops otherwise.
 Tuning CAP Parameters
 ---------------------
 
-- ``CAPKmin`` sets both the lowest absorbed momentum and the layer width. Lower
-  values absorb slower electrons but need a wider layer (a larger box).
+- The layer width and the lowest absorbed momentum are one parameter:
+  :math:`w\,k_{\min} = 6.555`. Set whichever you think in: ``CAPWidth`` (the
+  box budget, a.u.) or ``CAPKmin`` (the slowest electron to absorb). A wider
+  layer absorbs slower electrons but needs a larger box.
 - Keep the physically relevant region (for HHG, the electron excursion
-  :math:`E_0/\omega^2` and the returning trajectories) inside the free core,
-  which is printed at start-up.
+  :math:`\alpha = E_0/\omega^2` and the returning trajectories) inside the
+  free core. With the CAP on, the start-up block prints the layer, the
+  absorbed momentum range and, when propagating with a field, whether each
+  driven axis has a free-core half width of at least :math:`2\alpha + 10` a.u.
+  (a warning otherwise). Nothing is printed with ``EnableCAP = 0``.
 
 Recommendation: set ``PhysicsOutput = population`` to monitor the bound-state
 population, and compare HHG spectra with a larger box or a smaller ``CAPKmin``

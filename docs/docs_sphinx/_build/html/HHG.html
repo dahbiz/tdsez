@@ -376,10 +376,11 @@ cross-polarised emission in 2D/3D.</p></li>
 width at least about <span class="math notranslate nohighlight">\(2\alpha + 10\)</span> a.u., with
 <span class="math notranslate nohighlight">\(\alpha = E_0/\omega^2\)</span> (16.4 a.u. at 800 nm, <span class="math notranslate nohighlight">\(10^{14}\)</span> W/cm²).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>. The CAP removes the electrons that do not return; without
-it they reflect from the wall and recollide at wrong times. <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> sets
+it they reflect from the wall and recollide at wrong times. <code class="docutils literal notranslate"><span class="pre">CAPWidth</span></code> (layer
+width in a.u.) or, equivalently, <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> sets
 the slowest momentum absorbed and the layer width (<span class="math notranslate nohighlight">\(6.555/k_{\min}\)</span>):
-0.2–0.3 a.u. is a good start; check that a smaller value (wider layer, larger
-domain) does not change the spectrum.</p></li>
+<code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> 0.2–0.3 a.u. (<code class="docutils literal notranslate"><span class="pre">CAPWidth</span></code> 22–33 a.u.) is a good start; check
+that a wider layer (larger domain) does not change the spectrum.</p></li>
 </ul>
 <p><strong>Resolution</strong></p>
 <ul class="simple">

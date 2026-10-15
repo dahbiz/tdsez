@@ -299,53 +299,90 @@ static PetscErrorCode TDSEZShellWeight(IGA iga, Vec w)
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/// Largest element width of the hydrogenic sequence for strong-field
-/// propagation: about 4 elements per wavelength of the fastest returning
-/// electron, h = pi / (2 k_max), k_max = sqrt(2 (3.17 Up + Ip)). Measured on 2D
-/// hydrogen-like HHG (800 nm, 1e14 W/cm2, degree 3): 1.0 au (= this rule)
-/// converges the harmonic yields to 1.6 % (median), 2.0 au misses the cutoff by
-/// 4 decades, no cap by 1-2 decades over the plateau. E0 is sampled from the
-/// field over [0, FinalTime]; omega from Omegax/y/z or the zero crossings; Ip
-/// from TargetEigenvalue (< 0) or 0.5. Returns 0 when no field is applied or
-/// omega cannot be estimated.
-static PetscReal TDSEZHydrogenicAutoHMax()
+const TDSEZFieldScales &TDSEZEstimateFieldScales()
 {
-    if (!TDSEZParser::EnablePropagation || TDSEZParser::FinalTime <= 0) return 0.0;
+    static TDSEZFieldScales f;
+    static bool done = false;
+    if (done) return f;
+    done = true;
+    if (!TDSEZParser::EnablePropagation || TDSEZParser::FinalTime <= 0) return f;
     const PetscInt n = 20000;
     const PetscReal T = TDSEZParser::FinalTime;
-    PetscReal E0 = 0;
     int dominant = -1;
     for (int a = 0; a < (int)TDSEZParser::Dimension; ++a) {
         if (!TDSEZParser::Coupled(a)) continue;
         for (PetscInt i = 0; i <= n; ++i) {
             const PetscReal e = PetscAbsReal(TDSEZParser::Field(a, T * i / n));
-            if (e > E0) { E0 = e; dominant = a; }
+            if (e > f.E0) { f.E0 = e; dominant = a; }
         }
     }
-    if (E0 <= 0 || dominant < 0) return 0.0;
-    PetscReal w = 0;
+    if (f.E0 <= 0 || dominant < 0) return f;
     const PetscReal om[3] = {TDSEZParser::Omegax, TDSEZParser::Omegay, TDSEZParser::Omegaz};
-    for (int a = 0; a < 3; ++a) if (TDSEZParser::Coupled(a)) w = PetscMax(w, om[a]);
-    if (w <= 0) {                                   // from the zero crossings of the dominant axis
+    for (int a = 0; a < 3; ++a) if (TDSEZParser::Coupled(a)) f.omega = PetscMax(f.omega, om[a]);
+    if (f.omega <= 0) {                             // from the zero crossings of the dominant axis
+        // half periods between the first and the last sign change
         PetscInt cross = 0;
-        PetscReal prev = TDSEZParser::Field(dominant, 0.0);
+        PetscReal prev = TDSEZParser::Field(dominant, 0.0), t0 = 0, t1 = 0;
         for (PetscInt i = 1; i <= n; ++i) {
-            const PetscReal e = TDSEZParser::Field(dominant, T * i / n);
-            if ((e > 0 && prev < 0) || (e < 0 && prev > 0)) ++cross;
+            const PetscReal t = T * i / n, e = TDSEZParser::Field(dominant, t);
+            if ((e > 0 && prev < 0) || (e < 0 && prev > 0)) { if (!cross) t0 = t; t1 = t; ++cross; }
             if (e != 0) prev = e;
         }
-        if (cross >= 2) w = PETSC_PI * cross / T;
+        if (cross >= 3) f.omega = PETSC_PI * (cross - 1) / (t1 - t0);
     }
-    if (w <= 0) return 0.0;
-    const PetscReal Up = E0 * E0 / (4 * w * w);
-    const PetscReal Ip = PetscRealPart(TDSEZParser::TargetEigenvalue) < 0 ? -PetscRealPart(TDSEZParser::TargetEigenvalue) : 0.5;
-    const PetscReal kmax = PetscSqrtReal(2 * (3.17 * Up + Ip));
-    const PetscReal h = PETSC_PI / (2 * kmax);
+    if (f.omega <= 0) return f;
+    f.Up    = f.E0 * f.E0 / (4 * f.omega * f.omega);
+    f.Ip    = PetscRealPart(TDSEZParser::TargetEigenvalue) < 0 ? -PetscRealPart(TDSEZParser::TargetEigenvalue) : 0.5;
+    f.kmax  = PetscSqrtReal(2 * (3.17 * f.Up + f.Ip));
+    f.alpha = f.E0 / (f.omega * f.omega);
+    f.h     = PETSC_PI / (2 * f.kmax);
+    f.valid = true;
+    return f;
+}
+
+/// Largest hydrogenic element width when HydrogenicHMax = 0: the resolution
+/// width of the field (TDSEZEstimateFieldScales), 0 (no cap) without a field.
+/// Measured on 2D hydrogen-like HHG (800 nm, 1e14 W/cm2, degree 3): this width
+/// converges the harmonic yields to 1.6 % (median), twice it misses the cutoff
+/// by 4 decades, no cap by 1-2 decades over the plateau.
+static PetscReal TDSEZHydrogenicAutoHMax()
+{
+    const TDSEZFieldScales &f = TDSEZEstimateFieldScales();
+    if (!f.valid) return 0.0;
     PetscPrintf(PETSC_COMM_WORLD,
         "TDSEZHydrogenicKnots: HydrogenicHMax = %.3f au from the field (E0 = %.4g, omega = %.4g, Up = %.4g, "
         "Ip = %.3g, k_max = %.3g; h = pi/(2 k_max)); set HydrogenicHMax > 0 to choose, < 0 for no cap\n",
-        (double)h, (double)E0, (double)w, (double)Up, (double)Ip, (double)kmax);
-    return h;
+        (double)f.h, (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax);
+    return f.h;
+}
+
+/// Spatial resolution of the strong-field dynamics on any knot sequence:
+/// compares the widest element of every axis with pi/(2 k_max) and warns
+/// for the axes that are coarser. Grids are not changed. Silent without a
+/// field (nothing to resolve).
+static void TDSEZCheckFieldResolution(IGA iga)
+{
+    const TDSEZFieldScales &f = TDSEZEstimateFieldScales();
+    if (!f.valid) return;
+    PetscPrintf(PETSC_COMM_WORLD,
+        "TDSEZ field resolution: E0 = %.4g, omega = %.4g, Up = %.4g, Ip = %.3g -> k_max = %.3g au, "
+        "elements <= pi/(2 k_max) = %.3f au\n",
+        (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax, (double)f.h);
+    for (PetscInt d = 0; d < iga->dim; ++d) {
+        PetscInt m;
+        PetscReal *U, hmax = 0, xmax = 0;
+        if (IGAAxisGetKnots(iga->axis[d], &m, &U)) continue;
+        for (PetscInt k = 0; k < m; ++k)
+            if (U[k + 1] - U[k] > hmax) { hmax = U[k + 1] - U[k]; xmax = 0.5 * (U[k] + U[k + 1]); }
+        if (hmax > f.h * (1 + 1e-9))
+            PetscPrintf(PETSC_COMM_WORLD,
+                "TDSEZ WARNING: %c axis: widest element %.3f au (at %c = %.3g) > %.3f au; the returning electron "
+                "and the harmonic cutoff are under-resolved there (refine NSplines/the grading, or use "
+                "KnotSequence = hydrogenic, which caps the width)\n",
+                "xyz"[d], (double)hmax, "xyz"[d], (double)xmax, (double)f.h);
+        else
+            PetscPrintf(PETSC_COMM_WORLD, "      %c axis: widest element %.3f au: resolved\n", "xyz"[d], (double)hmax);
+    }
 }
 
 /// Backward error of an eigenpair of the pencil (H, M):
@@ -1934,6 +1971,7 @@ PetscErrorCode TDSEZCore::Output()
 
             // Final Setup
             IGASetUp(iga);
+            TDSEZCheckFieldResolution(iga);
         }
 
         TDSEZCore::~TDSEZCore() 
