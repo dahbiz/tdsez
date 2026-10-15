@@ -99,3 +99,22 @@ def test_factorised_observables_match_assembled():
             _step(f"{name}: {k} equal", err < 1e-11, f"{err:.2e}")
         if name == "t2d_xpol":
             _step("uncoupled Dy still recorded", np.max(np.abs(new["dipoles"][:, 4])) > 1e-6)
+
+
+def test_sumfact_force_corrections_match_per_point():
+    """Operator-form acceleration with a position-dependent mass: the
+    sum-factorised force matrices with their mass-gradient corrections give
+    the same time series as the per-point kernels (-tdsez_sumfact 0)."""
+    for dim in (2, 3):
+        name = f"opacc_varmass_{dim}d"
+        text = CASES["t3d_varmass"].replace("Dimension = 3", f"Dimension = {dim}")
+        text = text.replace("Mass = 1 + 0.3*tanh(x/2)", "Mass = 1 + 0.3*tanh(x/2) + 0.2*exp(-y*y/3)")
+        text += "AccelerationMethod = operator\nPolarization = xy\nLaserY = 0.02*cos(t)\n"
+        if dim == 2:
+            text = text.replace("WavepacketMomentum = 0.5, 0.0, 0.3", "WavepacketMomentum = 0.5, 0.2")
+        ref, _ = _run(name + "_pp", text, ["-tdsez_sumfact", "0"])
+        new, _ = _run(name + "_sf", text, [])
+        for k in ref:
+            err = np.max(np.abs(ref[k] - new[k])) / max(np.max(np.abs(ref[k])), 1e-300)
+            _step(f"{name}: {k} equal", err < 1e-11, f"{err:.2e}")
+        _step(f"{name}: acceleration non-trivial", np.max(np.abs(new["dipoles"][:, -1])) > 0)

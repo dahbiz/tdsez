@@ -784,10 +784,10 @@ PetscErrorCode TDSEZFormHam(
 
 /// X-polarization multi-operator batch kernel: [K, V, Md, X, VelX, dVdx].
 /**
- * Assembles six operators in a single quadrature-point pass for x-polarized
- * runs: kinetic K, potential V, distributed mass Md, dipole X, velocity
- * VelX, and force dVdx (with variable-mass quantum corrections). Supports
- * 1D/2D/3D; skips quantum-correction terms when mass is constant.
+ * Assembles six operators in a single quadrature-point pass in 1D: kinetic
+ * K, potential V, distributed mass Md, dipole X, velocity VelX, and force
+ * dVdx (with variable-mass quantum corrections when the operator-form
+ * acceleration reads it). 2D and 3D use TDSEZFormPhyAxes.
  *
  * @param[in]  p    Quadrature point.
  * @param[in]  nmat Number of matrices (unused, expected 6).
@@ -809,9 +809,10 @@ PetscErrorCode TDSEZFormPhyX(
 
     PetscReal xyz[3] = {0.0, 0.0, 0.0};
     IGAPointFormGeomMap(p, xyz);
-    const PetscReal x = xyz[0], y = xyz[1], z = xyz[2];
+    const PetscReal x = xyz[0];
+    PetscCheck(dim == 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "TDSEZFormPhyX is the 1D kernel (2D/3D use TDSEZFormPhyAxes)");
 
-    const PetscReal invMass = 1.0 / TDSEZParser::MassDist(x, y, z);
+    const PetscReal invMass = 1.0 / TDSEZParser::MassDist(x, 0.0, 0.0);
     const PetscReal coeff   = 0.5 * invMass;
 
     // When mass is constant all spatial derivatives of f=1/m vanish:
@@ -820,6 +821,10 @@ PetscErrorCode TDSEZFormPhyX(
     // TDSEZCompDerivative is never called, saving O(dim^2+dim^3) MassDist
     // evaluations per quadrature point — the dominant cost in the variable-mass path.
     const bool massIsConstant = (TDSEZParser::MassIsConstant == PETSC_TRUE);
+    // Mass-gradient corrections of the force operator dVdx. They are needed
+    // only when a(t) uses the operator form; with the discrete acceleration
+    // the dVdx matrix is not read (any dimension), so they are skipped.
+    const bool corr = !massIsConstant && !TDSEZDiscreteAccelerationActive();
 
 
     if (dim == 1)
@@ -837,7 +842,7 @@ PetscErrorCode TDSEZFormPhyX(
         // Variable-mass: compute derivatives once per quadrature point,
         // then precompute all (a,b)-invariant combinations.
         PetscReal two_fx2=0, f_2fxx=0, f_fxxx=0, neg2_f_fx=0, neg2_fx2_fxx=0, fx_fxx=0;
-        if (!massIsConstant) {
+        if (corr) {
             const PhysicsDerivativesFull &ops = TDSEZInvMassDerivatives(std::vector<PetscReal>{x, 0.0, 0.0});
             const PetscReal fx   = ops.first[0];
             const PetscReal fxx  = ops.second[0];
@@ -883,7 +888,7 @@ PetscErrorCode TDSEZFormPhyX(
                 // Constant mass: quantum correction is exactly zero,
                 // dVdx reduces to the classical Ehrenfest term only.
                 PetscScalar dv = Ba_neg_dVdx_f_w * Bb;
-                if (!massIsConstant) {
+                if (corr) {
                     const PetscScalar R1 = two_fx2      * Ba * dBb_x;
                     const PetscScalar R3 = (f_2fxx * dBb_x + f_fxxx * Bb) * Ba;
                     const PetscScalar R4 = neg2_f_fx    * dBa_x * dBb_x;
@@ -894,236 +899,6 @@ PetscErrorCode TDSEZFormPhyX(
                 dVdxrow[b] += dv;
             }
         }
-    }
-    else if (dim == 2)
-    {
-        const PetscReal *B;
-        const PetscReal (*dB)[2];
-        const PetscReal (*ddB)[2][2];
-        IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-        IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-        IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
-
-        const PetscReal w    = p->weight[0] * p->detJac[0];
-        const PetscReal Vxyz = TDSEZParser::V(x, y);
-        const PetscReal dVdx = TDSEZParser::dVx(x, y);
-        const PetscReal neg_dVdx_f = -dVdx * invMass;
-
-        PetscReal two_fx2_fy2=0, f_4fy=0, f_2_fxx_fyy=0, f_fxxx_fxyy=0;
-        PetscReal two_f_fx=0, fx_fxx=0, fy_fxy=0;
-        PetscReal fy_fx=0, f_fxy=0, fx2_f_fxx=0;
-        if (!massIsConstant) {
-            const PhysicsDerivativesFull &ops = TDSEZInvMassDerivatives(std::vector<PetscReal>{x, y, 0.0});
-            const PetscReal fx  = ops.first[0],  fy  = ops.first[1];
-            const PetscReal fxx = ops.second[0*2+0], fyy = ops.second[1*2+1];
-            const PetscReal fxy = ops.second[0*2+1];
-            const PetscReal fxxx = ops.third[(0*2+0)*2+0];
-            const PetscReal fxyy = ops.third[(0*2+1)*2+1];
-            two_fx2_fy2  =  2.0 * (fx*fx + fy*fy);
-            f_4fy        =  4.0 * invMass * fy;
-            f_2_fxx_fyy  =  2.0 * invMass * (fxx + fyy);
-            f_fxxx_fxyy  =  invMass * (fxxx + fxyy);
-            two_f_fx     =  2.0 * invMass * fx;
-            fx_fxx       =  fx * fxx;
-            fy_fxy       =  fy * fxy;
-            fy_fx        =  fy * fx;
-            f_fxy        =  invMass * fxy;
-            fx2_f_fxx    =  fx*fx + invMass*fxx;
-        }
-
-        for (PetscInt a = 0; a < nen; ++a)
-        {
-            const PetscReal Ba    = B[a];
-            const PetscReal dBa_x = dB[a][0];
-            const PetscReal dBa_y = dB[a][1];
-
-            PetscScalar *Krow    = &M[0][a * nen];
-            PetscScalar *Vrow    = &M[1][a * nen];
-            PetscScalar *Mdrow   = &M[2][a * nen];
-            PetscScalar *Xrow    = &M[3][a * nen];
-            PetscScalar *Pxrow   = &M[4][a * nen];
-            PetscScalar *dVdxrow = &M[5][a * nen];
-
-            const PetscReal Ba_w            = Ba * w;
-            const PetscReal Ba_Vxyz_w       = Ba * Vxyz * w;
-            const PetscReal Ba_invMass_w    = Ba * invMass * w;
-            const PetscReal Ba_x_w          = Ba * x * w;
-            const PetscReal Ba_neg_dVdx_f_w = Ba * neg_dVdx_f * w;
-
-            for (PetscInt b = 0; b < nen; ++b)
-            {
-                const PetscReal Bb     = B[b];
-                const PetscReal dBb_x  = dB[b][0];
-                const PetscReal dBb_y  = dB[b][1];
-                const PetscReal dBb_xy = ddB[b][0][1];
-
-                Krow[b]  += coeff * (dBa_x*dBb_x + dBa_y*dBb_y) * w;
-                Vrow[b]  += Ba_Vxyz_w * Bb;
-                Mdrow[b] += Ba_invMass_w * Bb;
-                Xrow[b]  += Ba_x_w * Bb;
-                Pxrow[b] += -0.5 * PETSC_i * invMass * (Ba_w * dBb_x - dBa_x * Bb * w);
-
-                PetscScalar dv = Ba_neg_dVdx_f_w * Bb;
-                if (!massIsConstant) {
-                    const PetscScalar R1 = two_fx2_fy2 * Ba * dBb_x;
-                    const PetscScalar R3 = f_4fy       * Ba * dBb_xy
-                                         + f_2_fxx_fyy * Ba * dBb_x
-                                         + f_fxxx_fxyy * Ba * Bb;
-                    const PetscScalar R4 = two_f_fx * (dBa_y*dBb_y - dBa_x*dBb_x);
-                    const PetscScalar R5 = 2.0 * (Ba*dBb_y*(fy_fx   + f_fxy)
-                                                 - Ba*dBb_x*(fx2_f_fxx));
-                    const PetscScalar R6 = Ba * Bb * (fy_fxy + fx_fxx);
-                    dv -= 0.25 * (R1 + R3 + R4 + R5 + R6) * w;
-                }
-                dVdxrow[b] += dv;
-            }
-        }
-    }
-    else // dim == 3
-    {
-        const PetscReal *B;
-        const PetscReal (*dB)[3];
-        const PetscReal (*ddB)[3][3];
-        IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
-        IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
-        IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
-
-        const PetscReal w     = p->weight[0] * p->detJac[0];
-        const PetscReal V_val = TDSEZParser::V(x, y, z);
-        const PetscReal dVdx  = TDSEZParser::dVx(x, y, z);
-        const PetscReal neg_dVdx_f = -dVdx * invMass;
-
-        // Mass-gradient corrections of the force operator. They are needed only
-        // when a(t) uses the operator form; with the discrete acceleration the
-        // dVdx matrix is not read, so skip the finite-difference derivatives
-        // (O(dim^3) mass evaluations per quadrature point).
-        const bool corr = !massIsConstant && !TDSEZDiscreteAccelerationActive();
-
-        // All quantum-correction scalars default to zero (constant-mass path).
-        PetscReal two_fgrad2=0, f_4fy=0, f_4fz=0, f_2_lap=0, f_mix=0;
-        PetscReal two_f_fx=0, ffx_x=0, ffx_y=0, ffx_z=0;
-        PetscReal fz_fxz=0, fy_fxy_fx_fxx=0;
-        if (corr) {
-            const PhysicsDerivativesFull &ops = TDSEZInvMassDerivatives(std::vector<PetscReal>{x, y, z});
-            const PetscReal fx = ops.first[0], fy = ops.first[1], fz = ops.first[2];
-            const PetscReal fxx = ops.second[0*3+0], fyy = ops.second[1*3+1], fzz = ops.second[2*3+2];
-            const PetscReal fxy = ops.second[0*3+1], fxz = ops.second[0*3+2];
-            const PetscReal fxxx = ops.third[(0*3+0)*3+0];
-            const PetscReal fxyy = ops.third[(0*3+1)*3+1];
-            const PetscReal fxzz = ops.third[(0*3+2)*3+2];
-            two_fgrad2      =  2.0 * (fx*fx + fy*fy + fz*fz);
-            f_4fy           =  4.0 * invMass * fy;
-            f_4fz           =  4.0 * invMass * fz;
-            f_2_lap         =  2.0 * invMass * (fxx + fyy + fzz);
-            f_mix           =  invMass * (fxxx + fxyy + fxzz);
-            two_f_fx        =  2.0 * invMass * fx;
-            ffx_x           =  fx*fx + invMass*fxx;
-            ffx_y           =  fy*fx + invMass*fxy;
-            ffx_z           =  fz*fx + invMass*fxz;
-            fz_fxz          =  fz * fxz;
-            fy_fxy_fx_fxx   =  fy*fxy + fx*fxx;
-        }
-
-        // Prefetch dB into flat arrays: eliminates strided dB[i][j] reads
-        // from both a-side and b-side of the inner loop.
-        PetscReal buf_dBx[512], buf_dBy[512], buf_dBz[512];
-        PetscReal *dBx = buf_dBx, *dBy = buf_dBy, *dBz = buf_dBz;
-        PetscBool heap_used = PETSC_FALSE;
-        if (PetscUnlikely(nen > 512)) {
-            PetscCall(PetscMalloc3(nen, &dBx, nen, &dBy, nen, &dBz));
-            heap_used = PETSC_TRUE;
-        }
-        for (PetscInt i = 0; i < nen; i++) {
-            dBx[i] = dB[i][0]; dBy[i] = dB[i][1]; dBz[i] = dB[i][2];
-        }
-
-        // K, V, Md and X are real symmetric and VelX = i R with R real
-        // antisymmetric: accumulate their upper triangles in real per-element
-        // buffers and write the full complex element matrices once, at the
-        // element's last quadrature point. dVdx is real; it is symmetric unless
-        // the mass corrections are active, in which case it is kept in full.
-        thread_local std::vector<PetscReal> Rk, Rv, Rmd, Rx, Rvel, Rdv;
-        const size_t n2 = (size_t)nen * (size_t)nen;
-        if (p->index == 0) {
-            Rk.assign(n2, 0.0); Rv.assign(n2, 0.0); Rmd.assign(n2, 0.0);
-            Rx.assign(n2, 0.0); Rvel.assign(n2, 0.0); Rdv.assign(n2, 0.0);
-        }
-
-        const PetscReal coeff_w   = coeff * w;
-        const PetscReal vel_w     = -0.5 * invMass * w;
-        for (PetscInt a = 0; a < nen; a++)
-        {
-            const PetscReal Ba    = B[a];
-            const PetscReal dBa_x = dBx[a];
-            const PetscReal dBa_y = dBy[a];
-            const PetscReal dBa_z = dBz[a];
-
-            const size_t    row             = (size_t)a * nen;
-            PetscReal *__restrict__ Krow    = Rk.data()   + row;
-            PetscReal *__restrict__ Vrow    = Rv.data()   + row;
-            PetscReal *__restrict__ Mdrow   = Rmd.data()  + row;
-            PetscReal *__restrict__ Xrow    = Rx.data()   + row;
-            PetscReal *__restrict__ Velrow  = Rvel.data() + row;
-            PetscReal *__restrict__ dVdxrow = Rdv.data()  + row;
-
-            const PetscReal Ba_V_w          = Ba * V_val * w;
-            const PetscReal Ba_invMass_w    = Ba * invMass * w;
-            const PetscReal Ba_x_w          = Ba * x * w;
-            const PetscReal Ba_neg_dVdx_f_w = Ba * neg_dVdx_f * w;
-            const PetscReal gx_a = coeff_w * dBa_x, gy_a = coeff_w * dBa_y, gz_a = coeff_w * dBa_z;
-            const PetscReal vBa = vel_w * Ba, vdBa = vel_w * dBa_x;
-
-            for (PetscInt b = a; b < nen; b++)
-            {
-                const PetscReal Bb = B[b];
-                Krow[b]   += gx_a * dBx[b] + gy_a * dBy[b] + gz_a * dBz[b];
-                Vrow[b]   += Ba_V_w * Bb;
-                Mdrow[b]  += Ba_invMass_w * Bb;
-                Xrow[b]   += Ba_x_w * Bb;
-                Velrow[b] += vBa * dBx[b] - vdBa * Bb;
-            }
-
-            if (!corr) {
-                for (PetscInt b = a; b < nen; b++) dVdxrow[b] += Ba_neg_dVdx_f_w * B[b];
-            } else {
-                for (PetscInt b = 0; b < nen; b++)
-                {
-                    const PetscReal Bb     = B[b];
-                    const PetscReal dBb_x  = dBx[b];
-                    const PetscReal dBb_y  = dBy[b];
-                    const PetscReal dBb_z  = dBz[b];
-                    const PetscReal dBb_xy = ddB[b][0][1];
-                    const PetscReal dBb_xz = ddB[b][0][2];
-                    const PetscReal row1 = two_fgrad2 * Ba * dBb_x;
-                    const PetscReal row2 = f_4fz * Ba * dBb_xz + fz_fxz * Ba * Bb;
-                    const PetscReal row3 = f_4fy * Ba * dBb_xy
-                                         + f_2_lap * Ba * dBb_x
-                                         + f_mix   * Ba * Bb;
-                    const PetscReal row4 = two_f_fx * (dBa_z*dBb_z + dBa_y*dBb_y - dBa_x*dBb_x);
-                    const PetscReal row5 = 2.0*(Ba*dBb_z*ffx_z + Ba*dBb_y*ffx_y - Ba*dBb_x*ffx_x);
-                    const PetscReal row6 = fy_fxy_fx_fxx * Ba * Bb;
-                    dVdxrow[b] += Ba_neg_dVdx_f_w * Bb - 0.25 * (row1+row2+row3+row4+row5+row6) * w;
-                }
-            }
-        }
-
-        if (p->index == p->count - 1) {
-            for (PetscInt a = 0; a < nen; a++)
-                for (PetscInt b = a; b < nen; b++) {
-                    const size_t ab = (size_t)a * nen + b, ba = (size_t)b * nen + a;
-                    M[0][ab] += Rk[ab];  M[1][ab] += Rv[ab];  M[2][ab] += Rmd[ab];
-                    M[3][ab] += Rx[ab];  M[4][ab] += PETSC_i * Rvel[ab];
-                    if (b != a) {
-                        M[0][ba] += Rk[ab];  M[1][ba] += Rv[ab];  M[2][ba] += Rmd[ab];
-                        M[3][ba] += Rx[ab];  M[4][ba] -= PETSC_i * Rvel[ab];
-                    }
-                    if (!corr) { M[5][ab] += Rdv[ab]; if (b != a) M[5][ba] += Rdv[ab]; }
-                }
-            if (corr)
-                for (size_t k = 0; k < n2; ++k) M[5][k] += Rdv[k];
-        }
-
-        if (PetscUnlikely(heap_used)) PetscCall(PetscFree3(dBx, dBy, dBz));
     }
 
     PetscFunctionReturn(PETSC_SUCCESS);

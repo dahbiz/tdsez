@@ -56,11 +56,10 @@ Performance in 3D
 -----------------
 
 - **Assembly**: a constant ``Mass`` expression is detected automatically
-  (``MassIsConstant``). A position-dependent mass uses the same fast
-  (sum-factorised) assembly with the discrete acceleration (the default); only
-  ``AccelerationMethod = operator`` with a varying mass needs the slow per-point
-  path, for the finite-difference mass-gradient corrections of the force
-  matrices.
+  (``MassIsConstant``). All 2D/3D time-dependent operators, including the
+  mass-gradient corrections of the force matrices for
+  ``AccelerationMethod = operator`` with a varying mass, are sum-factorised;
+  ``-tdsez_sumfact_check`` compares every element with the per-point kernels.
 - **Eigensolver**: shift-invert near the bottom of a gapless spectrum (free or
   nearly free carriers) converges slowly, and the 3D direct factorisation is
   memory-bound. With an analytic initial state use ``NBoundStates = 0``.

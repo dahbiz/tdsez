@@ -332,11 +332,10 @@ you expect output.</p>
 <h2>Performance in 3D<a class="headerlink" href="#performance-in-3d" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><strong>Assembly</strong>: a constant <code class="docutils literal notranslate"><span class="pre">Mass</span></code> expression is detected automatically
-(<code class="docutils literal notranslate"><span class="pre">MassIsConstant</span></code>). A position-dependent mass uses the same fast
-(sum-factorised) assembly with the discrete acceleration (the default); only
-<code class="docutils literal notranslate"><span class="pre">AccelerationMethod</span> <span class="pre">=</span> <span class="pre">operator</span></code> with a varying mass needs the slow per-point
-path, for the finite-difference mass-gradient corrections of the force
-matrices.</p></li>
+(<code class="docutils literal notranslate"><span class="pre">MassIsConstant</span></code>). All 2D/3D time-dependent operators, including the
+mass-gradient corrections of the force matrices for
+<code class="docutils literal notranslate"><span class="pre">AccelerationMethod</span> <span class="pre">=</span> <span class="pre">operator</span></code> with a varying mass, are sum-factorised;
+<code class="docutils literal notranslate"><span class="pre">-tdsez_sumfact_check</span></code> compares every element with the per-point kernels.</p></li>
 <li><p><strong>Eigensolver</strong>: shift-invert near the bottom of a gapless spectrum (free or
 nearly free carriers) converges slowly, and the 3D direct factorisation is
 memory-bound. With an analytic initial state use <code class="docutils literal notranslate"><span class="pre">NBoundStates</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p></li>

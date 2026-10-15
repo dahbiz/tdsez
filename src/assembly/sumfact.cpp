@@ -18,9 +18,9 @@
 //  identical up to floating-point rounding. Each axis contraction is a
 //  dense matrix product evaluated with the BLAS PETSc was configured with.
 //
-//  Used for TDSEZFormHam (H, M) and for TDSEZFormPhyX (K, V, Md, X, VelX,
-//  dVdx) whenever the mass-gradient corrections of dVdx are not active.
-//  All other cases fall back to the per-point kernels.
+//  Used for TDSEZFormHam (H, M) and TDSEZFormPhyAxes (2D/3D time-dependent
+//  operators), including the mass-gradient corrections of the force matrices
+//  (operator-form acceleration with a position-dependent mass).
 //
 //  Options: -tdsez_sumfact 0        disable (per-point kernels everywhere)
 //           -tdsez_sumfact_check    compute every element both ways and print
@@ -29,6 +29,8 @@
 
 #include "tdsez_internal.hpp"
 #include <petscblaslapack.h>
+#include <algorithm>
+#include <string>
 #include <vector>
 
 namespace {
@@ -155,7 +157,7 @@ void Offsets(const Axis1D *A, PetscInt dim, Scratch &S)
 
 thread_local Scratch scratch;
 
-enum class Sym { Symmetric, AntiSymmetric };
+enum class Sym { Symmetric, AntiSymmetric, General };
 
 /// work += factor * sym(E): symmetric operators get 0.5 (E + E^T), exactly
 /// symmetric (the two triangles are contracted in different orders and differ
@@ -169,9 +171,97 @@ void Store(const Scratch &S, PetscInt nen, PetscScalar factor, Sym sym, PetscSca
     for (PetscInt a = 0; a < nen; ++a) {
         PetscScalar *w = work + (size_t)a * nen;
         const size_t ia = oA[a], ja = oB[a];
-        for (PetscInt b = 0; b < nen; ++b)
-            w[b] += factor * (h * (E[ia + oB[b]] + sg * E[oA[b] + ja]));
+        if (sym == Sym::General)
+            for (PetscInt b = 0; b < nen; ++b) w[b] += factor * E[ia + oB[b]];
+        else
+            for (PetscInt b = 0; b < nen; ++b) w[b] += factor * (h * (E[ia + oB[b]] + sg * E[oA[b] + ja]));
     }
+}
+
+/// Coefficients of the force matrix of axis a with the mass-gradient
+/// corrections of TDSEZformPotentialGrad{X,Y,Z} (and TDSEZFormPhyX), f = 1/m:
+///
+///   dV_a(i,j) = sum_q w [ -(dV/dx_a) f B_i B_j - 1/4 sum_t c_t D^al_t B_i D^be_t B_j ],
+///
+///   (B, B):          sum_e f_e f_ea + f sum_e f_eea
+///   (B, d_a B):      2 |grad f|^2 + 2 f lap f - 2 (f_a^2 + f f_aa)
+///   (B, d_e B):      2 (f_e f_a + f f_ae)                 e != a
+///   (B, d_a d_e B):  4 f f_e                              e != a
+///   (d_e B, d_e B):  2 f f_a for e != a, -2 f f_a for e = a
+///
+/// (third derivatives read with the index order of each kernel). Arrays per
+/// point, weights included; pairs (x,y), (x,z), (y,z).
+struct ForceCoeffs {
+    std::vector<PetscReal> BB, Bd[3], Bp[3], dd[3];
+    void Resize(size_t nq)
+    {
+        BB.assign(nq, 0.0);
+        for (int d = 0; d < 3; ++d) { Bd[d].assign(nq, 0.0); Bp[d].assign(nq, 0.0); dd[d].assign(nq, 0.0); }
+    }
+};
+
+inline int PairIndex(int i, int j) { return i + j - 1; }   // (0,1)->0, (0,2)->1, (1,2)->2 (i < j)
+
+void AddForceCorrections(int a, PetscInt dim, PetscReal f, const PhysicsDerivativesFull &ops, PetscReal w,
+                         size_t q, ForceCoeffs &C)
+{
+    const PetscInt n = (PetscInt)ops.first.size();
+    auto F1 = [&](int i) { return i < dim ? ops.first[i] : 0.0; };
+    auto F2 = [&](int i, int j) {                                  // kernels read (min, max)
+        if (i > j) std::swap(i, j);
+        return (j < dim) ? ops.second[i * n + j] : 0.0;
+    };
+    auto F3 = [&](int i, int j, int k) { return (i < dim && j < dim && k < dim) ? ops.third[(i * n + j) * n + k] : 0.0; };
+    // sum_e f_eea in the index order of each kernel
+    PetscReal t3 = 0.0;
+    if (a == 0)      t3 = F3(0, 0, 0) + F3(0, 1, 1) + F3(0, 2, 2);
+    else if (a == 1) t3 = F3(0, 0, 1) + F3(1, 1, 1) + F3(1, 2, 2);
+    else             t3 = F3(2, 2, 2) + F3(1, 1, 2) + F3(0, 0, 2);
+    PetscReal g2 = 0.0, lap = 0.0, mix = 0.0;
+    for (int e = 0; e < dim; ++e) { g2 += F1(e) * F1(e); lap += F2(e, e); mix += F1(e) * F2(e, a); }
+    const PetscReal s = -0.25 * w;
+    C.BB[q] += s * (mix + f * t3);
+    for (int e = 0; e < dim; ++e) {
+        if (e == a) {
+            C.Bd[e][q] += s * (2.0 * g2 + 2.0 * f * lap - 2.0 * (F1(a) * F1(a) + f * F2(a, a)));
+            C.dd[e][q] += s * (-2.0 * f * F1(a));
+        } else {
+            C.Bd[e][q] += s * 2.0 * (F1(e) * F1(a) + f * F2(a, e));
+            C.Bp[PairIndex(std::min(a, e), std::max(a, e))][q] += s * 4.0 * f * F1(e);
+            C.dd[e][q] += s * 2.0 * f * F1(a);
+        }
+    }
+}
+
+/// Element force matrix from ForceCoeffs (C.BB holds the classical term too).
+void ForceElement(const Axis1D *A, PetscInt dim, PetscInt nen, const ForceCoeffs &C, Scratch &S, PetscScalar *work)
+{
+    const int V0[3] = {0, 0, 0};
+    Contract(A, dim, V0, V0, C.BB.data(), false, S);
+    for (int d = 0; d < dim; ++d) {
+        int e1[3] = {0, 0, 0}; e1[d] = 1;
+        Contract(A, dim, V0, e1, C.Bd[d].data(), true, S);
+        Contract(A, dim, e1, e1, C.dd[d].data(), true, S);
+    }
+    const int pairs[3][2] = {{0, 1}, {0, 2}, {1, 2}};
+    for (int k = 0; k < 3; ++k) {
+        if (pairs[k][1] >= dim) continue;
+        int e2[3] = {0, 0, 0}; e2[pairs[k][0]] = 1; e2[pairs[k][1]] = 1;
+        Contract(A, dim, V0, e2, C.Bp[k].data(), true, S);
+    }
+    Store(S, nen, 1.0, Sym::General, work);
+}
+
+/// Whether the Mass expression depends on x, y or z (cached per expression).
+bool MassVaries()
+{
+    static std::string expr;
+    static bool varies = true, valid = false;
+    if (!valid || expr != TDSEZParser::MassExpr.GetExpr()) {
+        try { varies = !TDSEZParser::MassExpr.GetUsedVar().empty(); } catch (const mu::Parser::exception_type &) { varies = true; }
+        expr = TDSEZParser::MassExpr.GetExpr(); valid = true;
+    }
+    return varies;
 }
 
 PetscBool SumFactEnabled()
@@ -205,13 +295,9 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsi
 {
     const PetscInt dim = e->dim;
     if (dim < 2 || dim > 3 || e->dof != 1 || e->geometry || e->rational) return false;
-    if (!TDSEZDiscreteAccelerationActive()) {
-        // operator-form acceleration: only a truly constant mass (MassIsConstant
-        // and no x/y/z in the expression) has vanishing force corrections
-        if (TDSEZParser::MassIsConstant != PETSC_TRUE) return false;
-        try { if (!TDSEZParser::MassExpr.GetUsedVar().empty()) return false; }
-        catch (const mu::Parser::exception_type &) { return false; }
-    }
+    // The force kernels add their mass-gradient corrections when the
+    // operator-form acceleration reads them and the mass varies.
+    const bool corr = !TDSEZDiscreteAccelerationActive() && MassVaries();
     PetscInt nexp = 3;
     for (int d = 0; d < 3; ++d) if (TDSEZPhyAxesOn[d]) { if (d >= dim) return false; nexp += 3; }
     if (nexp != nmat) return false;
@@ -225,8 +311,9 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsi
     const PetscInt Q1 = A[0].Q, Q2 = A[1].Q, Q3 = (dim == 3) ? A[2].Q : 1;
     const size_t nq = (size_t)Q1 * Q2 * Q3;
     thread_local std::vector<PetscReal> cK, cV, cM, cVel, cD[3], cG[3];
+    thread_local ForceCoeffs Fc[3];
     cK.resize(nq); cV.resize(nq); cM.resize(nq); cVel.resize(nq);
-    for (int d = 0; d < 3; ++d) if (TDSEZPhyAxesOn[d]) { cD[d].resize(nq); cG[d].resize(nq); }
+    for (int d = 0; d < 3; ++d) if (TDSEZPhyAxesOn[d]) { cD[d].resize(nq); cG[d].resize(nq); if (corr) Fc[d].Resize(nq); }
 
     for (PetscInt q3 = 0; q3 < Q3; ++q3)
     for (PetscInt q2 = 0; q2 < Q2; ++q2)
@@ -246,6 +333,16 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsi
                                          : TDSEZParser::dVz(r[0], r[1], r[2]);
             cD[d][q] = r[d] * w;
             cG[d][q] = -g * invMass * w;
+        }
+        if (corr) {
+            const std::vector<PetscReal> pt = dim == 3 ? std::vector<PetscReal>{r[0], r[1], r[2]}
+                                                       : std::vector<PetscReal>{r[0], r[1]};
+            const PhysicsDerivativesFull &ops = TDSEZInvMassDerivatives(pt);
+            for (int d = 0; d < 3; ++d) {
+                if (!TDSEZPhyAxesOn[d]) continue;
+                Fc[d].BB[q] = cG[d][q];
+                AddForceCorrections(d, dim, invMass, ops, w, q, Fc[d]);
+            }
         }
     }
 
@@ -283,8 +380,11 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsi
             Store(S, nen, PETSC_i, Sym::AntiSymmetric, work[k + 1]);
         }
         if (want(k + 2)) {
-            Contract(A, dim, V0, V0, cG[d].data(), false, S);
-            Store(S, nen, 1.0, Sym::Symmetric, work[k + 2]);
+            if (corr) ForceElement(A, dim, nen, Fc[d], S, work[k + 2]);
+            else {
+                Contract(A, dim, V0, V0, cG[d].data(), false, S);
+                Store(S, nen, 1.0, Sym::Symmetric, work[k + 2]);
+            }
         }
         k += 3;
     }
@@ -292,28 +392,16 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsi
 }
 
 /// Coefficient arrays on the element's tensor points and the contractions of
-/// TDSEZFormHam / TDSEZFormPhyX. Returns false if the kernel/configuration is
-/// not handled (the caller then uses the per-point kernel).
+/// TDSEZFormHam (H, M) and TDSEZFormPhyAxes. Returns false if the
+/// kernel/configuration is not handled (the caller then uses the per-point
+/// kernel). TDSEZFormPhyX is the 1D kernel and is never sum-factorised.
 bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
                     PetscInt nmat, PetscScalar *work[], unsigned need)
 {
     const PetscInt dim = e->dim;
     if (dim < 2 || dim > 3 || e->dof != 1 || e->geometry || e->rational) return false;
-
-    const bool ham  = (kernel == TDSEZFormHam && nmat >= 2);
-    const bool phy  = (kernel == TDSEZFormPhyX && nmat >= 6);
-    const bool axes = (kernel == TDSEZFormPhyAxes);
-    if (axes) return SumFactAxes(iga, e, nmat, work, need);
-    if (!ham && !phy) return false;
-    if (phy) {
-        // Same switches as TDSEZFormPhyX: the mass-gradient corrections of
-        // dVdx are active in 2D whenever the mass varies, and in 3D only when
-        // the operator-form acceleration is used.
-        const bool massIsConstant = (TDSEZParser::MassIsConstant == PETSC_TRUE);
-        const bool corr = (dim == 2) ? !massIsConstant
-                                     : (!massIsConstant && !TDSEZDiscreteAccelerationActive());
-        if (corr) return false;
-    }
+    if (kernel == TDSEZFormPhyAxes) return SumFactAxes(iga, e, nmat, work, need);
+    if (kernel != TDSEZFormHam || nmat < 2) return false;
 
     thread_local Axis1D A[3];
     for (PetscInt d = 0; d < dim; ++d) LoadAxis(iga, e, d, A[d]);
@@ -323,9 +411,8 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
 
     const PetscInt Q1 = A[0].Q, Q2 = A[1].Q, Q3 = (dim == 3) ? A[2].Q : 1;
     const size_t nq = (size_t)Q1 * Q2 * Q3;
-    thread_local std::vector<PetscReal> cK, cV, cM, cX, cVel, cDV;
+    thread_local std::vector<PetscReal> cK, cV, cM;
     cK.resize(nq); cV.resize(nq); cM.resize(nq);
-    if (phy) { cX.resize(nq); cVel.resize(nq); cDV.resize(nq); }
 
     for (PetscInt q3 = 0; q3 < Q3; ++q3)
     for (PetscInt q2 = 0; q2 < Q2; ++q2)
@@ -337,15 +424,7 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
         const PetscReal Vxyz = (dim == 3) ? TDSEZParser::V(x, y, z) : TDSEZParser::V(x, y);
         cK[q] = 0.5 * invMass * w;
         cV[q] = Vxyz * w;
-        if (ham) {
-            cM[q] = w;
-        } else {
-            const PetscReal dVdx = (dim == 3) ? TDSEZParser::dVx(x, y, z) : TDSEZParser::dVx(x, y);
-            cM[q]   = invMass * w;              // Md
-            cX[q]   = x * w;
-            cVel[q] = -0.5 * invMass * w;
-            cDV[q]  = -dVdx * invMass * w;
-        }
+        cM[q] = w;
     }
 
     Scratch &S = scratch;
@@ -358,36 +437,12 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
             ad[d] = 1;
             Contract(A, dim, ad, ad, cK.data(), d > 0, S);
         }
-        if (ham) Contract(A, dim, V0, V0, cV.data(), true, S);    // H = K + V
-        Store(S, nen, 1.0, Sym::Symmetric, work[0]);              // H or K
+        Contract(A, dim, V0, V0, cV.data(), true, S);  // H = K + V
+        Store(S, nen, 1.0, Sym::Symmetric, work[0]);
     }
-    if (ham) {
-        if (want(1)) {
-            Contract(A, dim, V0, V0, cM.data(), false, S);        // M
-            Store(S, nen, 1.0, Sym::Symmetric, work[1]);
-        }
-        return true;
-    }
-    const int Dx[3] = {1, 0, 0};
     if (want(1)) {
-        Contract(A, dim, V0, V0, cV.data(), false, S);            // V
+        Contract(A, dim, V0, V0, cM.data(), false, S); // M
         Store(S, nen, 1.0, Sym::Symmetric, work[1]);
-    }
-    if (want(2)) {
-        Contract(A, dim, V0, V0, cM.data(), false, S);            // Md
-        Store(S, nen, 1.0, Sym::Symmetric, work[2]);
-    }
-    if (want(3)) {
-        Contract(A, dim, V0, V0, cX.data(), false, S);            // X
-        Store(S, nen, 1.0, Sym::Symmetric, work[3]);
-    }
-    if (want(4)) {
-        Contract(A, dim, V0, Dx, cVel.data(), false, S);          // f B_a dB_b/dx
-        Store(S, nen, PETSC_i, Sym::AntiSymmetric, work[4]);      // VelX = i f (B dB_x - dB_x B)
-    }
-    if (want(5)) {
-        Contract(A, dim, V0, V0, cDV.data(), false, S);           // dVdx (classical)
-        Store(S, nen, 1.0, Sym::Symmetric, work[5]);
     }
     return true;
 }

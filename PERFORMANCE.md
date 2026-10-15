@@ -151,6 +151,23 @@ $`1.7`$–$`2.3\times`$ faster.
   kernels to $`2\times10^{-15}`$ (`-tdsez_sumfact_check`), outputs equal to
   run-to-run noise.
 
+## 1c'. Force corrections for a position-dependent mass
+
+With `AccelerationMethod = operator` and a varying mass the force matrices
+carry mass-gradient corrections. Every term has the form
+$`\int c(\mathbf r)\,D^\alpha B_i\,D^\beta B_j`$ with at most first derivatives
+per axis, so it is sum-factorised like the other operators (ten coefficient
+arrays per axis: $`(B,B)`$, $`(B,\partial_e B)`$, $`(B,\partial_a\partial_e B)`$,
+$`(\partial_e B,\partial_e B)`$; general, non-symmetric storage). Element
+matrices equal the per-point kernels to $`4\times10^{-15}`$ in 2D and 3D. 3D,
+$`p=3`$, 16$`^3`$ elements, 8 ranks: operator assembly 34.3 s → 3.9 s, run
+34.9 s → 4.5 s, outputs equal to $`6\times10^{-15}`$.
+
+`TDSEZFormPhyX` is the 1D kernel; its unused 2D/3D branches and the matching
+sum-factorised path were removed (2D/3D always use `TDSEZFormPhyAxes`). The
+corrections are skipped in every dimension when the discrete acceleration is
+used (the force matrices are then not read).
+
 ## 1d. Factorised monitor operators
 
 On a tensor B-spline basis with a tensor Gauss rule the operators the monitors
