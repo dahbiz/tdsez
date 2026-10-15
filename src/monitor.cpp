@@ -675,19 +675,19 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     PetscInt idxDx=-1, idxDy=-1, idxAccX=-1, idxAccY=-1;
     PetscInt idxVx=-1, idxVy=-1, idxLz=-1;
 
-    if (TDSEZ->hasX && TDSEZ->Dx() != PETSC_NULLPTR) {
-        idxDx   = nBatch++; PetscCall(MatMult(TDSEZ->Dx(),   psi, TDSEZ->tmpVec[idxDx]));
+    if (TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::DipX, TDSEZ->Dx())) {
+        idxDx   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), psi, TDSEZ->tmpVec[idxDx]));
         if (!useDiscAcc) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
     }
-    if (TDSEZ->hasY && TDSEZ->Dy() != PETSC_NULLPTR) {
-        idxDy   = nBatch++; PetscCall(MatMult(TDSEZ->Dy(),   psi, TDSEZ->tmpVec[idxDy]));
+    if (TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::DipY, TDSEZ->Dy())) {
+        idxDy   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), psi, TDSEZ->tmpVec[idxDy]));
         if (!useDiscAcc) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
     }
-    if (TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR) {
-        idxVx = nBatch++; PetscCall(MatMult(TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx]));
+    if (TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) {
+        idxVx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx]));
     }
-    if (TDSEZ->hasY && TDSEZ->VelY() != PETSC_NULLPTR) {
-        idxVy = nBatch++; PetscCall(MatMult(TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy]));
+    if (TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) {
+        idxVy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy]));
     }
     if (TDSEZ->Lz() != PETSC_NULLPTR) {
         idxLz = nBatch++; PetscCall(MatMult(TDSEZ->Lz(), psi, TDSEZ->tmpVec[idxLz]));
@@ -975,20 +975,20 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     PetscInt idxDx=-1, idxDy=-1, idxDz=-1, idxAccX=-1, idxAccY=-1, idxAccZ=-1;
     PetscInt idxVx=-1, idxVy=-1, idxVz=-1, idxLz=-1;
     if (TDSEZ->hasX) {
-        idxDx   = nBatch++; PetscCall(MatMult(TDSEZ->Dx(),   psi, TDSEZ->tmpVec[idxDx]));
+        idxDx   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), psi, TDSEZ->tmpVec[idxDx]));
         if (!useDiscAcc) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
-        if (TDSEZ->VelX() != PETSC_NULLPTR) { idxVx = nBatch++; PetscCall(MatMult(TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx])); }
+        if (TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) { idxVx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx])); }
     }
     if (TDSEZ->hasY) {
-        idxDy   = nBatch++; PetscCall(MatMult(TDSEZ->Dy(),   psi, TDSEZ->tmpVec[idxDy]));
+        idxDy   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), psi, TDSEZ->tmpVec[idxDy]));
         if (!useDiscAcc) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
-        if (TDSEZ->VelY() != PETSC_NULLPTR) { idxVy = nBatch++; PetscCall(MatMult(TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy])); }
+        if (TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) { idxVy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy])); }
     }
 
     if (TDSEZ->hasZ) {
-        idxDz   = nBatch++; PetscCall(MatMult(TDSEZ->Dz(),   psi, TDSEZ->tmpVec[idxDz]));
+        idxDz   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipZ, TDSEZ->Dz(), psi, TDSEZ->tmpVec[idxDz]));
         if (!useDiscAcc) { idxAccZ = nBatch++; PetscCall(MatMult(TDSEZ->dVdz(), psi, TDSEZ->tmpVec[idxAccZ])); }
-        if (TDSEZ->VelZ() != PETSC_NULLPTR) { idxVz = nBatch++; PetscCall(MatMult(TDSEZ->VelZ(), psi, TDSEZ->tmpVec[idxVz])); }
+        if (TDSEZ->HasOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ())) { idxVz = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ(), psi, TDSEZ->tmpVec[idxVz])); }
     }
     if (TDSEZ->Lz() != PETSC_NULLPTR) {
         idxLz = nBatch++; PetscCall(MatMult(TDSEZ->Lz(), psi, TDSEZ->tmpVec[idxLz]));

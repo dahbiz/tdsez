@@ -396,7 +396,12 @@ level (default <code class="docutils literal notranslate"><span class="pre">1e-9
 <td><p>Also assemble the CAP with the element kernel and print the largest
 difference to the separable assembly (diagnostic).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_tensor_ops</span> <span class="pre">0</span></code></p></td>
+<td><p>bool</p></td>
+<td><p>Apply M, the dipoles, the velocities and K in the monitors as assembled
+sparse matrices instead of in factorised (Kronecker) form (2D/3D).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
 <td><p>int</p></td>
 <td><p>ILU fill level of the ASM subdomain preconditioner of every propagator
 (default 0). Level 1 saves at most one GMRES iteration but its fill makes

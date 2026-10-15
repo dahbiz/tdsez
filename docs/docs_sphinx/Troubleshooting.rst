@@ -70,5 +70,7 @@ Performance in 3D
   mat-vecs slow down by an order of magnitude. Prefer degree 3 in 3D, set
   ``ObserveAllAxes = 0`` when only the driven axis is needed, and check
   "Peak memory" in the run summary.
-- **Observables**: in 3D the per-step observables (about 14 sparse products)
-  cost more than the time step itself.
+- **Observables**: in 2D/3D M, the dipoles, the velocities and K are applied
+  in factorised (Kronecker) form, checked against the assembled matrices at the
+  first step (printed at start-up). The remaining per-step cost is the sparse
+  products with V and the force matrices dV/dx_a.

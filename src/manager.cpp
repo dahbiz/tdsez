@@ -1,4 +1,6 @@
 #include "tdsez_internal.hpp"
+#include <algorithm>
+#include <cctype>
 
 /**
  * @file manager.cpp
@@ -490,6 +492,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             // and destroys them. Destroying them here too is a double-free
             // (SEGV at teardown). Only destroy matrices the manager owns.
             if (kspMass)       KSPDestroy(&kspMass);
+            delete tensorOps_;
             for (Vec &v : accelWork) if (v) VecDestroy(&v);
 
             // Free the buffers
@@ -593,7 +596,7 @@ PetscBool TDSEZDiscreteAccelerationActive()
 PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
 {
     PetscFunctionBeginUser;
-    PetscCall(MatMult(m_M, psi, tmpVec[0]));
+    PetscCall(ApplyOp(TDSEZTensorOps::Mass, m_M, psi, tmpVec[0]));
     if (!needKVMd) {
         PetscCall(MatMult(m_H, psi, tmpVec[1]));
         PetscFunctionReturn(PETSC_SUCCESS);
@@ -629,22 +632,89 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
         }
         PetscCall(VecDestroy(&r));
         monitorChecked_ = PETSC_TRUE;
+        PetscCall(SetupTensorOps(psi));
         // Operators the shortcuts make redundant are freed: K (K psi = H psi -
         // V psi) and Md (Md = M/m). Each is a full matrix (memory-bound in 3D).
-        if (hFromKV_) { PetscCall(MatDestroy(&assembler_->K)); m_K = PETSC_NULLPTR; }
+        if (hFromKV_ || (tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin))) {
+            PetscCall(MatDestroy(&assembler_->K)); m_K = PETSC_NULLPTR;
+        }
         if (invMassConst_ != 0.0) { PetscCall(MatDestroy(&assembler_->Md)); m_Md = PETSC_NULLPTR; }
         PetscCall(PetscInfo(NULL, "Monitor shortcuts: H=K+V %s, constant 1/m %s\n",
                             hFromKV_ ? "on" : "off", invMassConst_ != 0.0 ? "on" : "off"));
         PetscFunctionReturn(PETSC_SUCCESS);
     }
-    PetscCall(MatMult(m_H, psi, tmpVec[1]));
-    if (m_K) PetscCall(MatMult(m_K, psi, tmpVec[3]));
-    else     PetscCall(VecWAXPY(tmpVec[3], -1.0, tmpVec[4], tmpVec[1]));   // K psi = H psi - V psi
+    if (hFromKV_ && tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin)) {
+        // no CAP: H psi = K psi + V psi with the factorised K (one sparse product less)
+        PetscCall(ApplyOp(TDSEZTensorOps::Kin, m_K, psi, tmpVec[3]));
+        PetscCall(VecWAXPY(tmpVec[1], 1.0, tmpVec[3], tmpVec[4]));
+    } else {
+        PetscCall(MatMult(m_H, psi, tmpVec[1]));
+        if (m_K)          PetscCall(MatMult(m_K, psi, tmpVec[3]));
+        else if (hFromKV_) PetscCall(VecWAXPY(tmpVec[3], -1.0, tmpVec[4], tmpVec[1]));   // K psi = H psi - V psi
+        else              PetscCall(ApplyOp(TDSEZTensorOps::Kin, m_K, psi, tmpVec[3]));
+    }
     if (invMassConst_ != 0.0) {
         PetscCall(VecCopy(tmpVec[0], tmpVec[2]));
         PetscCall(VecScale(tmpVec[2], invMassConst_));
     } else {
         PetscCall(MatMult(m_Md, psi, tmpVec[2]));
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+PetscErrorCode TDSEZManager::ApplyOp(TDSEZTensorOps::Op op, Mat A, Vec x, Vec y)
+{
+    PetscFunctionBeginUser;
+    if (tensorOps_ && tensorOps_->Usable(op)) PetscCall(tensorOps_->Apply(op, x, y));
+    else                                      PetscCall(MatMult(A, x, y));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// @brief Factorised monitor operators (see TDSEZTensorOps): each separable
+///        operator is checked against its assembled matrix on psi and used only
+///        if they agree to 1e-10 relative. Matrices then read by nothing else
+///        are freed: the velocities, the dipoles of uncoupled axes (the
+///        propagator keeps the coupled ones) and K. -tdsez_tensor_ops 0 keeps
+///        the assembled products.
+PetscErrorCode TDSEZManager::SetupTensorOps(Vec psi)
+{
+    PetscFunctionBeginUser;
+    PetscBool on = PETSC_TRUE;
+    PetscCall(PetscOptionsGetBool(NULL, NULL, "-tdsez_tensor_ops", &on, NULL));
+    if (!on || TDSEZParser::Dimension < 2 || tensorOps_) PetscFunctionReturn(PETSC_SUCCESS);
+    // Dirichlet walls replace the wall rows of the assembled matrices by the
+    // identity; the Kronecker form has the free rows. A state that is small at
+    // the walls cannot tell them apart, so the walls are excluded structurally.
+    std::string bt = TDSEZParser::BoundaryType;
+    std::transform(bt.begin(), bt.end(), bt.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+    if (bt == "dirichlet" || bt == "wall") PetscFunctionReturn(PETSC_SUCCESS);
+    tensorOps_ = new TDSEZTensorOps;
+    const PetscReal invMass = TDSEZParser::MassIsConstant ? 1.0 / TDSEZParser::MassDist(0.0, 0.0, 0.0) : 0.0;
+    PetscCall(tensorOps_->Setup(core_->iga, psi, invMass));
+    struct { TDSEZTensorOps::Op op; Mat A; const char *name; } ops[] = {
+        {TDSEZTensorOps::Mass, m_M, "M"}, {TDSEZTensorOps::DipX, m_Dx, "Dx"}, {TDSEZTensorOps::DipY, m_Dy, "Dy"},
+        {TDSEZTensorOps::DipZ, m_Dz, "Dz"}, {TDSEZTensorOps::VelX, m_VelX, "VelX"}, {TDSEZTensorOps::VelY, m_VelY, "VelY"},
+        {TDSEZTensorOps::VelZ, m_VelZ, "VelZ"}, {TDSEZTensorOps::Kin, m_K, "K"}};
+    std::string used;
+    PetscReal worst = 0;
+    for (auto &o : ops) {
+        PetscReal err;
+        PetscCall(tensorOps_->Validate(o.op, o.A, psi, &err));
+        if (tensorOps_->Usable(o.op)) { used += std::string(used.empty() ? "" : ", ") + o.name; worst = PetscMax(worst, err); }
+    }
+    if (!used.empty())
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Monitor operators applied in factorised form: %s (max relative difference %.1e)\n",
+                              used.c_str(), (double)worst));
+    Mat *vel[3] = {&assembler_->VelX, &assembler_->VelY, &assembler_->VelZ};
+    Mat *dip[3] = {&assembler_->Dx, &assembler_->Dy, &assembler_->Dz};
+    Mat *mv[3] = {&m_VelX, &m_VelY, &m_VelZ}, *md[3] = {&m_Dx, &m_Dy, &m_Dz};
+    for (int a = 0; a < 3; ++a) {
+        if (tensorOps_->Usable((TDSEZTensorOps::Op)(TDSEZTensorOps::VelX + a))) { PetscCall(MatDestroy(vel[a])); *mv[a] = PETSC_NULLPTR; }
+        if (tensorOps_->Usable((TDSEZTensorOps::Op)(TDSEZTensorOps::DipX + a)) && !TDSEZParser::Coupled(a)) {
+            PetscCall(MatDestroy(dip[a])); *md[a] = PETSC_NULLPTR;
+        }
     }
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -716,22 +786,24 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
     }
     const Mat       D[3]   = {m_Dx, m_Dy, m_Dz};
     const Mat       Vel[3] = {m_VelX, m_VelY, m_VelZ};
+    const TDSEZTensorOps::Op dop[3] = {TDSEZTensorOps::DipX, TDSEZTensorOps::DipY, TDSEZTensorOps::DipZ};
+    const TDSEZTensorOps::Op vop[3] = {TDSEZTensorOps::VelX, TDSEZTensorOps::VelY, TDSEZTensorOps::VelZ};
     const PetscBool on[3]  = {hasX, hasY, hasZ};             // observed axes
     // field term of H, s E(t), on the coupled axes only
     const PetscScalar E[3] = {TDSEZParser::Coupling(0, t), TDSEZParser::Coupling(1, t),
                               TDSEZParser::Coupling(2, t)};
     for (int a = 0; a < 3; ++a) {
-        if (!TDSEZParser::Coupled(a) || D[a] == PETSC_NULLPTR) continue;
-        PetscCall(MatMult(D[a], psi, s));
+        if (!TDSEZParser::Coupled(a) || !HasOp(dop[a], D[a])) continue;
+        PetscCall(ApplyOp(dop[a], D[a], psi, s));
         PetscCall(VecAXPY(r, E[a], s));
     }
     PetscCall(KSPSolve(kspMass, r, w));
 
     for (int a = 0; a < 3; ++a) {
         acc[a] = 0.0;
-        if (!on[a] || Vel[a] == PETSC_NULLPTR) continue;
+        if (!on[a] || !HasOp(vop[a], Vel[a])) continue;
         PetscScalar z;
-        PetscCall(MatMult(Vel[a], psi, s));
+        PetscCall(ApplyOp(vop[a], Vel[a], psi, s));
         PetscCall(VecDot(s, w, &z));                 // z = w^H (Vel psi)
         acc[a] = -2.0 * charge * PetscImaginaryPart(z);
     }

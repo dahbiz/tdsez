@@ -151,6 +151,37 @@ $`1.7`$–$`2.3\times`$ faster.
   kernels to $`2\times10^{-15}`$ (`-tdsez_sumfact_check`), outputs equal to
   run-to-run noise.
 
+## 1d. Factorised monitor operators
+
+On a tensor B-spline basis with a tensor Gauss rule the operators the monitors
+apply every step are Kronecker products of 1D banded matrices: $`M`$, the
+dipoles $`D_a`$, and for a constant mass the velocities
+$`-\tfrac{i}{2m}(G-G^T)_a`$ and $`K=\tfrac1{2m}\sum_a S_a`$ (1D mass, position,
+first-derivative and stiffness matrices from PetIGA's 1D quadrature tables).
+They are applied with one halo exchange of $`\psi`$ per step and three 1D band
+contractions per term (about $`6d(2p+1)`$ flops per coefficient instead of
+$`8(2p+1)^d`$, no matrix traffic). Without a CAP, $`H\psi=K\psi+V\psi`$ also
+drops the sparse product with $`H`$.
+
+Each operator is checked against its assembled matrix on the state at the first
+monitor call (agreement to $`10^{-10}`$ relative required; observed
+$`2\text{–}5\times10^{-15}`$); the matrices then read by nothing else are freed
+(velocities, dipoles of uncoupled axes, $`K`$). Dirichlet walls (identity rows
+in the assembled matrices) keep the assembled path; `-tdsez_tensor_ops 0`
+switches the factorised path off.
+
+| 3D, $`p=3`$, 110k DOFs, 8 ranks, 40 CN steps | observables | wall / step |
+|---|---|---|
+| x-polarised, before | 26.1 s | 0.80 s |
+| x-polarised, factorised | 5.2 s | 0.30 s |
+| xyz-polarised, before | 25.8 s | 0.87 s |
+| xyz-polarised, factorised | 12.8 s | 0.54 s |
+
+Outputs (dipoles, energies, currents) equal to $`4\times10^{-15}`$. The remaining
+monitor cost is the sparse products with $`V`$ and, for the operator-form
+acceleration, the force matrices $`\partial_aV`$, which depend on the potential.
+With xyz polarisation the propagator also keeps all three dipole matrices.
+
 ## 2. Fourth-order propagators (`Propagator = pade22 | magnus4`)
 
 Both use the $`(2,2)`$ Padé approximant of the step exponential,

@@ -6,6 +6,7 @@
 #include <hdf5.h>
 #include <string>
 #include <vector>
+#include "tdsez_tensorops.hpp"
 
 class TDSEZCore;
 class TDSEZAssembler;
@@ -206,6 +207,15 @@ class TDSEZManager
     ///        run (no CAP; constant mass), which saves up to two sparse products
     ///        per step without changing any output.
     PetscErrorCode MonitorProducts(Vec psi, PetscBool needKVMd);
+    /// Factorised separable operators (2D/3D), validated at the first monitor call.
+    TDSEZTensorOps *tensorOps_ = PETSC_NULLPTR;
+    /// y = op x: factorised when validated, MatMult(A, x, y) otherwise.
+    PetscErrorCode ApplyOp(TDSEZTensorOps::Op op, Mat A, Vec x, Vec y);
+    /// Whether op can be applied (assembled matrix present or factorised form validated).
+    bool HasOp(TDSEZTensorOps::Op op, Mat A) const { return A || (tensorOps_ && tensorOps_->Usable(op)); }
+    /// Build and validate the factorised operators on psi; free the matrices
+    /// only the monitors used (velocities, uncoupled dipoles, K).
+    PetscErrorCode SetupTensorOps(Vec psi);
     /// @brief Whether the time-series buffers should be written now: always at
     ///        multiples of FLUSH_INTERVAL; at multiples of OutputStrideTS only if
     ///        at least kMinFlushSeconds have passed since the last write. Every
