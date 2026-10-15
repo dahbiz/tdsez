@@ -65,3 +65,20 @@ def test_hydrogenic_width_cap_and_singular_quadrature():
     rc, E, out = _run("hyd_lobatto", coul + "QuadratureRule = lobatto\n")
     _step("Lobatto point on a Coulomb singularity is reported", rc != 0 and "singular at a quadrature point" in out,
           out[-800:])
+
+
+def test_hydrogenic_cap_from_the_field():
+    """Propagating with a field: HydrogenicHMax = 0 derives pi/(2 k_max) from E0, omega, Ip."""
+    deck = HO2D.replace("NSplines = 24", "KnotSequence = hydrogenic\nHydrogenicR1 = 0.1, 0.1\n"
+                        "HydrogenicNLin = 3, 3\nHydrogenicNExp = 6, 6\nDomain = -30.0, 30.0")
+    deck = deck.replace("Domain = -12.0, 12.0\n", "").replace("EnablePropagation = 0", "EnablePropagation = 1")
+    deck = deck.replace("FinalTime = 0.05", "FinalTime = 0.5").replace("TargetEigenvalue = 0.0", "TargetEigenvalue = -0.5")
+    deck += "Polarization = x\nLaserX = 0.0534*sin(0.057*t)\nOmegax = 0.057\n"
+    rc, E, out = _run("hyd_auto", deck)
+    _step("propagating hydrogenic run", rc == 0, out[-1200:])
+    m = re.search(r"HydrogenicHMax = ([0-9.]+) au from the field", out)
+    # E0 = 0.0534 * sin(0.057 * 0.5) over [0, 0.5]: Up ~ 0, k_max = 1 (Ip = 0.5): h = pi/2
+    _step("cap derived from the field", m is not None and abs(float(m.group(1)) - np.pi / 2) < 1e-2, out[-1500:])
+    rc, E, out = _run("hyd_nocap", deck + "HydrogenicHMax = -1, -1\n")
+    _step("HydrogenicHMax < 0 disables the cap", rc == 0 and "(capped)" not in out and "from the field" not in out,
+          out[-800:])

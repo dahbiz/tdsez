@@ -299,6 +299,55 @@ static PetscErrorCode TDSEZShellWeight(IGA iga, Vec w)
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/// Largest element width of the hydrogenic sequence for strong-field
+/// propagation: about 4 elements per wavelength of the fastest returning
+/// electron, h = pi / (2 k_max), k_max = sqrt(2 (3.17 Up + Ip)). Measured on 2D
+/// hydrogen-like HHG (800 nm, 1e14 W/cm2, degree 3): 1.0 au (= this rule)
+/// converges the harmonic yields to 1.6 % (median), 2.0 au misses the cutoff by
+/// 4 decades, no cap by 1-2 decades over the plateau. E0 is sampled from the
+/// field over [0, FinalTime]; omega from Omegax/y/z or the zero crossings; Ip
+/// from TargetEigenvalue (< 0) or 0.5. Returns 0 when no field is applied or
+/// omega cannot be estimated.
+static PetscReal TDSEZHydrogenicAutoHMax()
+{
+    if (!TDSEZParser::EnablePropagation || TDSEZParser::FinalTime <= 0) return 0.0;
+    const PetscInt n = 20000;
+    const PetscReal T = TDSEZParser::FinalTime;
+    PetscReal E0 = 0;
+    int dominant = -1;
+    for (int a = 0; a < (int)TDSEZParser::Dimension; ++a) {
+        if (!TDSEZParser::Coupled(a)) continue;
+        for (PetscInt i = 0; i <= n; ++i) {
+            const PetscReal e = PetscAbsReal(TDSEZParser::Field(a, T * i / n));
+            if (e > E0) { E0 = e; dominant = a; }
+        }
+    }
+    if (E0 <= 0 || dominant < 0) return 0.0;
+    PetscReal w = 0;
+    const PetscReal om[3] = {TDSEZParser::Omegax, TDSEZParser::Omegay, TDSEZParser::Omegaz};
+    for (int a = 0; a < 3; ++a) if (TDSEZParser::Coupled(a)) w = PetscMax(w, om[a]);
+    if (w <= 0) {                                   // from the zero crossings of the dominant axis
+        PetscInt cross = 0;
+        PetscReal prev = TDSEZParser::Field(dominant, 0.0);
+        for (PetscInt i = 1; i <= n; ++i) {
+            const PetscReal e = TDSEZParser::Field(dominant, T * i / n);
+            if ((e > 0 && prev < 0) || (e < 0 && prev > 0)) ++cross;
+            if (e != 0) prev = e;
+        }
+        if (cross >= 2) w = PETSC_PI * cross / T;
+    }
+    if (w <= 0) return 0.0;
+    const PetscReal Up = E0 * E0 / (4 * w * w);
+    const PetscReal Ip = PetscRealPart(TDSEZParser::TargetEigenvalue) < 0 ? -PetscRealPart(TDSEZParser::TargetEigenvalue) : 0.5;
+    const PetscReal kmax = PetscSqrtReal(2 * (3.17 * Up + Ip));
+    const PetscReal h = PETSC_PI / (2 * kmax);
+    PetscPrintf(PETSC_COMM_WORLD,
+        "TDSEZHydrogenicKnots: HydrogenicHMax = %.3f au from the field (E0 = %.4g, omega = %.4g, Up = %.4g, "
+        "Ip = %.3g, k_max = %.3g; h = pi/(2 k_max)); set HydrogenicHMax > 0 to choose, < 0 for no cap\n",
+        (double)h, (double)E0, (double)w, (double)Up, (double)Ip, (double)kmax);
+    return h;
+}
+
 /// Backward error of an eigenpair of the pencil (H, M):
 /// ||H v - E M v|| / ((||H|| + |E| ||M||) ||v||), infinity norms of H and M.
 /// Unlike ||r|| / (|E| ||v||) it stays meaningful for E -> 0.
@@ -1640,6 +1689,17 @@ PetscErrorCode TDSEZCore::Output()
             PetscReal alphax = alphaDefault, alphay = alphaDefault, alphaz = alphaDefault;
             IGAAxis axisx, axisy, axisz;
 
+            // Largest hydrogenic element width per axis: the input value, or
+            // (0, default) derived from the field for strong-field propagation.
+            PetscReal hmaxAuto = -1;
+            auto hydHMax = [&](int d) -> PetscReal {
+                const PetscReal v = TDSEZParser::HydrogenicHMax[d];
+                if (v > 0) return v;
+                if (v < 0) return 0.0;
+                if (hmaxAuto < 0) hmaxAuto = TDSEZHydrogenicAutoHMax();
+                return hmaxAuto;
+            };
+
             // ── KNOT VECTOR SETUP ──────────────────────────────────────────────
             // Wrapped in try/catch so that a throw from any KnotSequence generator
             // (e.g. hydrogenic with r_cross >= Lmax) is reported as a clean
@@ -1683,7 +1743,7 @@ PetscErrorCode TDSEZCore::Output()
                             TDSEZParser::HydrogenicNLin[0] > 0 ? TDSEZParser::HydrogenicNLin[0] : TDSEZParser::Nelements - 1,
                             TDSEZParser::HydrogenicR1[0] > 0.0 ? TDSEZParser::HydrogenicR1[0] : 0.1,
                             TDSEZParser::HydrogenicNExp[0] > 0 ? TDSEZParser::HydrogenicNExp[0] : 10,
-                            TDSEZParser::SplineDegree, TDSEZParser::HydrogenicHMax[0]);
+                            TDSEZParser::SplineDegree, hydHMax(0));
                     else
                     {
                         PetscPrintf(PETSC_COMM_WORLD,
@@ -1750,7 +1810,7 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicNLin[1] > 0 ? TDSEZParser::HydrogenicNLin[1] : TDSEZParser::Nelements - 1,
                                 TDSEZParser::HydrogenicR1[1] > 0.0 ? TDSEZParser::HydrogenicR1[1] : 0.1,
                                 TDSEZParser::HydrogenicNExp[1] > 0 ? TDSEZParser::HydrogenicNExp[1] : 10,
-                                TDSEZParser::SplineDegree, TDSEZParser::HydrogenicHMax[1]);
+                                TDSEZParser::SplineDegree, hydHMax(1));
                         else
                         {
                             PetscPrintf(PETSC_COMM_WORLD,
@@ -1804,7 +1864,7 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicNLin[2] > 0 ? TDSEZParser::HydrogenicNLin[2] : TDSEZParser::Nelements - 1,
                                 TDSEZParser::HydrogenicR1[2] > 0.0 ? TDSEZParser::HydrogenicR1[2] : 0.1,
                                 TDSEZParser::HydrogenicNExp[2] > 0 ? TDSEZParser::HydrogenicNExp[2] : 10,
-                                TDSEZParser::SplineDegree, TDSEZParser::HydrogenicHMax[2]);
+                                TDSEZParser::SplineDegree, hydHMax(2));
                         else
                         {
                             PetscPrintf(PETSC_COMM_WORLD,

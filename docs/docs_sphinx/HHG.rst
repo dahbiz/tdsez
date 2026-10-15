@@ -109,7 +109,10 @@ Checklist
 - Space: the highest momentum is about :math:`\sqrt{2(3.17U_p+I_p)}`
   (1.8 a.u. here), wavelength 3.5 a.u.; use at least 8–10 basis functions per
   wavelength (spacing 0.25 a.u. with degree 7 above). Near a Coulomb-like core
-  refine the knots (:doc:`Knot-Sequences`).
+  refine the knots (:doc:`Knot-Sequences`). With ``KnotSequence = hydrogenic``
+  the measured requirement is an outer width :math:`\le \pi/(2k_{max})` (set
+  automatically when propagating) and an innermost spacing
+  ``HydrogenicR1`` :math:`\le` 0.05 a.u.
 - Time: resolve the cutoff, :math:`\omega_c\Delta t \ll 1`. Crank-Nicolson
   (``cn``) has a phase error :math:`(\omega\Delta t)^2/12` per step; the
   rational propagators (``pade22``, ``magnus4``) are fourth order and allow

@@ -127,6 +127,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#preconditioners">Preconditioners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#accuracy-of-the-rational-propagators">Accuracy of the Rational Propagators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
@@ -185,6 +187,7 @@
 <li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load Balance</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
@@ -211,6 +214,7 @@
 <li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#coulomb-potentials-hydrogenic-sequence">Coulomb Potentials (hydrogenic sequence)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -382,7 +386,10 @@ domain) does not change the spectrum.</p></li>
 <li><p>Space: the highest momentum is about <span class="math notranslate nohighlight">\(\sqrt{2(3.17U_p+I_p)}\)</span>
 (1.8 a.u. here), wavelength 3.5 a.u.; use at least 8–10 basis functions per
 wavelength (spacing 0.25 a.u. with degree 7 above). Near a Coulomb-like core
-refine the knots (<a class="reference internal" href="Knot-Sequences.html"><span class="doc">Knot Sequences</span></a>).</p></li>
+refine the knots (<a class="reference internal" href="Knot-Sequences.html"><span class="doc">Knot Sequences</span></a>). With <code class="docutils literal notranslate"><span class="pre">KnotSequence</span> <span class="pre">=</span> <span class="pre">hydrogenic</span></code>
+the measured requirement is an outer width <span class="math notranslate nohighlight">\(\le \pi/(2k_{max})\)</span> (set
+automatically when propagating) and an innermost spacing
+<code class="docutils literal notranslate"><span class="pre">HydrogenicR1</span></code> <span class="math notranslate nohighlight">\(\le\)</span> 0.05 a.u.</p></li>
 <li><p>Time: resolve the cutoff, <span class="math notranslate nohighlight">\(\omega_c\Delta t \ll 1\)</span>. Crank-Nicolson
 (<code class="docutils literal notranslate"><span class="pre">cn</span></code>) has a phase error <span class="math notranslate nohighlight">\((\omega\Delta t)^2/12\)</span> per step; the
 rational propagators (<code class="docutils literal notranslate"><span class="pre">pade22</span></code>, <code class="docutils literal notranslate"><span class="pre">magnus4</span></code>) are fourth order and allow

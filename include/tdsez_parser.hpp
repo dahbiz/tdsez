@@ -413,7 +413,9 @@ class TDSEZParser
         inline static PetscReal             HydrogenicR1[3]     = {0.0, 0.0, 0.0};
         /// Per-axis largest element width (a.u.) of the hydrogenic sequence:
         /// where the exponential grading would exceed it, the rest of the
-        /// half-axis is filled with uniform elements no wider than it. 0 = off.
+        /// half-axis is filled with uniform elements no wider than it.
+        /// 0 (default): derived from the field when propagating with a laser
+        /// (pi/(2 k_max)), else no cap; < 0: no cap.
         inline static PetscReal             HydrogenicHMax[3]   = {0.0, 0.0, 0.0};
 
         /// Number of quadrature points per element.

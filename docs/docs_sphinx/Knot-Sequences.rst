@@ -36,7 +36,7 @@ Knot Sequence Types
      - Breakpoints from ``x < c`` / ``abs(x) < c`` comparisons
    * - **hydrogenic**
      - Per half-axis: NLin linear elements of size R1 up to r_cross = NLin*R1, then NExp exponentially growing elements up to Lmax; mirrored about the origin. For Coulombic problems
-     - HydrogenicR1 (alias InnerSpacing, HydrogenicInnerSpacing), HydrogenicNLin (alias InnerElements, HydrogenicInnerElements), HydrogenicNExp (alias OuterElements, HydrogenicOuterElements), HydrogenicHMax (alias HydrogenicMaxSpacing; largest element width, uniform beyond, 0 = off); per-axis lists
+     - HydrogenicR1 (alias InnerSpacing, HydrogenicInnerSpacing), HydrogenicNLin (alias InnerElements, HydrogenicInnerElements), HydrogenicNExp (alias OuterElements, HydrogenicOuterElements), HydrogenicHMax (alias HydrogenicMaxSpacing; largest element width, uniform beyond; 0 = from the field when propagating, < 0 = off); per-axis lists
 
 Per-Axis Assignment
 -------------------
@@ -91,12 +91,77 @@ inner elements at a fixed element count make it worse (R1 = 0.01-0.02: 8-18e-6),
 because the outer elements coarsen. The exponential tail grows to elements
 of :math:`L_{max}(1 - r_{cross}/L_{max})^{1/N_{exp}}` (3.1 au on
 :math:`\pm 10`, 5 au on :math:`\pm 20`), too coarse for ionised or excited
-electrons during propagation (momentum about 1 au needs widths below
-about 1 au). ``HydrogenicHMax`` caps the width: from the first element that
-would be wider, the rest of the half-axis is uniform with width
-:math:`\le` HMax. It does not change bound states noticeably
-(:math:`\pm 10`, HMax = 1: 68 921 DOFs, E0 = -0.49999866) and is meant for
-propagation. The knot line printed at start-up reports the largest width.
+electrons during propagation. ``HydrogenicHMax`` caps the width: from the
+first element that would be wider, the rest of the half-axis is uniform with
+width :math:`\le` HMax. It does not change bound states noticeably
+(:math:`\pm 10`, HMax = 1: 68 921 DOFs, E0 = -0.49999866). The knot line
+printed at start-up reports the largest width.
+
+**High-harmonic generation.** HHG needs both ends of the grid: the returning
+electron far out and the recombination at the nucleus. Measured on a 2D
+hydrogen-like atom (:math:`V=-0.5/r`, :math:`I_p = 0.5`), 800 nm,
+:math:`10^{14}` W/cm², flat-top pulse, box :math:`[-65,65]\times[-40,40]` with
+CAP, degree 3, ``pade22``. Error of the integrated odd-harmonic yields of
+:math:`|\tilde A|^2` against a reference grid (R1 = 0.02, HMax = 0.25,
+179k DOFs), in decades (:math:`|\log_{10} I/I_{ref}|`); cutoff at H24:
+
+.. list-table::
+   :widths: 34 12 14 14 14
+   :header-rows: 1
+
+   * - Grid (R1 = 0.05, NLin 5, NExp 10)
+     - DOFs
+     - plateau median
+     - plateau max
+     - H27-H35 max
+   * - no cap (elements up to 28 au)
+     - 1 089
+     - 1.18
+     - 2.35
+     - 2.98
+   * - HMax = 2.0
+     - 5 185
+     - 0.088
+     - 0.48
+     - 4.4
+   * - HMax = 1.0
+     - 14 553
+     - 0.007
+     - 0.031
+     - 0.018
+   * - HMax = 0.7 / 0.5 / 0.35
+     - 26-94k
+     - 0.007
+     - 0.031
+     - 0.010
+   * - HMax = 0.5, R1 = 0.1
+     - 46 341
+     - 0.023
+     - 0.097
+     - 0.030
+   * - HMax = 0.5, R1 = 0.2
+     - 44 589
+     - 0.066
+     - 0.27
+     - 0.082
+
+The outer width converges at about four elements per wavelength of the fastest
+returning electron, :math:`h \le \pi/(2k_{max})` with
+:math:`k_{max} = \sqrt{2(3.17U_p + I_p)}` (1.0 au here; 2.0 au, about
+:math:`\pi/k_{max}`, fails); the remaining 1.6 % is set by the nucleus spacing,
+whose error grows about as :math:`R_1^{1.5}` - keep R1 :math:`\le` 0.05 au.
+The acceleration and current spectra agree to 0.001-0.005 decades in every run,
+so their agreement does not detect an under-resolved grid; only refinement
+does.
+
+With ``HydrogenicHMax = 0`` (default) and ``EnablePropagation = 1`` with a
+field, the cap is derived from the input: :math:`E_0` is the largest field over
+:math:`[0, \mathrm{FinalTime}]`, :math:`\omega` from ``Omegax/y/z`` or the
+zero crossings of the field, :math:`I_p` from ``TargetEigenvalue`` (< 0) or
+0.5, and the derivation is printed. On the run above it gives 0.976 au and the
+converged spectrum (median 0.007, max 0.031 decades). A short test run
+(small FinalTime) samples only the start of the pulse and gets a wider cap;
+set HMax explicitly when that matters. Bound-state-only runs are not capped.
 
 **Quadrature.** The nucleus sits on a knot (an element corner), where Gauss
 points never fall. Gauss-Legendre integrates the corner singularity of
