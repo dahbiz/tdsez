@@ -1,0 +1,26 @@
+# Strong-scaling benchmark of the propagator preconditioners (3D, ~1.1e6 DOFs).
+# Soft-core atom, 800 nm field along x, CAP; a Gaussian start (NBoundStates = 0)
+# so only the propagation is timed. 40 Crank-Nicolson steps.
+Dimension          = 3
+Domain             = -30.0, 30.0
+SplineDegree       = 4
+NQuadratures       = 6
+KnotSequence       = uniform
+NSplines           = 100
+Charge             = -1.0
+Mass               = 1.0
+Potential            = -1/sqrt(x*x + y*y + z*z + 1)
+PotentialDerivativeX = x/(x*x + y*y + z*z + 1)^1.5
+PotentialDerivativeY = y/(x*x + y*y + z*z + 1)^1.5
+PotentialDerivativeZ = z/(x*x + y*y + z*z + 1)^1.5
+NBoundStates       = 0
+InitialState       = wavepacket
+WavepacketWidth    = 1.0, 1.0, 1.0
+Polarization       = x
+LaserX             = 0.0534*sin(0.057*t)
+Propagator         = cn
+TimeStep           = 0.05
+FinalTime          = 2.0
+EnableCAP          = 1
+CAPKmin            = 0.5
+OutputStrideWFS    = 1000000
