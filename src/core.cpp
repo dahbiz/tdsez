@@ -84,6 +84,20 @@ PetscErrorCode TDSEZCore::Assemble()
     PetscCall(MatNorm(H, NORM_INFINITY, &normH));
     PetscCall(MatNorm(M, NORM_INFINITY, &normM));
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "                ||H||_inf = %.3e - ||M||_inf = %.3e\n", normH, normM));
+    {
+        // A potential that is infinite or NaN at a quadrature point (a Coulomb
+        // singularity on a Gauss-Lobatto point, which includes the element
+        // ends) gives non-finite entries; the max-based norm above skips NaN.
+        PetscReal fro;
+        PetscCall(MatNorm(H, NORM_FROBENIUS, &fro));
+        if (PetscIsInfOrNanReal(fro)) {
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
+                "\nTDSEZ FATAL: the Hamiltonian has infinite or NaN entries: the potential is singular at a "
+                "quadrature point.\n  QuadratureRule = lobatto puts points on the knots; with a Coulomb potential "
+                "centred on a knot use legendre (default) or reduced, or move the centre off the knots.\n"));
+            MPI_Abort(PETSC_COMM_WORLD, 1);
+        }
+    }
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "                          TISE Assembly time: %.3gs\n", t1 - t0));
 
 #ifndef NDEBUG
@@ -742,11 +756,6 @@ PetscErrorCode TDSEZCore::Solve()
         PetscBool userSubLevels = PETSC_FALSE, userSubShift = PETSC_FALSE;
         PetscCall(PetscOptionsHasName(NULL, NULL, "-st_sub_pc_factor_levels", &userSubLevels));
         PetscCall(PetscOptionsHasName(NULL, NULL, "-st_sub_pc_factor_shift_type", &userSubShift));
-        {
-            PetscBool set;
-            PetscCall(PetscOptionsHasName(NULL, NULL, "-st_mat_mumps_icntl_14", &set));
-            if (!set) PetscCall(PetscOptionsSetValue(NULL, "-st_mat_mumps_icntl_14", "50"));  // workspace +50%
-        }
         EpsMonitorCtx monitorCtx;              // every solve of eps runs inside Solve()
         monitorCtx.nev = nev;
 
@@ -780,6 +789,10 @@ PetscErrorCode TDSEZCore::Solve()
                 PetscCall(KSPSetType(ksp, KSPPREONLY));
                 PetscCall(PCSetType(pc, PCLU));
                 PetscCall(PCFactorSetMatSolverType(pc, directPackage));
+                PetscBool set;
+                PetscCall(PetscOptionsHasName(NULL, NULL, "-st_mat_mumps_icntl_14", &set));
+                if (!set && !strcmp(directPackage, MATSOLVERMUMPS))
+                    PetscCall(PetscOptionsSetValue(NULL, "-st_mat_mumps_icntl_14", "50"));   // workspace +50%
             } else {
                 const bool strong = mode == EpsInner::IterativeStrong;
                 PetscCall(KSPSetType(ksp, KSPFGMRES));
@@ -1670,7 +1683,7 @@ PetscErrorCode TDSEZCore::Output()
                             TDSEZParser::HydrogenicNLin[0] > 0 ? TDSEZParser::HydrogenicNLin[0] : TDSEZParser::Nelements - 1,
                             TDSEZParser::HydrogenicR1[0] > 0.0 ? TDSEZParser::HydrogenicR1[0] : 0.1,
                             TDSEZParser::HydrogenicNExp[0] > 0 ? TDSEZParser::HydrogenicNExp[0] : 10,
-                            TDSEZParser::SplineDegree);
+                            TDSEZParser::SplineDegree, TDSEZParser::HydrogenicHMax[0]);
                     else
                     {
                         PetscPrintf(PETSC_COMM_WORLD,
@@ -1737,7 +1750,7 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicNLin[1] > 0 ? TDSEZParser::HydrogenicNLin[1] : TDSEZParser::Nelements - 1,
                                 TDSEZParser::HydrogenicR1[1] > 0.0 ? TDSEZParser::HydrogenicR1[1] : 0.1,
                                 TDSEZParser::HydrogenicNExp[1] > 0 ? TDSEZParser::HydrogenicNExp[1] : 10,
-                                TDSEZParser::SplineDegree);
+                                TDSEZParser::SplineDegree, TDSEZParser::HydrogenicHMax[1]);
                         else
                         {
                             PetscPrintf(PETSC_COMM_WORLD,
@@ -1791,7 +1804,7 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicNLin[2] > 0 ? TDSEZParser::HydrogenicNLin[2] : TDSEZParser::Nelements - 1,
                                 TDSEZParser::HydrogenicR1[2] > 0.0 ? TDSEZParser::HydrogenicR1[2] : 0.1,
                                 TDSEZParser::HydrogenicNExp[2] > 0 ? TDSEZParser::HydrogenicNExp[2] : 10,
-                                TDSEZParser::SplineDegree);
+                                TDSEZParser::SplineDegree, TDSEZParser::HydrogenicHMax[2]);
                         else
                         {
                             PetscPrintf(PETSC_COMM_WORLD,
@@ -1823,6 +1836,34 @@ PetscErrorCode TDSEZCore::Output()
                 PetscPrintf(PETSC_COMM_WORLD,
                     "\nTDSEZ FATAL: knot-sequence setup failed:\n  %s\n", e.what());
                 MPI_Abort(PETSC_COMM_WORLD, 3);
+            }
+
+            // Basis and quadrature rule. The element bases (Bernstein, Lagrange,
+            // spectral) are C0: every interior knot is raised to multiplicity p.
+            {
+                const std::string &b = TDSEZParser::Basis, &q = TDSEZParser::QuadratureRule;
+                const IGABasisType bt = b == "bernstein" ? IGA_BASIS_BERNSTEIN
+                                      : b == "lagrange"  ? IGA_BASIS_LAGRANGE
+                                      : b == "spectral"  ? IGA_BASIS_SPECTRAL : IGA_BASIS_BSPLINE;
+                const IGARuleType rt = q == "lobatto" ? IGA_RULE_LOBATTO
+                                     : q == "reduced" ? IGA_RULE_REDUCED : IGA_RULE_LEGENDRE;
+                const PetscInt p = TDSEZParser::SplineDegree;
+                for (PetscInt d = 0; d < TDSEZParser::Dimension; ++d) {
+                    if (bt != IGA_BASIS_BSPLINE) {
+                        IGAAxis ax;
+                        PetscInt m;
+                        PetscReal *U;
+                        PetscCallAbort(PETSC_COMM_WORLD, IGAGetAxis(iga, d, &ax));
+                        PetscCallAbort(PETSC_COMM_WORLD, IGAAxisGetKnots(ax, &m, &U));
+                        std::vector<PetscReal> C0(U, U + p + 1);                  // first boundary knots
+                        for (PetscInt k = p + 1; k < m - p; ++k)
+                            if (U[k] != C0.back()) C0.insert(C0.end(), p, U[k]); // each interior knot p times
+                        C0.insert(C0.end(), U + m - p, U + m + 1);               // last boundary knots
+                        PetscCallAbort(PETSC_COMM_WORLD, IGAAxisSetKnots(ax, (PetscInt)C0.size() - 1, C0.data()));
+                    }
+                    PetscCallAbort(PETSC_COMM_WORLD, IGASetBasisType(iga, d, bt));
+                    PetscCallAbort(PETSC_COMM_WORLD, IGASetRuleType(iga, d, rt));
+                }
             }
 
             // Boundary Conditions

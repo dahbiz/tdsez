@@ -402,13 +402,17 @@ std::vector<PetscReal> TDSEZCore::TDSEZInterfaceKnots(
 /// @param r1     Width of the linear region.
 /// @param n_exp  Number of exponentially graded knots in the outer region.
 /// @param p      Spline degree (boundary multiplicity = p+1).
+/// @param hmax   Largest element width (0: no cap). Where the exponential
+///               elements would grow wider, the rest of the half-axis is
+///               filled with uniform elements of width <= hmax.
 /// @return Vector of knot values.
 std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     PetscReal Lmax,
     PetscInt  n_lin,
     PetscReal r1,
     PetscInt  n_exp,
-    PetscInt  p)
+    PetscInt  p,
+    PetscReal hmax)
 {
     // ── safety checks ───────────────────────────────────────────────
     if (n_lin <= 0 || n_exp <= 0 || p <= 0)
@@ -442,6 +446,25 @@ std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     // would land on Lmax and collide with the p+1 boundary repeats.
     for (PetscInt k = 1; k < n_exp; ++k)
         half.push_back(clean(r_cross * std::exp(k * log_ratio / n_exp)));
+
+    // Width cap: from the first element wider than hmax on, uniform elements
+    // of width <= hmax up to Lmax (the exponential tail grows to
+    // Lmax (1 - r_cross/Lmax)^(1/n_exp)-wide elements, too coarse for
+    // ionised or excited electrons in a large box).
+    PetscInt n_capped = 0;
+    if (hmax > 0) {
+        half.push_back(Lmax);
+        for (size_t j = 0; j + 1 < half.size(); ++j) {
+            if (half[j + 1] - half[j] <= hmax) continue;
+            const PetscReal r  = half[j];
+            const PetscInt  nu = (PetscInt)std::ceil((Lmax - r) / hmax - 1e-9);
+            half.resize(j + 1);
+            for (PetscInt k = 1; k <= nu; ++k) half.push_back(clean(r + k * (Lmax - r) / nu));
+            n_capped = nu;
+            break;
+        }
+        half.pop_back();                                 // Lmax is added as the boundary knot
+    }
 
     PetscInt n_half = (PetscInt)half.size();
 
@@ -508,13 +531,18 @@ std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     }
 
     // ── diagnostics ──────────────────────────────────────────────────
+    PetscReal hlargest = 0;
+    for (PetscInt i = 1; i < n_half; ++i) hlargest = std::max(hlargest, half[i] - half[i - 1]);
+    hlargest = std::max(hlargest, Lmax - half[n_half - 1]);
     PetscPrintf(PETSC_COMM_WORLD,
         "TDSEZHydrogenicKnots: %d elems | %d interior | p=%d | "
-        "h_min=%.4f au | r_cross=%.2f au | Lmax=%.1f au\n",
+        "h_min=%.4f au | h_max=%.3f au%s | r_cross=%.2f au | Lmax=%.1f au\n",
         (int)(ninterior + 1),
         (int)ninterior,
         (int)p,
         (double)r1,
+        (double)hlargest,
+        n_capped ? " (capped)" : "",
         (double)r_cross,
         (double)Lmax);
 

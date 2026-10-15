@@ -193,6 +193,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"HydrogenicR1",            H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
                 {"HydrogenicInnerSpacing",  H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
                 {"InnerSpacing",            H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
+                {"HydrogenicHMax",          H{[](const std::string &v){ ParseAxisList(v, HydrogenicHMax); }}},
+                {"HydrogenicMaxSpacing",    H{[](const std::string &v){ ParseAxisList(v, HydrogenicHMax); }}},
                 {"Mass",     S(Mass)},
                 {"Charge",    R(Q)},
                 {"ParticleCharge", R(Q)},     // intuitive alias
@@ -275,6 +277,10 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"AccelerationMethod", S(AccelerationMethod)},
                 {"Propagator",         S(Propagator)},
                 {"Preconditioner",     S(Preconditioner)},
+                {"Basis",              S(Basis)},
+                {"BasisType",          S(Basis)},
+                {"QuadratureRule",     S(QuadratureRule)},
+                {"QuadratureType",     S(QuadratureRule)},
                 {"MGLevels",           I(MGLevels)},
                 {"MGSmooth",           I(MGSmooth)},
                 {"StartState",         S(InitialState)},     // intuitive alias

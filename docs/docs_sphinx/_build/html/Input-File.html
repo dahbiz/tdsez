@@ -187,6 +187,7 @@
 <li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load Balance</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
@@ -213,6 +214,7 @@
 <li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#coulomb-potentials-hydrogenic-sequence">Coulomb Potentials (hydrogenic sequence)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -365,7 +367,18 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <tr class="row-odd"><td><p>NQuadratures</p></td>
 <td><p>int</p></td>
 <td><p>8</p></td>
-<td><p>Gauss-Legendre quadrature points per element.</p></td>
+<td><p>Quadrature points per element and axis (at most 10).</p></td>
+</tr>
+<tr class="row-even"><td><p>QuadratureRule / QuadratureType</p></td>
+<td><p>string</p></td>
+<td><p>legendre</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">legendre</span></code>, <code class="docutils literal notranslate"><span class="pre">lobatto</span></code> or <code class="docutils literal notranslate"><span class="pre">reduced</span></code> (see Grid and Domain).</p></td>
+</tr>
+<tr class="row-odd"><td><p>Basis / BasisType</p></td>
+<td><p>string</p></td>
+<td><p>bspline</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bspline</span></code>, <code class="docutils literal notranslate"><span class="pre">bernstein</span></code>, <code class="docutils literal notranslate"><span class="pre">lagrange</span></code> or <code class="docutils literal notranslate"><span class="pre">spectral</span></code> (C0 element
+bases: interior knots raised to multiplicity p).</p></td>
 </tr>
 <tr class="row-even"><td><p>StrictInput</p></td>
 <td><p>bool</p></td>

@@ -225,6 +225,14 @@ void TDSEZParser::ValidateOrThrow()
                                  "or 'magnus4' (got '" + Propagator + "')");
     if (Preconditioner != "asm" && Preconditioner != "mg" && Preconditioner != "gamg")
         throw std::runtime_error("ValidateOrThrow: Preconditioner must be 'asm', 'mg' or 'gamg' (got '" + Preconditioner + "')");
+    for (std::string *v : {&Basis, &QuadratureRule})
+        std::transform(v->begin(), v->end(), v->begin(), [](unsigned char c) { return (char)std::tolower(c); });
+    if (Basis != "bspline" && Basis != "bernstein" && Basis != "lagrange" && Basis != "spectral")
+        throw std::runtime_error("ValidateOrThrow: Basis must be 'bspline', 'bernstein', 'lagrange' or 'spectral' (got '" + Basis + "')");
+    if (QuadratureRule != "legendre" && QuadratureRule != "lobatto" && QuadratureRule != "reduced")
+        throw std::runtime_error("ValidateOrThrow: QuadratureRule must be 'legendre', 'lobatto' or 'reduced' (got '" + QuadratureRule + "')");
+    if (Basis != "bspline" && Preconditioner == "mg")
+        throw std::runtime_error("ValidateOrThrow: Preconditioner = mg needs Basis = bspline (its prolongation is B-spline knot insertion)");
     if (MGLevels < 0 || MGLevels == 1 || MGSmooth < 1)
         throw std::runtime_error("ValidateOrThrow: MGLevels must be 0 (automatic) or >= 2 and MGSmooth >= 1");
 

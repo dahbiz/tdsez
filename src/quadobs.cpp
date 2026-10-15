@@ -74,9 +74,11 @@ PetscErrorCode TDSEZQuadObs::Setup(IGA iga, unsigned what, bool forceCorrections
                 A.W[le * A.Q + q] = B->weight[e * A.Q + q] * B->detJac[e];
                 X[d][le * A.Q + q] = B->point[e * A.Q + q];
                 for (PetscInt a = 0; a < A.n; ++a) {
+                    // weight-0 points (reduced rule) have uncomputed values
                     const PetscReal *v = B->value + (((size_t)e * A.Q + q) * A.n + a) * 5;
-                    A.N0[((size_t)le * A.n + a) * A.Q + q] = v[0];
-                    A.N1[((size_t)le * A.n + a) * A.Q + q] = v[1];
+                    const bool used = B->weight[e * A.Q + q] != 0.0;
+                    A.N0[((size_t)le * A.n + a) * A.Q + q] = used ? v[0] : 0.0;
+                    A.N1[((size_t)le * A.n + a) * A.Q + q] = used ? v[1] : 0.0;
                 }
             }
         }

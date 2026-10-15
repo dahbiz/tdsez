@@ -75,7 +75,16 @@ Global Settings
    * - NQuadratures
      - int
      - 8
-     - Gauss-Legendre quadrature points per element.
+     - Quadrature points per element and axis (at most 10).
+   * - QuadratureRule / QuadratureType
+     - string
+     - legendre
+     - ``legendre``, ``lobatto`` or ``reduced`` (see Grid and Domain).
+   * - Basis / BasisType
+     - string
+     - bspline
+     - ``bspline``, ``bernstein``, ``lagrange`` or ``spectral`` (C0 element
+       bases: interior knots raised to multiplicity p).
    * - StrictInput
      - bool
      - 1 (true)

@@ -54,10 +54,15 @@ void LoadAxis(IGA iga, IGAElement e, PetscInt d, Axis1D &A)
     A.W.assign(A.Q, 0.0); A.X.assign(A.Q, 0.0);
     for (PetscInt q = 0; q < A.Q; ++q) {
         A.W[q] = B->weight[el * A.Q + q] * B->detJac[el];
-        A.X[q] = B->point[el * A.Q + q];
+        // Points of weight 0 (the unused points of PetIGA's reduced rule on
+        // interior elements) sit at PETSC_MAX_REAL with uncomputed basis
+        // values: keep them out (coordinate at the element start, values 0),
+        // or V(x) * 0 = inf * 0 = NaN reaches the matrices.
+        const bool used = A.W[q] != 0.0;
+        A.X[q] = used ? B->point[el * A.Q + q] : B->point[el * A.Q];
         for (PetscInt a = 0; a < A.n; ++a)
             for (int k = 0; k < 2; ++k)
-                A.N[k][(size_t)a * A.Q + q] = B->value[(((size_t)el * A.Q + q) * A.n + a) * 5 + k];
+                A.N[k][(size_t)a * A.Q + q] = used ? B->value[(((size_t)el * A.Q + q) * A.n + a) * 5 + k] : 0.0;
     }
 }
 

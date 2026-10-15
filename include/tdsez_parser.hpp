@@ -289,6 +289,15 @@ class TDSEZParser
         /// Preconditioner of the propagator solves: "asm" (additive Schwarz,
         /// ILU(0) subdomains) or "mg" (geometric B-spline multigrid).
         inline static std::string           Preconditioner     = "asm";
+        /// Basis of every axis: "bspline" (default, C^{p-1} across simple
+        /// knots) or the C0 element bases "bernstein", "lagrange", "spectral"
+        /// (Lagrange at Gauss-Lobatto points); for these every interior knot
+        /// is raised to multiplicity p.
+        inline static std::string           Basis              = "bspline";
+        /// Quadrature rule: "legendre" (Gauss, default), "lobatto"
+        /// (Gauss-Lobatto, includes the element ends) or "reduced" (PetIGA's
+        /// reduced B-spline rule).
+        inline static std::string           QuadratureRule     = "legendre";
         /// Multigrid levels (0 = coarsen until about 2000 DOFs) and smoothing
         /// sweeps (Richardson with ASM/ILU(0)) before and after each coarse correction.
         inline static PetscInt              MGLevels           = 0;
@@ -402,6 +411,10 @@ class TDSEZParser
         // the previous hard-coded value; 0 means "use 0.1".
         /// Per-axis near-origin knot spacing for the hydrogenic sequence (a.u.).
         inline static PetscReal             HydrogenicR1[3]     = {0.0, 0.0, 0.0};
+        /// Per-axis largest element width (a.u.) of the hydrogenic sequence:
+        /// where the exponential grading would exceed it, the rest of the
+        /// half-axis is filled with uniform elements no wider than it. 0 = off.
+        inline static PetscReal             HydrogenicHMax[3]   = {0.0, 0.0, 0.0};
 
         /// Number of quadrature points per element.
         inline static PetscInt  NQuadratures      = 8;
