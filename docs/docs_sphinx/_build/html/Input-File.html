@@ -549,7 +549,8 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <tr class="row-even"><td><p>UseDirectSolve / DirectSolve</p></td>
 <td><p>bool</p></td>
 <td><p>0 (false)</p></td>
-<td><p>1 = use SLEPc direct eigensolver (ARNOLDI). 0 = implicitly restarted Lanczos (IRLM).</p></td>
+<td><p>1 = solve the shift-invert systems of the eigensolver with a direct
+factorisation (MUMPS) first. 0 = automatic choice (see Eigensolver).</p></td>
 </tr>
 <tr class="row-odd"><td><p>TargetEigenvalue / TargetEnergy</p></td>
 <td><p>real</p></td>

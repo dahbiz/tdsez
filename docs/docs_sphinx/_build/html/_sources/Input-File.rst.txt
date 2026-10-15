@@ -203,7 +203,8 @@ Eigensolver (TISE)
    * - UseDirectSolve / DirectSolve
      - bool
      - 0 (false)
-     - 1 = use SLEPc direct eigensolver (ARNOLDI). 0 = implicitly restarted Lanczos (IRLM).
+     - 1 = solve the shift-invert systems of the eigensolver with a direct
+       factorisation (MUMPS) first. 0 = automatic choice (see Eigensolver).
    * - TargetEigenvalue / TargetEnergy
      - real
      - 0.0

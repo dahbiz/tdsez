@@ -92,6 +92,11 @@ Propagation Flags
      - bool
      - Apply M, the dipoles, the velocities and K in the monitors as assembled
        sparse matrices instead of in factorised (Kronecker) form (2D/3D).
+   * - ``-tdsez_eps_inner direct|iterative``
+     - string
+     - First inner solver of the shift-invert eigensolve (default: direct in
+       1D/2D and small high-degree 3D, iterative otherwise); failed attempts
+       fall back to the other one. See Eigensolver.
    * - ``-tdsez_quad_obs 0``
      - bool
      - Take <V>, <1/m>, <K>, the CAP, the forces dV/dx_a and the velocities

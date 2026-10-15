@@ -42,6 +42,7 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | Monitor expectations at the quadrature points (1e) | 3D varying mass, discrete acceleration, 50 steps: whole run | 142 s | 90 s | $`1.6\times`$ |
 | | same, operator acceleration: monitors | 6.24 s | 4.43 s | $`-29\%`$ |
 | Allocation-free $`1/m`$ derivatives (1e) | 3D, $`p=4`$, varying mass: force assembly | 28.1 s | 18.5 s | $`-34\%`$ |
+| Eigensolver inner solves and fallback (1f) | 3D, $`p=7`$, 15.6k DOFs, 4 states | 49.0 s | 19.8 s | $`2.5\times`$ |
 
 ## 1. Crank–Nicolson solver set-up
 
@@ -244,6 +245,43 @@ de-duplication as before, so the values are bitwise identical.
 Outputs equal to the matrix path to $`8\times10^{-15}`$ (relative). Peak memory
 does not change: it is reached during the assembly, before the matrices are
 freed.
+
+## 1f. Eigensolver (shift-invert inner solves, validation, fallback)
+
+The previous set-up passed its preconditioner settings as unprefixed global
+options (`-sub_pc_factor_levels`, `-sub_pc_factor_mat_ordering_type rcm`, ...).
+SLEPc's shift-invert KSP has the prefix `st_`, so the eigensolver ran plain
+ILU(0) on ASM blocks with overlap 2 (100k–1M DOFs) or block Jacobi (< 10k), and
+the options leaked to the propagator's ASM. A non-converged inner solve
+aborted the run, and the inner tolerance ($`10^{-10}`$) limited the accuracy of
+states near $`E=0`$ while SLEPc reported convergence at $`10^{-12}`$.
+
+Now (see Eigensolver in the documentation): direct LU in 1D/2D and for small
+3D problems of degree $`\ge 6`$, FGMRES + restricted ASM(1)/ILU(0) otherwise;
+every attempt checked (inner solve, number of converged pairs, backward error
+$`\le 10^{-8}`$) with fallback iterative → direct → ASM(2)/ILU(1). The
+degenerate-shell check re-solves at full tolerance with the deflation space set
+again (it does not persist between `EPSSolve` calls; before, the loose
+$`10^{-6}`$ probe was kept, backward error $`3\times10^{-9}`$ instead of
+$`10^{-15}`$).
+
+8 ranks, eigensolve wall time (eigenvalues identical to the previous build):
+
+| Case | DOFs | before | after |
+|---|---|---|---|
+| 3D HO, $`p=7`$, 4 states | 15.6k | 49.0 s | 19.8 s (direct) |
+| 3D varying mass, $`p=4`$, 1 state | 32.8k | 5.1 s | 3.9 s |
+| 3D HO / soft-core H, $`p=3`$ (back to back) | 64k / 46k | 16.2 / 10.8 s | 14.0 / 8.8 s |
+| 2D soft-core H, Dirichlet, 12 states | 7.7k | 1.74 s | 0.58 s |
+| 2D soft-core H, $`p=4`$, 10 states | 254k | 64 s (iterative) | 34 s (direct, 3× memory) |
+| 2D HO / soft-core H, 30 / 15 states | 13k / 21k | 1.07 / 1.7 s | 1.6 / 2.2 s |
+| 1D soft-core H, 30 states | 3k | 0.22 s | 0.25 s |
+| 3D $`p=7`$, ASM overlap 0 forced | 15.6k | abort (KSP diverged) | 25 s (fallback to direct) |
+
+Small 2D problems are somewhat slower with the exact solve; in exchange every
+state is exact to rounding (1D Rydberg states: relative residual
+$`1.6\times10^{-8}`$ before, backward error $`6\times10^{-15}`$ now).
+`-tdsez_eps_inner iterative` restores the iterative inner solve.
 
 ## 2. Fourth-order propagators (`Propagator = pade22 | magnus4`)
 

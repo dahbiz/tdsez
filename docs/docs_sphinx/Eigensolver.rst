@@ -68,7 +68,38 @@ Solve Mode
    * - UseDirectSolve / DirectSolve
      - bool
      - false
-     - Use direct factorization instead of iterative eigensolver
+     - Solve the shift-invert systems with a direct factorisation first
+
+SLEPc's Krylov-Schur solver runs on the shift-invert operator
+:math:`(H-\sigma M)^{-1}M` (GHEP, eigenvalues nearest ``TargetEigenvalue``;
+the shift :math:`\sigma` sits :math:`10^{-3}\max(1,|\mathrm{target}|)` below
+the target so that a target on an eigenvalue does not make
+:math:`H-\sigma M` singular). Each application solves a system with
+:math:`H-\sigma M`, the inner solve:
+
+* **direct**: LU factorisation (MUMPS; SuperLU_DIST or PETSc's LU when MUMPS
+  is missing). Exact and factorised once. Default in 1D and 2D (up to 2M
+  DOFs) and in 3D for degree :math:`\ge 6` up to 30k DOFs, where the
+  overlapping ASM blocks would cover most of the domain.
+* **iterative**: FGMRES with restricted additive Schwarz (overlap 1), ILU(0)
+  on each block with in-block shifts against zero pivots of the indefinite
+  :math:`H-\sigma M`, relative tolerance :math:`10^{-10}`. Default in 3D.
+
+Every attempt is checked: the inner solve converged, ``NBoundStates`` pairs
+converged, and every backward error
+:math:`\|Hv-EMv\|/((\|H\|_\infty+|E|\,\|M\|_\infty)\|v\|)` is below
+:math:`10^{-8}` (the eigensolver tolerance is :math:`10^{-12}`). If fewer
+pairs converged the attempt is repeated once with a twice larger subspace;
+otherwise the next inner solver runs: iterative :math:`\to` direct (3D up to
+300k DOFs) :math:`\to` FGMRES with ASM overlap 2 and ILU(1). The run stops
+only when no pair converges at all. ``-tdsez_eps_inner direct|iterative``
+chooses the first inner solver; ``-st_ksp_*``, ``-st_pc_*`` and
+``-st_sub_pc_*`` options apply on top of the defaults.
+
+The printed residual of each state (``res``) and ``eig_residual`` in
+``EigenData_*.h5`` are this backward error, which stays meaningful for
+:math:`E\to 0` (e.g. the constant ground state of a free particle with
+natural boundaries).
 
 Saving Eigenstates
 ------------------

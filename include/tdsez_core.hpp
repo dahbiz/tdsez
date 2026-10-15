@@ -64,6 +64,7 @@ class TDSEZCore
         /// consumer reads these instead of the raw SLEPc vectors.
         std::vector<Vec> eigVecs;
         std::vector<PetscReal> eigVals;
+        std::vector<PetscReal> eigRes_;   ///< backward error of each kept eigenpair
 
         // methods
         /**

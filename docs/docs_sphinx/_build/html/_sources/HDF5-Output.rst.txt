@@ -118,6 +118,7 @@ File: ``static/EigenData_*.h5``
 
 **Datasets**: ``spectrum`` (1D, float64), ``psi_0``, ``psi_1``, ... (complex
 vectors), ``run_metadata`` group with ``code_version``, ``input_file``, ``units``,
-grid params, eigenvalue residuals. Each axis dataset (``knots_x``, ``knots_y``,
+grid params, ``eig_residual`` (backward error
+:math:`\|Hv-EMv\|/((\|H\|_\infty+|E|\,\|M\|_\infty)\|v\|)` of each kept state). Each axis dataset (``knots_x``, ``knots_y``,
 ``knots_z``) has attributes: ``mult_start_end`` (2-int), ``SplineDegree``,
 ``nfuncs``.

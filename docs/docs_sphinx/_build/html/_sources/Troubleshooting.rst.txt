@@ -62,7 +62,11 @@ Performance in 3D
   ``-tdsez_sumfact_check`` compares every element with the per-point kernels.
 - **Eigensolver**: shift-invert near the bottom of a gapless spectrum (free or
   nearly free carriers) converges slowly, and the 3D direct factorisation is
-  memory-bound. With an analytic initial state use ``NBoundStates = 0``.
+  memory-bound. With an analytic initial state use ``NBoundStates = 0``. A
+  failed inner solve or inaccurate pairs are reported (``WARNING: inner solve
+  failed ... trying the next inner solver``) and the next inner solver runs;
+  "Inner solver used" and "Max backward error" in the RESULTS block show what
+  was accepted.
 - **Memory**: every stored operator has :math:`(2p+1)^3` non-zeros per row
   (729 for degree 4), about 24 bytes each. With 8 ranks the 110 592-DOF degree-4
   benchmark peaks at 16–20 GB; past the physical memory the run swaps and

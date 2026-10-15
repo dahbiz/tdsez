@@ -127,6 +127,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#preconditioners">Preconditioners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#accuracy-of-the-rational-propagators">Accuracy of the Rational Propagators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
@@ -424,7 +426,8 @@ decomposition into intra-band, inter-band and bound–continuum parts:</p>
 <p>File: <code class="docutils literal notranslate"><span class="pre">static/EigenData_*.h5</span></code></p>
 <p><strong>Datasets</strong>: <code class="docutils literal notranslate"><span class="pre">spectrum</span></code> (1D, float64), <code class="docutils literal notranslate"><span class="pre">psi_0</span></code>, <code class="docutils literal notranslate"><span class="pre">psi_1</span></code>, … (complex
 vectors), <code class="docutils literal notranslate"><span class="pre">run_metadata</span></code> group with <code class="docutils literal notranslate"><span class="pre">code_version</span></code>, <code class="docutils literal notranslate"><span class="pre">input_file</span></code>, <code class="docutils literal notranslate"><span class="pre">units</span></code>,
-grid params, eigenvalue residuals. Each axis dataset (<code class="docutils literal notranslate"><span class="pre">knots_x</span></code>, <code class="docutils literal notranslate"><span class="pre">knots_y</span></code>,
+grid params, <code class="docutils literal notranslate"><span class="pre">eig_residual</span></code> (backward error
+<span class="math notranslate nohighlight">\(\|Hv-EMv\|/((\|H\|_\infty+|E|\,\|M\|_\infty)\|v\|)\)</span> of each kept state). Each axis dataset (<code class="docutils literal notranslate"><span class="pre">knots_x</span></code>, <code class="docutils literal notranslate"><span class="pre">knots_y</span></code>,
 <code class="docutils literal notranslate"><span class="pre">knots_z</span></code>) has attributes: <code class="docutils literal notranslate"><span class="pre">mult_start_end</span></code> (2-int), <code class="docutils literal notranslate"><span class="pre">SplineDegree</span></code>,
 <code class="docutils literal notranslate"><span class="pre">nfuncs</span></code>.</p>
 </section>
