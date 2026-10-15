@@ -1,101 +1,151 @@
 Boundary Conditions
 ===================
 
-Controls how the wavefunction behaves at the edges of the computational domain.
-Choosing the right boundary condition is critical for accuracy — reflecting walls
-cause spurious reflections, while CAP allows outgoing flux to leave cleanly.
+The computational box has a wall condition, Neumann (default) or Dirichlet,
+which applies to all walls of all axes. Independently of it, a complex
+absorbing potential (CAP) can be added near the walls to remove outgoing
+electrons. All keys are also listed in :doc:`Input-File`.
 
-Boundary Types
---------------
+Wall conditions
+---------------
 
 .. list-table::
-   :widths: 35 15 20 30
+   :widths: 30 10 14 46
    :header-rows: 1
 
-   * - Key
+   * - Key (aliases)
      - Type
      - Default
      - Description
-   * - BoundaryType / Boundary
+   * - ``BoundaryType`` (``Boundary``)
      - string
      - ``Neumann``
-     - ``Neumann``/``Natural`` = reflecting wall.
-       ``Dirichlet``/``Wall`` = :math:`\psi = 0` at boundary
+     - ``Neumann`` or ``natural``: reflecting wall without constraint.
+       ``Dirichlet`` or ``wall``: :math:`\psi = 0` at the walls.
+       Case-insensitive; any other value stops the run.
 
-Complex Absorbing Potential
+**Neumann.** The Galerkin equations are assembled over the full basis without
+constraints. The boundary term of the weak form is dropped, which imposes the
+natural condition :math:`m^{-1}\,\partial_n\psi = 0` only weakly; the wall
+reflects. The wave function at the wall is not forced to zero, so a box that
+truncates a bound state lowers its energy below the converged value
+(:doc:`Knot-Sequences` gives a measured example).
+
+**Dirichlet.** On a clamped knot vector the first and the last B-spline of an
+axis are the only functions that do not vanish at the walls. With
+``BoundaryType = Dirichlet`` their coefficients are fixed to zero: their rows
+and columns are removed from :math:`H` and :math:`M`, and a decoupled
+diagonal entry is kept for each, which gives one spurious eigenvalue per wall
+coefficient near the top of the discrete spectrum. The same rows and columns
+are removed from the time-dependent and diagnostic operators (dipole,
+velocity, force, CAP, :math:`L_z`), so the wall coefficients stay zero during
+propagation. With Dirichlet walls the monitors use the assembled sparse
+matrices; the factorised (``-tdsez_tensor_ops``) and quadrature-point
+(``-tdsez_quad_obs``) evaluations are disabled (:doc:`CLI-Flags`).
+
+Both conditions reflect outgoing waves. Dirichlet walls suit potentials that
+confine the state (quantum wells, hard-wall boxes, singular potentials at the
+wall), and benchmarks whose reference solution vanishes at the box edge.
+
+Complex absorbing potential
 ---------------------------
 
 .. list-table::
-   :widths: 35 15 10 40
+   :widths: 30 10 14 46
    :header-rows: 1
 
-   * - Key
+   * - Key (aliases)
      - Type
      - Default
      - Description
-   * - EnableCAP / AbsorbingBoundary
+   * - ``EnableCAP`` (``AbsorbingBoundary``)
      - bool
      - 0
-     - Enable complex absorbing potential for outgoing-wave boundary conditions
-   * - CAPKmin
+     - Add the CAP to the propagation Hamiltonian.
+   * - ``CAPKmin``
      - real
      - 0.1
-     - Lowest momentum absorbed efficiently; sets the layer width w = 6.555/CAPKmin (see below)
-   * - CAPWidth / CAPLayerWidth
+     - Lowest momentum :math:`k_{\min}` (a.u.) absorbed with small
+       reflection; sets the layer width :eq:`eq-boundary-conditions-width`.
+       Must be > 0.
+   * - ``CAPWidth`` (``CAPLayerWidth``)
      - real
      - 0
-     - Width of the absorbing layer at each wall (a.u.). > 0 sets the layer
-       directly and CAPKmin = 6.555/CAPWidth follows; 0 uses CAPKmin.
+     - Layer width :math:`w` per wall (a.u.). A positive value overrides
+       ``CAPKmin`` through :eq:`eq-boundary-conditions-width`; 0 uses
+       ``CAPKmin``; a negative value is rejected.
 
-How CAP Works
--------------
-
-The CAP adds :math:`-iW(\mathbf r)` to the Hamiltonian, with the reflection-free
-profile of Manolopoulos (J. Chem. Phys. 117, 9552 (2002)). Every axis gets an
+The CAP adds :math:`-\mathrm{i}\,W(\mathbf r)` to the Hamiltonian of the time
+propagation, with the transmission-free profile of Manolopoulos
+[Manolopoulos2002]_. Every axis :math:`a` of the problem receives an
 absorbing layer of width
 
 .. math::
+   :label: eq-boundary-conditions-width
 
-   w = \frac{c}{2\,\delta\,k_{\min}} \approx \frac{6.555}{k_{\min}}, \qquad c = 2.62206,\ \delta = 0.2,
+   w = \frac{c}{2\,\delta\,k_{\min}} \approx \frac{6.555}{k_{\min}},
+   \qquad c = 2.62206,\quad \delta = 0.2,
 
-at both of its walls, :math:`k_{\min}` = ``CAPKmin``. Inside a layer, with
-:math:`u` the distance from the layer's inner edge and :math:`r = c\,u/w`,
+at both of its walls. Within a layer, with :math:`u \in [0, w)` the depth
+measured from the inner edge of the layer and :math:`r = c\,u/w`,
 
 .. math::
+   :label: eq-boundary-conditions-profile
 
-   W = E_{\min}\left(a r - b r^3 + \frac{4}{(c-r)^2} - \frac{4}{(c+r)^2}\right),
-   \qquad E_{\min} = \tfrac12 k_{\min}^2 ,
+   W_a = E_{\min}\left(a\,r - b\,r^3 + \frac{4}{(c-r)^2} - \frac{4}{(c+r)^2}\right),
+   \qquad E_{\min} = \tfrac12 k_{\min}^2,
+   \quad a = 1 - \frac{16}{c^3},\quad b = \frac{1 - 17/c^3}{c^2},
 
-which starts at zero (no step at the inner edge) and diverges at the wall. The
-contributions of the axes add, so non-cubic and asymmetric boxes are absorbed on
-every face. Electrons with momentum above :math:`k_{\min}` are absorbed with
-reflection below about 1%; slower ones are partly reflected. The layer may take
-at most 45% of each axis; the run stops otherwise.
+and :math:`W_a = 0` outside the layers. The profile starts at zero at the inner
+edge (no step that would reflect slow electrons) and diverges at the wall; at
+the wall itself the argument is held just below the pole :math:`r = c`. The
+contributions of the axes add, :math:`W = \sum_a W_a`, so boxes of any aspect
+ratio are absorbed on every face. Electrons with momentum above
+:math:`k_{\min}` (energy above :math:`E_{\min}`) are absorbed with a reflection
+probability below about 1 % [Manolopoulos2002]_; slower electrons are partly
+reflected.
 
-Tuning CAP Parameters
----------------------
+.. figure:: figures/Boundary-Conditions-cap.svg
+   :name: fig-boundary-conditions-cap
+   :width: 90%
 
-- The layer width and the lowest absorbed momentum are one parameter:
-  :math:`w\,k_{\min} = 6.555`. Set whichever you think in: ``CAPWidth`` (the
-  box budget, a.u.) or ``CAPKmin`` (the slowest electron to absorb). A wider
-  layer absorbs slower electrons but needs a larger box.
-- Keep the physically relevant region (for HHG, the electron excursion
-  :math:`\alpha = E_0/\omega^2` and the returning trajectories) inside the
-  free core. With the CAP on, the start-up block prints the layer, the
-  absorbed momentum range and, when propagating with a field, whether each
-  driven axis has a free-core half width of at least :math:`2\alpha + 10` a.u.
-  (a warning otherwise). Nothing is printed with ``EnableCAP = 0``.
+   CAP profile :math:`W(x)/E_{\min}` of :eq:`eq-boundary-conditions-profile`
+   on the axis :math:`[-65, 65]` a.u. with ``CAPKmin = 0.2``
+   (:math:`w = 32.8` a.u.); shaded: absorbing layers. Script
+   ``figures/make_Boundary-Conditions-cap.py``.
 
-Recommendation: set ``PhysicsOutput = population`` to monitor the bound-state
-population, and compare HHG spectra with a larger box or a smaller ``CAPKmin``
-to check that reflections are negligible.
+:numref:`fig-boundary-conditions-cap` shows the profile. The layers are placed
+at the walls of each axis (including ``OffsetX/Y/Z``). Input validation
+requires :math:`w \le 0.45\,(L_{\max} - L_{\min})` on every axis, so that a
+free core remains, and stops the run otherwise.
 
-With ``BoundaryType = Dirichlet`` the wall coefficients are fixed to zero; the
-CAP does not couple them (since 2026-10-15; before, the CAP rows of the wall
-coefficients were added to the identity rows of :math:`H`).
+Choosing the layer
+~~~~~~~~~~~~~~~~~~
 
-Reflecting vs Absorbing Boundaries
-----------------------------------
+- The layer width and the lowest absorbed momentum are one parameter,
+  :math:`w\,k_{\min} \approx 6.555`. Set either ``CAPWidth`` (the part of the
+  box spent on absorption) or ``CAPKmin`` (the slowest electron to absorb). A
+  wider layer absorbs slower electrons but requires a larger box.
+- The physically relevant region must lie in the free core. For HHG this is
+  the quiver motion of amplitude :math:`\alpha = E_0/\omega^2` and the
+  returning trajectories.
+- With ``EnableCAP = 1`` the start-up output reports the layer width, the
+  absorbed momentum range and, for each axis, the absorbing intervals and the
+  free-core width. When the field scales are known
+  (:doc:`Knot-Sequences`, field-resolution check), it compares the free-core
+  half width of each polarised axis with :math:`2\alpha + 10` a.u. and prints
+  a warning when it is smaller.
+- A t-SURFF surface must lie in front of the layers (:doc:`TSurff`).
+- To check that reflections are negligible, compare the observables (for
+  example the HHG spectrum or the bound-state population) with a run in a
+  larger box or with a smaller ``CAPKmin``.
+
+``-tdsez_cap_check`` additionally assembles the CAP with the element kernel
+and prints the largest difference to the separable assembly
+(:doc:`CLI-Flags`).
+
+Reflecting and absorbing boundaries compared
+--------------------------------------------
 
 .. list-table::
    :widths: 20 40 40
@@ -103,31 +153,17 @@ Reflecting vs Absorbing Boundaries
    :stub-columns: 1
 
    * -
-     - Reflecting
-     - CAP
-   * - Flux
-     - No flux leaves domain
-     - Outgoing flux absorbed
-   * - Use case
-     - Good for bound states only
-     - Good for ionization/continuum
-   * - Population
-     - Population conserved
-     - Population can decrease
-   * - Tuning
-     - Simple, no tuning needed
-     - Requires parameter tuning
-
-Use reflecting boundaries when studying bound-state dynamics only. Use CAP when
-ionization or ionization-like processes are present.
-
-Dirichlet Boundary
-------------------
-
-``BoundaryType = Dirichlet`` (or ``Wall``) forces :math:`\psi = 0` at the domain
-edges. This is a hard wall — stronger than Neumann but still reflects.
-
-Use Dirichlet when:
-- You want a stricter confinement than Neumann
-- You're studying systems with natural nodes at boundaries
-- You need to ensure wavefunction vanishes at edges
+     - Neumann or Dirichlet walls only
+     - With CAP
+   * - Outgoing flux
+     - Reflected into the box
+     - Absorbed in the layers
+   * - Norm
+     - Conserved
+     - Decreases as flux is absorbed
+   * - Typical use
+     - Bound-state dynamics, confined systems
+     - Ionisation, HHG, photoelectron spectra
+   * - Parameters
+     - None
+     - ``CAPKmin`` or ``CAPWidth``; the box must contain the layers

@@ -1,0 +1,26 @@
+digraph architecture_classes {
+  rankdir=LR;
+  graph [fontname="Helvetica", fontsize=11, nodesep=0.3, ranksep=0.5, bgcolor="transparent"];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#3b6ea5"];
+  edge  [fontname="Helvetica", fontsize=9, color="#555555"];
+
+  main   [label="tdsez.cpp\nmain()", fillcolor="#ffffff"];
+  parser [label="TDSEZParser\nparser.cpp\nparser_validation.cpp"];
+  core   [label="TDSEZCore\ncore.cpp, core_knots.cpp\nIGA, H, M, eigenpairs"];
+  asm    [label="TDSEZAssembler\nassembler_class.cpp\nassembly/*.cpp"];
+  man    [label="TDSEZManager\nmanager.cpp, monitor.cpp\nobservables, HDF5"];
+  prop   [label="TDSEZPropagator\npropagator.cpp\nTS / rational stages"];
+  mg     [label="TDSEZSetupMultigrid\nmultigrid.cpp"];
+  aux    [label="TDSEZTensorOps, TDSEZQuadObs\ntensorops.cpp, quadobs.cpp"];
+  surff  [label="TDSEZTSurff\ntsurff.cpp"];
+
+  main -> core [label="constructs"];
+  core -> parser [label="reads, validates"];
+  main -> asm  [label="constructs (iga)"];
+  main -> man  [label="core, assembler"];
+  main -> prop [label="manager"];
+  main -> surff [label="TSurff = 1", style=dashed];
+  prop -> mg   [label="Preconditioner = mg", style=dashed];
+  man -> aux   [label="monitors"];
+  prop -> man  [label="callbacks, monitors"];
+}

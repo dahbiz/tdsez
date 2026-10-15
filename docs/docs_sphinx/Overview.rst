@@ -1,60 +1,137 @@
-Overview & Architecture
-=======================
+Overview
+========
 
-High-level workflow and file structure of the TDSE-Z framework.
+Governing equations, discretisation and the solver workflow of TDSE-Z. The
+class structure is described in :doc:`Architecture`; sign conventions in
+:doc:`Physics-Conventions`.
 
-Solver Workflow
----------------
+Model
+-----
 
-TDSE-Z solves the Time-Dependent Schrödinger Equation (TDSE) using isogeometric analysis (B-spline basis functions) with MPI parallelism and HDF5 output.
-
-::
-
-    1. Parse input file (.prm)
-    2. Build IGA mesh (knot vectors, basis functions)
-    3. Assemble Hamiltonian H and mass matrix M
-    4. Solve TISE: H|psi_n> = E_n M|psi_n>  (SLEPc EPS)
-    5. Select initial state |psi(0)> -- ground, excited, or superposition
-    6. Propagate: i dpsi/dt = H|psi> + E(t)*D|psi>
-    7. Compute observables: dipole, energy, populations, currents, autocorrelation
-    8. Write HDF5 output at configured strides
-
-File Structure
---------------
-
-::
-
-    tdsez.cpp         // main entry -- orchestrates full pipeline
-    +-- TDSEZParser   // key=value input parsing (muParser)
-    +-- TDSEZCore     // IGA setup, knot generation, TISE solve
-    +-- TDSEZAssembler // builds H, M, K, V, Dx, Dy, Dz, Lz
-    +-- TDSEZManager  // runtime: observables, HDF5 buffers, output
-    +-- TDSEZPropagator // PETSc TS driver (Crank-Nicolson theta=0.5)
-
-Residual Assembly
------------------
-
-The Crank-Nicolson time-stepper evaluates the residual equation:
+TDSE-Z treats one particle of charge :math:`q` (``Charge``, default
+:math:`-1`) with a position-dependent mass :math:`m(\mathbf r)` (``Mass``) in
+a potential :math:`V(\mathbf r)` (``Potential``). The field-free Hamiltonian
+uses the Hermitian BenDaniel–Duke ordering of the kinetic energy
+[BenDanielDuke1966]_,
 
 .. math::
-   :nowrap:
+   :label: eq-overview-hamiltonian
 
-   \begin{equation}
-   F = iM \frac{\partial \psi}{\partial t} - H\psi - E(t)D\psi = 0
-   \end{equation}
+   H_0 = -\frac{1}{2}\,\nabla\cdot\frac{1}{m(\mathbf r)}\,\nabla
+         + s\,V(\mathbf r),
+   \qquad s = -q,
 
-where :math:`\frac{\partial \psi}{\partial t}` is the time derivative, M is the mass matrix, H is the Hamiltonian,
-and :math:`E(t)D` is the laser coupling term.
+which reduces to :math:`-\nabla^2/(2m_0)` for a constant mass. With
+``EnableCAP = 1`` a complex absorbing potential [Manolopoulos2002]_ is added
+near the domain boundaries (:doc:`Boundary-Conditions`). The laser field
+:math:`\mathbf E(t)` couples in the length gauge,
 
-Output Structure
-----------------
+.. math::
+   :label: eq-overview-tdse
 
-::
+   i\,\partial_t\psi(\mathbf r,t)
+     = \bigl[H_0 + s\,\mathbf r\cdot\mathbf E(t)\bigr]\,\psi(\mathbf r,t).
 
-    td/                  # time-evolution output
-      TimeEvolutionData_<input>.h5  # time-series observables
-      wfs_<input>.h5             # wavefunction snapshots
-      ac_<input>.h5             # autocorrelation function
-    static/                # eigenproblem output
-      EigenData_<input>.h5    # energy spectrum + eigenstates
-      GS_<input>.log         # degenerate-splitting log (2D)
+Discretisation
+--------------
+
+The wavefunction is expanded in tensor-product B-splines of degree p
+[deBoor2001]_ [Bachau2001]_, :math:`\psi(\mathbf r,t) = \sum_j c_j(t)
+B_j(\mathbf r)`, built and integrated by PetIGA [Dalcin2016]_. The Galerkin
+projection of :eq:`eq-overview-tdse` gives the semi-discrete system
+
+.. math::
+   :label: eq-overview-semidiscrete
+
+   i\,\mathbf M\,\dot{\mathbf c}
+     = \Bigl[\mathbf H + s\sum_{a} E_a(t)\,\mathbf D_a\Bigr]\mathbf c,
+
+with the overlap (mass) matrix :math:`M_{ij} = \langle B_i|B_j\rangle`, the
+Hamiltonian matrix :math:`\mathbf H` of :eq:`eq-overview-hamiltonian` and the
+position matrices :math:`(\mathbf D_a)_{ij} = \langle B_i|x_a|B_j\rangle`.
+The sum runs over the axes in ``Polarization``. For ``Propagator = cn``
+PETSc TS integrates the residual form
+
+.. math::
+   :label: eq-overview-residual
+
+   \mathbf F = i\,\mathbf M\,\dot{\mathbf c} - \mathbf H\mathbf c
+               - s\sum_a E_a(t)\,\mathbf D_a\,\mathbf c = 0
+
+with the theta method at :math:`\theta = 1/2` (Crank–Nicolson
+[Crank1947]_). The ``pade22`` and ``magnus4`` propagators apply the
+Padé(2,2) approximant of the step exponential to
+:eq:`eq-overview-semidiscrete`, in the second case inside a commutator-free
+Magnus scheme [BlanesMoan2006]_ [Alvermann2011]_; see :doc:`Time-Propagation`.
+
+Bound states solve the generalised eigenproblem
+
+.. math::
+   :label: eq-overview-eigen
+
+   \mathbf H\,\mathbf c_n = E_n\,\mathbf M\,\mathbf c_n
+
+with SLEPc [Hernandez2005]_ (shift-invert Krylov–Schur [Stewart2002]_, see
+:doc:`Eigensolver`).
+
+Workflow
+--------
+
+A run of ``tdsez.x`` follows the stages of :numref:`fig-overview-workflow`:
+
+1. Read and validate the input file (:doc:`Input-File`).
+2. Build the knot vectors and the IGA space (:doc:`Grid-Domain`,
+   :doc:`Knot-Sequences`).
+3. Assemble :math:`\mathbf H` and :math:`\mathbf M`.
+4. Solve :eq:`eq-overview-eigen` for ``NBoundStates`` states (skipped for
+   ``NBoundStates = 0`` with an analytic or wave-packet initial state) and
+   write ``static/EigenData_<input>.h5``.
+5. Build the initial state (:doc:`Initial-State`).
+6. With ``EnablePropagation = 1`` (default): assemble the time-dependent
+   operators, propagate :eq:`eq-overview-semidiscrete` to ``FinalTime`` and
+   record the observables at every step (:doc:`Observables`).
+7. Flush the buffered HDF5 rows and print the timing summary.
+
+.. figure:: figures/overview_workflow.svg
+   :name: fig-overview-workflow
+   :width: 70%
+
+   Stages of a TDSE-Z run, from the input file to the static and
+   time-dependent HDF5 output. Dashed arrows mark optional output.
+
+Output files
+------------
+
+``<input>`` is the file name of the input file (without directories).
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - File
+     - Content
+   * - ``static/EigenData_<input>.h5``
+     - Spectrum, eigenstates (with ``NBoundStatesSave = 1``), knot vectors
+       and run metadata; written when ``NBoundStates > 0``.
+   * - ``static/D{x,y,z}_<input>.bin``
+     - Dipole operator matrices in PETSc binary format; written with
+       ``SaveDipoleMatrix = 1`` or ``-save_dipole``.
+   * - ``static/TDMInfo_<input>.txt``
+     - Transition dipoles and oscillator strengths between the bound states;
+       written at the start of a propagation run.
+   * - ``static/GS_<input>.log``
+     - Degenerate-shell splitting log (2D, ``EnableLzDiag = 1``).
+   * - ``td/TimeEvolutionData_<input>.h5``
+     - Time series: dipoles, energies, currents, populations,
+       autocorrelation.
+   * - ``td/wfs_<input>.h5``
+     - Wavefunction snapshots every ``OutputStrideWFS`` steps.
+   * - ``td/surff_<input>.h5``
+     - t-SURFF momentum spectrum (``TSurff = 1``).
+   * - ``ts_<input>.h5``
+     - PETSc ``TSView`` output in the working directory
+       (``OutputStrideTS > 0``).
+
+Dataset layouts are listed in :doc:`HDF5-Output`. The post-processors
+``tdmprocessor``, ``tdmselect`` and ``drecprocessor`` read the ``static/``
+files (:doc:`Post-Processing`).

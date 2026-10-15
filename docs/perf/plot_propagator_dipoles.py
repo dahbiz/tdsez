@@ -3,7 +3,7 @@
 
 Reads run_<prop>/td/TimeEvolutionData_*.h5 (dipoles dataset: [t, E_x, q<x>, q a_x])
 and the propagation wall time from run_<prop>/run.log, and writes
-propagator_dipoles.png next to this script.
+propagator_dipoles.png and .svg next to this script.
 """
 import glob, os, re
 import h5py, numpy as np, matplotlib as mpl
@@ -55,3 +55,4 @@ ax[1].set_xlim(0, 50); ax[1].legend(fontsize=8, loc='lower right')
 for a, l in zip(ax, 'ab'):
     a.text(0.01, 0.95, f'({l})', transform=a.transAxes, fontweight='bold', va='top')
 fig.savefig(os.path.join(HERE, 'propagator_dipoles.png'), dpi=160, bbox_inches='tight')
+fig.savefig(os.path.join(HERE, 'propagator_dipoles.svg'), bbox_inches='tight')

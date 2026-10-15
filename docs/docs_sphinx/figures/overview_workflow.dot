@@ -1,0 +1,25 @@
+digraph overview_workflow {
+  rankdir=TB;
+  graph [fontname="Helvetica", fontsize=11, nodesep=0.35, ranksep=0.4, bgcolor="transparent"];
+  node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#3b6ea5"];
+  edge  [fontname="Helvetica", fontsize=10, color="#555555"];
+
+  input   [label="Input file (key = value)\nparse, muParser expressions, validation"];
+  grid    [label="IGA space\nknot vectors, basis (B-spline degree p)"];
+  assemble[label="Assemble H and M\n(sum-factorised, banded insertion)"];
+  eig     [label="Bound states  H c = E M c\nshift-invert Krylov-Schur (SLEPc)"];
+  static  [label="static/EigenData_<input>.h5", shape=note, fillcolor="#ffffff"];
+  psi0    [label="Initial state\nground, state:N, superposition,\nanalytic or wave packet"];
+  ops     [label="Time-dependent operators\ndipole, velocity, force, CAP"];
+  prop    [label="Time propagation\ncn | pade22 | magnus4\nGMRES / FGMRES + asm | mg | gamg"];
+  mon     [label="Observables at every step\ndipole, energy, populations,\ncurrents, autocorrelation"];
+  td      [label="td/TimeEvolutionData_<input>.h5\ntd/wfs_<input>.h5", shape=note, fillcolor="#ffffff"];
+  surff   [label="t-SURFF (TSurff = 1)\ntd/surff_<input>.h5", shape=note, fillcolor="#ffffff"];
+
+  input -> grid -> assemble -> eig -> psi0;
+  eig -> static [style=dashed];
+  psi0 -> ops -> prop -> mon -> td;
+  prop -> surff [style=dashed];
+  {rank=same; eig; static}
+  {rank=same; mon; surff}
+}

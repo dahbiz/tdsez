@@ -257,7 +257,6 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"Boundary",          S(BoundaryType)},   // intuitive alias
                 {"OutputStrideWFS",    I(OutputStrideWFS)},
                 {"OutputStrideTS",     I(OutputStrideTS)},
-                {"OutputStrideAC",     I(OutputStrideAC)},
                 {"HDF5Compress",       B(HDF5Compress)},
                 {"HDF5CompressLevel",  I(HDF5CompressLevel)},
                 {"CAPKmin",    R(CAPKmin)},
@@ -337,6 +336,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
         // (e.g. Planck = 1, EnvelopeType = custom) only warns.
         struct Removed { const char *why; bool (*harmless)(const std::string &); };
         static const auto never = [](const std::string &) { return false; };
+        static const auto always = [](const std::string &) { return true; };
         static const auto isOne = [](const std::string &v) {
             try { return std::stod(v) == 1.0; } catch (...) { return false; } };
         static const auto isCustom = [](const std::string &v) {
@@ -354,6 +354,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
             {"PulseDuration",     {"name constants for the field expression with Variables = PulseDuration=..., PulseCenter=...", never}},
             {"PulseCenter",       {"name constants for the field expression with Variables = PulseDuration=..., PulseCenter=...", never}},
             {"Gamma",             {"it had no effect; the CAP is set by CAPKmin", never}},
+            {"OutputStrideAC",    {"the autocorrelation is the 'autocorrelation' dataset of td/TimeEvolutionData_<input>.h5, "
+                                   "recorded every step", always}},
             {"CapStrength",       {"use CAPKmin (lowest momentum absorbed by the CAP)", never}},
             {"dinvMassX",         {"it had no effect; mass gradients are computed from Mass", never}},
             {"dinvMassY",         {"it had no effect; mass gradients are computed from Mass", never}},

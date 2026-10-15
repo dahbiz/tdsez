@@ -13,6 +13,13 @@ extensions = [
     "sphinx.ext.githubpages",
 ]
 
+# Numbered figures, tables and equations (:numref:, :eq:). Figures are
+# pre-rendered SVGs in figures/ (sources and scripts next to them).
+numfig = True
+numfig_format = {"figure": "Fig. %s", "table": "Table %s", "code-block": "Listing %s"}
+math_numfig = True
+math_eqref_format = "Eq. ({number})"
+
 import os
 import re
 import glob

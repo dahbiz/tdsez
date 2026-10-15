@@ -24,7 +24,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Observables" href="Observables.html" />
+    <link rel="next" title="Eigensolver" href="Eigensolver.html" />
+    <link rel="prev" title="Laser Field" href="Laser-Field.html" />
  
 </head>
 
@@ -47,192 +48,287 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview &amp; Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#solver-workflow">Solver Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#file-structure">File Structure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#residual-assembly">Residual Assembly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#execution-pipeline">Execution pipeline</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#public-modules">Public modules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#core-lifecycle">Core lifecycle</a></li>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#reference-pages">Reference pages</a></li>
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#model">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#workflow">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-files">Output files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#auto-detection">Auto-Detection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build Targets</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#execution-modes">Execution Modes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#output-directory-structure">Output Directory Structure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#performance-note">Performance Note</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build">Build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#running">Running</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Input-File.html">Input File</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#format">Format</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#muparser">muParser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#file-structure">File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#syntax">Syntax</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#value-types">Value types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#expressions">Expressions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#removed-keys">Removed keys</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Input-File.html#parameter-reference">Parameter Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#global-settings">Global Settings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#domain-and-grid">Domain and Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#potential-and-mass">Potential and Mass</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#key-reference">Key Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#general">General</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#grid-and-discretisation">Grid and discretisation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#potential-mass-and-carrier">Potential, mass and carrier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#laser-field">Laser field</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#initial-state">Initial state</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#time-propagation">Time propagation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#boundaries-and-absorbing-potential">Boundaries and absorbing potential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#observables-and-output">Observables and output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#t-surff-photoelectron-spectra">t-SURFF photoelectron spectra</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-handling">Option handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#program-flags">Program flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and eigensolver flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#propagation-flags">Propagation flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#environment-variables">Environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help">Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#running-a-deck">Running a Deck</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#strong-field-examples-examples">Strong-Field Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#reference-decks-tests-inputs">Reference Decks (<code class="docutils literal notranslate"><span class="pre">tests/inputs/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic oscillator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#soft-core-molecules-and-atoms">Soft-core molecules and atoms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#decks-that-must-fail">Decks that must fail</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Model and discretisation</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension">Dimension</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#spatial-bounds">Spatial Bounds</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh Resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension-and-bounds">Dimension and bounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#basis">Basis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#quadrature">Quadrature</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#selection">Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#graded-sequences">Graded sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#hydrogenic-sequence">Hydrogenic sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#interface-aligned-sequence">Interface-aligned sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#field-resolution-check">Field-resolution check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#convergence-studies">Convergence studies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Knot-Sequences.html#coulomb-potential-3d-hydrogen">Coulomb potential: 3D hydrogen</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Knot-Sequences.html#high-harmonic-generation">High-harmonic generation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#wall-conditions">Wall conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex absorbing potential</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#choosing-the-layer">Choosing the layer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-and-absorbing-boundaries-compared">Reflecting and absorbing boundaries compared</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Potential-Mass.html">Potential &amp; Mass</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#hamiltonian">Hamiltonian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#carrier-charge">Carrier Charge</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#potential">Potential</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#mass">Mass</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#physical-constants">Physical Constants</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#custom-variables">Custom Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#expressions-and-constants">Expressions and Constants</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expressions">Field Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-from-a-vector-potential">Field from a vector potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#named-field-parameters">Named Field Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-scales">Field Scales</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#unsupported-keys">Unsupported Keys</a></li>
 </ul>
 </li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Physics Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#units">Units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hamiltonian-and-carrier-sign">Hamiltonian and Carrier Sign</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#discrete-equations">Discrete Equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#time-stepping">Time Stepping</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#keys">Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#shift-invert-krylov-schur">Shift-Invert Krylov-Schur</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Eigensolver.html#inner-solvers">Inner solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Eigensolver.html#acceptance-of-an-attempt">Acceptance of an attempt</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#degenerate-levels-and-reproducible-states">Degenerate Levels and Reproducible States</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saved-eigenstates">Saved eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#keys">Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#selector-forms">Selector Forms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#bound-states">Bound states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#superpositions">Superpositions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#gaussian-wave-packet">Gaussian wave packet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#analytic-benchmark-states">Analytic benchmark states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#projection-and-normalisation">Projection and normalisation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#running-without-the-eigensolver">Running without the eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#typical-uses">Typical uses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#equation-of-motion">Equation of Motion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagators">Propagators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#linear-solver">Linear Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#preconditioners">Preconditioners</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#common-propagation-scenarios">Common Propagation Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control-and-progress">Propagation Control and Progress</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Output and analysis</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#evaluation">Evaluation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#norm">Norm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole">Dipole</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#energies">Energies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#current">Current</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#angular-momentum">Angular Momentum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#phase-increment">Phase Increment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Output-Control.html">Output Control</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#observable-selection">Observable Selection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#other-output-settings">Other Output Settings</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#initialstate-selector">InitialState Selector</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#format-reference">Format Reference</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#example-superpositions">Example Superpositions</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#d-systems">1D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic Oscillator</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-ionization">1D Atomic Ionization</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-superposition-quantum-beating">1D Superposition — Quantum Beating</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#unknown-input-key-fatal-error">Unknown Input Key Fatal Error</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#dimension-must-be-1-2-or-3">Dimension Must Be 1, 2 or 3</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#splinedegree-must-be-in-1-14">SplineDegree Must Be in [1,14]</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#initial-state-index-converged-eigenstates">Initial State Index &gt;= Converged Eigenstates</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#x-slowdown-with-mpirun">8-10x Slowdown with mpirun</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-tip">Performance Tip</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#static-output">Static Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#compression-and-console-output">Compression and Console Output</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#ring-buffer">Ring Buffer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#time-evolution-data">Time Evolution Data</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipole-table">Dipole Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energy-table">Energy Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#current-table">Current Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#population-table">Population Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipoles"><code class="docutils literal notranslate"><span class="pre">dipoles</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energies"><code class="docutils literal notranslate"><span class="pre">energies</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#currents"><code class="docutils literal notranslate"><span class="pre">currents</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#populations"><code class="docutils literal notranslate"><span class="pre">populations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation"><code class="docutils literal notranslate"><span class="pre">autocorrelation</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#wavefunction-snapshots">Wavefunction Snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#petsc-time-stepper-snapshots">PETSc Time-Stepper Snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#t-surff-spectra">t-SURFF Spectra</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#other-static-files">Other Static Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#reading-the-files">Reading the Files</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole-moment">Dipole Moment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#energy-decomposition">Energy Decomposition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#current-decomposition">Current Decomposition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#berry-phase">Berry Phase</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#input-files">Input Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#python-analysis-zkit">Python Analysis: zkit</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Physics Conventions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#convention-reference">Convention Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TSurff.html">Photoelectron Spectra (t-SURFF)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#method">Method</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#numerics">Numerics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#exterior-check">Exterior check</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#input-keys">Input Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#output-td-surff-input-h5">Output: <code class="docutils literal notranslate"><span class="pre">td/surff_&lt;input&gt;.h5</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#post-processing-script">Post-processing script</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-1-free-wave-packet-analytic-benchmark">Example 1: free wave packet (analytic benchmark)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-2-above-threshold-ionisation-of-a-1d-atom">Example 2: above-threshold ionisation of a 1D atom</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#choosing-the-parameters">Choosing the Parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HHG.html">Simulating HHG Correctly</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#worked-example">Worked Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#the-spectrum">The Spectrum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#checklist">Checklist</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Internals and operation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#modules">Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#lifecycle">Lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#generated-reference">Generated reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Performance.html">Performance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#linear-solves-of-the-propagation">Linear solves of the propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#fourth-order-propagators">Fourth-order propagators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#assembly">Assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#monitors-and-output">Monitors and output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#effect-on-accuracy">Effect on accuracy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#reproducing-the-measurements">Reproducing the measurements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#process-binding-with-openmpi-5-x">Process binding with OpenMPI 5.x</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#communication">Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#heterogeneous-cores">Heterogeneous cores</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#input-errors">Input Errors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#unknown-removed-or-repeated-keys">Unknown, removed or repeated keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#validation-errors">Validation errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#initial-state-index-beyond-the-converged-eigenstates">Initial state index beyond the converged eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#non-finite-hamiltonian">Non-finite Hamiltonian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#energies-below-the-exact-value">Energies Below the Exact Value</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#quadrature-order">Quadrature Order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#strong-field-warnings-at-start-up">Strong-Field Warnings at Start-up</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#t-surff-errors">t-SURFF Errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#slow-runs-under-mpi">Slow Runs under MPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-in-3d">Performance in 3D</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="References.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="References.html#time-propagation-and-linear-algebra">Time propagation and linear algebra</a></li>
+<li class="toctree-l2"><a class="reference internal" href="References.html#strong-field-physics">Strong-field physics</a></li>
 </ul>
 </li>
 </ul>
@@ -263,9 +359,58 @@
              
   <section id="physics-conventions">
 <h1>Physics Conventions<a class="headerlink" href="#physics-conventions" title="Link to this heading"></a></h1>
-<p>Atomic units, gauge choices, Hamiltonian form, time stepper details.</p>
-<section id="convention-reference">
-<h2>Convention Reference<a class="headerlink" href="#convention-reference" title="Link to this heading"></a></h2>
+<p>Units, sign conventions, the discrete equations of motion and the operators
+used throughout TDSE-Z.</p>
+<section id="units">
+<h2>Units<a class="headerlink" href="#units" title="Link to this heading"></a></h2>
+<p>All input and output quantities are in atomic units: energy in Hartree,
+length in Bohr (<span class="math notranslate nohighlight">\(a_0\)</span>), time in <span class="math notranslate nohighlight">\(\hbar/E_h\)</span>, mass in electron
+masses <span class="math notranslate nohighlight">\(m_e\)</span>, charge in elementary charges <span class="math notranslate nohighlight">\(e\)</span>, and
+<span class="math notranslate nohighlight">\(\hbar = 1\)</span>. The field strength is in <span class="math notranslate nohighlight">\(E_h/(e a_0)\)</span>.</p>
+</section>
+<section id="hamiltonian-and-carrier-sign">
+<h2>Hamiltonian and Carrier Sign<a class="headerlink" href="#hamiltonian-and-carrier-sign" title="Link to this heading"></a></h2>
+<p>The time-dependent Schrödinger equation is solved in the length gauge:</p>
+<div class="math notranslate nohighlight" id="equation-eq-physics-conventions-tdse">
+<span class="eqno">(28)<a class="headerlink" href="#equation-eq-physics-conventions-tdse" title="Link to this equation"></a></span>\[i\,\frac{\partial\psi}{\partial t} =
+\left[-\frac{1}{2}\,\nabla\cdot\left(\frac{1}{m(\mathbf r)}\,\nabla\right)
+      + s\,V(\mathbf r) + s\,\mathbf E(t)\cdot\mathbf r
+      - i\,W(\mathbf r)\right]\psi,
+\qquad s = -q .\]</div>
+<ul class="simple">
+<li><p>The kinetic term has the BenDaniel-Duke form <a class="reference internal" href="References.html#bendanielduke1966" id="id1"><span>[BenDanielDuke1966]</span></a> with the
+effective mass <code class="docutils literal notranslate"><span class="pre">Mass</span></code> (<a class="reference internal" href="Potential-Mass.html"><span class="doc">Potential &amp; Mass</span></a>).</p></li>
+<li><p><span class="math notranslate nohighlight">\(V\)</span> is <code class="docutils literal notranslate"><span class="pre">Potential</span></code> and <span class="math notranslate nohighlight">\(\mathbf E(t)\)</span> the field of
+<code class="docutils literal notranslate"><span class="pre">LaserX/Y/Z</span></code> (or <code class="docutils literal notranslate"><span class="pre">Laser</span></code>) on the polarised axes, zero on the others
+(<a class="reference internal" href="Laser-Field.html"><span class="doc">Laser Field</span></a>).</p></li>
+<li><p><span class="math notranslate nohighlight">\(q\)</span> is <code class="docutils literal notranslate"><span class="pre">Charge</span></code> in units of <span class="math notranslate nohighlight">\(e\)</span> (default <span class="math notranslate nohighlight">\(-1\)</span>,
+electron). Potential and field are written for an electron: for
+<span class="math notranslate nohighlight">\(q = -1\)</span> (<span class="math notranslate nohighlight">\(s = 1\)</span>) they enter as written and the force of the
+field is <span class="math notranslate nohighlight">\(-\mathbf E\)</span>; for <span class="math notranslate nohighlight">\(q = +1\)</span> (hole) both are inverted,
+<span class="math notranslate nohighlight">\(H = K - (V + \mathbf r\cdot\mathbf E)\)</span>; a general <span class="math notranslate nohighlight">\(q\)</span> scales
+both, <span class="math notranslate nohighlight">\(H = K - q\,(V + \mathbf r\cdot\mathbf E)\)</span>.</p></li>
+<li><p><span class="math notranslate nohighlight">\(W \ge 0\)</span> is the complex absorbing potential <a class="reference internal" href="References.html#manolopoulos2002" id="id2"><span>[Manolopoulos2002]</span></a>,
+present only with <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code> and only during the propagation; the
+eigensolver uses the Hermitian <span class="math notranslate nohighlight">\(H_0\)</span> (<a class="reference internal" href="Boundary-Conditions.html"><span class="doc">Boundary Conditions</span></a>).</p></li>
+</ul>
+</section>
+<section id="discrete-equations">
+<h2>Discrete Equations<a class="headerlink" href="#discrete-equations" title="Link to this heading"></a></h2>
+<p>With <span class="math notranslate nohighlight">\(\psi(\mathbf r, t) = \sum_j c_j(t)\,B_j(\mathbf r)\)</span> in the
+B-spline basis <a class="reference internal" href="References.html#deboor2001" id="id3"><span>[deBoor2001]</span></a> <a class="reference internal" href="References.html#bachau2001" id="id4"><span>[Bachau2001]</span></a>, assembled with PetIGA
+<a class="reference internal" href="References.html#dalcin2016" id="id5"><span>[Dalcin2016]</span></a> <a class="reference internal" href="References.html#hughes2005" id="id6"><span>[Hughes2005]</span></a>, the Galerkin equations are</p>
+<div class="math notranslate nohighlight" id="equation-eq-physics-conventions-semidiscrete">
+<span class="eqno">(29)<a class="headerlink" href="#equation-eq-physics-conventions-semidiscrete" title="Link to this equation"></a></span>\[i\,M\,\dot{\mathbf c} = \Big(H + s \sum_{a\in P} E_a(t)\,D_a\Big)\,\mathbf c ,\]</div>
+<p>with the overlap matrix <span class="math notranslate nohighlight">\(M\)</span>, <span class="math notranslate nohighlight">\(H = K + V - iW\)</span> (matrices of
+<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-matrices">Eq. (23)</a>, <span class="math notranslate nohighlight">\(W\)</span> only with the CAP) and the dipole
+matrices <span class="math notranslate nohighlight">\(D_a\)</span>. The Crank-Nicolson propagator integrates the residual
+form</p>
+<div class="math notranslate nohighlight" id="equation-eq-physics-conventions-residual">
+<span class="eqno">(30)<a class="headerlink" href="#equation-eq-physics-conventions-residual" title="Link to this equation"></a></span>\[F(t, \mathbf c, \dot{\mathbf c}) =
+i\,M\,\dot{\mathbf c} - H\,\mathbf c - s \sum_{a\in P} E_a(t)\,D_a\,\mathbf c = 0 .\]</div>
+</section>
+<section id="operators">
+<h2>Operators<a class="headerlink" href="#operators" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
 <colgroup>
 <col />
@@ -273,49 +418,53 @@
 </colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Quantity</p></th>
-<th class="head"><p>Convention</p></th>
+<th class="head"><p>Matrix</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Units</p></td>
-<td><p>All in atomic units (Hartree). Energy: Hartree, length: Bohr (a_0),
-mass: m_e, charge: e</p></td>
+<tr class="row-even"><td><p>Overlap</p></td>
+<td><p><span class="math notranslate nohighlight">\(M_{ij} = \int B_i B_j\,d\mathbf r\)</span>. It defines the inner
+product <span class="math notranslate nohighlight">\(\langle\phi|\psi\rangle = \mathbf a^\dagger M\,\mathbf c\)</span>
+used for all norms, projections and populations.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Hamiltonian</p></td>
-<td><p><span class="math notranslate nohighlight">\(H = -\frac{1}{2} \nabla \cdot \left( \frac{1}{m(\mathbf{r})} \nabla \right) + s\,V(\mathbf{r}) + \text{CAP}\)</span> (BenDaniel–Duke),
-<span class="math notranslate nohighlight">\(s = -q\)</span></p></td>
+<tr class="row-odd"><td><p>Dipole (position)</p></td>
+<td><p><span class="math notranslate nohighlight">\((D_a)_{ij} = \int B_i\,x_a\,B_j\,d\mathbf r\)</span>.</p></td>
 </tr>
-<tr class="row-even"><td><p>TDSE (length gauge)</p></td>
-<td><p><span class="math notranslate nohighlight">\(i \frac{\partial \psi}{\partial t} = H\psi + s\,\mathbf E(t)\cdot\mathbf r\,\psi\)</span>, with
-<span class="math notranslate nohighlight">\(\mathbf E(t)\)</span> given by <code class="docutils literal notranslate"><span class="pre">LaserX/Y/Z</span></code> on the polarised axes. <code class="docutils literal notranslate"><span class="pre">Potential</span></code>
-and the field are written for an electron: for <span class="math notranslate nohighlight">\(q = -1\)</span> (<span class="math notranslate nohighlight">\(s = 1\)</span>)
-they enter as written and the force of the field is <span class="math notranslate nohighlight">\(-\mathbf E\)</span></p></td>
+<tr class="row-even"><td><p>Velocity</p></td>
+<td><p><span class="math notranslate nohighlight">\((V_a)_{ij} = -\dfrac{i}{2}\displaystyle\int \frac{1}{m}
+\left(B_i\,\partial_a B_j - \partial_a B_i\,B_j\right) d\mathbf r\)</span>,
+the Galerkin matrix of the symmetrised operator in
+<a class="reference internal" href="#equation-eq-physics-conventions-velocity">Eq. (31)</a>. It is <span class="math notranslate nohighlight">\(-i/2\)</span> times a real
+antisymmetric matrix, hence Hermitian.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Charge</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Charge</span></code> <span class="math notranslate nohighlight">\(q\)</span> in units of <span class="math notranslate nohighlight">\(e\)</span>: <span class="math notranslate nohighlight">\(-1\)</span> electron (default),
-<span class="math notranslate nohighlight">\(+1\)</span> hole or positive quasiparticle, for which the potential and the
-field term are inverted, <span class="math notranslate nohighlight">\(H = K - (V + \mathbf r\cdot\mathbf E)\)</span>. General
-<span class="math notranslate nohighlight">\(q\)</span> scales both, <span class="math notranslate nohighlight">\(H = K - q\,(V + \mathbf r\cdot\mathbf E)\)</span>. The outputs are
-the dipole <span class="math notranslate nohighlight">\(q\langle\mathbf r\rangle\)</span>, current <span class="math notranslate nohighlight">\(q\langle\mathbf v\rangle\)</span> and
-acceleration <span class="math notranslate nohighlight">\(q\,d\langle\mathbf v\rangle/dt\)</span>.</p></td>
-</tr>
-<tr class="row-even"><td><p>Residual (Crank-Nicolson)</p></td>
-<td><p><span class="math notranslate nohighlight">\(F = iM \dot{\psi} - H\psi - s\,\mathbf E(t)\cdot\mathbf D\,\psi\)</span></p></td>
-</tr>
-<tr class="row-odd"><td><p>Mass inner product</p></td>
-<td><p><span class="math notranslate nohighlight">\(\langle \phi | M | \psi \rangle\)</span> used for all projections, populations, norms</p></td>
-</tr>
-<tr class="row-even"><td><p>Dipole operator</p></td>
-<td><p><span class="math notranslate nohighlight">\(D_x = x\)</span> (position operator)</p></td>
-</tr>
-<tr class="row-odd"><td><p>Velocity operator</p></td>
-<td><p><span class="math notranslate nohighlight">\(V_x = -\frac{i}{2m(\mathbf{r})} (\mathbf{B} \cdot \nabla - \nabla \cdot \mathbf{B})\)</span>, anti-symmetric</p></td>
-</tr>
-<tr class="row-even"><td><p>Time stepper</p></td>
-<td><p>PETSc TS with Crank-Nicolson (theta = 0.5)</p></td>
+<tr class="row-odd"><td><p>Inverse mass</p></td>
+<td><p><span class="math notranslate nohighlight">\((M_d)_{ij} = \int B_i B_j / m\,d\mathbf r\)</span>.</p></td>
 </tr>
 </tbody>
 </table>
+<p>The velocity operator of the BenDaniel-Duke Hamiltonian is</p>
+<div class="math notranslate nohighlight" id="equation-eq-physics-conventions-velocity">
+<span class="eqno">(31)<a class="headerlink" href="#equation-eq-physics-conventions-velocity" title="Link to this equation"></a></span>\[\hat v_a = i\,[H_0, x_a]
+         = -\frac{i}{2}\left(\frac{1}{m}\,\partial_a
+           + \partial_a\,\frac{1}{m}\right) .\]</div>
+<p>The reported observables are multiplied by the charge: dipole
+<span class="math notranslate nohighlight">\(q\langle\mathbf r\rangle\)</span>, current <span class="math notranslate nohighlight">\(q\langle\hat{\mathbf v}\rangle\)</span>
+and acceleration <span class="math notranslate nohighlight">\(q\,d\langle\hat{\mathbf v}\rangle/dt\)</span>
+(<a class="reference internal" href="Observables.html"><span class="doc">Observables</span></a>).</p>
+</section>
+<section id="time-stepping">
+<h2>Time Stepping<a class="headerlink" href="#time-stepping" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Propagator</span></code> selects the integrator of
+<a class="reference internal" href="#equation-eq-physics-conventions-semidiscrete">Eq. (29)</a> (<a class="reference internal" href="Time-Propagation.html"><span class="doc">Time Propagation</span></a>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cn</span></code> (default): Crank-Nicolson <a class="reference internal" href="References.html#crank1947" id="id7"><span>[Crank1947]</span></a>, PETSc <code class="docutils literal notranslate"><span class="pre">TSTHETA</span></code> with
+<span class="math notranslate nohighlight">\(\theta = 1/2\)</span> <a class="reference internal" href="References.html#petsc" id="id8"><span>[PETSc]</span></a>, applied to
+<a class="reference internal" href="#equation-eq-physics-conventions-residual">Eq. (30)</a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pade22</span></code>: exponential midpoint rule with a Padé(2,2) approximation of the
+exponential.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">magnus4</span></code>: commutator-free fourth-order Magnus integrator
+<a class="reference internal" href="References.html#blanesmoan2006" id="id9"><span>[BlanesMoan2006]</span></a> <a class="reference internal" href="References.html#alvermann2011" id="id10"><span>[Alvermann2011]</span></a> with Padé(2,2) exponentials.</p></li>
+</ul>
 </section>
 </section>
 
@@ -323,7 +472,8 @@ acceleration <span class="math notranslate nohighlight">\(q\,d\langle\mathbf v\r
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="Observables.html" class="btn btn-neutral float-left" title="Observables" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Laser-Field.html" class="btn btn-neutral float-left" title="Laser Field" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Eigensolver.html" class="btn btn-neutral float-right" title="Eigensolver" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

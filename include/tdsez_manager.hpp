@@ -171,7 +171,6 @@ class TDSEZManager
     /// @{
     PetscViewer TIMEViewer = PETSC_NULLPTR;  ///< time-series viewer
     PetscViewer WFSViewer = PETSC_NULLPTR;  ///< wavefunction snapshot viewer
-    PetscViewer ACViewer  = PETSC_NULLPTR;   ///< autocorrelation viewer
     /// @}
 
     /// @brief Function pointers for the IFunction and IJacobian callbacks

@@ -1,0 +1,39 @@
+// t-SURFF data flow: TDSEZTSurff::Setup / Sample / AddFlux / Finish (src/tsurff.cpp),
+// driven from src/tdsez.cpp (Setup before Evolve, Finish after) and src/monitor.cpp (Sample).
+digraph TSurffFlow {
+  graph [fontname="Helvetica", rankdir=TB, nodesep=0.35, ranksep=0.32, bgcolor="transparent"];
+  node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#3b6ea5"];
+  edge  [fontname="Helvetica", fontsize=10, color="#555555", fontcolor="#333333"];
+
+  subgraph cluster_setup {
+    label="Set-up (before propagation)"; fontname="Helvetica"; fontsize=11; color="#999999"; style="rounded,dashed";
+    quad   [label="Surface quadrature on |x_d| = SurffRadius\n(SurffQuadrature Gauss points per knot span)"];
+    ext    [label="Exterior check along outward rays:\nmass and potential constant within\nSurffMassTolerance / SurffPotentialTolerance"];
+    trace  [label="Trace matrix: rows psi(x_q) and (1/m) d_n psi(x_q)\naudited against direct B-spline evaluation"];
+    mom    [label="Momenta: grid (SurffKmin, SurffKmax, SurffNk)\nor SurffMomenta list"];
+    quad -> ext -> trace -> mom;
+  }
+
+  subgraph cluster_sample {
+    label="Every OutputStrideSurff-th step and t = FinalTime"; fontname="Helvetica"; fontsize=11; color="#999999"; style="rounded,dashed";
+    psi    [label="psi(t) from the propagator"];
+    mult   [label="Surface values: one sparse product\n(trace matrix) x psi"];
+    volkov [label="Volkov quantities A, int A, int (A^2/2m + V0)\n(RK4 sub-steps <= TimeStep/2)"];
+    flux   [label="Flux integrand for all k\n(grid: factorised GEMM per face; list: direct sum)"];
+    trap   [label="Trapezoidal accumulation of b(k)"];
+    psi -> mult -> flux;
+    volkov -> flux;
+    flux -> trap;
+  }
+
+  subgraph cluster_finish {
+    label="Finish (after propagation)"; fontname="Helvetica"; fontsize=11; color="#999999"; style="rounded,dashed";
+    reduce [label="Sum b(k) over the ranks"];
+    inter  [label="SurffInterior = 1: add the projection\nof psi(T) inside the box on the Volkov states"];
+    write  [label="td/surff_<input>.h5 (rank 0)\nmomenta, amplitude, pes, pes_grid, attributes", fillcolor="#e8f5e9", color="#3b8a4a"];
+    reduce -> inter -> write;
+  }
+
+  mom -> psi [style=dashed];
+  trap -> reduce [style=dashed];
+}

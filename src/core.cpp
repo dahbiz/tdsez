@@ -729,18 +729,9 @@ PetscErrorCode TDSEZCore::Solve()
         plan.push_back(EpsInner::IterativeStrong);
     }
 
-    PetscInt ncv, mpd;
-    PetscInt deg_block_est = 7;
-    if (mat_rows > 100000) {
-        ncv = nev + 2*deg_block_est;
-        mpd = nev + deg_block_est;
-    } else if (mat_rows > 10000) {
-        ncv = PetscMax(nev + 2*deg_block_est, nev*2);
-        mpd = nev + deg_block_est;
-    } else {
-        ncv = PetscMax(nev + 2*deg_block_est, PetscMin(nev*4, (PetscInt)200));
-        mpd = PetscMax(nev + deg_block_est, ncv / 2);
-    }
+    // Krylov-Schur subspace: SLEPc's default ncv = max(2 nev, nev + 15),
+    // mpd = ncv; the larger-subspace retry doubles ncv.
+    const PetscInt ncv = PetscMax(2 * nev, nev + 15), mpd = ncv;
     const PetscReal epsTol = 1e-12, acceptRes = 1e-8;
     const PetscInt  epsMaxIt = 2000;
 
@@ -856,7 +847,7 @@ PetscErrorCode TDSEZCore::Solve()
             PetscCall(EPSSetWhichEigenpairs(eps, EPS_TARGET_REAL));
             PetscCall(EPSSetTarget(eps, targetEV));
             PetscCall(EPSSetType(eps, EPSKRYLOVSCHUR));
-            PetscCall(EPSKrylovSchurSetDimensions(eps, nev, ncv * scale, mpd * scale));
+            PetscCall(EPSSetDimensions(eps, nev, ncv * scale, PETSC_DETERMINE));
             PetscCall(EPSKrylovSchurSetRestart(eps, isHuge ? 0.3 : 0.5));
             PetscCall(EPSSetTolerances(eps, epsTol, epsMaxIt * scale));
 
@@ -1639,7 +1630,6 @@ PetscErrorCode TDSEZCore::Output()
                 std::filesystem::remove("td/TimeEvolutionData_" + base + ".h5");
                 std::filesystem::remove("td/wfs_" + base + ".h5");
                 std::filesystem::remove("ts_" + base + ".h5");
-                std::filesystem::remove("ac_" + base + ".h5");
                 std::filesystem::remove("static/EigenData_" + base + ".h5");
             }
             MPI_Barrier(PETSC_COMM_WORLD);
@@ -1648,6 +1638,18 @@ PetscErrorCode TDSEZCore::Output()
             // existed only to call PrmReader + initParsers). Validation below
             // relies on the parser state being populated.
             TDSEZParser::PrmReader(input);
+            // OffsetX/Y/Z translate the computational box: fold them into the
+            // domain bounds once, so the knots, the CAP layers, t-SURFF, the
+            // validation and every report use the same shifted box.
+            {
+                static bool folded = false;
+                if (!folded) {
+                    TDSEZParser::LMinX += TDSEZParser::OffsetX; TDSEZParser::LMaxX += TDSEZParser::OffsetX;
+                    TDSEZParser::LMinY += TDSEZParser::OffsetY; TDSEZParser::LMaxY += TDSEZParser::OffsetY;
+                    TDSEZParser::LMinZ += TDSEZParser::OffsetZ; TDSEZParser::LMaxZ += TDSEZParser::OffsetZ;
+                    folded = true;
+                }
+            }
             TDSEZParser::initParsers();
 
             // Validate the parsed input BEFORE touching PETSc/SLEPc. A bad input
@@ -1693,31 +1695,21 @@ PetscErrorCode TDSEZCore::Output()
 #endif
             }
 
-            // Set domain/IGA options
-            // Set domain/IGA options (per-axis intervals collapsed to the X span
-            // for the legacy -L option; the knot vectors below use Lmin*/Lmax*).
-            std::string domain = std::to_string(TDSEZParser::LMinX) + "," + std::to_string(TDSEZParser::LMaxX);
-            IGAOptionsAlias("-L", domain.c_str(), "-iga_limits");
-            IGAOptionsAlias("-N", std::to_string(TDSEZParser::Nelements).c_str(), "-iga_elements");
-            IGAOptionsAlias("-D", std::to_string(TDSEZParser::SplineDegree).c_str(), "-iga_degree");
-            IGAOptionsAlias("-T", std::to_string(TDSEZParser::TargetEigenvalue).c_str(), "-eps_target");
-            IGAOptionsAlias("-E", std::to_string(TDSEZParser::NBoundStates).c_str(), "-eps_nev");
-
             // 3. Create IGA
             IGACreate(PETSC_COMM_WORLD, &iga);
             IGASetDim(iga, TDSEZParser::Dimension);
+            // -iga_* options (processor grid, matrix type, ...). The axes are
+            // set explicitly below from the input; PetIGA's default axes
+            // (degree 2, 16 elements on [0, 1]) are reset there.
             IGASetFromOptions(iga);   
             IGASetQuadrature(iga, 0, TDSEZParser::NQuadratures);
             IGASetDof(iga, 1);
             IGASetOrder(iga, TDSEZParser::SplineDegree);
 
-            // Domain bounds per axis, shifted by the offsets.
-            PetscReal LminX = TDSEZParser::LMinX + TDSEZParser::OffsetX;
-            PetscReal LmaxX = TDSEZParser::LMaxX + TDSEZParser::OffsetX;
-            PetscReal LminY = TDSEZParser::LMinY + TDSEZParser::OffsetY;
-            PetscReal LmaxY = TDSEZParser::LMaxY + TDSEZParser::OffsetY;
-            PetscReal LminZ = TDSEZParser::LMinZ + TDSEZParser::OffsetZ;
-            PetscReal LmaxZ = TDSEZParser::LMaxZ + TDSEZParser::OffsetZ;
+            // Domain bounds (OffsetX/Y/Z already folded in, see the validation call).
+            PetscReal LminX = TDSEZParser::LMinX, LmaxX = TDSEZParser::LMaxX;
+            PetscReal LminY = TDSEZParser::LMinY, LmaxY = TDSEZParser::LMaxY;
+            PetscReal LminZ = TDSEZParser::LMinZ, LmaxZ = TDSEZParser::LMaxZ;
 
             // Grading strength of symexp/symtanu/symtann (alpha or beta in the
             // knot maps) and of symlogtan. KnotAlpha > 0 overrides the defaults.
@@ -1748,6 +1740,10 @@ PetscErrorCode TDSEZCore::Output()
             {
                 const std::string seq = TDSEZParser::KnotSeq[0];
                 IGAGetAxis(iga, 0, &axisx);
+                // a fresh axis of the input degree (PetIGA cannot change the
+                // degree of an axis that already has knots)
+                PetscCallAbort(PETSC_COMM_WORLD, IGAAxisReset(axisx));
+                PetscCallAbort(PETSC_COMM_WORLD, IGAAxisSetDegree(axisx, TDSEZParser::SplineDegree));
                 // Robustness guard: too few interior knots => basis cannot
                 // represent the ground state; warn (not fatal) so the user
                 // is not silently handed garbage at N<=~2p.
@@ -1786,7 +1782,7 @@ PetscErrorCode TDSEZCore::Output()
                         PetscPrintf(PETSC_COMM_WORLD,
                             "TDSEZ: WARNING unknown KnotSequence '%s' on X axis — "
                             "falling back to uniform.\n", seq.c_str());
-                        IGAAxisInitUniform(axisx, TDSEZParser::Nelements, LminX, LmaxX, TDSEZParser::SplineDegree - 1);
+                        PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisx, TDSEZParser::Nelements, LminX, LmaxX, TDSEZParser::SplineDegree - 1));
                     }
                 }
                 // Broadcast the computed knot vector from rank 0 to all ranks.
@@ -1804,7 +1800,7 @@ PetscErrorCode TDSEZCore::Output()
                     if (nk > 0)
                         MPI_Bcast(knots_x.data(), nk, MPIU_REAL, 0, PETSC_COMM_WORLD);
                     if (nk > 0)
-                        IGAAxisSetKnots(axisx, knots_x.size() - 1, knots_x.data());
+                        PetscCallAbort(PETSC_COMM_WORLD, IGAAxisSetKnots(axisx, knots_x.size() - 1, knots_x.data()));
                     if (nk > 0 && getenv("TDSEZ_DUMP_KNOTS"))
                     {
                         PetscPrintf(PETSC_COMM_WORLD, "[knots_x interior] ");
@@ -1817,7 +1813,7 @@ PetscErrorCode TDSEZCore::Output()
                 else
                 {
                     // Per-axis uniform interval (uses LminX/LmaxX).
-                    IGAAxisInitUniform(axisx, TDSEZParser::Nelements, LminX, LmaxX, TDSEZParser::SplineDegree - 1);
+                    PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisx, TDSEZParser::Nelements, LminX, LmaxX, TDSEZParser::SplineDegree - 1));
                 }
             }
 
@@ -1828,6 +1824,10 @@ PetscErrorCode TDSEZCore::Output()
                 const std::string seq = TDSEZParser::KnotSeq[1];
                 IGASetQuadrature(iga, 1, TDSEZParser::NQuadratures);
                 IGAGetAxis(iga, 1, &axisy);
+                // a fresh axis of the input degree (PetIGA cannot change the
+                // degree of an axis that already has knots)
+                PetscCallAbort(PETSC_COMM_WORLD, IGAAxisReset(axisy));
+                PetscCallAbort(PETSC_COMM_WORLD, IGAAxisSetDegree(axisy, TDSEZParser::SplineDegree));
                 if (seq != "uniform")
                 {
                     if (rank == 0)
@@ -1853,7 +1853,7 @@ PetscErrorCode TDSEZCore::Output()
                             PetscPrintf(PETSC_COMM_WORLD,
                                 "TDSEZ: WARNING unknown KnotSequence '%s' on Y axis — "
                                 "falling back to uniform.\n", seq.c_str());
-                            IGAAxisInitUniform(axisy, TDSEZParser::Nelements, LminY, LmaxY, TDSEZParser::SplineDegree - 1);
+                            PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisy, TDSEZParser::Nelements, LminY, LmaxY, TDSEZParser::SplineDegree - 1));
                         }
                     }
                     // Broadcast knot vector from rank 0 (collective on ALL ranks;
@@ -1865,13 +1865,13 @@ PetscErrorCode TDSEZCore::Output()
                         if (nk > 0)
                             MPI_Bcast(knots_y.data(), nk, MPIU_REAL, 0, PETSC_COMM_WORLD);
                         if (nk > 0)
-                            IGAAxisSetKnots(axisy, knots_y.size() - 1, knots_y.data());
+                            PetscCallAbort(PETSC_COMM_WORLD, IGAAxisSetKnots(axisy, knots_y.size() - 1, knots_y.data()));
                     }
                 }
                 else
                 {
                     // Per-axis uniform interval (uses LminY/LmaxY, not the X span).
-                    IGAAxisInitUniform(axisy, TDSEZParser::Nelements, LminY, LmaxY, TDSEZParser::SplineDegree - 1);
+                    PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisy, TDSEZParser::Nelements, LminY, LmaxY, TDSEZParser::SplineDegree - 1));
                 }
             }
 
@@ -1882,6 +1882,10 @@ PetscErrorCode TDSEZCore::Output()
                 const std::string seq = TDSEZParser::KnotSeq[2];
                 IGASetQuadrature(iga, 2, TDSEZParser::NQuadratures);
                 IGAGetAxis(iga, 2, &axisz);
+                // a fresh axis of the input degree (PetIGA cannot change the
+                // degree of an axis that already has knots)
+                PetscCallAbort(PETSC_COMM_WORLD, IGAAxisReset(axisz));
+                PetscCallAbort(PETSC_COMM_WORLD, IGAAxisSetDegree(axisz, TDSEZParser::SplineDegree));
                 if (seq != "uniform")
                 {
                     if (rank == 0)
@@ -1907,7 +1911,7 @@ PetscErrorCode TDSEZCore::Output()
                             PetscPrintf(PETSC_COMM_WORLD,
                                 "TDSEZ: WARNING unknown KnotSequence '%s' on Z axis — "
                                 "falling back to uniform.\n", seq.c_str());
-                            IGAAxisInitUniform(axisz, TDSEZParser::Nelements, LminZ, LmaxZ, TDSEZParser::SplineDegree - 1);
+                            PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisz, TDSEZParser::Nelements, LminZ, LmaxZ, TDSEZParser::SplineDegree - 1));
                         }
                     }
                     // Broadcast knot vector from rank 0 (collective on ALL ranks;
@@ -1919,13 +1923,13 @@ PetscErrorCode TDSEZCore::Output()
                         if (nk > 0)
                             MPI_Bcast(knots_z.data(), nk, MPIU_REAL, 0, PETSC_COMM_WORLD);
                         if (nk > 0)
-                            IGAAxisSetKnots(axisz, knots_z.size() - 1, knots_z.data());
+                            PetscCallAbort(PETSC_COMM_WORLD, IGAAxisSetKnots(axisz, knots_z.size() - 1, knots_z.data()));
                     }
                 }
                 else
                 {
                     // Per-axis uniform interval (uses LminZ/LmaxZ, not the X span).
-                    IGAAxisInitUniform(axisz, TDSEZParser::Nelements, LminZ, LmaxZ, TDSEZParser::SplineDegree - 1);
+                    PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisz, TDSEZParser::Nelements, LminZ, LmaxZ, TDSEZParser::SplineDegree - 1));
                 }
             }
 

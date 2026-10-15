@@ -24,8 +24,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Output Control" href="Output-Control.html" />
-    <link rel="prev" title="Eigensolver" href="Eigensolver.html" />
+    <link rel="next" title="Observables" href="Observables.html" />
+    <link rel="prev" title="Initial State" href="Initial-State.html" />
  
 </head>
 
@@ -48,205 +48,225 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview &amp; Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#solver-workflow">Solver Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#file-structure">File Structure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#residual-assembly">Residual Assembly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#execution-pipeline">Execution pipeline</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#public-modules">Public modules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#core-lifecycle">Core lifecycle</a></li>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#reference-pages">Reference pages</a></li>
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#model">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#workflow">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-files">Output files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#auto-detection">Auto-Detection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build Targets</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#execution-modes">Execution Modes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#output-directory-structure">Output Directory Structure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#performance-note">Performance Note</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build">Build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#running">Running</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Input-File.html">Input File</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#format">Format</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#muparser">muParser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#file-structure">File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#syntax">Syntax</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#value-types">Value types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#expressions">Expressions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#removed-keys">Removed keys</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Input-File.html#parameter-reference">Parameter Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#global-settings">Global Settings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#domain-and-grid">Domain and Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#potential-and-mass">Potential and Mass</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-photoelectron-spectra">t-SURFF Photoelectron Spectra</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#key-reference">Key Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#general">General</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#grid-and-discretisation">Grid and discretisation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#potential-mass-and-carrier">Potential, mass and carrier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#laser-field">Laser field</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#initial-state">Initial state</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#time-propagation">Time propagation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#boundaries-and-absorbing-potential">Boundaries and absorbing potential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#observables-and-output">Observables and output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#t-surff-photoelectron-spectra">t-SURFF photoelectron spectra</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-handling">Option handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#program-flags">Program flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and eigensolver flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#propagation-flags">Propagation flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#environment-variables">Environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help">Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#running-a-deck">Running a Deck</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#strong-field-examples-examples">Strong-Field Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#reference-decks-tests-inputs">Reference Decks (<code class="docutils literal notranslate"><span class="pre">tests/inputs/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic oscillator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#soft-core-molecules-and-atoms">Soft-core molecules and atoms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#decks-that-must-fail">Decks that must fail</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Model and discretisation</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension">Dimension</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#spatial-bounds">Spatial Bounds</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh Resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension-and-bounds">Dimension and bounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#basis">Basis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#quadrature">Quadrature</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#selection">Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#graded-sequences">Graded sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#hydrogenic-sequence">Hydrogenic sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#interface-aligned-sequence">Interface-aligned sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#field-resolution-check">Field-resolution check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#convergence-studies">Convergence studies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Knot-Sequences.html#coulomb-potential-3d-hydrogen">Coulomb potential: 3D hydrogen</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Knot-Sequences.html#high-harmonic-generation">High-harmonic generation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#wall-conditions">Wall conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex absorbing potential</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#choosing-the-layer">Choosing the layer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-and-absorbing-boundaries-compared">Reflecting and absorbing boundaries compared</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Potential-Mass.html">Potential &amp; Mass</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#hamiltonian">Hamiltonian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#carrier-charge">Carrier Charge</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#potential">Potential</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#mass">Mass</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#physical-constants">Physical Constants</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#custom-variables">Custom Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#expressions-and-constants">Expressions and Constants</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expressions">Field Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-from-a-vector-potential">Field from a vector potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#named-field-parameters">Named Field Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-scales">Field Scales</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#unsupported-keys">Unsupported Keys</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#units">Units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#hamiltonian-and-carrier-sign">Hamiltonian and Carrier Sign</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#discrete-equations">Discrete Equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#time-stepping">Time Stepping</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#keys">Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#shift-invert-krylov-schur">Shift-Invert Krylov-Schur</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Eigensolver.html#inner-solvers">Inner solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Eigensolver.html#acceptance-of-an-attempt">Acceptance of an attempt</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#degenerate-levels-and-reproducible-states">Degenerate Levels and Reproducible States</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saved-eigenstates">Saved eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#keys">Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#selector-forms">Selector Forms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#bound-states">Bound states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#superpositions">Superpositions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#gaussian-wave-packet">Gaussian wave packet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#analytic-benchmark-states">Analytic benchmark states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#projection-and-normalisation">Projection and normalisation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#running-without-the-eigensolver">Running without the eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#typical-uses">Typical uses</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#time-parameters">Time Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#equation-of-motion">Equation of Motion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#propagators">Propagators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linear-solver">Linear Solver</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#preconditioners">Preconditioners</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#accuracy-of-the-rational-propagators">Accuracy of the Rational Propagators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#choosing-a-time-step">Choosing a Time Step</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#propagation-control">Propagation Control</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#monitoring-propagation">Monitoring Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#common-propagation-scenarios">Common Propagation Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#propagation-control-and-progress">Propagation Control and Progress</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Output and analysis</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#evaluation">Evaluation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#norm">Norm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole">Dipole</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#energies">Energies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#current">Current</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#angular-momentum">Angular Momentum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#phase-increment">Phase Increment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Output-Control.html">Output Control</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#observable-selection">Observable Selection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#other-output-settings">Other Output Settings</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#initialstate-selector">InitialState Selector</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#format-reference">Format Reference</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#example-superpositions">Example Superpositions</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#gaussian-wave-packet">Gaussian Wave Packet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#validated-examples-examples">Validated Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#d-systems">1D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic Oscillator</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-ionization">1D Atomic Ionization</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-superposition-quantum-beating">1D Superposition — Quantum Beating</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#propagation-flags">Propagation Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load Balance</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#unknown-input-key-fatal-error">Unknown Input Key Fatal Error</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#dimension-must-be-1-2-or-3">Dimension Must Be 1, 2 or 3</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#splinedegree-must-be-in-1-14">SplineDegree Must Be in [1,14]</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#initial-state-index-converged-eigenstates">Initial State Index &gt;= Converged Eigenstates</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#x-slowdown-with-mpirun">8-10x Slowdown with mpirun</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-in-3d">Performance in 3D</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Knot-Sequences.html">Knot Sequences</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#knot-sequence-types">Knot Sequence Types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Knot-Sequences.html#per-axis-assignment">Per-Axis Assignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#static-output">Static Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#compression-and-console-output">Compression and Console Output</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#ring-buffer">Ring Buffer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#time-evolution-data">Time Evolution Data</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipole-table">Dipole Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energy-table">Energy Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#current-table">Current Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#population-table">Population Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipoles"><code class="docutils literal notranslate"><span class="pre">dipoles</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energies"><code class="docutils literal notranslate"><span class="pre">energies</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#currents"><code class="docutils literal notranslate"><span class="pre">currents</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#populations"><code class="docutils literal notranslate"><span class="pre">populations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation"><code class="docutils literal notranslate"><span class="pre">autocorrelation</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#wavefunction-snapshots">Wavefunction Snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#petsc-time-stepper-snapshots">PETSc Time-Stepper Snapshots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#t-surff-spectra">t-SURFF Spectra</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#other-static-files">Other Static Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#reading-the-files">Reading the Files</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole-moment">Dipole Moment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#energy-decomposition">Energy Decomposition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#current-decomposition">Current Decomposition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#berry-phase">Berry Phase</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#input-files">Input Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#python-analysis-zkit">Python Analysis: zkit</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="TSurff.html">Photoelectron Spectra (t-SURFF)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="TSurff.html#method">Method</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#method">Method</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#numerics">Numerics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#exterior-check">Exterior check</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="TSurff.html#input-keys">Input Keys</a></li>
-<li class="toctree-l2"><a class="reference internal" href="TSurff.html#output-td-surff-input-h5">Output: <code class="docutils literal notranslate"><span class="pre">td/surff_&lt;input&gt;.h5</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#output-td-surff-input-h5">Output: <code class="docutils literal notranslate"><span class="pre">td/surff_&lt;input&gt;.h5</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#post-processing-script">Post-processing script</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-1-free-wave-packet-analytic-benchmark">Example 1: free wave packet (analytic benchmark)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-2-above-threshold-ionisation-of-a-1d-atom">Example 2: above-threshold ionisation of a 1D atom</a></li>
-<li class="toctree-l2"><a class="reference internal" href="TSurff.html#choosing-the-parameters">Choosing the parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#choosing-the-parameters">Choosing the Parameters</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HHG.html">Simulating HHG Correctly</a><ul>
@@ -255,8 +275,60 @@
 <li class="toctree-l2"><a class="reference internal" href="HHG.html#checklist">Checklist</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#convention-reference">Convention Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Internals and operation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#modules">Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#lifecycle">Lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#generated-reference">Generated reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Performance.html">Performance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#linear-solves-of-the-propagation">Linear solves of the propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#fourth-order-propagators">Fourth-order propagators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#assembly">Assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#monitors-and-output">Monitors and output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#effect-on-accuracy">Effect on accuracy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#reproducing-the-measurements">Reproducing the measurements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#process-binding-with-openmpi-5-x">Process binding with OpenMPI 5.x</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#communication">Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#heterogeneous-cores">Heterogeneous cores</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#input-errors">Input Errors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#unknown-removed-or-repeated-keys">Unknown, removed or repeated keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#validation-errors">Validation errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#initial-state-index-beyond-the-converged-eigenstates">Initial state index beyond the converged eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#non-finite-hamiltonian">Non-finite Hamiltonian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#energies-below-the-exact-value">Energies Below the Exact Value</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#quadrature-order">Quadrature Order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#strong-field-warnings-at-start-up">Strong-Field Warnings at Start-up</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#t-surff-errors">t-SURFF Errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#slow-runs-under-mpi">Slow Runs under MPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-in-3d">Performance in 3D</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="References.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="References.html#time-propagation-and-linear-algebra">Time propagation and linear algebra</a></li>
+<li class="toctree-l2"><a class="reference internal" href="References.html#strong-field-physics">Strong-field physics</a></li>
 </ul>
 </li>
 </ul>
@@ -287,8 +359,10 @@
              
   <section id="time-propagation">
 <h1>Time Propagation<a class="headerlink" href="#time-propagation" title="Link to this heading"></a></h1>
-<p>Controls the time-evolution of the quantum state after eigensolver initialization.
-The propagation integrates the TDSE using PETSc’s time-stepping framework.</p>
+<p>After the eigensolver has produced the initial state, TDSE-Z integrates the
+semi-discrete time-dependent Schrödinger equation from <span class="math notranslate nohighlight">\(t = 0\)</span> to
+<code class="docutils literal notranslate"><span class="pre">FinalTime</span></code>. This page describes the time parameters, the three propagators,
+the linear solvers they use and how to choose a time step.</p>
 <section id="time-parameters">
 <h2>Time Parameters<a class="headerlink" href="#time-parameters" title="Link to this heading"></a></h2>
 <table class="docutils align-default">
@@ -309,78 +383,208 @@ The propagation integrates the TDSE using PETSc’s time-stepping framework.</p>
 <tr class="row-even"><td><p>EnablePropagation</p></td>
 <td><p>bool</p></td>
 <td><p>1</p></td>
-<td><p>Whether to run time propagation. Set to 0 for TISE-only</p></td>
+<td><p>Run the time propagation. With 0 the run stops after the eigensolver
+and the static output.</p></td>
 </tr>
 <tr class="row-odd"><td><p>TimeStep / TimeStepSize</p></td>
 <td><p>real</p></td>
 <td><p>0.01</p></td>
-<td><p>Time step dt in atomic units</p></td>
+<td><p>Time step <span class="math notranslate nohighlight">\(h\)</span> (atomic units). Must be positive.</p></td>
 </tr>
 <tr class="row-even"><td><p>FinalTime / TotalTime</p></td>
 <td><p>real</p></td>
 <td><p>100.0</p></td>
-<td><p>Total propagation time in atomic units</p></td>
+<td><p>End of the propagation (atomic units). Must be positive.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Propagator</p></td>
+<td><p>string</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cn</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cn</span></code>, <code class="docutils literal notranslate"><span class="pre">pade22</span></code> or <code class="docutils literal notranslate"><span class="pre">magnus4</span></code> (see below).</p></td>
+</tr>
+<tr class="row-even"><td><p>Preconditioner</p></td>
+<td><p>string</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code>, <code class="docutils literal notranslate"><span class="pre">mg</span></code> or <code class="docutils literal notranslate"><span class="pre">gamg</span></code> (see <a class="reference internal" href="#preconditioners">Preconditioners</a>).</p></td>
+</tr>
+<tr class="row-odd"><td><p>MGLevels</p></td>
+<td><p>int</p></td>
+<td><p>0</p></td>
+<td><p>Number of multigrid levels for <code class="docutils literal notranslate"><span class="pre">Preconditioner</span> <span class="pre">=</span> <span class="pre">mg</span></code>; 0 coarsens
+until fewer than 2000 DOFs remain. Otherwise <span class="math notranslate nohighlight">\(\ge 2\)</span>.</p></td>
+</tr>
+<tr class="row-even"><td><p>MGSmooth</p></td>
+<td><p>int</p></td>
+<td><p>1</p></td>
+<td><p>Smoothing sweeps before and after each coarse correction
+(<code class="docutils literal notranslate"><span class="pre">Preconditioner</span> <span class="pre">=</span> <span class="pre">mg</span></code>), <span class="math notranslate nohighlight">\(\ge 1\)</span>.</p></td>
 </tr>
 </tbody>
 </table>
+<p>The propagation ends exactly at <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code>: the last step is shortened when
+<code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> is not a multiple of <code class="docutils literal notranslate"><span class="pre">TimeStep</span></code>.</p>
 </section>
-<section id="time-stepper">
-<h2>Time Stepper<a class="headerlink" href="#time-stepper" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">Propagator</span></code> selects the scheme; all are unitary for a Hermitian
-Hamiltonian:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">cn</span></code> (default): Crank-Nicolson (PETSc TS, <span class="math notranslate nohighlight">\(\theta = 1/2\)</span>), second
-order, one sparse solve per step.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pade22</span></code>: exponential midpoint rule with a Pade(2,2) exponential, fourth
-order in the field-free phase, two solves per step.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">magnus4</span></code>: commutator-free fourth-order Magnus with Pade(2,2) exponentials,
-four solves per step.</p></li>
+<section id="equation-of-motion">
+<h2>Equation of Motion<a class="headerlink" href="#equation-of-motion" title="Link to this heading"></a></h2>
+<p>The Galerkin discretisation in the B-spline basis gives</p>
+<div class="math notranslate nohighlight" id="equation-eq-time-propagation-eom">
+<span class="eqno">(39)<a class="headerlink" href="#equation-eq-time-propagation-eom" title="Link to this equation"></a></span>\[i\,\mathbf M\,\dot{\mathbf c}(t) = \mathbf H_E(t)\,\mathbf c(t),
+\qquad
+\mathbf H_E(t) = \mathbf H + s\,\mathbf E(t)\cdot\mathbf D,
+\qquad s = -q ,\]</div>
+<p>with the mass (overlap) matrix <span class="math notranslate nohighlight">\(\mathbf M\)</span>, the field-free Hamiltonian
+<span class="math notranslate nohighlight">\(\mathbf H\)</span> (kinetic energy, potential and, with <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>, the
+complex absorbing potential, added to <span class="math notranslate nohighlight">\(\mathbf H\)</span> before the first step),
+the position matrices <span class="math notranslate nohighlight">\(\mathbf D = (\mathbf D_x, \mathbf D_y, \mathbf
+D_z)\)</span> of the axes in <code class="docutils literal notranslate"><span class="pre">Polarization</span></code> and the carrier charge
+<span class="math notranslate nohighlight">\(q\)</span> = <code class="docutils literal notranslate"><span class="pre">Charge</span></code> (<a class="reference internal" href="Physics-Conventions.html"><span class="doc">Physics Conventions</span></a>). Every propagator advances
+<a class="reference internal" href="#equation-eq-time-propagation-eom">Eq. (39)</a> by solving sparse systems of the form</p>
+<div class="math notranslate nohighlight" id="equation-eq-time-propagation-shifted">
+<span class="eqno">(40)<a class="headerlink" href="#equation-eq-time-propagation-shifted" title="Link to this equation"></a></span>\[(\mathbf M + g\,\mathbf H_E)\,\mathbf y = \mathbf b\]</div>
+<p>with a complex shift <span class="math notranslate nohighlight">\(g\)</span> proportional to the step length. All three
+schemes are unitary for a Hermitian <span class="math notranslate nohighlight">\(\mathbf H_E\)</span> (no CAP).</p>
+</section>
+<section id="propagators">
+<h2>Propagators<a class="headerlink" href="#propagators" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Propagator</span></code> selects the scheme.</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">cn</span></code> (default)</dt><dd><p>Crank-Nicolson <a class="reference internal" href="References.html#crank1947" id="id1"><span>[Crank1947]</span></a>, the (1,1) Padé approximant of the step
+exponential, run through the PETSc <code class="docutils literal notranslate"><span class="pre">TS</span></code> object (<code class="docutils literal notranslate"><span class="pre">TSTHETA</span></code> with
+<span class="math notranslate nohighlight">\(\theta = 1/2\)</span>, linear problem) <a class="reference internal" href="References.html#petsc" id="id2"><span>[PETSc]</span></a>. Second order, one solve
+per step with <span class="math notranslate nohighlight">\(g = i h/2\)</span>. Standard PETSc <code class="docutils literal notranslate"><span class="pre">-ts_*</span></code> options apply.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pade22</span></code></dt><dd><p>Exponential midpoint rule with the (2,2) Padé approximant</p>
+<div class="math notranslate nohighlight" id="equation-eq-time-propagation-r22">
+<span class="eqno">(41)<a class="headerlink" href="#equation-eq-time-propagation-r22" title="Link to this equation"></a></span>\[R_{22}(z) = \frac{1 + z/2 + z^2/12}{1 - z/2 + z^2/12},
+\qquad z = -i h\,\mathbf M^{-1}\mathbf H_E(t + h/2) .\]</div>
+<p>The numerator has the roots <span class="math notranslate nohighlight">\(-3 \pm i\sqrt3\)</span>, so <span class="math notranslate nohighlight">\(R_{22}\)</span>
+factorises into two Cayley-type stages, each unitary,</p>
+<div class="math notranslate nohighlight" id="equation-eq-time-propagation-stages">
+<span class="eqno">(42)<a class="headerlink" href="#equation-eq-time-propagation-stages" title="Link to this equation"></a></span>\[(\mathbf M + g_k\,\mathbf H_E)\,\mathbf y_k
+= (\mathbf M + \bar g_k\,\mathbf H_E)\,\mathbf y_{k-1},
+\qquad g_{1,2} = \frac{h\,(\mp\sqrt3 + 3i)}{12},
+\qquad k = 1, 2 ,\]</div>
+<p>with <span class="math notranslate nohighlight">\(\mathbf y_0\)</span> the state at <span class="math notranslate nohighlight">\(t\)</span> and <span class="math notranslate nohighlight">\(\mathbf y_2\)</span> the
+state at <span class="math notranslate nohighlight">\(t + h\)</span>. Two solves per step. The scheme is fourth order in
+the field-free phase and second order in the time dependence of the field.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">magnus4</span></code></dt><dd><p>Commutator-free fourth-order Magnus integrator <a class="reference internal" href="References.html#blanesmoan2006" id="id3"><span>[BlanesMoan2006]</span></a> <a class="reference internal" href="References.html#alvermann2011" id="id4"><span>[Alvermann2011]</span></a>,</p>
+<div class="math notranslate nohighlight" id="equation-eq-time-propagation-magnus">
+<span class="eqno">(43)<a class="headerlink" href="#equation-eq-time-propagation-magnus" title="Link to this equation"></a></span>\[\mathbf U = \exp\!\big(h(a_1\mathbf A_1 + a_2\mathbf A_2)\big)\,
+            \exp\!\big(h(a_2\mathbf A_1 + a_1\mathbf A_2)\big),
+\qquad
+\mathbf A_j = -i\,\mathbf M^{-1}\mathbf H_E(t + c_j h),\]</div>
+<p>with the Gauss nodes <span class="math notranslate nohighlight">\(c_{1,2} = 1/2 \mp \sqrt3/6\)</span> and
+<span class="math notranslate nohighlight">\(a_{1,2} = (3 \mp 2\sqrt3)/12\)</span>. Since <span class="math notranslate nohighlight">\(a_1 + a_2 = 1/2\)</span>, each
+factor is a half step with an effective field
+<span class="math notranslate nohighlight">\(2(a_2\mathbf E_1 + a_1\mathbf E_2)\)</span> (applied first) and
+<span class="math notranslate nohighlight">\(2(a_1\mathbf E_1 + a_2\mathbf E_2)\)</span>, evaluated with
+<a class="reference internal" href="#equation-eq-time-propagation-stages">Eq. (42)</a>. Fourth order overall, four solves per
+step.</p>
+</dd>
+</dl>
+<p>At start-up the rational propagators print their configuration, and at the
+end the number of stage solves and the mean number of GMRES iterations per
+solve.</p>
+</section>
+<section id="linear-solver">
+<h2>Linear Solver<a class="headerlink" href="#linear-solver" title="Link to this heading"></a></h2>
+<p>Every system <a class="reference internal" href="#equation-eq-time-propagation-shifted">Eq. (40)</a> is solved with GMRES
+<a class="reference internal" href="References.html#saad1986" id="id5"><span>[Saad1986]</span></a> (restart 30, or 50 above <span class="math notranslate nohighlight">\(10^5\)</span> unknowns; at most 1000
+iterations) to a relative residual of <span class="math notranslate nohighlight">\(10^{-12}\)</span>. The preconditioner is
+applied from the right, so the stopping test acts on the true residual of the
+original system whatever the preconditioner. The default preconditioner is
+restricted additive Schwarz <a class="reference internal" href="References.html#caisarkis1999" id="id6"><span>[CaiSarkis1999]</span></a> with one subdomain per rank and
+ILU(0) on each subdomain. <code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">n</span></code> sets another ILU fill level;
+in measurements ILU(1) saved at most one iteration in 2D and none in 3D, while
+its factorisation was about 10 times slower in 3D (degree 4).</p>
+<p>The preconditioner is built from the operator of the first step and reused
+(refresh below). The solves use a non-zero initial guess; for <code class="docutils literal notranslate"><span class="pre">pade22</span></code> and
+<code class="docutils literal notranslate"><span class="pre">magnus4</span></code> it is extrapolated from previous steps (below).</p>
+<p><strong>Rational propagators.</strong> The stage matrices of
+<a class="reference internal" href="#equation-eq-time-propagation-stages">Eq. (42)</a> are assembled with the following structure
+(<a class="reference internal" href="#fig-time-propagation-step"><span class="std std-numref">Fig. 7</span></a>):</p>
+<ul>
+<li><p><span class="math notranslate nohighlight">\(\mathbf B_k = \mathbf M + g_k\mathbf H\)</span> is cached and recomputed only
+when the step length changes (first step, shortened last step).</p></li>
+<li><p><span class="math notranslate nohighlight">\(\mathbf A_k = \mathbf B_k + g_k\,s\,\mathbf E\cdot\mathbf D\)</span> is formed
+in one pass over the stored values when all matrices share the same sparsity
+structure (checked once), otherwise by matrix additions.</p></li>
+<li><p>Since <span class="math notranslate nohighlight">\(\bar g_1 = -g_2\)</span>, the right-hand side of stage <span class="math notranslate nohighlight">\(k\)</span> is
+<span class="math notranslate nohighlight">\(2\mathbf M\mathbf x - \mathbf A_{3-k}\mathbf x\)</span>.</p></li>
+<li><p>Each stage solve starts from its input <span class="math notranslate nohighlight">\(\mathbf x\)</span> plus the stage
+increment <span class="math notranslate nohighlight">\(\boldsymbol\delta = \mathbf y - \mathbf x\)</span> extrapolated from
+the last <span class="math notranslate nohighlight">\(q\)</span> steps,</p>
+<div class="math notranslate nohighlight" id="equation-eq-time-propagation-guess">
+<span class="eqno">(44)<a class="headerlink" href="#equation-eq-time-propagation-guess" title="Link to this equation"></a></span>\[\mathbf y^{(n)}_{\text{init}} = \mathbf x^{(n)}
++ \sum_{j=1}^{q} (-1)^{j-1}\binom{q}{j}\,\boldsymbol\delta^{(n-j)} ,\]</div>
+<p>with <span class="math notranslate nohighlight">\(q\)</span> = <code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span></code> (1 to 5, default 3);
+<code class="docutils literal notranslate"><span class="pre">-pade_extrapolate_guess</span> <span class="pre">0</span></code> starts from <span class="math notranslate nohighlight">\(\mathbf x\)</span> instead.</p>
+</li>
+<li><p>The two stage solvers carry the options prefixes <code class="docutils literal notranslate"><span class="pre">pade_stage1_</span></code> and
+<code class="docutils literal notranslate"><span class="pre">pade_stage2_</span></code> (for example <code class="docutils literal notranslate"><span class="pre">-pade_stage1_ksp_rtol</span></code>,
+<code class="docutils literal notranslate"><span class="pre">-pade_stage2_pc_type</span></code>).</p></li>
 </ul>
-<p>The Galerkin equation of motion is</p>
-<div class="math notranslate nohighlight">
-\begin{equation}
-iM \frac{d c}{d t} = \big(H + s\,\mathbf E(t)\cdot\mathbf D\big)c ,
-\qquad s = -q ,
-\end{equation}</div><p>with the mass matrix <span class="math notranslate nohighlight">\(M\)</span>, the Hamiltonian <span class="math notranslate nohighlight">\(H\)</span> (kinetic, potential
-and CAP) and the dipole matrices <span class="math notranslate nohighlight">\(\mathbf D\)</span>.</p>
-<p>Each linear system is solved with right-preconditioned GMRES to a relative
-residual of <span class="math notranslate nohighlight">\(10^{-12}\)</span>, preconditioned by restricted additive Schwarz
-with one subdomain per rank and ILU(0) on each subdomain. The
-preconditioner is built once and reused. <code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">n</span></code> changes the
-fill level; in our tests ILU(1) saved at most one iteration in 2D and none in
-3D, where its factorisation is about 10 times slower (degree 4).</p>
+<figure class="align-default" id="fig-time-propagation-step">
+<a class="reference internal image-reference" href="_images/Time-Propagation-step.svg"><img alt="_images/Time-Propagation-step.svg" src="_images/Time-Propagation-step.svg" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 7 </span><span class="caption-text">One step of <code class="docutils literal notranslate"><span class="pre">pade22</span></code> (<code class="docutils literal notranslate"><span class="pre">magnus4</span></code> performs it twice with half the step
+length). The field-free parts of the stage matrices are cached, the field
+term is added in one pass, and each stage solve starts from an
+extrapolated guess and reuses the preconditioner until the refresh test
+triggers a rebuild.</span><a class="headerlink" href="#fig-time-propagation-step" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<p><strong>Preconditioner refresh.</strong> For a strong field the operator drifts away from
+the one the preconditioner was built from. The first solve after each build
+sets a reference iteration count <span class="math notranslate nohighlight">\(n_0\)</span>; a solve that needs more than
+<span class="math notranslate nohighlight">\(2n_0 + 5\)</span> iterations causes the preconditioner to be rebuilt from the
+current operator at the next solve. This applies to every propagator and
+preconditioner. In a 2D test with a field of 2 a.u. and <span class="math notranslate nohighlight">\(h = 0.2\)</span>,
+a fixed preconditioner needed 4, 13, 24, 65, 249 and 641 iterations in
+successive steps and then failed; with the refresh the run converges with
+4 to 8 rebuilds. <code class="docutils literal notranslate"><span class="pre">cn</span></code> prints the number of rebuilds at the end of the run.</p>
 </section>
 <section id="preconditioners">
 <h2>Preconditioners<a class="headerlink" href="#preconditioners" title="Link to this heading"></a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">Preconditioner</span></code> selects how each linear system is preconditioned. The outer
-solve is always the full B-spline operator to the same tolerance, so the choice
-changes the cost, never the result (dipole series agree to <span class="math notranslate nohighlight">\(10^{-12}\)</span>).</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> (default): restricted additive Schwarz, one subdomain per rank with
-ILU(0) (see above).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">gamg</span></code>: PETSc algebraic multigrid (smoothed aggregation) inside flexible
-GMRES. Its default Chebyshev/Jacobi smoothing needs hundreds of iterations on
-this complex operator; use it with the ASM/ILU(0) smoother,
-<code class="docutils literal notranslate"><span class="pre">-mg_levels_ksp_type</span> <span class="pre">richardson</span> <span class="pre">-mg_levels_ksp_max_it</span> <span class="pre">1</span> <span class="pre">-mg_levels_pc_type</span> <span class="pre">asm</span>
-<span class="pre">-mg_levels_sub_pc_type</span> <span class="pre">ilu</span></code> (<code class="docutils literal notranslate"><span class="pre">benchmarks/preconditioners/run.sh</span></code> does).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mg</span></code>: geometric multigrid on the B-spline space, inside flexible GMRES.
-Coarse levels drop every other simple interior knot of each axis (C0 and
-other repeated knots are kept), so the coarse spaces are nested in the fine
-one and the prolongation is exact: knot insertion per axis, as a tensor
-product, mapped through each level’s parallel ordering (checked at set-up on
-a linear function). Coarse operators are Galerkin products
-<span class="math notranslate nohighlight">\(P^TAP\)</span>; smoothing is one Richardson sweep with ASM/ILU(0) before and
-after the coarse correction (<code class="docutils literal notranslate"><span class="pre">MGSmooth</span></code>); the coarsest level (about 2000
-DOFs, or <code class="docutils literal notranslate"><span class="pre">MGLevels</span></code> levels) is solved directly with MUMPS. PETSc options
-with the solver prefix (<code class="docutils literal notranslate"><span class="pre">-mg_levels_*</span></code>, <code class="docutils literal notranslate"><span class="pre">-mg_coarse_*</span></code>; <code class="docutils literal notranslate"><span class="pre">-pade_stage1_</span></code>
-/ <code class="docutils literal notranslate"><span class="pre">-pade_stage2_</span></code> prefixes for the rational propagators) override the
-defaults.</p></li>
-</ul>
-<p>Gauss-Seidel/SOR smoothing is not used: on degree-5 splines it needed 14-26
-iterations on one rank (60-80 on four) against 1-4 with ILU smoothing, the
-known degree dependence of standard smoothers for B-spline discretisations.</p>
-<p>Measured (iterations per solve, time per step relative to <code class="docutils literal notranslate"><span class="pre">asm</span></code>):</p>
-<table class="docutils align-default">
+<p><code class="docutils literal notranslate"><span class="pre">Preconditioner</span></code> selects the preconditioner of every propagator solve. The
+outer solve always uses the full operator and the same tolerance, so the
+choice changes the cost, not the result.</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">asm</span></code> (default)</dt><dd><p>Restricted additive Schwarz, one subdomain per rank, ILU(0) subdomain
+solves.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">mg</span></code></dt><dd><p>Geometric multigrid on the B-spline space inside flexible GMRES (requires
+<code class="docutils literal notranslate"><span class="pre">Basis</span> <span class="pre">=</span> <span class="pre">bspline</span></code>). Each coarse level drops every other simple interior
+knot of each axis (repeated knots, such as C<sup>0</sup> interfaces, are
+kept), as long as each axis keeps at least <span class="math notranslate nohighlight">\(p+1\)</span> spans and two spans
+per rank. The coarse spaces are therefore nested in the fine one and the
+prolongation is exact knot insertion, applied axis by axis as a tensor
+product and checked at set-up on a linear function. Coarse operators are
+Galerkin products <span class="math notranslate nohighlight">\(\mathbf P^T\mathbf A\mathbf P\)</span>. Each level is
+smoothed by <code class="docutils literal notranslate"><span class="pre">MGSmooth</span></code> Richardson sweeps with ASM/ILU(0) before and after
+the coarse correction; the coarsest level (below 2000 DOFs, or after
+<code class="docutils literal notranslate"><span class="pre">MGLevels</span></code> levels) is solved by LU with MUMPS when PETSc provides it.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">gamg</span></code></dt><dd><p>PETSc algebraic multigrid (smoothed aggregation) inside flexible GMRES.
+Its default Chebyshev/Jacobi smoothing needed 218 to 279 iterations on this
+complex operator in 2D. Use it with the ASM/ILU(0) smoother, as
+<code class="docutils literal notranslate"><span class="pre">benchmarks/preconditioners/run.sh</span></code> does:
+<code class="docutils literal notranslate"><span class="pre">-mg_levels_ksp_type</span> <span class="pre">richardson</span> <span class="pre">-mg_levels_ksp_max_it</span> <span class="pre">1</span>
+<span class="pre">-mg_levels_pc_type</span> <span class="pre">asm</span> <span class="pre">-mg_levels_sub_pc_type</span> <span class="pre">ilu</span></code> (with the
+<code class="docutils literal notranslate"><span class="pre">pade_stage1_</span></code> / <code class="docutils literal notranslate"><span class="pre">pade_stage2_</span></code> prefixes for the rational
+propagators).</p>
+</dd>
+</dl>
+<p>PETSc options with the solver prefix (<code class="docutils literal notranslate"><span class="pre">-mg_levels_*</span></code>, <code class="docutils literal notranslate"><span class="pre">-mg_coarse_*</span></code>;
+<code class="docutils literal notranslate"><span class="pre">-pade_stage1_*</span></code>, <code class="docutils literal notranslate"><span class="pre">-pade_stage2_*</span></code>) override these defaults.
+Gauss-Seidel/SOR smoothing is not used for <code class="docutils literal notranslate"><span class="pre">mg</span></code>: on degree-5 splines it
+needed 14 to 26 iterations on one rank (60 to 80 on four) against 1 to 4 with
+ILU smoothing, in line with the known degree dependence of standard smoothers
+for B-spline discretisations.</p>
+<table class="docutils align-default" id="table-time-propagation-mg">
+<caption><span class="caption-number">Table 5 </span><span class="caption-text">Iterations per solve and time per step of <code class="docutils literal notranslate"><span class="pre">mg</span></code> relative to
+<code class="docutils literal notranslate"><span class="pre">asm</span></code></span><a class="headerlink" href="#table-time-propagation-mg" title="Link to this table"></a></caption>
 <colgroup>
 <col />
 <col />
@@ -391,45 +595,76 @@ known degree dependence of standard smoothers for B-spline discretisations.</p>
 <tr class="row-odd"><th class="head"><p>Case</p></th>
 <th class="head"><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> its</p></th>
 <th class="head"><p><code class="docutils literal notranslate"><span class="pre">mg</span></code> its</p></th>
-<th class="head"><p><code class="docutils literal notranslate"><span class="pre">mg</span></code> time</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">mg</span></code> time / <code class="docutils literal notranslate"><span class="pre">asm</span></code> time</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>2D, p = 5, 40k DOFs, <code class="docutils literal notranslate"><span class="pre">cn</span></code>, <span class="math notranslate nohighlight">\(\Delta t\)</span> = 0.02, 1-12 ranks</p></td>
+<tr class="row-even"><td><p>2D, p = 5, 40k DOFs, <code class="docutils literal notranslate"><span class="pre">cn</span></code>, <span class="math notranslate nohighlight">\(h\)</span> = 0.02, 1-12 ranks</p></td>
 <td><p>3-7</p></td>
 <td><p>2-4</p></td>
-<td><p>1.4-1.8x</p></td>
+<td><p>1.4-1.8</p></td>
 </tr>
-<tr class="row-odd"><td><p>same, <span class="math notranslate nohighlight">\(\Delta t\)</span> = 0.2</p></td>
+<tr class="row-odd"><td><p>same, <span class="math notranslate nohighlight">\(h\)</span> = 0.2</p></td>
 <td><p>4-11</p></td>
 <td><p>2-6</p></td>
-<td><p>1.3-1.7x</p></td>
+<td><p>1.3-1.7</p></td>
 </tr>
 <tr class="row-even"><td><p>2D variable mass / Coulomb / no CAP, 8 ranks</p></td>
 <td><p>6-13</p></td>
 <td><p>3-5</p></td>
-<td><p>1.1-1.5x</p></td>
+<td><p>1.1-1.5</p></td>
 </tr>
 <tr class="row-odd"><td><p>3D, p = 3, 110k DOFs, <code class="docutils literal notranslate"><span class="pre">cn</span></code>, 4 and 8 ranks</p></td>
 <td><p>6-8</p></td>
 <td><p>4</p></td>
-<td><p>1.2x</p></td>
+<td><p>1.2</p></td>
 </tr>
-<tr class="row-even"><td><p>same, 8 ranks, 40 steps: solve time per step (set-up)</p></td>
-<td><p>0.089 s (1.1 s)</p></td>
-<td><p>0.158 s (1.7 s)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">gamg</span></code>: 4 its, 0.134 s (5.7 s)</p></td>
+</tbody>
+</table>
+<table class="docutils align-default" id="table-time-propagation-gamg">
+<caption><span class="caption-number">Table 6 </span><span class="caption-text">Algebraic and geometric multigrid against ASM: 3D, p = 3,
+110k DOFs, <code class="docutils literal notranslate"><span class="pre">cn</span></code>, 8 ranks, 40 steps</span><a class="headerlink" href="#table-time-propagation-gamg" title="Link to this table"></a></caption>
+<colgroup>
+<col />
+<col />
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Preconditioner</p></th>
+<th class="head"><p>its / solve</p></th>
+<th class="head"><p>set-up</p></th>
+<th class="head"><p>solve time / step</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code></p></td>
+<td><p>7</p></td>
+<td><p>1.1 s</p></td>
+<td><p>0.089 s</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mg</span></code></p></td>
+<td><p>4</p></td>
+<td><p>1.7 s</p></td>
+<td><p>0.158 s</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gamg</span></code> (ASM/ILU(0) smoother)</p></td>
+<td><p>4</p></td>
+<td><p>5.7 s</p></td>
+<td><p>0.134 s</p></td>
 </tr>
 </tbody>
 </table>
 <p>Multigrid needs fewer and more uniform iterations, but on up to 12 ranks of
-one machine each V-cycle costs more than the iterations it saves. It is meant
-for large rank counts, where one-level ASM degrades because it has no coarse
-space; measure both on the target machine.</p>
+one machine each V-cycle costs more than the iterations it saves. It is
+intended for large rank counts, where one-level ASM degrades because it has no
+coarse space; measure both on the target machine.</p>
 <p><strong>Other PETSc and PetIGA preconditioners.</strong> Any <code class="docutils literal notranslate"><span class="pre">PCType</span></code> can be selected per
-stage solver (<code class="docutils literal notranslate"><span class="pre">-pade_stage1_pc_type</span> <span class="pre">X</span> <span class="pre">-pade_stage2_pc_type</span> <span class="pre">X</span></code>). Measured with
-<code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 8 ranks, <span class="math notranslate nohighlight">\(\Delta t = 0.05\)</span>:</p>
-<table class="docutils align-default">
+stage solver (<code class="docutils literal notranslate"><span class="pre">-pade_stage1_pc_type</span> <span class="pre">X</span> <span class="pre">-pade_stage2_pc_type</span> <span class="pre">X</span></code>). The
+following timings were taken with <code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 8 ranks and <span class="math notranslate nohighlight">\(h = 0.05\)</span>,
+without the extrapolated initial guess; the ranking does not depend on it.</p>
+<table class="docutils align-default" id="table-time-propagation-pctype">
+<caption><span class="caption-number">Table 7 </span><span class="caption-text">Propagation time and iterations per solve by <code class="docutils literal notranslate"><span class="pre">pc_type</span></code></span><a class="headerlink" href="#table-time-propagation-pctype" title="Link to this table"></a></caption>
 <colgroup>
 <col />
 <col />
@@ -443,28 +678,28 @@ stage solver (<code class="docutils literal notranslate"><span class="pre">-pade
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> + ILU(0) (default)</p></td>
-<td><p>4.5 s, 5.5 its/solve</p></td>
-<td><p>0.65 s, 5.0</p></td>
+<td><p>4.5 s, 5.5 its</p></td>
+<td><p>0.65 s, 5.0 its</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">asm</span></code>, overlap 2</p></td>
 <td><p>–</p></td>
-<td><p>0.63 s, 3.3</p></td>
+<td><p>0.63 s, 3.3 its</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bjacobi</span></code> / <code class="docutils literal notranslate"><span class="pre">gasm</span></code> / <code class="docutils literal notranslate"><span class="pre">bjacobi</span></code> + ICC</p></td>
-<td><p>9.0-9.3 s, 25</p></td>
-<td><p>1.5-1.6 s, 19</p></td>
+<td><p>9.0-9.3 s, 25 its</p></td>
+<td><p>1.5-1.6 s, 19 its</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sor</span></code></p></td>
-<td><p>40 s, 91</p></td>
-<td><p>6.8 s, 95</p></td>
+<td><p>40 s, 91 its</p></td>
+<td><p>6.8 s, 95 its</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jacobi</span></code></p></td>
-<td><p>50 s, 320</p></td>
-<td><p>9.5 s, 238</p></td>
+<td><p>50 s, 320 its</p></td>
+<td><p>9.5 s, 238 its</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">igaebe</span></code> (PetIGA, element by element)</p></td>
-<td><p>69 s, 222</p></td>
-<td><p>7.2 s, 102</p></td>
+<td><p>69 s, 222 its</p></td>
+<td><p>7.2 s, 102 its</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">igabbb</span></code> (PetIGA, basis by basis)</p></td>
 <td><p>not converged in 1000 its</p></td>
@@ -472,18 +707,16 @@ stage solver (<code class="docutils literal notranslate"><span class="pre">-pade
 </tr>
 </tbody>
 </table>
-<p>(Before the extrapolated initial guess below; the ranking is unchanged.)
-<code class="docutils literal notranslate"><span class="pre">igaebe</span></code> and <code class="docutils literal notranslate"><span class="pre">igabbb</span></code> invert one small dense block per element or per basis
-function (overlap <span class="math notranslate nohighlight">\(p/2\)</span> by default): they damp local error like a
-multigrid smoother but have no global coupling, so on their own they need
-hundreds of iterations or stall. Block Jacobi, GASM and ICC lack the overlap of
-ASM and need about four times the iterations.</p>
-<p><strong>Accuracy does not depend on the preconditioner.</strong> GMRES is right
-preconditioned, so it stops on the true residual of the original system
-(<span class="math notranslate nohighlight">\(10^{-12}\)</span> relative) whatever the preconditioner. The same 2D run
-(100 <code class="docutils literal notranslate"><span class="pre">pade22</span></code> steps) against an exact solve (MUMPS LU), largest relative
-difference:</p>
-<table class="docutils align-default">
+<p><code class="docutils literal notranslate"><span class="pre">igaebe</span></code> and <code class="docutils literal notranslate"><span class="pre">igabbb</span></code> <a class="reference internal" href="References.html#dalcin2016" id="id7"><span>[Dalcin2016]</span></a> invert one small dense block per
+element or per basis function (overlap <span class="math notranslate nohighlight">\(p/2\)</span> by default). They damp
+local error like a multigrid smoother but have no global coupling, so on their
+own they need hundreds of iterations or stall. Block Jacobi, GASM and ICC lack
+the overlap of ASM and need about four times as many iterations.</p>
+<p><strong>Accuracy is independent of the preconditioner.</strong> The largest relative
+difference of the same 2D run (100 <code class="docutils literal notranslate"><span class="pre">pade22</span></code> steps) from a run with an exact
+LU solve (MUMPS) is:</p>
+<table class="docutils align-default" id="table-time-propagation-accuracy">
+<caption><span class="caption-number">Table 8 </span><span class="caption-text">Largest relative difference from an exact solve</span><a class="headerlink" href="#table-time-propagation-accuracy" title="Link to this table"></a></caption>
 <colgroup>
 <col />
 <col />
@@ -519,152 +752,116 @@ difference:</p>
 </tbody>
 </table>
 <p>The norm drifts by <span class="math notranslate nohighlight">\(8\times10^{-14}\)</span> over the run. These differences are
-far below the time-step and grid error (about <span class="math notranslate nohighlight">\(10^{-5}\)</span> on validation
+far below the time-step and grid errors (about <span class="math notranslate nohighlight">\(10^{-5}\)</span> on validation
 grids).</p>
-<p><strong>Cost of the GMRES solves.</strong> Orthogonalisation is 1-2 % of a solve; the rest
-is preconditioner applications (ILU triangular solves, about 60 %) and
-matrix-vector products. What reduces it is fewer iterations:</p>
+<p><strong>Cost of the GMRES solves.</strong> Orthogonalisation takes 1-2 % of a solve; the
+rest is preconditioner applications (ILU triangular solves, about 60 %) and
+matrix-vector products. The cost is reduced by fewer iterations:</p>
 <ul class="simple">
-<li><p>the stage solves start from the increment extrapolated from the last three
-steps (<code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span> <span class="pre">1..5</span></code>, default 3; 5.5 -&gt; 4.1 its/solve in 3D,
-5.0 -&gt; 3.4 in 2D);</p></li>
+<li><p>the extrapolated initial guess <a class="reference internal" href="#equation-eq-time-propagation-guess">Eq. (44)</a> (default
+<span class="math notranslate nohighlight">\(q = 3\)</span>) lowers the mean from 5.5 to 4.1 iterations per solve in 3D
+and from 5.0 to 3.4 in 2D;</p></li>
 <li><p>a looser tolerance, <code class="docutils literal notranslate"><span class="pre">-pade_stage1_ksp_rtol</span> <span class="pre">1e-11</span> <span class="pre">-pade_stage2_ksp_rtol</span>
-<span class="pre">1e-11</span></code>, saves another 10-13 % with output differences of
-<span class="math notranslate nohighlight">\(5\times10^{-11}\)</span> (default <span class="math notranslate nohighlight">\(10^{-12}\)</span>).</p></li>
+<span class="pre">1e-11</span></code>, saves another 10-13 % and changes the outputs by about
+<span class="math notranslate nohighlight">\(5\times10^{-11}\)</span>.</p></li>
 </ul>
-<p><strong>Pipelined GMRES</strong> (<code class="docutils literal notranslate"><span class="pre">-pade_stage{1,2}_ksp_type</span> <span class="pre">pgmres</span></code>) overlaps each
-iteration’s global reduction (<code class="docutils literal notranslate"><span class="pre">MPI_Iallreduce</span></code>) with the next product. On
-one machine a reduction costs microseconds through shared memory and the extra
-vector work dominates: 20-35 % slower in time stepping (3D, 8 ranks, same
-4.1 its/solve). It can pay off across many nodes, where reductions cross the
-network; measure it there. It does not remove load imbalance (see MPI Notes).</p>
-<p><strong>Strong fields.</strong> The operator is
-<span class="math notranslate nohighlight">\(M + i\tau(H + s\,\mathbf E\cdot\mathbf r)\)</span> (<span class="math notranslate nohighlight">\(\tau = \Delta t/2\)</span>
-for <code class="docutils literal notranslate"><span class="pre">cn</span></code>). When <span class="math notranslate nohighlight">\(\tau\max|\mathbf E\cdot\mathbf r|\)</span> exceeds about 1.5
-the field term dominates and the operator behaves like an indefinite Helmholtz
-operator that the coarse levels cannot represent: in 2D tests multigrid needed
-3-18 iterations up to 1.5 and diverged at 3, where <code class="docutils literal notranslate"><span class="pre">asm</span></code> still converged.
-TDSE-Z prints a warning at start-up in that regime. Physical strong-field runs
-(<span class="math notranslate nohighlight">\(E \le 0.2\)</span> a.u., <span class="math notranslate nohighlight">\(\Delta t \le 0.05\)</span>, box <span class="math notranslate nohighlight">\(\le 100\)</span> a.u.)
-stay well below it.</p>
-<p><strong>Preconditioner refresh.</strong> The preconditioner is built from the operator of
-one step and reused. When a solve needs more than twice the iterations of the
-first solve after the last build (plus 5), it is rebuilt from the current
-operator (both preconditioners, all propagators). Without this, a field of
-2 a.u. took 4, 13, 24, 65, 249, 641 iterations in successive steps and then
-failed; with it the run converges with a few rebuilds (printed at the end).</p>
-</section>
-<section id="accuracy-of-the-rational-propagators">
-<h2>Accuracy of the Rational Propagators<a class="headerlink" href="#accuracy-of-the-rational-propagators" title="Link to this heading"></a></h2>
-<p>The rational propagators reach a given accuracy with a much larger step: on
-the free-packet t-SURFF benchmark (<a class="reference internal" href="TSurff.html"><span class="doc">Photoelectron Spectra (t-SURFF)</span></a>, T = 40) <code class="docutils literal notranslate"><span class="pre">pade22</span></code> at
-<span class="math notranslate nohighlight">\(\Delta t = 0.025\)</span> reaches a spectrum error of <span class="math notranslate nohighlight">\(1.2\times10^{-6}\)</span>
-against <span class="math notranslate nohighlight">\(3.3\times10^{-4}\)</span> for <code class="docutils literal notranslate"><span class="pre">cn</span></code> at <span class="math notranslate nohighlight">\(\Delta t = 0.0125\)</span>.</p>
+<p>Pipelined GMRES (<code class="docutils literal notranslate"><span class="pre">-pade_stage1_ksp_type</span> <span class="pre">pgmres</span></code>, likewise for stage 2)
+overlaps the global reduction of each iteration with the next product. On one
+machine a reduction costs microseconds through shared memory and the extra
+vector work dominates: time stepping was 20-35 % slower (3D, 8 ranks, same
+4.1 iterations per solve). It may pay off across many nodes, where reductions
+cross the network. It does not remove load imbalance (<a class="reference internal" href="MPI-Notes.html"><span class="doc">MPI Notes</span></a>).</p>
+<p><strong>Strong fields.</strong> With <span class="math notranslate nohighlight">\(\tau = |g|\)</span> the operator is
+<span class="math notranslate nohighlight">\(\mathbf M + i\tau(\mathbf H + s\,\mathbf E\cdot\mathbf r)\)</span>, where
+<span class="math notranslate nohighlight">\(\tau = h/2\)</span> for <code class="docutils literal notranslate"><span class="pre">cn</span></code>, <span class="math notranslate nohighlight">\(h/\sqrt{12}\)</span> for <code class="docutils literal notranslate"><span class="pre">pade22</span></code> and
+<span class="math notranslate nohighlight">\(h/(2\sqrt{12})\)</span> for <code class="docutils literal notranslate"><span class="pre">magnus4</span></code>. When <span class="math notranslate nohighlight">\(\tau\max|\mathbf
+E\cdot\mathbf r|\)</span> exceeds about 1.5 the field term dominates and the operator
+behaves like an indefinite Helmholtz operator that the coarse levels of
+multigrid cannot represent: in 2D tests <code class="docutils literal notranslate"><span class="pre">mg</span></code> needed 3-18 iterations up to
+1.5 and diverged at 3, where <code class="docutils literal notranslate"><span class="pre">asm</span></code> still converged (5-33 iterations). With
+<code class="docutils literal notranslate"><span class="pre">Preconditioner</span> <span class="pre">=</span> <span class="pre">mg</span></code> TDSE-Z estimates <span class="math notranslate nohighlight">\(\tau\max|\mathbf
+E\cdot\mathbf r|\)</span> over the pulse and the box at set-up and prints a warning
+above 1.5. Typical strong-field runs (<span class="math notranslate nohighlight">\(E \le 0.2\)</span> a.u.,
+<span class="math notranslate nohighlight">\(h \le 0.05\)</span>, box <span class="math notranslate nohighlight">\(\le 100\)</span> a.u.) stay well below this value.</p>
 </section>
 <section id="choosing-a-time-step">
 <h2>Choosing a Time Step<a class="headerlink" href="#choosing-a-time-step" title="Link to this heading"></a></h2>
-<p>The time step must be small enough to resolve:</p>
-<ol class="arabic simple">
-<li><p><strong>Highest energy component</strong>: <span class="math notranslate nohighlight">\(\Delta t \ll 2\pi / E_{\text{max}}\)</span></p></li>
-<li><p><strong>Laser frequency</strong>: <span class="math notranslate nohighlight">\(\Delta t \ll 2\pi / \Omega\)</span></p></li>
-<li><p><strong>Fastest potential variation</strong>: Ensure the wavefunction doesn’t change much
-within one step</p></li>
-</ol>
-<p>Rule of thumb:</p>
+<p>For an eigencomponent of energy <span class="math notranslate nohighlight">\(E\)</span> the exact step multiplies the
+coefficient by <span class="math notranslate nohighlight">\(e^{-i\theta}\)</span>, <span class="math notranslate nohighlight">\(\theta = Eh\)</span>. The rational
+approximants reproduce the modulus exactly and the phase approximately:</p>
+<div class="math notranslate nohighlight" id="equation-eq-time-propagation-phase">
+<span class="eqno">(45)<a class="headerlink" href="#equation-eq-time-propagation-phase" title="Link to this equation"></a></span>\[\varphi_{\text{cn}} = 2\arctan\frac{\theta}{2}
+= \theta\Big(1 - \frac{\theta^2}{12} + O(\theta^4)\Big),
+\qquad
+\varphi_{22} = 2\arctan\frac{\theta/2}{1 - \theta^2/12}
+= \theta\Big(1 - \frac{\theta^4}{720} + O(\theta^6)\Big).\]</div>
+<p>Crank-Nicolson also scales the group velocity of a component by
+<span class="math notranslate nohighlight">\(1/(1 + \theta^2/4)\)</span>, which slows fast electrons; the Padé(2,2)
+propagators remove this error to fourth order
+(<a class="reference internal" href="#fig-time-propagation-dispersion"><span class="std std-numref">Fig. 8</span></a>).</p>
+<figure class="align-default" id="fig-time-propagation-dispersion">
+<a class="reference internal image-reference" href="_images/Time-Propagation-dispersion.svg"><img alt="_images/Time-Propagation-dispersion.svg" src="_images/Time-Propagation-dispersion.svg" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 8 </span><span class="caption-text">Relative phase error of the field-free step,
+<a class="reference internal" href="#equation-eq-time-propagation-phase">Eq. (45)</a>, as a function of
+<span class="math notranslate nohighlight">\(\theta = Eh\)</span>. Dashed lines: leading terms
+<span class="math notranslate nohighlight">\(\theta^2/12\)</span> and <span class="math notranslate nohighlight">\(\theta^4/720\)</span>.</span><a class="headerlink" href="#fig-time-propagation-dispersion" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<p>In practice:</p>
 <ul class="simple">
-<li><p><strong>Ground-state dynamics</strong>: 0.01–0.1 a.u. (typically fine)</p></li>
-<li><p><strong>High-frequency laser</strong>: <span class="math notranslate nohighlight">\(\Delta t &lt; 0.01\)</span> a.u.</p></li>
-<li><p><strong>Broadband excitation</strong>: <span class="math notranslate nohighlight">\(\Delta t &lt; 0.001\)</span> a.u.</p></li>
-<li><p><strong>Very fast processes</strong>: <span class="math notranslate nohighlight">\(\Delta t &lt; 0.0001\)</span> a.u.</p></li>
+<li><p>choose <span class="math notranslate nohighlight">\(h\)</span> so that <span class="math notranslate nohighlight">\(E_{\max} h\)</span> is small for the highest energy
+that matters (the cut-off of the photoelectron or harmonic spectrum), and
+so that the field period and envelope are well resolved;</p></li>
+<li><p>with <code class="docutils literal notranslate"><span class="pre">pade22</span></code> or <code class="docutils literal notranslate"><span class="pre">magnus4</span></code> a much larger step reaches the same
+accuracy: on the free-packet t-SURFF benchmark (<a class="reference internal" href="TSurff.html"><span class="doc">Photoelectron Spectra (t-SURFF)</span></a>,
+<span class="math notranslate nohighlight">\(T = 40\)</span>) <code class="docutils literal notranslate"><span class="pre">pade22</span></code> with <span class="math notranslate nohighlight">\(h = 0.025\)</span> reaches a spectrum error
+of <span class="math notranslate nohighlight">\(1.2\times10^{-6}\)</span>, against <span class="math notranslate nohighlight">\(3.3\times10^{-4}\)</span> for <code class="docutils literal notranslate"><span class="pre">cn</span></code>
+with <span class="math notranslate nohighlight">\(h = 0.0125\)</span>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">magnus4</span></code> is fourth order also in the time dependence of the field, at
+twice the cost per step of <code class="docutils literal notranslate"><span class="pre">pade22</span></code>;</p></li>
+<li><p>confirm convergence by repeating the run with <span class="math notranslate nohighlight">\(h/2\)</span> and comparing the
+observables of interest.</p></li>
 </ul>
-<p>If results depend on time step (run with dt and dt/2 and compare), reduce it.</p>
 </section>
-<section id="propagation-control">
-<h2>Propagation Control<a class="headerlink" href="#propagation-control" title="Link to this heading"></a></h2>
-<p><strong>EnablePropagation = 0</strong> — Run eigensolver only, no time propagation.</p>
-<p>This is useful for:
-- Verifying eigenvalues and eigenstates before propagation
-- Computing stationary properties
-- Quick convergence checks</p>
-<p><strong>EnablePropagation = 1</strong> — Run full time propagation.</p>
-<p>The propagation starts from the initial state (set via <code class="docutils literal notranslate"><span class="pre">InitialState</span></code>) and
-integrates for <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> time units with <code class="docutils literal notranslate"><span class="pre">TimeStep</span></code> spacing.</p>
-</section>
-<section id="monitoring-propagation">
-<h2>Monitoring Propagation<a class="headerlink" href="#monitoring-propagation" title="Link to this heading"></a></h2>
-<p>Add <code class="docutils literal notranslate"><span class="pre">Verbose</span> <span class="pre">=</span> <span class="pre">1</span></code> (default) to see timestep-by-timestep output:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Timestep</span> <span class="mi">0001</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="mf">0.0100</span><span class="p">,</span> <span class="n">norm</span> <span class="o">=</span> <span class="mf">1.000000</span>
-<span class="n">Timestep</span> <span class="mi">0002</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="mf">0.0200</span><span class="p">,</span> <span class="n">norm</span> <span class="o">=</span> <span class="mf">1.000000</span>
-<span class="o">...</span>
+<section id="propagation-control-and-progress">
+<h2>Propagation Control and Progress<a class="headerlink" href="#propagation-control-and-progress" title="Link to this heading"></a></h2>
+<p>With <code class="docutils literal notranslate"><span class="pre">EnablePropagation</span> <span class="pre">=</span> <span class="pre">0</span></code> the run ends after the eigensolver, which is
+useful to check eigenvalues and eigenstates (<a class="reference internal" href="Eigensolver.html"><span class="doc">Eigensolver</span></a>) before a long
+propagation. With <code class="docutils literal notranslate"><span class="pre">EnablePropagation</span> <span class="pre">=</span> <span class="pre">1</span></code> the propagation starts from the
+state selected by <code class="docutils literal notranslate"><span class="pre">InitialState</span></code> (<a class="reference internal" href="Initial-State.html"><span class="doc">Initial State</span></a>).</p>
+<p>The monitor prints a progress line with the step, the elapsed fraction, the
+time, the squared norm <span class="math notranslate nohighlight">\(\langle\psi|\mathbf M|\psi\rangle\)</span> and the total
+energy (<a class="reference internal" href="Observables.html"><span class="doc">Observables</span></a>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>    <span class="mi">10</span><span class="o">/</span>  <span class="mi">2000</span><span class="p">]</span>    <span class="mf">0.5</span><span class="o">%</span>  <span class="n">t</span><span class="o">=</span>    <span class="mf">0.1000</span>   <span class="o">&lt;</span><span class="n">Psi</span><span class="o">|</span><span class="n">Psi</span><span class="o">&gt;=</span>   <span class="mf">1.000e+00</span>   <span class="o">&lt;</span><span class="n">H</span><span class="o">&gt;=</span> <span class="o">-</span><span class="mf">5.0000e-01</span>
 </pre></div>
 </div>
-<p>If norm deviates from 1.0, there’s an issue with:
-- Time step too large (numerical instability)
-- Boundary conditions (particle escaping through reflecting wall)
-- CAP parameters (absorbing too much or too little)</p>
-</section>
-<section id="common-propagation-scenarios">
-<h2>Common Propagation Scenarios<a class="headerlink" href="#common-propagation-scenarios" title="Link to this heading"></a></h2>
-<table class="docutils align-default">
-<colgroup>
-<col />
-<col />
-<col />
-<col />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Scenario</p></th>
-<th class="head"><p>TimeStep</p></th>
-<th class="head"><p>FinalTime</p></th>
-<th class="head"><p>Notes</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Ground-state evolution</p></td>
-<td><p>0.01</p></td>
-<td><p>100</p></td>
-<td><p>Standard, conservative</p></td>
-</tr>
-<tr class="row-odd"><td><p>Fast laser dynamics</p></td>
-<td><p>0.001</p></td>
-<td><p>10</p></td>
-<td><p>High-frequency field</p></td>
-</tr>
-<tr class="row-even"><td><p>Ionization study</p></td>
-<td><p>0.001</p></td>
-<td><p>200</p></td>
-<td><p>Long time, fine step</p></td>
-</tr>
-<tr class="row-odd"><td><p>Eigenvalue verification</p></td>
-<td><p>N/A</p></td>
-<td><p>N/A</p></td>
-<td><p>EnablePropagation = 0</p></td>
-</tr>
-<tr class="row-even"><td><p>Short pulse interaction</p></td>
-<td><p>0.005</p></td>
-<td><p>50</p></td>
-<td><p>Moderate resolution</p></td>
-</tr>
-</tbody>
-</table>
+<p>With <code class="docutils literal notranslate"><span class="pre">Verbose</span> <span class="pre">=</span> <span class="pre">1</span></code> (default) a line is printed every step; with
+<code class="docutils literal notranslate"><span class="pre">Verbose</span> <span class="pre">=</span> <span class="pre">0</span></code> about twenty lines are printed over the run.</p>
+<p>Without a CAP the norm is conserved to the solver tolerance by all three
+propagators. With <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code> it decreases as the CAP absorbs outgoing
+flux; the decrease is the absorbed probability.</p>
 </section>
 <section id="troubleshooting">
 <h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
 <dl class="simple">
-<dt><strong>Propagation stops early</strong></dt><dd><ul class="simple">
-<li><p>Check if <code class="docutils literal notranslate"><span class="pre">ts_max_steps</span></code> is reached (default: 10000)</p></li>
-<li><p>Increase with <code class="docutils literal notranslate"><span class="pre">-ts_max_steps</span> <span class="pre">N</span></code> if needed</p></li>
+<dt><strong>A stage solve does not converge</strong></dt><dd><ul class="simple">
+<li><p>The error <code class="docutils literal notranslate"><span class="pre">Pade(2,2)</span> <span class="pre">stage</span> <span class="pre">k</span> <span class="pre">solve</span> <span class="pre">did</span> <span class="pre">not</span> <span class="pre">converge</span></code> stops the run.</p></li>
+<li><p>Check whether the field is strong for the chosen step
+(<span class="math notranslate nohighlight">\(\tau\max|\mathbf E\cdot\mathbf r| &gt; 1.5\)</span>, see above); reduce
+<code class="docutils literal notranslate"><span class="pre">TimeStep</span></code> or use <code class="docutils literal notranslate"><span class="pre">Preconditioner</span> <span class="pre">=</span> <span class="pre">asm</span></code>.</p></li>
 </ul>
 </dd>
-<dt><strong>Norm not conserved</strong></dt><dd><ul class="simple">
-<li><p>Reduce <code class="docutils literal notranslate"><span class="pre">TimeStep</span></code></p></li>
-<li><p>Check boundary conditions</p></li>
-<li><p>Verify CAP is properly configured if studying ionization</p></li>
+<dt><strong>Norm not conserved without a CAP</strong></dt><dd><ul class="simple">
+<li><p>Check that <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p></li>
+<li><p>Check the GMRES convergence with <code class="docutils literal notranslate"><span class="pre">-pade_stage1_ksp_converged_reason</span></code>
+(<code class="docutils literal notranslate"><span class="pre">-ksp_converged_reason</span></code> for <code class="docutils literal notranslate"><span class="pre">cn</span></code>).</p></li>
 </ul>
 </dd>
-<dt><strong>No output after propagation</strong></dt><dd><ul class="simple">
-<li><p>Set <code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span> <span class="pre">=</span> <span class="pre">all</span></code> to enable all diagnostics</p></li>
-<li><p>Check output stride settings</p></li>
+<dt><strong>Missing or zero time series</strong></dt><dd><ul class="simple">
+<li><p>Check <code class="docutils literal notranslate"><span class="pre">PhysicsOutput</span></code> (<a class="reference internal" href="Output-Control.html"><span class="doc">Output Control</span></a>): quantities not listed
+are written as zeros.</p></li>
 </ul>
 </dd>
 </dl>
@@ -675,8 +872,8 @@ integrates for <code class="docutils literal notranslate"><span class="pre">Fina
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="Eigensolver.html" class="btn btn-neutral float-left" title="Eigensolver" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="Output-Control.html" class="btn btn-neutral float-right" title="Output Control" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="Initial-State.html" class="btn btn-neutral float-left" title="Initial State" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Observables.html" class="btn btn-neutral float-right" title="Observables" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

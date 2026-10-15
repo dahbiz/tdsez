@@ -1,46 +1,57 @@
 MPI Notes
 =========
 
-OpenMPI 5.x bind-to pitfalls and parallel best practices.
+Process binding, load balance and rank counts for parallel runs. All PETSc,
+SLEPc and PetIGA objects are distributed over ``PETSC_COMM_WORLD``.
 
-OpenMPI 5.x bind-to Pitfall
----------------------------
+Process binding with OpenMPI 5.x
+--------------------------------
 
-With OpenMPI 5.x, ``mpirun -np 1`` defaults to ``--bind-to core``, pinning the
-process to a single physical core. PETSc/SLEPc internal BLAS threads then compete
-for one core -- **8-10x slowdown**.
+OpenMPI 5.x binds processes to cores by default (``--bind-to core``). A single
+rank is then pinned to one core, and any OpenMP or threaded-BLAS work of that
+process competes for it, which slows the run down severely. Disable binding:
 
-::
+.. code-block:: bash
 
-    $ mpirun --bind-to none -np 1 ./tdsez.x -inp model.prm
-    $ # or equivalently:
-    $ mpirun --oversubscribe -np 1 ./tdsez.x -inp model.prm
+   mpirun --bind-to none -np 1 ./build/tdsez.x -inp model.inp
+   mpirun --bind-to none -np 4 ./build/tdsez.x -inp model.inp
 
-Also Applies to Pytest
-----------------------
+The test suite launches ``tdsez.x`` in the same way (``_run`` in
+``tests/test_tdsez.py``).
 
-tests/test_tdsez.py ``_run`` helper uses ``mpirun --bind-to none`` -- without it
-the 3D HO test takes 80s+ instead of ~10s.
-
-Load Balance
+Load balance
 ------------
 
-PetIGA splits the elements of each axis evenly over the ranks of that axis
-(leftover elements go to the first ranks). A rank owns one basis function per
-element, and the last rank of each axis also owns the :math:`p` trailing ones.
-Ranks therefore own different numbers of rows, and the solves (sparse products,
-ILU triangular solves, global dot products every GMRES iteration) wait for the
-largest. With degree 3 on 2x2x2 ranks:
+PetIGA splits the elements of each axis evenly over the ranks of that axis,
+with leftover elements going to the first ranks. A rank owns one basis
+function per element, and the last rank of each axis also owns the p trailing
+ones (an open knot vector with :math:`n` elements carries :math:`n + p` basis
+functions per axis). With :math:`P` ranks per axis, :math:`n_r` elements on
+rank :math:`r` and :math:`\delta_{r,P-1}` marking the last rank, the owned
+rows per axis are
+
+.. math::
+   :label: eq-mpi-owned
+
+   N_r = n_r + p\,\delta_{r,P-1},
+   \qquad
+   \rho_{3\mathrm D} = \left(\frac{\max_r N_r}{\min_r N_r}\right)^3 .
+
+The sparse products, ILU triangular solves and global reductions of every
+GMRES iteration [Saad1986]_ wait for the rank with the most rows, so
+:math:`\rho_{3\mathrm D}` sets the slowdown of the solves relative to a
+perfectly balanced partition. For
+degree p = 3 on 2×2×2 ranks, :eq:`eq-mpi-owned` gives:
 
 .. list-table::
    :widths: 30 20 20 15 15
    :header-rows: 1
 
    * - Elements per axis
-     - first rank owns
-     - last rank owns
-     - ratio per axis
-     - ratio in 3D
+     - First rank owns
+     - Last rank owns
+     - Ratio per axis
+     - Ratio in 3D
    * - 32
      - 16
      - 16 + 3 = 19
@@ -53,55 +64,45 @@ largest. With degree 3 on 2x2x2 ranks:
      - 1.40
    * - 200 (100 per rank)
      - 100
-     - 103
+     - 100 + 3 = 103
      - 1.03
      - 1.09
 
-On the 32-element case the ASM subdomains measured 19\ :sup:`3` to
-22\ :sup:`3` rows (with overlap) and the ILU solves had a max/min time ratio of
-1.6. Choosing the element count can move one element per axis, not :math:`p`;
-the imbalance only matters for small subdomains, so use enough elements per rank
-(or fewer ranks for small problems).
+.. figure:: figures/mpi_load_balance.svg
+   :name: fig-mpi-load-balance
+   :width: 80%
 
-**Rebalancing was tried and not adopted.** Moving the element cuts so that every
-rank owns the same number of basis functions (after PetIGA's partitioning
-stage) made time stepping 7-12 % faster, but put the element-based work
-(quadrature observables, operator assembly) out of balance: monitoring up to
-60 % and assembly 5-23 % slower. The whole run changed by 0-5 %, within the timing
-noise, and the change relied on PetIGA's internal partition fields. With
-:math:`w` the fraction of the :math:`p` trailing basis functions moved off the
-last rank (3D, 32k DOFs, 8 ranks, two runs each):
+   Ratio :math:`\rho_{3\mathrm D}` of :eq:`eq-mpi-owned` on 2×2×2 ranks
+   against the number of elements per rank and axis, for degrees p = 1, 3, 5
+   and 7. Markers: the p = 3 rows of the table above.
 
-.. list-table::
-   :widths: 25 25 25 25
-   :header-rows: 1
+The element count can shift the cut by one element per axis, not by p
+(:numref:`fig-mpi-load-balance`); the imbalance decays as
+:math:`p/n_r` and matters only for small subdomains. Use enough elements per
+rank, or fewer ranks for small problems. In a measured 3D case with 32 cubic
+elements per axis on 8 ranks, the restricted additive Schwarz subdomains
+[CaiSarkis1999]_ ranged from 19\ :sup:`3` to 22\ :sup:`3` rows (with overlap)
+and the ILU solve times differed by a factor 1.6 between ranks.
 
-   * - :math:`w`
-     - time stepping
-     - monitoring
-     - total
-   * - 0 (PetIGA)
-     - 2.68 / 2.97 s
-     - 1.14 / 1.33 s
-     - 9.11 / 9.91 s
-   * - 0.5
-     - 2.50 / 2.60 s
-     - 1.33 / 1.35 s
-     - 9.11 / 9.46 s
-   * - 1
-     - 3.60 / 2.56 s
-     - 1.83 / 1.60 s
-     - 11.29 / 10.07 s
+TDSE-Z keeps PetIGA's partition. Moving the element cuts so that every rank
+owns the same number of basis functions shifts the imbalance to the
+element-based work (assembly, quadrature monitors): in the measured 3D case
+time stepping became 7–12 % faster, assembly and monitoring slower, and the
+total run time changed by 0–5 %, within the timing noise.
 
-**Waiting cannot be hidden by MPI.** The waiting is the symptom: a rank with
-more rows does more arithmetic, and the others idle at the next collective
-whether it is blocking or not (``MPI_Wait`` after ``MPI_Iallreduce``). PETSc
-already overlaps the ghost exchange of each sparse product with the local part;
-pipelined GMRES (see Time Propagation) overlaps the reductions and is slower on
-one machine.
+Communication
+-------------
 
-**Mixed core types.** Apple M-series processors combine performance and
-efficiency cores (M4 Pro: 8 + 4). With ``--bind-to none`` and more ranks than
-performance cores some ranks run on efficiency cores and the others wait for
-them; use at most as many ranks as performance cores.
+The waiting time is a consequence of the imbalance, not of the communication:
+a rank with more rows does more arithmetic, and the other ranks idle at the
+next collective operation whether it is blocking or not. PETSc overlaps the
+ghost exchange of each sparse product with the local part. Pipelined GMRES
+overlaps the reductions as well (see :doc:`Time-Propagation`).
 
+Heterogeneous cores
+-------------------
+
+Processors that combine performance and efficiency cores (for example Apple
+M-series) run some ranks on the slower cores when, with ``--bind-to none``,
+there are more ranks than performance cores; the other ranks then wait for
+them. Use at most as many ranks as performance cores.

@@ -1,81 +1,184 @@
 Troubleshooting
 ===============
 
-Common errors, known issues, performance tips, and debugging strategies.
+Error messages, warnings and performance problems, with their causes and
+remedies. Messages are quoted as printed; ``...`` stands for run-specific
+values.
 
-Unknown Input Key Fatal Error
------------------------------
+Input Errors
+------------
 
-Set ``StrictInput = 0`` to tolerate unknown keys, or fix the typo. Physics codes
-treat unknown keys as fatal because a typo'd potential or mass can silently produce
-wrong physics.
+Unknown, removed or repeated keys
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Dimension Must Be 1, 2 or 3
-----------------------------
+``TDSEZParser FATAL: unknown input key '...'`` stops the run, because a
+misspelt key (for example of the potential or the mass) would otherwise be
+ignored silently. Correct the key (:doc:`Input-File`). ``StrictInput = 0``
+turns the error into a warning; the deck is read line by line, so the
+``StrictInput`` line must precede the unknown key.
 
-Set ``Dimension = 1``, ``2``, or ``3`` explicitly. Default is 1.
+Keys of removed features are reported with the reason and the replacement
+(``input key '...' has been removed: ...``); a removed key whose value had no
+effect (for example ``Planck = 1``) only produces a warning. A key given twice
+is fatal (``input key(s) given more than once``) unless ``StrictInput = 0``, in
+which case the last value is used. ``Variables`` is the only key that may be
+repeated.
 
-SplineDegree Must Be in [1,14]
+Validation errors
+~~~~~~~~~~~~~~~~~
+
+After reading the deck, the parameters are checked as a whole; a failed check
+stops the run with ``ValidateOrThrow: ...`` and names the offending key and
+value, for example:
+
+- ``Dimension must be 1, 2 or 3``
+- ``SplineDegree must be in [1,14]``
+- ``Mass must be > 0 and finite in the open domain``
+- ``InitialState='state:N' but only NBoundStates=... bound states are
+  computed`` -- increase ``NBoundStates`` to at least :math:`N+1`, or choose a
+  lower index.
+- ``NBoundStates = 0 (no eigenproblem) needs an analytic InitialState
+  (wavepacket, analytic:quesne01, analytic:massstep01)``
+- t-SURFF: ``TSurff = 1 needs EnablePropagation = 1``, ``... needs SurffRadius
+  > 0``, ``the t-SURFF surface must lie in front of the CAP layer`` (the
+  message gives the largest admissible radius on that axis); see
+  :doc:`TSurff`.
+
+The ``tests/inputs/bad_*.inp`` decks reproduce several of these errors
+(:doc:`Examples`).
+
+Initial state index beyond the converged eigenstates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``Initial state index N >= number of converged eigenstates M`` appears when the
+index passed validation but fewer eigenpairs converged than requested. Check
+the eigensolver report (next section) and ``TargetEigenvalue``.
+
+Eigensolver
+-----------
+
+The bound states are computed with Krylov-Schur [Stewart2002]_ on the
+shift-invert operator (:doc:`Eigensolver`). The inner solves of
+:math:`H - \sigma M` follow a plan of up to three solvers (direct, iterative,
+stronger iterative). Each attempt is accepted only if the inner solve succeeds,
+at least ``NBoundStates`` pairs converge and the maximum backward error is at
+most :math:`10^{-8}`. The run reports a failed attempt and moves on:
+
+- ``WARNING: inner solve failed (..., PETSc error ...); trying the next inner
+  solver``
+- ``WARNING: n of N pairs converged (...); retrying with a larger subspace``;
+  the attempt is repeated once with a doubled subspace.
+- ``WARNING: backward error ... > 1e-08 with ...; trying the next inner
+  solver``
+
+The ``RESULTS`` block lists ``Inner solver used``, ``Converged pairs`` and, for
+an accepted attempt, ``Max backward error``. If no attempt passes every check,
+the converged pairs of the last attempt are used with ``WARNING: no inner
+solver met every check``; if no pair converged at all, the run stops. Remedies:
+
+- Set ``TargetEigenvalue`` just below the lowest wanted state.
+- ``-tdsez_eps_inner direct`` forces an exact inner solve first
+  (:doc:`CLI-Flags`).
+- With an analytic initial state (``wavepacket``, ``analytic:...``), set
+  ``NBoundStates = 0`` to skip the eigensolver.
+- Shift-invert near the bottom of a gapless spectrum (free or nearly free
+  carriers) converges slowly, and the 3D direct factorisation is memory-bound.
+
+Non-finite Hamiltonian
+----------------------
+
+``TDSEZ FATAL: the Hamiltonian has infinite or NaN entries: the potential is
+singular at a quadrature point.`` A potential such as :math:`-1/r` is infinite
+at its centre; ``QuadratureRule = lobatto`` places quadrature points on the
+knots, so a Coulomb centre on a knot gives non-finite matrix entries. Use
+``QuadratureRule = legendre`` (default) or ``reduced``, or move the centre off
+the knots.
+
+Energies Below the Exact Value
 ------------------------------
 
-Set ``SplineDegree`` between 1 and 14.
+With the default natural (Neumann) boundaries the wave function is not forced
+to vanish at the box edge. When the box truncates the tail of a state, the
+computed energy can lie *below* the exact value, because the discarded tail
+carries positive local energy. This is not a variational violation of the
+solver. Enlarge the box until the energy is stable, or compare with
+``BoundaryType = Dirichlet``; measured values for hydrogen are given in
+:doc:`Knot-Sequences` (Coulomb section).
 
-Initial State Index >= Converged Eigenstates
---------------------------------------------
+Quadrature Order
+----------------
 
-Increase ``NBoundStates`` to compute more eigenstates, or use a lower index in
-``InitialState``.
+:math:`n` Gauss points per element integrate polynomials of degree
+:math:`2n-1` exactly; the mass and kinetic matrices of degree-:math:`p`
+B-splines therefore need ``NQuadratures`` :math:`\ge p+1`. The code does not
+enforce this; the default of 8 covers :math:`p \le 7`. Singular or rapidly
+varying potentials need more points (:doc:`Grid-Domain`,
+:doc:`Knot-Sequences`).
 
-8-10x Slowdown with mpirun
----------------------------
+Strong-Field Warnings at Start-up
+---------------------------------
 
-Use ``mpirun -np N --bind-to none``. OpenMPI's default ``--bind-to core`` pins
-each process to one physical core.
+For a propagation with a non-zero field, the code estimates the peak field
+:math:`E_0`, the frequency :math:`\omega` (from ``Omegax/y/z`` or from the zero
+crossings of the field), :math:`U_p = E_0^2/4\omega^2`,
+:math:`I_p = -E_{\rm target}` (``TargetEigenvalue``; 0.5 if the target is not
+negative), :math:`k_{\max} = \sqrt{2(3.17\,U_p + I_p)}` and
+:math:`\alpha = E_0/\omega^2` (:doc:`HHG`).
 
-Silent All-Zero Autocorrelation
--------------------------------
+**Field resolution.** ``TDSEZ field resolution: ... elements <= pi/(2 k_max)
+= ... au`` is followed, per axis, by ``widest element ...: resolved`` or by
+``TDSEZ WARNING: x axis: widest element ... the returning electron and the
+harmonic cutoff are under-resolved there``. The grid is not changed. Increase
+``NSplines``, reduce the grading, or use ``KnotSequence = hydrogenic``, whose
+outer element width is capped by ``HydrogenicHMax``: a positive value sets the
+cap, 0 (default) takes :math:`\pi/(2k_{\max})` from the field (printed as
+``HydrogenicHMax = ... au from the field``), a negative value removes the cap.
 
-AC is computed BEFORE the per-step HDF5 flush. With ``OutputStrideTS=1`` the
-flush fires at every step. This is correct in the current implementation. Verify
-``OutputStrideAC`` is set independently.
+**CAP report.** With ``EnableCAP = 1`` the block ``COMPLEX ABSORBING POTENTIAL
+(CAP)`` gives the layer width per wall, the slowest momentum absorbed with
+little reflection, and the free core of every axis. On a driven axis whose
+free-core half width is below :math:`2\alpha + 10` it prints ``WARNING: x free
+core half width ... < 2 alpha + 10``: returning electrons enter the absorber.
+Enlarge the domain or reduce ``CAPWidth`` (increase ``CAPKmin``).
 
-"BDD Current: NOT CONSERVED"
-----------------------------
+t-SURFF Errors
+--------------
 
-The mass matrix test failed. ``Mass(x,y,z)`` is non-positive somewhere in the
-domain. Check for negative or zero values.
+- ``t-SURFF needs a free carrier outside the surface: the mass deviates by ...
+  and the potential by ...``: the mass or potential varies beyond
+  ``SurffRadius``. Move the surface out, switch the potential off smoothly
+  before it, or raise ``SurffMassTolerance`` / ``SurffPotentialTolerance``
+  deliberately.
+- ``t-SURFF: SurffMomenta file '...' is missing, empty or has a row with fewer
+  than d values``.
 
-Segmentation Fault During Propagation
--------------------------------------
+See :doc:`TSurff`.
 
-When using xyz polarization, buffer size is bumped to 16 temporary vectors to
-prevent segfault. Ensure ``OutputStrideTS > 0`` or ``OutputStrideWFS > 0`` if
-you expect output.
+Slow Runs under MPI
+-------------------
+
+OpenMPI binds each rank to one core by default, so the threads of the BLAS
+library compete for that core; the slowdown is typically 8-10×. Always launch
+with ``mpiexec -n N --bind-to none`` (:doc:`MPI-Notes`).
 
 Performance in 3D
 -----------------
 
-- **Assembly**: a constant ``Mass`` expression is detected automatically
-  (``MassIsConstant``). All 2D/3D time-dependent operators, including the
-  mass-gradient corrections of the force matrices for
-  ``AccelerationMethod = operator`` with a varying mass, are sum-factorised;
-  ``-tdsez_sumfact_check`` compares every element with the per-point kernels.
-- **Eigensolver**: shift-invert near the bottom of a gapless spectrum (free or
-  nearly free carriers) converges slowly, and the 3D direct factorisation is
-  memory-bound. With an analytic initial state use ``NBoundStates = 0``. A
-  failed inner solve or inaccurate pairs are reported (``WARNING: inner solve
-  failed ... trying the next inner solver``) and the next inner solver runs;
-  "Inner solver used" and "Max backward error" in the RESULTS block show what
-  was accepted.
+- **Assembly**: a ``Mass`` expression without :math:`x, y, z` is detected as
+  constant automatically (as with ``MassIsConstant = 1``).
 - **Memory**: every stored operator has :math:`(2p+1)^3` non-zeros per row
-  (729 for degree 4), about 24 bytes each. With 8 ranks the 110 592-DOF degree-4
-  benchmark peaks at 16–20 GB; past the physical memory the run swaps and
-  mat-vecs slow down by an order of magnitude. Prefer degree 3 in 3D, set
-  ``ObserveAllAxes = 0`` when only the driven axis is needed, and check
-  "Peak memory" in the run summary.
-- **Observables**: in 2D/3D M, the dipoles, the velocities and K are applied
-  in factorised (Kronecker) form, checked against the assembled matrices at the
-  first step (printed at start-up). <V>, the forces dV/dx_a, the CAP and, for
-  a varying mass, <1/m>, <K> and the velocities are taken from psi at the
-  quadrature points (also checked at the first step); ``-tdsez_quad_obs 0``
-  restores the matrix products.
+  (729 for degree 4), about 24 bytes each. With 8 ranks the 110 592-DOF
+  degree-4 benchmark peaks at 16–20 GB (measured); beyond the physical memory
+  the run swaps and matrix-vector products slow down by an order of magnitude.
+  Prefer degree 3 in 3D, set ``ObserveAllAxes = 0`` when only the driven axis
+  is needed, and check ``Peak memory per rank`` in the run summary.
+- **Observables**: in 2D/3D without Dirichlet walls, the mass matrix, the
+  dipoles, the velocities and the kinetic energy are applied in factorised
+  (Kronecker) form, each checked against the assembled matrix on the first
+  state and used only if they agree to :math:`10^{-10}` relative
+  (``Monitor operators applied in factorised form: ...``;
+  ``-tdsez_tensor_ops 0`` keeps the matrix products). :math:`\langle V\rangle`,
+  the forces, the CAP and, for a varying mass, :math:`\langle 1/m\rangle`,
+  :math:`\langle K\rangle` and the velocities are evaluated from :math:`\psi`
+  at the quadrature points, also after a check against the matrices
+  (``-tdsez_quad_obs 0`` restores the matrix products).

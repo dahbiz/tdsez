@@ -340,7 +340,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             rank = mpi_rank;
 
             // Ensure the output directory `td/` exists. Every HDF5 file written
-            // during propagation (TimeEvolutionData, wfs_*, ac_*, ts_*)
+            // during propagation (TimeEvolutionData, wfs_*, ts_*)
             // is created inside `td/`. The previous code relied on `td/` being
             // pre-existing (left over from a prior run), so a FRESH run in a
             // clean directory crashed at H5Fcreate() -> Status -1 (the WFSViewer
@@ -444,21 +444,6 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             if (TDSEZParser::HDF5Compress) PetscViewerHDF5SetCompress(WFSViewer, PETSC_TRUE);
             PetscViewerHDF5PushTimestepping(WFSViewer);
 
-            // autocorrelation (stride=0 = disabled)
-            if (TDSEZParser::OutputStrideAC > 0) {
-                std::string acFile = "ac_" + wfsBase + ".h5";
-                if (rank == 0) {
-                    std::string absPath = std::filesystem::absolute(acFile).string();
-                    hid_t tf = H5Fcreate(absPath.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-                    if (tf >= 0) H5Fclose(tf);
-                }
-                MPI_Barrier(PETSC_COMM_WORLD);
-                PetscViewerHDF5Open(PETSC_COMM_WORLD, acFile.c_str(), FILE_MODE_WRITE, &ACViewer);
-                PetscViewerHDF5SetCollective(ACViewer, PETSC_TRUE);
-                if (TDSEZParser::HDF5Compress) PetscViewerHDF5SetCompress(ACViewer, PETSC_TRUE);
-                PetscViewerHDF5PushTimestepping(ACViewer);
-            }
-
             // The force matrices dV/dx_d feed only the operator-form
             // acceleration; with the discrete form they are never read.
             if (TDSEZDiscreteAccelerationActive()) {
@@ -534,11 +519,6 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
                     PetscViewerHDF5PopTimestepping(TIMEViewer);
                     PetscViewerDestroy(&TIMEViewer);
             }
-
-            if (ACViewer){
-                    PetscViewerHDF5PopTimestepping(ACViewer);
-                    PetscViewerDestroy(&ACViewer);
-            } 
 
             // Safety: if the evolution file handle is still open (e.g. propagation
             // skipped or an early return), flush and close it so the file is valid.

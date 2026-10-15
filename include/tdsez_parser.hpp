@@ -257,8 +257,6 @@ class TDSEZParser
         inline static PetscInt              OutputStrideWFS       = 100;
         /// Output stride (in steps) for time-series diagnostics.
         inline static PetscInt              OutputStrideTS       = 0;
-        /// Output stride (in steps) for autocorrelation diagnostics.
-        inline static PetscInt              OutputStrideAC       = 0;
         /// Whether to apply HDF5 chunk compression (default false).
         inline static PetscBool             HDF5Compress         = PETSC_FALSE;
         /// HDF5 compression level (0-9, default 6).

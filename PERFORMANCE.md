@@ -28,8 +28,9 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | Optimisation | Test case | Before | After | Gain |
 |---|---|---|---|---|
 | Preconditioner reuse, right preconditioning, assembly savings | 3D propagation | — | — | propagation $`2.5\times`$, run $`1.7`$–$`2.3\times`$ |
-| Magnus-4 instead of Crank–Nicolson (better accuracy) | 1D driven HO | 10.8 s | 0.83 s | $`13\times`$ ($`\approx 70\times`$ at error $`10^{-6}`$) |
+| Magnus-4 instead of Crank–Nicolson (better accuracy) | 1D driven HO | 11.4 s | 0.77 s | $`15\times`$ ($`\approx 70\times`$ at error $`10^{-6}`$) |
 | Padé/Magnus stage solver | 3D HO, 200 Magnus steps | 249 s | 219 s | $`-12\%`$ |
+| Third-order extrapolated guess, fused stage update (3) | 3D, $`p=3`$, 32k DOFs, `pade22`, 40 steps: time stepping | 3.40 s | 2.90 s | $`-15\%`$ |
 | Monitor products + batched HDF5 writes | 1D HO, $`5\times10^4`$ steps | 15.8 s | 12.3 s | $`-22\%`$ |
 | | 1D with CAP, $`2.2\times10^4`$ steps | 5.6 s | 4.1 s | $`-27\%`$ |
 | | 3D variable mass, 100 steps | 3.42 s | 3.24 s | $`-5\%`$ |
@@ -355,9 +356,9 @@ with $`E_0 = 1`$, $`\omega = 0.6`$:
 
 | Propagator | $`\Delta t`$ | Solves per step | $`\max_t \lvert\langle x\rangle - x_{\mathrm{ex}}\rvert`$ | Propagation |
 |---|---|---|---|---|
-| Crank–Nicolson | $`10^{-3}`$ | 1 | $`1.7\times10^{-4}`$ | 10.8 s |
-| `pade22` | $`0.02`$ | 2 | $`2.5\times10^{-5}`$ | 1.0 s |
-| `magnus4` | $`0.05`$ | 4 | $`4.3\times10^{-5}`$ | 0.83 s |
+| Crank–Nicolson | $`10^{-3}`$ | 1 | $`1.7\times10^{-4}`$ | 11.4 s |
+| `pade22` | $`0.02`$ | 2 | $`2.5\times10^{-5}`$ | 0.91 s |
+| `magnus4` | $`0.05`$ | 4 | $`4.3\times10^{-5}`$ | 0.77 s |
 
 ![Dipole of the driven oscillator for the three propagators](docs/perf/propagator_dipoles.png)
 
@@ -512,9 +513,8 @@ built as $`i(\mathbf E - \mathbf E^{\mathsf T})`$, exactly antisymmetric.
 
 Applies to $`\mathbf H, \mathbf M`$ and to the time-dependent operators
 $`\mathbf K, \mathbf V, \mathbf M_{m^{-1}}, \mathbf D_d, \mathbf{Vel}_d, \partial_d V`$
-for every polarisation, in 2D and 3D. The cases with mass-gradient corrections
-in the force operator (variable mass with the operator-form acceleration, and
-2D variable mass) keep the per-point kernels. The $`y`$/$`z`$/multi-axis
+for every polarisation, in 2D and 3D, including the mass-gradient corrections
+of the force operator (section 1c'). The $`y`$/$`z`$/multi-axis
 polarisations are now assembled in one batched pass instead of six separate
 per-operator passes. Options: `-tdsez_sumfact 0` disables it;
 `-tdsez_sumfact_check` computes every element both ways and prints the largest

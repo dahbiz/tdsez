@@ -1,34 +1,38 @@
 CLI Flags
 =========
 
-Command-line overrides for all input parameters and PETSc options. CLI flags take
-precedence over values in the input file.
+The physical problem is defined in the input file (:doc:`Input-File`). The
+command line selects the input file, overrides two input keys, and passes
+TDSE-Z diagnostic switches and PETSc, SLEPc and PetIGA options
+[PETSc]_ [Hernandez2005]_ [Dalcin2016]_.
 
-Basic Usage
+Basic usage
 -----------
 
 ::
 
-    $ ./tdsez.x -inp file.prm          # specify input file
-    $ ./tdsez.x -ts_max_steps 0         # eigenvalues only, no propagation
-    $ ./tdsez.x -save_dipole xyz        # save dipole axes at runtime
-    $ ./tdsez.x -help                   # full PETSc options dump
+    $ mpiexec -n 4 ./tdsez.x -inp run.prm
+    $ ./tdsez.x -inp run.prm -save_dipole xyz
+    $ ./tdsez.x -inp run.prm -enable_gpu 1
+    $ ./tdsez.x -help
 
-Option Precedence
------------------
+For a bound-state calculation without propagation set
+``EnablePropagation = 0`` in the input file.
 
-1. Default values (hardcoded in code)
-2. Input file values
-3. Command-line flags (highest priority)
+Option handling
+---------------
 
-For example, if the input file sets ``EnablePropagation = 1`` and you run with
-``-ts_max_steps 0``, propagation will be skipped because the CLI flag wins.
+Input-file keys cannot be set on the command line, with two exceptions:
+``-enable_gpu`` overrides ``EnableGPU`` and ``-save_dipole`` overrides
+``SaveDipoleAxes``. These two flags and ``-mat_type``/``-vec_type`` are
+removed from the argument list before PETSc is initialised. All other options
+go to the PETSc options database and are read by the object that uses them.
 
-Key CLI Flags
+Program flags
 -------------
 
 .. list-table::
-   :widths: 25 15 60
+   :widths: 30 12 58
    :header-rows: 1
 
    * - Flag
@@ -36,15 +40,22 @@ Key CLI Flags
      - Description
    * - ``-inp <file>``
      - string
-     - Input parameter file (required for non-interactive runs)
-   * - ``-ts_max_steps <n>``
+     - Input file (default ``tdse.prm``). Output file names are derived from
+       its base name.
+   * - ``-enable_gpu <0|1>``
      - int
-     - Maximum time steps. Set to 0 for eigenvalue solve only (no propagation).
+     - Overrides ``EnableGPU``.
    * - ``-save_dipole <axes>``
      - string
-     - Which dipole axes to save at runtime. Accepts ``x``, ``xy``, ``xyz``, ``all``, or ``none``.
+     - Overrides ``SaveDipoleAxes``: any combination of ``x``, ``y``, ``z``,
+       ``all`` or ``none``. The requested dipole operators are written to
+       ``static/D<a>_<input>.bin``; only assembled operators are written.
+   * - ``-mat_type <type>``, ``-vec_type <type>``
+     - string
+     - Matrix and vector types of all PetIGA objects; passed on as
+       ``-iga_mat_type`` and ``-iga_vec_type``.
 
-Assembly and Eigensolver Flags
+Assembly and eigensolver flags
 ------------------------------
 
 .. list-table::
@@ -54,27 +65,40 @@ Assembly and Eigensolver Flags
    * - Flag
      - Type
      - Description
-   * - ``-tdsez_sumfact 0``
+   * - ``-tdsez_sumfact <bool>``
      - bool
-     - Use the per-point element kernels instead of sum factorisation.
+     - Sum-factorised element kernels (default 1); 0 uses the per-point
+       kernels.
    * - ``-tdsez_sumfact_check``
      - flag
      - Compute every element matrix both ways and print the largest relative
        difference (diagnostic, slow).
-   * - ``-tdsez_band 0``
+   * - ``-tdsez_band <bool>``
      - bool
-     - Insert element matrices one element at a time instead of the banded
-       accumulation (one insertion per matrix row).
+     - Banded accumulation of the element matrices with one insertion per
+       matrix row (default 1); 0 inserts element by element.
    * - ``-tdsez_assembly_buffer_mb <MB>``
      - real
-     - Memory budget per rank for the banded accumulation (default 1024). Larger
-       sets of matrices are assembled in several element passes.
+     - Memory budget per rank for the banded accumulation (default 1024).
+       Larger sets of matrices are assembled in several element passes.
+   * - ``-tdsez_eps_inner <mode>``
+     - string
+     - First inner solver of the shift-invert eigensolve: ``direct`` or
+       ``iterative``. By default a direct solver is used when a direct
+       package is available and the problem is small enough (1D and 2D up to
+       :math:`2\cdot 10^6` rows; 3D with degree :math:`\ge 6` and at most
+       :math:`3\cdot 10^4` rows), iterative otherwise. A failed attempt falls
+       back to the next solver. See :doc:`Eigensolver`.
    * - ``-tdsez_degeneracy_tol <tol>``
      - real
      - Relative energy tolerance for treating eigenvalues as one degenerate
        level (default ``1e-9``); see :doc:`Eigensolver`.
 
-Propagation Flags
+The eigensolver also reads the SLEPc options (``-eps_*``, ``-st_*``,
+``-st_ksp_*``, ``-st_pc_*``, ``-st_sub_*``), which apply on top of the
+settings chosen by TDSE-Z.
+
+Propagation flags
 -----------------
 
 .. list-table::
@@ -85,52 +109,47 @@ Propagation Flags
      - Type
      - Description
    * - ``-tdsez_cap_check``
-     - flag
+     - bool
      - Also assemble the CAP with the element kernel and print the largest
        difference to the separable assembly (diagnostic).
-   * - ``-tdsez_tensor_ops 0``
+   * - ``-tdsez_tensor_ops <bool>``
      - bool
-     - Apply M, the dipoles, the velocities and K in the monitors as assembled
-       sparse matrices instead of in factorised (Kronecker) form (2D/3D).
-   * - ``-tdsez_eps_inner direct|iterative``
-     - string
-     - First inner solver of the shift-invert eigensolve (default: direct in
-       1D/2D and small high-degree 3D, iterative otherwise); failed attempts
-       fall back to the other one. See Eigensolver.
-   * - ``-pade_guess_order <q>``
-     - int
-     - Order of the extrapolated initial guess of the ``pade22``/``magnus4``
-       stage solves (1..5, default 3); ``-pade_extrapolate_guess 0`` disables it.
-   * - ``-tdsez_quad_obs 0``
+     - Apply :math:`M`, the dipoles, the velocities and :math:`K` in the
+       monitors in factorised (Kronecker) form (default 1, 2D/3D, not with
+       Dirichlet walls); 0 uses the assembled sparse matrices.
+   * - ``-tdsez_quad_obs <bool>``
      - bool
-     - Take <V>, <1/m>, <K>, the CAP, the forces dV/dx_a and the velocities
-       of the monitors from the assembled matrices instead of from psi at the
-       quadrature points (2D/3D).
+     - Evaluate :math:`\langle V\rangle`, :math:`\langle 1/m\rangle`,
+       :math:`\langle K\rangle`, the CAP, the forces
+       :math:`\partial V/\partial x_a` and the velocities of the monitors from
+       :math:`\psi` at the quadrature points (default 1, 2D/3D, not with
+       Dirichlet walls); 0 uses the assembled matrices.
    * - ``-tdsez_ilu_levels <n>``
      - int
-     - ILU fill level of the ASM subdomain preconditioner of every propagator
-       (default 0). Level 1 saves at most one GMRES iteration but its fill makes
-       3D factorisations about 10x slower; the 1e-12 solve tolerance is the same.
+     - ILU fill level of the ASM subdomain blocks of the propagator
+       preconditioner (default 0). Level 1 saves at most one GMRES iteration,
+       while its fill makes 3D factorisations about ten times slower.
+   * - ``-pade_guess_order <q>``
+     - int
+     - Order of the extrapolated initial guess of the ``pade22`` and
+       ``magnus4`` stage solves, 1 to 5 (default 3).
+   * - ``-pade_extrapolate_guess <bool>``
+     - bool
+     - Extrapolated initial guess of the ``pade22`` and ``magnus4`` stage
+       solves (default 1); 0 disables it.
 
-Note: ``-mat_type`` and ``-vec_type`` are re-injected as ``-iga_mat_type`` /
-``-iga_vec_type`` to reach PetIGA. The solver strips PETSc-known flags before
-processing.
+``Propagator = cn`` runs on a PETSc ``TS`` and reads the ``-ts_*``,
+``-snes_*``, ``-ksp_*`` and ``-pc_*`` options; ``-ts_max_steps`` affects only
+this propagator. See :doc:`Time-Propagation`.
 
-PetIGA-Specific Options
------------------------
+Environment variables
+---------------------
 
-The solver injects ``-iga_`` prefixes for PetIGA-specific options:
+``TDSEZ_DUMP_KNOTS``
+   When set, the interior knots of a non-uniform x axis are printed after the knot
+   vector has been generated (:doc:`Knot-Sequences`).
 
-- ``-iga_mat_type`` — Controls sparse matrix format
-- ``-iga_vec_type`` — Controls vector storage backend
-- ``-iga_ksp_monitor`` — KSP solver convergence output
-- ``-iga_ksp_converged_reason`` — Print KSP convergence reason
+Help
+----
 
-Help and Diagnostics
---------------------
-
-::
-
-    $ ./tdsez.x -help           # All available options
-    $ ./tdsez.x -help <term>    # Search for specific option
-    $ ./tdsez.x -help_group all # Grouped options list
+``-help`` lists the PETSc, SLEPc and PetIGA options that the run queries.

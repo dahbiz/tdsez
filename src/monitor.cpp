@@ -920,6 +920,15 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         PetscCall(VecView(psi, TDSEZ->WFSViewer));
     }
 
+    // TS stride snapshot
+    PetscInt tsStride = TDSEZParser::OutputStrideTS;
+    if (ts && tsStride > 0 && step % tsStride == 0) {
+        PetscInt ts_index = step / tsStride;
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->TIMEViewer, ts_index));
+        PetscObjectSetName((PetscObject)ts, "timestepper");
+        PetscCall(TSView(ts, TDSEZ->TIMEViewer));
+    }
+
     // ------------------------
     // Logging 
     // ------------------------

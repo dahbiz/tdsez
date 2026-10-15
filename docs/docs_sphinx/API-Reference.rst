@@ -1,72 +1,93 @@
 API Reference
 =============
 
-The public C++ surface is split into focused headers. Include the smallest
-header that owns the type you use; ``tdsez_internal.hpp`` is retained as the
-compatibility umbrella for solver translation units.
+The C++ declarations live in ``include/``. Solver translation units include
+the umbrella header ``tdsez_internal.hpp``, which pulls in the parser,
+assembler, core, manager and propagator headers together with the shared
+form kernels, callbacks and helper functions.
 
-.. list-table:: Public headers
+.. list-table:: Headers
    :header-rows: 1
    :widths: 32 68
 
    * - Header
      - Main symbols
+   * - ``tdsez_internal.hpp``
+     - Umbrella header; residual/Jacobian callbacks
+       (``TDSEZIFunctionPol*``, ``TDSEZIJacobianPol*``), ``TDSEZProfile``,
+       diagnostics and helper declarations
    * - ``tdsez_parser.hpp``
-     - ``TDSEZParser`` and input validation helpers
+     - ``TDSEZParser``: input parameters, muParser expressions, validation
    * - ``tdsez_core.hpp``
-     - ``TDSEZCore`` and knot-generation methods
+     - ``TDSEZCore``: IGA setup, knot generation, eigensolve, initial state
    * - ``tdsez_assembler.hpp``
-     - ``TDSEZAssembler`` and operator ownership
+     - ``TDSEZAssembler``: operator matrices
    * - ``tdsez_manager.hpp``
-     - ``TDSEZManager`` and output/observable state
+     - ``TDSEZManager``: propagation operators, observables, HDF5 output
    * - ``tdsez_propagator.hpp``
-     - ``TDSEZPropagator`` and PETSc TS integration
+     - ``TDSEZPropagator``: time stepping; ``TDSEZPCRefresh``
+   * - ``tdsez_tsurff.hpp``
+     - ``TDSEZTSurff``: t-SURFF photoelectron spectra
+   * - ``tdsez_tensorops.hpp``
+     - ``TDSEZTensorOps``: factorised application of separable operators
+   * - ``tdsez_quadobs.hpp``
+     - ``TDSEZQuadObs``: monitor expectation values at quadrature points
+   * - ``tdsez_multigrid.hpp``
+     - ``TDSEZSetupMultigrid``: geometric B-spline multigrid
+   * - ``tdsez_forcecoeffs.hpp``
+     - ``ForceCoeffs``, ``ForceCoeffStore``: force-matrix coefficients with mass-gradient
+       corrections, shared by the assembly and the monitors
    * - ``tdsez_info.hpp``
-     - ``TDSEZInfo`` terminal formatting utilities
+     - ``TDSEZInfo``: terminal formatting
 
-Core lifecycle
---------------
+Lifecycle
+---------
 
-The normal lifecycle is:
+The executable (``src/tdsez.cpp``) uses the classes in this order; the
+listing omits the optional dipole export and diagnostics.
 
 .. code-block:: cpp
 
-   TDSEZCore core(input_file);
-   PetscCall(core.Assemble());
-   PetscCall(core.Solve());
-   PetscCall(core.Output());
+   SlepcInitialize(&argc, &argv, PETSC_NULLPTR, PETSC_NULLPTR);
 
-   TDSEZAssembler assembler(core.iga);
+   TDSEZCore core(input_file);          // parse, validate, create the IGA
+   PetscCall(core.Assemble());          // H and M
+   PetscCall(core.Solve());             // eigenstates and core.initialPsi
+   PetscCall(core.Output());            // static/EigenData_<input>.h5
+
+   TDSEZAssembler assembler(core.iga);  // time-dependent operators
    TDSEZManager manager(&core, &assembler);
+   manager.setPsi0(psi0);               // copy of core.initialPsi
+   manager.outputFilename = "td/TimeEvolutionData_<input>.h5";
+
    TDSEZPropagator propagator(manager);
-   PetscCall(propagator.Evolve());
+   PetscCall(propagator.Evolve());      // evolves core.initialPsi in place
    PetscCall(manager.CloseHDF5());
 
-Applications must initialize PETSc/SLEPc before constructing these objects and
-finalize PETSc after all owned objects have been destroyed.
+   SlepcFinalize();
+
+``Output()`` is called only for ``NBoundStates > 0``, and the propagation
+block only for ``EnablePropagation = 1``. With ``TSurff = 1`` a
+``TDSEZTSurff`` object is set up before ``Evolve()``, attached through
+``manager.tsurff`` and finished afterwards. All objects must be destroyed
+before ``SlepcFinalize()``.
 
 Error handling
 --------------
 
-Functions returning ``PetscErrorCode`` use PETSc error propagation. Callers
-should use ``PetscCall`` inside PETSc-aware functions and ``PetscCallAbort``
-only at top-level boundaries where there is no recoverable caller. Parser
-validation throws ``std::runtime_error`` before assembly; command-line entry
-points convert those failures into a clear fatal diagnostic.
+Functions returning ``PetscErrorCode`` propagate errors through PETSc:
+``PetscCall`` inside PETSc-aware functions, ``PetscCallAbort`` at the top
+level. Input validation (``TDSEZParser::ValidateOrThrow``) runs in the
+``TDSEZCore`` constructor before any PETSc object is created; a failure prints
+``TDSEZ FATAL: input validation failed`` with the reason and aborts with exit
+code 3. Other exceptions reaching ``main()`` are reported as ``ERROR:`` and
+end the run with exit code 1.
 
-Reference pages
----------------
+Generated reference
+-------------------
 
-The complete signatures, member descriptions, source links, and include
-relationships are generated by Doxygen:
-
-* ``TDSEZParser`` — input state and expression evaluation
-* ``TDSEZCore`` — grid, knots, assembly, and eigensolve
-* ``TDSEZAssembler`` — matrices and physics kernels
-* ``TDSEZManager`` — HDF5 output and observables
-* ``TDSEZPropagator`` — time stepping
-
-Use the generated class index when browsing overloaded PETSc callbacks.
-
-The hosted build includes the complete generated reference at
-`Open the Doxygen API reference <../api/html/index.html>`_.
+The complete signatures, member descriptions and include relationships are
+generated by Doxygen from ``include/`` and ``src/``
+(``cmake --build build --target docs``, output in ``docs/doxygen/html/``).
+The hosted documentation includes the generated reference:
+`Doxygen API reference <../api/html/index.html>`_.

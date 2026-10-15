@@ -24,8 +24,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="HDF5 Output Schema" href="HDF5-Output.html" />
-    <link rel="prev" title="Boundary Conditions" href="Boundary-Conditions.html" />
+    <link rel="next" title="Boundary Conditions" href="Boundary-Conditions.html" />
+    <link rel="prev" title="Grid &amp; Domain" href="Grid-Domain.html" />
  
 </head>
 
@@ -48,206 +48,225 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview &amp; Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#solver-workflow">Solver Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#file-structure">File Structure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#residual-assembly">Residual Assembly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-structure">Output Structure</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#execution-pipeline">Execution pipeline</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#public-modules">Public modules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#core-lifecycle">Core lifecycle</a></li>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#reference-pages">Reference pages</a></li>
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Overview.html">Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#model">Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#workflow">Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Overview.html#output-files">Output files</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Compilation.html">Compilation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Compilation.html#dependencies">Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-steps">Build Steps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#auto-detection">Auto-Detection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build Targets</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#execution-modes">Execution Modes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#output-directory-structure">Output Directory Structure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Compilation.html#performance-note">Performance Note</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build">Build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#build-targets">Build targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Compilation.html#running">Running</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Input-File.html">Input File</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#format">Format</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#muparser">muParser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#file-structure">File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#syntax">Syntax</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#value-types">Value types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#expressions">Expressions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#removed-keys">Removed keys</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Input-File.html#parameter-reference">Parameter Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#global-settings">Global Settings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#domain-and-grid">Domain and Grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#potential-and-mass">Potential and Mass</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-photoelectron-spectra">t-SURFF Photoelectron Spectra</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Input-File.html#knot-sequences">Knot Sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#key-reference">Key Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#general">General</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#grid-and-discretisation">Grid and discretisation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#potential-mass-and-carrier">Potential, mass and carrier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#laser-field">Laser field</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#initial-state">Initial state</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#time-propagation">Time propagation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#boundaries-and-absorbing-potential">Boundaries and absorbing potential</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#observables-and-output">Observables and output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Input-File.html#t-surff-photoelectron-spectra">t-SURFF photoelectron spectra</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-handling">Option handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#program-flags">Program flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and eigensolver flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#propagation-flags">Propagation flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#environment-variables">Environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help">Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#running-a-deck">Running a Deck</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#strong-field-examples-examples">Strong-Field Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#reference-decks-tests-inputs">Reference Decks (<code class="docutils literal notranslate"><span class="pre">tests/inputs/</span></code>)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic oscillator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#soft-core-molecules-and-atoms">Soft-core molecules and atoms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Examples.html#decks-that-must-fail">Decks that must fail</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Model and discretisation</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Grid-Domain.html">Grid &amp; Domain</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension">Dimension</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#spatial-bounds">Spatial Bounds</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh Resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#dimension-and-bounds">Dimension and bounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#mesh-resolution">Mesh resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#basis">Basis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Grid-Domain.html#quadrature">Quadrature</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Knot Sequences</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#selection">Selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#graded-sequences">Graded sequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hydrogenic-sequence">Hydrogenic sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface-aligned-sequence">Interface-aligned sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#field-resolution-check">Field-resolution check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#convergence-studies">Convergence studies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#coulomb-potential-3d-hydrogen">Coulomb potential: 3D hydrogen</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#high-harmonic-generation">High-harmonic generation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#wall-conditions">Wall conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex absorbing potential</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Boundary-Conditions.html#choosing-the-layer">Choosing the layer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-and-absorbing-boundaries-compared">Reflecting and absorbing boundaries compared</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Potential-Mass.html">Potential &amp; Mass</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#hamiltonian">Hamiltonian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#carrier-charge">Carrier Charge</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#potential">Potential</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#mass">Mass</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#physical-constants">Physical Constants</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#custom-variables">Custom Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Potential-Mass.html#expressions-and-constants">Expressions and Constants</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Laser-Field.html">Laser Field</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#polarization">Polarization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expression">Field Expression</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-expressions">Field Expressions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-from-a-vector-potential">Field from a vector potential</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#named-field-parameters">Named Field Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#field-scales">Field Scales</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Laser-Field.html#unsupported-keys">Unsupported Keys</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#units">Units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#hamiltonian-and-carrier-sign">Hamiltonian and Carrier Sign</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#discrete-equations">Discrete Equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#time-stepping">Time Stepping</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="Eigensolver.html">Eigensolver</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#bound-states">Bound States</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#keys">Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#shift-invert-krylov-schur">Shift-Invert Krylov-Schur</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Eigensolver.html#inner-solvers">Inner solvers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Eigensolver.html#acceptance-of-an-attempt">Acceptance of an attempt</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#degenerate-levels-and-reproducible-states">Degenerate Levels and Reproducible States</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#solve-mode">Solve Mode</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saving-eigenstates">Saving Eigenstates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Eigensolver.html#saved-eigenstates">Saved eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#keys">Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#selector-forms">Selector Forms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#bound-states">Bound states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#superpositions">Superpositions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#gaussian-wave-packet">Gaussian wave packet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#analytic-benchmark-states">Analytic benchmark states</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#projection-and-normalisation">Projection and normalisation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#running-without-the-eigensolver">Running without the eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#typical-uses">Typical uses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#equation-of-motion">Equation of Motion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagators">Propagators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#linear-solver">Linear Solver</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#preconditioners">Preconditioners</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#accuracy-of-the-rational-propagators">Accuracy of the Rational Propagators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#common-propagation-scenarios">Common Propagation Scenarios</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control-and-progress">Propagation Control and Progress</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Output and analysis</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#evaluation">Evaluation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#norm">Norm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole">Dipole</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#energies">Energies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#current">Current</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#angular-momentum">Angular Momentum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#phase-increment">Phase Increment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Output-Control.html">Output Control</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#observable-selection">Observable Selection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#other-output-settings">Other Output Settings</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Initial-State.html">Initial State</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#initialstate-selector">InitialState Selector</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#format-reference">Format Reference</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Initial-State.html#example-superpositions">Example Superpositions</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#gaussian-wave-packet">Gaussian Wave Packet</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#validated-examples-examples">Validated Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#d-systems">1D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic Oscillator</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-ionization">1D Atomic Ionization</a></li>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-superposition-quantum-beating">1D Superposition — Quantum Beating</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="Examples.html#id1">2D Systems</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="Examples.html#d-circularly-polarized-field-berry-phase">2D Circularly Polarized Field — Berry Phase</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="CLI-Flags.html">CLI Flags</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#basic-usage">Basic Usage</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#propagation-flags">Propagation Flags</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#openmpi-5-x-bind-to-pitfall">OpenMPI 5.x bind-to Pitfall</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#also-applies-to-pytest">Also Applies to Pytest</a></li>
-<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load Balance</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#unknown-input-key-fatal-error">Unknown Input Key Fatal Error</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#dimension-must-be-1-2-or-3">Dimension Must Be 1, 2 or 3</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#splinedegree-must-be-in-1-14">SplineDegree Must Be in [1,14]</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#initial-state-index-converged-eigenstates">Initial State Index &gt;= Converged Eigenstates</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#x-slowdown-with-mpirun">8-10x Slowdown with mpirun</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-in-3d">Performance in 3D</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#boundary-types">Boundary Types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#complex-absorbing-potential">Complex Absorbing Potential</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#how-cap-works">How CAP Works</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#tuning-cap-parameters">Tuning CAP Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#reflecting-vs-absorbing-boundaries">Reflecting vs Absorbing Boundaries</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Boundary-Conditions.html#dirichlet-boundary">Dirichlet Boundary</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Knot Sequences</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#knot-sequence-types">Knot Sequence Types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#per-axis-assignment">Per-Axis Assignment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#coulomb-potentials-hydrogenic-sequence">Coulomb Potentials (hydrogenic sequence)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#static-output">Static Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#compression-and-console-output">Compression and Console Output</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#ring-buffer">Ring Buffer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#time-evolution-data">Time Evolution Data</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipole-table">Dipole Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energy-table">Energy Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#current-table">Current Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#population-table">Population Table</a></li>
-<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#dipoles"><code class="docutils literal notranslate"><span class="pre">dipoles</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#energies"><code class="docutils literal notranslate"><span class="pre">energies</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#currents"><code class="docutils literal notranslate"><span class="pre">currents</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#populations"><code class="docutils literal notranslate"><span class="pre">populations</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation"><code class="docutils literal notranslate"><span class="pre">autocorrelation</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#wavefunction-snapshots">Wavefunction Snapshots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#petsc-time-stepper-snapshots">PETSc Time-Stepper Snapshots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#t-surff-spectra">t-SURFF Spectra</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#other-static-files">Other Static Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#reading-the-files">Reading the Files</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Observables.html">Observables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#dipole-moment">Dipole Moment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#energy-decomposition">Energy Decomposition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#acceleration">Acceleration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#current-decomposition">Current Decomposition</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#berry-phase">Berry Phase</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Post-Processing.html">Post-Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#input-files">Input Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmprocessor">tdmprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#tdmselect">tdmselect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#drecprocessor">drecprocessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Post-Processing.html#python-analysis-zkit">Python Analysis: zkit</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="TSurff.html">Photoelectron Spectra (t-SURFF)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="TSurff.html#method">Method</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#method">Method</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#numerics">Numerics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#exterior-check">Exterior check</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="TSurff.html#input-keys">Input Keys</a></li>
-<li class="toctree-l2"><a class="reference internal" href="TSurff.html#output-td-surff-input-h5">Output: <code class="docutils literal notranslate"><span class="pre">td/surff_&lt;input&gt;.h5</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#output-td-surff-input-h5">Output: <code class="docutils literal notranslate"><span class="pre">td/surff_&lt;input&gt;.h5</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="TSurff.html#post-processing-script">Post-processing script</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-1-free-wave-packet-analytic-benchmark">Example 1: free wave packet (analytic benchmark)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-2-above-threshold-ionisation-of-a-1d-atom">Example 2: above-threshold ionisation of a 1D atom</a></li>
-<li class="toctree-l2"><a class="reference internal" href="TSurff.html#choosing-the-parameters">Choosing the parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#choosing-the-parameters">Choosing the Parameters</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HHG.html">Simulating HHG Correctly</a><ul>
@@ -256,8 +275,60 @@
 <li class="toctree-l2"><a class="reference internal" href="HHG.html#checklist">Checklist</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="Physics-Conventions.html#convention-reference">Convention Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Internals and operation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="Architecture.html">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#modules">Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#ownership-rules">Ownership rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Architecture.html#generated-api-reference">Generated API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="API-Reference.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#lifecycle">Lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#error-handling">Error handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="API-Reference.html#generated-reference">Generated reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Performance.html">Performance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#linear-solves-of-the-propagation">Linear solves of the propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#fourth-order-propagators">Fourth-order propagators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#assembly">Assembly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#monitors-and-output">Monitors and output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#effect-on-accuracy">Effect on accuracy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Performance.html#reproducing-the-measurements">Reproducing the measurements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="MPI-Notes.html">MPI Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#process-binding-with-openmpi-5-x">Process binding with OpenMPI 5.x</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#load-balance">Load balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#communication">Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MPI-Notes.html#heterogeneous-cores">Heterogeneous cores</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#input-errors">Input Errors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#unknown-removed-or-repeated-keys">Unknown, removed or repeated keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#validation-errors">Validation errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="Troubleshooting.html#initial-state-index-beyond-the-converged-eigenstates">Initial state index beyond the converged eigenstates</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#eigensolver">Eigensolver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#non-finite-hamiltonian">Non-finite Hamiltonian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#energies-below-the-exact-value">Energies Below the Exact Value</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#quadrature-order">Quadrature Order</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#strong-field-warnings-at-start-up">Strong-Field Warnings at Start-up</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#t-surff-errors">t-SURFF Errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#slow-runs-under-mpi">Slow Runs under MPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-in-3d">Performance in 3D</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="References.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="References.html#time-propagation-and-linear-algebra">Time propagation and linear algebra</a></li>
+<li class="toctree-l2"><a class="reference internal" href="References.html#strong-field-physics">Strong-field physics</a></li>
 </ul>
 </li>
 </ul>
@@ -288,12 +359,27 @@
              
   <section id="knot-sequences">
 <h1>Knot Sequences<a class="headerlink" href="#knot-sequences" title="Link to this heading"></a></h1>
-<p>B-spline knot vector generation supports uniform, symmetric exponential and
-tangent, logarithmic tangent, hydrogenic, and interface-aligned sequences. Any
-other name (including the removed placeholders <code class="docutils literal notranslate"><span class="pre">adaptive</span></code> and
-<code class="docutils literal notranslate"><span class="pre">adaptive_wf</span></code>) stops the run with a message.</p>
-<section id="knot-sequence-types">
-<h2>Knot Sequence Types<a class="headerlink" href="#knot-sequence-types" title="Link to this heading"></a></h2>
+<p>The knot sequence of an axis fixes the element boundaries of the B-spline
+basis (<a class="reference internal" href="Grid-Domain.html"><span class="doc">Grid &amp; Domain</span></a>) and therefore where the grid is fine and where it is
+coarse. TDSE-Z provides uniform, graded, interface-aligned and hydrogenic
+sequences. This page defines them, describes the field-resolution check that
+applies to every sequence, and reports convergence studies for Coulomb
+potentials and high-harmonic generation (HHG).</p>
+<section id="selection">
+<h2>Selection<a class="headerlink" href="#selection" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">KnotSequence</span></code> takes one name for all axes or a comma-separated list, one
+name per axis (case-insensitive):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">KnotSequence</span> <span class="o">=</span> <span class="n">symexp</span>                 <span class="c1"># every axis</span>
+<span class="n">KnotSequence</span> <span class="o">=</span> <span class="n">hydrogenic</span><span class="p">,</span> <span class="n">uniform</span>    <span class="c1"># x hydrogenic, y uniform, z uniform (default)</span>
+<span class="n">KnotSequence</span> <span class="o">=</span> <span class="n">symexp</span><span class="p">,</span> <span class="n">uniform</span><span class="p">,</span> <span class="n">symtanu</span>
+</pre></div>
+</div>
+<p>A single name applies to every axis; with two names the z axis keeps the
+default <code class="docutils literal notranslate"><span class="pre">uniform</span></code>. Valid names are <code class="docutils literal notranslate"><span class="pre">uniform</span></code>, <code class="docutils literal notranslate"><span class="pre">symexp</span></code>, <code class="docutils literal notranslate"><span class="pre">symtanu</span></code>,
+<code class="docutils literal notranslate"><span class="pre">symtann</span></code>, <code class="docutils literal notranslate"><span class="pre">symlogtan</span></code>, <code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> and <code class="docutils literal notranslate"><span class="pre">interface</span></code> (alias
+<code class="docutils literal notranslate"><span class="pre">interfaces</span></code>); any other name stops the run during input validation. The
+knot vectors are generated on rank 0 and broadcast; the environment variable
+<code class="docutils literal notranslate"><span class="pre">TDSEZ_DUMP_KNOTS</span></code> prints the interior knots of a non-uniform x axis.</p>
 <table class="docutils align-default">
 <colgroup>
 <col />
@@ -302,68 +388,204 @@ other name (including the removed placeholders <code class="docutils literal not
 </colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p>Sequence</p></th>
-<th class="head"><p>Description</p></th>
-<th class="head"><p>Tuning Keys</p></th>
+<th class="head"><p>Knot placement</p></th>
+<th class="head"><p>Tuning keys</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><strong>uniform</strong></p></td>
-<td><p>Uniform spacing</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">uniform</span></code></p></td>
+<td><p>Equal elements on <span class="math notranslate nohighlight">\([L_{\min}, L_{\max}]\)</span>.</p></td>
 <td><p>–</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>symexp</strong></p></td>
-<td><p>Symmetric exponential: dense near origin, sparse at edges</p></td>
-<td><p>KnotAlpha (alias KnotGrading, GradingStrength); default 0.9</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">symexp</span></code></p></td>
+<td><p>Exponential map <a class="reference internal" href="#equation-eq-knot-sequences-symexp">Eq. (11)</a>: dense at the origin,
+coarse at the walls.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">KnotAlpha</span></code> (default 0.9)</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>symtanu</strong></p></td>
-<td><p>Inverse-tanh map: dense near origin, sparse at edges</p></td>
-<td><p>KnotAlpha; default 0.9</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">symtanu</span></code></p></td>
+<td><p>Inverse-tanh map <a class="reference internal" href="#equation-eq-knot-sequences-symtanu">Eq. (12)</a>: dense at the centre
+of the box, coarse at the walls.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">KnotAlpha</span></code> (default 0.9)</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>symtann</strong></p></td>
-<td><p>tanh map: dense near the edges, sparse at origin</p></td>
-<td><p>KnotAlpha; default 0.9</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">symtann</span></code></p></td>
+<td><p>tanh map <a class="reference internal" href="#equation-eq-knot-sequences-symtann">Eq. (13)</a>: dense at the walls, coarse at
+the centre of the box.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">KnotAlpha</span></code> (default 0.9)</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>symlogtan</strong></p></td>
-<td><p>Tangent map, mildly dense near origin</p></td>
-<td><p>KnotAlpha; default 0.5</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">symlogtan</span></code></p></td>
+<td><p>Tangent map <a class="reference internal" href="#equation-eq-knot-sequences-symlogtan">Eq. (14)</a>: mildly dense at the
+origin.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">KnotAlpha</span></code> (default 0.5)</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>interface</strong> (alias <strong>interfaces</strong>)</p></td>
-<td><p>C0 knots (multiplicity p) at every breakpoint of the Potential and Mass expressions; uniform elements within each layer, element count per layer proportional to its width. Required for spectral accuracy at abrupt BDD heterojunctions.</p></td>
-<td><p>Breakpoints from <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">c</span></code> / <code class="docutils literal notranslate"><span class="pre">abs(x)</span> <span class="pre">&lt;</span> <span class="pre">c</span></code> comparisons</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code></p></td>
+<td><p>Linear near the origin, exponential outside, optionally capped
+(<a class="reference internal" href="#equation-eq-knot-sequences-hyd-lin">Eq. (15)</a> to <a class="reference internal" href="#equation-eq-knot-sequences-hyd-cap">Eq. (17)</a>).</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicNLin</span></code>, <code class="docutils literal notranslate"><span class="pre">HydrogenicR1</span></code>, <code class="docutils literal notranslate"><span class="pre">HydrogenicNExp</span></code>,
+<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><strong>hydrogenic</strong></p></td>
-<td><p>Per half-axis: NLin linear elements of size R1 up to r_cross = NLin*R1, then NExp exponentially growing elements up to Lmax; mirrored about the origin. For Coulombic problems</p></td>
-<td><p>HydrogenicR1 (alias InnerSpacing, HydrogenicInnerSpacing), HydrogenicNLin (alias InnerElements, HydrogenicInnerElements), HydrogenicNExp (alias OuterElements, HydrogenicOuterElements), HydrogenicHMax (alias HydrogenicMaxSpacing; largest element width, uniform beyond; 0 = from the field when propagating, &lt; 0 = off); per-axis lists</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">interface</span></code></p></td>
+<td><p>Uniform within each material layer, <span class="math notranslate nohighlight">\(C^0\)</span> knots at the layer
+boundaries.</p></td>
+<td><p>Breakpoints of <code class="docutils literal notranslate"><span class="pre">Potential</span></code> and <code class="docutils literal notranslate"><span class="pre">Mass</span></code></p></td>
 </tr>
 </tbody>
 </table>
+<p><code class="docutils literal notranslate"><span class="pre">KnotAlpha</span></code> (aliases <code class="docutils literal notranslate"><span class="pre">KnotGrading</span></code>, <code class="docutils literal notranslate"><span class="pre">GradingStrength</span></code>) applies to all
+graded axes; a value <span class="math notranslate nohighlight">\(\le 0\)</span> selects the defaults listed above. The
+hydrogenic keys are per-axis lists (<a class="reference internal" href="Input-File.html"><span class="doc">Input File</span></a>).</p>
 </section>
-<section id="per-axis-assignment">
-<h2>Per-Axis Assignment<a class="headerlink" href="#per-axis-assignment" title="Link to this heading"></a></h2>
-<p>Knot sequences are comma-separated per axis:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">KnotSequence</span> <span class="o">=</span> <span class="s2">"symexp, uniform, symtan"</span>
-</pre></div>
-</div>
-<p>X=symexp, Y=uniform, Z=symtan. Missing axes default to the first value.</p>
+<section id="graded-sequences">
+<h2>Graded sequences<a class="headerlink" href="#graded-sequences" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">symexp</span></code>, <code class="docutils literal notranslate"><span class="pre">symtanu</span></code>, <code class="docutils literal notranslate"><span class="pre">symtann</span></code> and <code class="docutils literal notranslate"><span class="pre">symlogtan</span></code> place
+<span class="math notranslate nohighlight">\(n = N_{\mathrm{el}} - 1\)</span> interior knots (<code class="docutils literal notranslate"><span class="pre">Nelements</span> <span class="pre">-</span> <span class="pre">1</span></code>) at the
+images of the uniform parameters</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-t">
+<span class="eqno">(10)<a class="headerlink" href="#equation-eq-knot-sequences-t" title="Link to this equation"></a></span>\[t_i = \frac{2i}{n+1} - 1, \qquad i = 1, \dots, n,\]</div>
+<p>under a map of <span class="math notranslate nohighlight">\((-1, 1)\)</span> onto the axis, with <span class="math notranslate nohighlight">\(\alpha\)</span> =
+<code class="docutils literal notranslate"><span class="pre">KnotAlpha</span></code>:</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-symexp">
+<span class="eqno">(11)<a class="headerlink" href="#equation-eq-knot-sequences-symexp" title="Link to this equation"></a></span>\[x_i = L_\pm\,\frac{e^{\alpha |t_i|} - 1}{e^{\alpha} - 1},
+\qquad L_+ = L_{\max}\ (t_i \ge 0),\quad L_- = L_{\min}\ (t_i &lt; 0),\]</div>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-symtanu">
+<span class="eqno">(12)<a class="headerlink" href="#equation-eq-knot-sequences-symtanu" title="Link to this equation"></a></span>\[x_i = L_{\min} + (L_{\max} - L_{\min})\,
+\tfrac12\left[1 + \frac{\operatorname{artanh}(t_i \tanh\alpha)}{\alpha}\right],\]</div>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-symtann">
+<span class="eqno">(13)<a class="headerlink" href="#equation-eq-knot-sequences-symtann" title="Link to this equation"></a></span>\[x_i = L_{\min} + (L_{\max} - L_{\min})\,
+\tfrac12\left[1 + \frac{\tanh(\alpha t_i)}{\tanh\alpha}\right],\]</div>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-symlogtan">
+<span class="eqno">(14)<a class="headerlink" href="#equation-eq-knot-sequences-symlogtan" title="Link to this equation"></a></span>\[x_i = L_{\max}\,\frac{\tan(\alpha' t_i)}{\tan\alpha'},
+\qquad \alpha' = 1.57\,\frac{\alpha}{\alpha + 1}.\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">symexp</span></code> grades towards <span class="math notranslate nohighlight">\(x = 0\)</span> and scales each side to its own wall,
+so it also serves boxes that are asymmetric about the origin. <code class="docutils literal notranslate"><span class="pre">symtanu</span></code> and
+<code class="docutils literal notranslate"><span class="pre">symtann</span></code> are symmetric about the box centre. <code class="docutils literal notranslate"><span class="pre">symlogtan</span></code> uses
+<span class="math notranslate nohighlight">\(L_{\max}\)</span> for both sides and assumes <span class="math notranslate nohighlight">\(L_{\min} = -L_{\max}\)</span>.</p>
+<p>A knot lies at <span class="math notranslate nohighlight">\(t = 0\)</span> (the origin, or the box centre) only when
+<span class="math notranslate nohighlight">\(n\)</span> is odd, i.e. when <code class="docutils literal notranslate"><span class="pre">Nelements</span></code> is even; otherwise a warning is
+printed. A Coulomb centre should sit on a knot (see the quadrature study under <a class="reference internal" href="#coulomb-potential-3d-hydrogen">Coulomb potential: 3D hydrogen</a>).</p>
 </section>
-<section id="coulomb-potentials-hydrogenic-sequence">
-<h2>Coulomb Potentials (hydrogenic sequence)<a class="headerlink" href="#coulomb-potentials-hydrogenic-sequence" title="Link to this heading"></a></h2>
-<p>Measured on the 3D hydrogen atom, <span class="math notranslate nohighlight">\(V = -1/r\)</span>, degree 3, 8 Gauss points,
-<code class="docutils literal notranslate"><span class="pre">HydrogenicR1</span> <span class="pre">=</span> <span class="pre">0.05</span></code>, <code class="docutils literal notranslate"><span class="pre">HydrogenicNLin</span> <span class="pre">=</span> <span class="pre">5</span></code>, <code class="docutils literal notranslate"><span class="pre">HydrogenicNExp</span> <span class="pre">=</span> <span class="pre">10</span></code>
-(35 937 DOFs), exact ground state <span class="math notranslate nohighlight">\(-0.5\)</span>.</p>
-<p><strong>Box size and boundaries dominate.</strong> With the default natural (Neumann)
-boundaries the wavefunction is not forced to zero at the box, and the energy
-minimum then drops <em>below</em> the exact value when the box cuts the tail of the
-state (the cut-off tail has positive local energy). The 1s tail beyond 5 au
-holds 0.3 % of the probability:</p>
-<table class="docutils align-default">
+<section id="hydrogenic-sequence">
+<h2>Hydrogenic sequence<a class="headerlink" href="#hydrogenic-sequence" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> sequence is built on the half axis <span class="math notranslate nohighlight">\([0, L]\)</span> with
+<span class="math notranslate nohighlight">\(L = L_{\max}\)</span> and mirrored about the origin; the axis is
+<span class="math notranslate nohighlight">\([-L_{\max}, L_{\max}]\)</span> and <code class="docutils literal notranslate"><span class="pre">LMin</span></code> is not used. With
+<span class="math notranslate nohighlight">\(N_{\mathrm{lin}}\)</span> = <code class="docutils literal notranslate"><span class="pre">HydrogenicNLin</span></code> (0 selects <code class="docutils literal notranslate"><span class="pre">Nelements</span> <span class="pre">-</span> <span class="pre">1</span></code>),
+<span class="math notranslate nohighlight">\(R_1\)</span> = <code class="docutils literal notranslate"><span class="pre">HydrogenicR1</span></code> (0 selects 0.1 a.u.) and
+<span class="math notranslate nohighlight">\(N_{\exp}\)</span> = <code class="docutils literal notranslate"><span class="pre">HydrogenicNExp</span></code> (0 selects 10), the half-axis knots are</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-hyd-lin">
+<span class="eqno">(15)<a class="headerlink" href="#equation-eq-knot-sequences-hyd-lin" title="Link to this equation"></a></span>\[r_i = i R_1, \qquad i = 0, \dots, N_{\mathrm{lin}},\]</div>
+<p>followed by the exponentially graded knots</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-hyd-exp">
+<span class="eqno">(16)<a class="headerlink" href="#equation-eq-knot-sequences-hyd-exp" title="Link to this equation"></a></span>\[r_{\mathrm{c}}\left(\frac{L}{r_{\mathrm{c}}}\right)^{k/N_{\exp}},
+\qquad k = 1, \dots, N_{\exp} - 1, \qquad r_{\mathrm{c}} = N_{\mathrm{lin}} R_1 ,\]</div>
+<p>so that each half axis carries <span class="math notranslate nohighlight">\(N_{\mathrm{lin}}\)</span> linear and
+<span class="math notranslate nohighlight">\(N_{\exp}\)</span> exponential elements and the axis has
+<span class="math notranslate nohighlight">\(2(N_{\mathrm{lin}} + N_{\exp})\)</span> elements; <code class="docutils literal notranslate"><span class="pre">Nelements</span></code> only enters
+through the default of <code class="docutils literal notranslate"><span class="pre">HydrogenicNLin</span></code>. <span class="math notranslate nohighlight">\(r_{\mathrm{c}} &lt; L\)</span> is
+required; otherwise the run stops with a message. The outermost element has
+the width <span class="math notranslate nohighlight">\(L\,[1 - (r_{\mathrm{c}}/L)^{1/N_{\exp}}]\)</span>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> (alias <code class="docutils literal notranslate"><span class="pre">HydrogenicMaxSpacing</span></code>) caps the element width at
+<span class="math notranslate nohighlight">\(h_{\max}\)</span>: from the first element <span class="math notranslate nohighlight">\([r_j, r_{j+1}]\)</span> wider than
+<span class="math notranslate nohighlight">\(h_{\max}\)</span>, the rest of the half axis is replaced by</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-hyd-cap">
+<span class="eqno">(17)<a class="headerlink" href="#equation-eq-knot-sequences-hyd-cap" title="Link to this equation"></a></span>\[\nu = \left\lceil \frac{L - r_j}{h_{\max}} \right\rceil\]</div>
+<p>uniform elements. A positive value sets <span class="math notranslate nohighlight">\(h_{\max}\)</span>; a negative value
+disables the cap; 0 (default) derives <span class="math notranslate nohighlight">\(h_{\max} = \pi/(2k_{\max})\)</span> from
+the field (<a class="reference internal" href="#equation-eq-knot-sequences-hmax">Eq. (19)</a>) when <code class="docutils literal notranslate"><span class="pre">EnablePropagation</span> <span class="pre">=</span> <span class="pre">1</span></code> and the
+field is non-zero, and applies no cap otherwise. The start-up line
+<code class="docutils literal notranslate"><span class="pre">TDSEZHydrogenicKnots</span></code> reports the element count, <span class="math notranslate nohighlight">\(R_1\)</span>, the largest
+width (marked “capped” when the cap is active) and <span class="math notranslate nohighlight">\(r_{\mathrm{c}}\)</span>.</p>
+<p><a class="reference internal" href="#fig-knot-sequences-elements"><span class="std std-numref">Fig. 2</span></a> compares the element widths of the
+sequences on the x axis of the HHG study below.</p>
+<figure class="align-default" id="fig-knot-sequences-elements">
+<a class="reference internal image-reference" href="_images/Knot-Sequences-elements.svg"><img alt="_images/Knot-Sequences-elements.svg" src="_images/Knot-Sequences-elements.svg" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 2 </span><span class="caption-text">Element width against position on the half axis <span class="math notranslate nohighlight">\([0, 65]\)</span> a.u.:
+<code class="docutils literal notranslate"><span class="pre">uniform</span></code> and <code class="docutils literal notranslate"><span class="pre">symexp</span></code> (<code class="docutils literal notranslate"><span class="pre">KnotAlpha</span></code> 0.9) with 30 elements, and
+<code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> (<span class="math notranslate nohighlight">\(R_1 = 0.05\)</span>, <span class="math notranslate nohighlight">\(N_{\mathrm{lin}} = 5\)</span>,
+<span class="math notranslate nohighlight">\(N_{\exp} = 10\)</span>) without width cap and with
+<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">1</span></code>. Computed with the generator formulas of
+<code class="docutils literal notranslate"><span class="pre">src/core_knots.cpp</span></code> (script <code class="docutils literal notranslate"><span class="pre">figures/make_Knot-Sequences-elements.py</span></code>).</span><a class="headerlink" href="#fig-knot-sequences-elements" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+</section>
+<section id="interface-aligned-sequence">
+<h2>Interface-aligned sequence<a class="headerlink" href="#interface-aligned-sequence" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">interface</span></code> places knots at the material interfaces of heterostructures
+described by piecewise expressions. The breakpoints are read from comparisons
+of the form <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&lt;</span> <span class="pre">c</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&lt;=</span> <span class="pre">c</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&gt;</span> <span class="pre">c</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&gt;=</span> <span class="pre">c</span></code> (breakpoint
+<span class="math notranslate nohighlight">\(c\)</span>) and <code class="docutils literal notranslate"><span class="pre">abs(x)</span> <span class="pre">&lt;</span> <span class="pre">c</span></code> or <code class="docutils literal notranslate"><span class="pre">fabs(x)</span> <span class="pre">&lt;</span> <span class="pre">c</span></code> (breakpoints <span class="math notranslate nohighlight">\(\pm c\)</span>)
+in <code class="docutils literal notranslate"><span class="pre">Potential</span></code> and <code class="docutils literal notranslate"><span class="pre">Mass</span></code>, with <span class="math notranslate nohighlight">\(c\)</span> a numeric literal; comparisons on
+other operands are ignored. Breakpoints are taken from comparisons on <code class="docutils literal notranslate"><span class="pre">x</span></code>
+only, and the same positions are used on every axis that selects
+<code class="docutils literal notranslate"><span class="pre">interface</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Nelements</span></code> elements are distributed over the layers between the
+breakpoints in proportion to the layer width (at least one per layer) and are
+uniform within each layer. Every interior breakpoint is a knot of multiplicity
+<span class="math notranslate nohighlight">\(p\)</span>, so the basis is <span class="math notranslate nohighlight">\(C^0\)</span> there and can represent the kink of the
+BenDaniel-Duke wave function at an abrupt interface <a class="reference internal" href="References.html#bendanielduke1966" id="id1"><span>[BenDanielDuke1966]</span></a>
+(continuous <span class="math notranslate nohighlight">\(\psi\)</span> and <span class="math notranslate nohighlight">\(m^{-1}\psi'\)</span>, discontinuous
+<span class="math notranslate nohighlight">\(\psi'\)</span>). Each interface adds <span class="math notranslate nohighlight">\(p - 1\)</span> basis functions. Without
+breakpoints the sequence is uniform and a message is printed.</p>
+</section>
+<section id="field-resolution-check">
+<h2>Field-resolution check<a class="headerlink" href="#field-resolution-check" title="Link to this heading"></a></h2>
+<p>When <code class="docutils literal notranslate"><span class="pre">EnablePropagation</span> <span class="pre">=</span> <span class="pre">1</span></code> and the field is non-zero, TDSE-Z estimates
+the field scales once from the input and compares them with the mesh of every
+axis, for every knot sequence:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(E_0\)</span>: the largest <span class="math notranslate nohighlight">\(|E_a(t)|\)</span> over the polarised axes, sampled
+at 20 001 points on <span class="math notranslate nohighlight">\([0, T]\)</span>, <span class="math notranslate nohighlight">\(T\)</span> = <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code>;</p></li>
+<li><p><span class="math notranslate nohighlight">\(\omega\)</span>: the largest <code class="docutils literal notranslate"><span class="pre">Omegax/y/z</span></code> of the polarised axes; if all are
+zero, it is estimated from the zero crossings of the dominant field
+component (at least three crossings required);</p></li>
+<li><p><span class="math notranslate nohighlight">\(I_p\)</span>: <span class="math notranslate nohighlight">\(-\)</span> <code class="docutils literal notranslate"><span class="pre">TargetEigenvalue</span></code> if negative, otherwise 0.5.</p></li>
+</ul>
+<p>The highest return momentum follows from the classical cutoff law
+<a class="reference internal" href="References.html#krause1992" id="id2"><span>[Krause1992]</span></a> <a class="reference internal" href="References.html#corkum1993" id="id3"><span>[Corkum1993]</span></a>,</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-kmax">
+<span class="eqno">(18)<a class="headerlink" href="#equation-eq-knot-sequences-kmax" title="Link to this equation"></a></span>\[U_p = \frac{E_0^2}{4\omega^2}, \qquad
+k_{\max} = \sqrt{2\,(3.17\,U_p + I_p)},\]</div>
+<p>and the required element width is about four elements per de Broglie
+wavelength of the fastest returning electron,</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-hmax">
+<span class="eqno">(19)<a class="headerlink" href="#equation-eq-knot-sequences-hmax" title="Link to this equation"></a></span>\[h \le \frac{\pi}{2k_{\max}} .\]</div>
+<p>The start-up output prints <span class="math notranslate nohighlight">\(E_0\)</span>, <span class="math notranslate nohighlight">\(\omega\)</span>, <span class="math notranslate nohighlight">\(U_p\)</span>,
+<span class="math notranslate nohighlight">\(I_p\)</span>, <span class="math notranslate nohighlight">\(k_{\max}\)</span> and this width, and for each axis either the
+widest element (“resolved”) or a warning with the axis, the widest element and
+its position. The grid is not modified; only <code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> with
+<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code> uses the width as its cap. <span class="math notranslate nohighlight">\(E_0\)</span> and the
+zero-crossing estimate of <span class="math notranslate nohighlight">\(\omega\)</span> are taken from
+<span class="math notranslate nohighlight">\([0, \mathrm{FinalTime}]\)</span>: a test run with a shortened <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code>
+sees only the beginning of the pulse and may obtain a different width. The
+zero-crossing estimate is accurate to a few per cent for short ramped pulses;
+the criterion <a class="reference internal" href="#equation-eq-knot-sequences-hmax">Eq. (19)</a> has a margin of about a factor of
+two (see <a class="reference internal" href="#high-harmonic-generation">High-harmonic generation</a>).</p>
+</section>
+<section id="convergence-studies">
+<h2>Convergence studies<a class="headerlink" href="#convergence-studies" title="Link to this heading"></a></h2>
+<p>The following results were measured with TDSE-Z and serve as guidance for
+choosing grids.</p>
+<section id="coulomb-potential-3d-hydrogen">
+<h3>Coulomb potential: 3D hydrogen<a class="headerlink" href="#coulomb-potential-3d-hydrogen" title="Link to this heading"></a></h3>
+<p>Setup: <span class="math notranslate nohighlight">\(V = -1/r\)</span>, degree 3, 8 Gauss points, <code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> with
+<span class="math notranslate nohighlight">\(R_1 = 0.05\)</span>, <span class="math notranslate nohighlight">\(N_{\mathrm{lin}} = 5\)</span>, <span class="math notranslate nohighlight">\(N_{\exp} = 10\)</span>
+(35 937 DOFs on <span class="math notranslate nohighlight">\(\pm 10\)</span>); exact ground-state energy <span class="math notranslate nohighlight">\(-0.5\)</span>.</p>
+<p><strong>Box size and boundary condition.</strong> The box size dominates the error. With
+Neumann boundaries (<a class="reference internal" href="Boundary-Conditions.html"><span class="doc">Boundary Conditions</span></a>) the wave function is not
+forced to zero at the wall, and the ground-state energy falls <em>below</em> the exact
+value when the box truncates the tail of the state, because the truncated tail
+carries positive local energy. Beyond 5 a.u. the 1s state holds 0.3 % of the
+probability.</p>
+<table class="docutils align-default" id="id6">
+<caption><span class="caption-number">Table 2 </span><span class="caption-text">Ground-state energy of 3D hydrogen against box size</span><a class="headerlink" href="#id6" title="Link to this table"></a></caption>
 <colgroup>
 <col />
 <col />
 <col />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p>Box</p></th>
+<tr class="row-odd"><th class="head"><p>Box (a.u.)</p></th>
 <th class="head"><p>Neumann (default)</p></th>
 <th class="head"><p>Dirichlet</p></th>
 </tr>
@@ -383,122 +605,39 @@ holds 0.3 % of the probability:</p>
 </tr>
 </tbody>
 </table>
-<p>Use <span class="math notranslate nohighlight">\(\pm 10\)</span> au for the ground state, <span class="math notranslate nohighlight">\(\pm 20\)</span> for n = 2
-(on <span class="math notranslate nohighlight">\(\pm 10\)</span> the n = 2 energies are 3-6e-3 too low), about
-<span class="math notranslate nohighlight">\(\pm 35\)</span> for n = 3. On <span class="math notranslate nohighlight">\(\pm 20\)</span> with 15 exponential elements
-(79 507 DOFs) 1s and the four n = 2 states are within 2e-6.</p>
-<p><strong>Grading.</strong> Refining the inner region (5 x 0.05 au) changes the ground state by
-less than 1e-6; the outer, exponentially graded elements limit the accuracy
-(13 instead of 10 exponential elements: error 3.2e-6 -&gt; 7.8e-7). Smaller
-inner elements at a fixed element count make it worse (R1 = 0.01-0.02: 8-18e-6),
-because the outer elements coarsen. The exponential tail grows to elements
-of <span class="math notranslate nohighlight">\(L_{max}(1 - r_{cross}/L_{max})^{1/N_{exp}}\)</span> (3.1 au on
-<span class="math notranslate nohighlight">\(\pm 10\)</span>, 5 au on <span class="math notranslate nohighlight">\(\pm 20\)</span>), too coarse for ionised or excited
-electrons during propagation. <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> caps the width: from the
-first element that would be wider, the rest of the half-axis is uniform with
-width <span class="math notranslate nohighlight">\(\le\)</span> HMax. It does not change bound states noticeably
-(<span class="math notranslate nohighlight">\(\pm 10\)</span>, HMax = 1: 68 921 DOFs, E0 = -0.49999866). The knot line
-printed at start-up reports the largest width.</p>
-<p><strong>High-harmonic generation.</strong> HHG needs both ends of the grid: the returning
-electron far out and the recombination at the nucleus. Measured on a 2D
-hydrogen-like atom (<span class="math notranslate nohighlight">\(V=-0.5/r\)</span>, <span class="math notranslate nohighlight">\(I_p = 0.5\)</span>), 800 nm,
-<span class="math notranslate nohighlight">\(10^{14}\)</span> W/cm², flat-top pulse, box <span class="math notranslate nohighlight">\([-65,65]\times[-40,40]\)</span> with
-CAP, degree 3, <code class="docutils literal notranslate"><span class="pre">pade22</span></code>. Error of the integrated odd-harmonic yields of
-<span class="math notranslate nohighlight">\(|\tilde A|^2\)</span> against a reference grid (R1 = 0.02, HMax = 0.25,
-179k DOFs), in decades (<span class="math notranslate nohighlight">\(|\log_{10} I/I_{ref}|\)</span>); cutoff at H24:</p>
-<table class="docutils align-default">
-<colgroup>
-<col />
-<col />
-<col />
-<col />
-<col />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Grid (R1 = 0.05, NLin 5, NExp 10)</p></th>
-<th class="head"><p>DOFs</p></th>
-<th class="head"><p>plateau median</p></th>
-<th class="head"><p>plateau max</p></th>
-<th class="head"><p>H27-H35 max</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>no cap (elements up to 28 au)</p></td>
-<td><p>1 089</p></td>
-<td><p>1.18</p></td>
-<td><p>2.35</p></td>
-<td><p>2.98</p></td>
-</tr>
-<tr class="row-odd"><td><p>HMax = 2.0</p></td>
-<td><p>5 185</p></td>
-<td><p>0.088</p></td>
-<td><p>0.48</p></td>
-<td><p>4.4</p></td>
-</tr>
-<tr class="row-even"><td><p>HMax = 1.0</p></td>
-<td><p>14 553</p></td>
-<td><p>0.007</p></td>
-<td><p>0.031</p></td>
-<td><p>0.018</p></td>
-</tr>
-<tr class="row-odd"><td><p>HMax = 0.7 / 0.5 / 0.35</p></td>
-<td><p>26-94k</p></td>
-<td><p>0.007</p></td>
-<td><p>0.031</p></td>
-<td><p>0.010</p></td>
-</tr>
-<tr class="row-even"><td><p>HMax = 0.5, R1 = 0.1</p></td>
-<td><p>46 341</p></td>
-<td><p>0.023</p></td>
-<td><p>0.097</p></td>
-<td><p>0.030</p></td>
-</tr>
-<tr class="row-odd"><td><p>HMax = 0.5, R1 = 0.2</p></td>
-<td><p>44 589</p></td>
-<td><p>0.066</p></td>
-<td><p>0.27</p></td>
-<td><p>0.082</p></td>
-</tr>
-</tbody>
-</table>
-<p>The outer width converges at about four elements per wavelength of the fastest
-returning electron, <span class="math notranslate nohighlight">\(h \le \pi/(2k_{max})\)</span> with
-<span class="math notranslate nohighlight">\(k_{max} = \sqrt{2(3.17U_p + I_p)}\)</span> (1.0 au here; 2.0 au, about
-<span class="math notranslate nohighlight">\(\pi/k_{max}\)</span>, fails); the remaining 1.6 % is set by the nucleus spacing,
-whose error grows about as <span class="math notranslate nohighlight">\(R_1^{1.5}\)</span> - keep R1 <span class="math notranslate nohighlight">\(\le\)</span> 0.05 au.
-The acceleration and current spectra agree to 0.001-0.005 decades in every run,
-so their agreement does not detect an under-resolved grid; only refinement
-does.</p>
-<p>With <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code> (default) and <code class="docutils literal notranslate"><span class="pre">EnablePropagation</span> <span class="pre">=</span> <span class="pre">1</span></code> with a
-field, the cap is derived from the input: <span class="math notranslate nohighlight">\(E_0\)</span> is the largest field over
-<span class="math notranslate nohighlight">\([0, \mathrm{FinalTime}]\)</span>, <span class="math notranslate nohighlight">\(\omega\)</span> from <code class="docutils literal notranslate"><span class="pre">Omegax/y/z</span></code> or the
-zero crossings of the field, <span class="math notranslate nohighlight">\(I_p\)</span> from <code class="docutils literal notranslate"><span class="pre">TargetEigenvalue</span></code> (&lt; 0) or
-0.5, and the derivation is printed. On the run above it gives 0.976 au and the
-converged spectrum (median 0.007, max 0.031 decades). A short test run
-(small FinalTime) samples only the start of the pulse and gets a wider cap;
-set HMax explicitly when that matters. Bound-state-only runs are not capped.</p>
-<p><strong>Resolution check (every knot sequence).</strong> When propagating with a field,
-TDSE-Z prints the required width <span class="math notranslate nohighlight">\(\pi/(2k_{max})\)</span> and, for every axis,
-either the widest element (resolved) or a warning naming the axis, the widest
-element and its position. Grids are not changed; only <code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> caps its
-elements. <span class="math notranslate nohighlight">\(\omega\)</span> is taken from <code class="docutils literal notranslate"><span class="pre">Omegax/y/z</span></code> when given, else
-estimated from the field’s zero crossings (a few per cent off for short ramped
-pulses; the rule has a factor-two margin: 1.0 au converged, 2.0 au failed).</p>
-<p><strong>Quadrature.</strong> The nucleus sits on a knot (an element corner), where Gauss
-points never fall. Gauss-Legendre integrates the corner singularity of
-<span class="math notranslate nohighlight">\(1/r\)</span> with a relative error of 1.6e-4 (8 points) on the 8 elements that
-touch it; the ground state moves by 7e-7 from 8 to 10 points. Fewer points
-under-integrate the singularity and overestimate the attraction, which can
-cancel the discretisation error by accident (4 points: -0.500009, below the
-exact value; 6 points: -0.4999990) - converge in the number of points, not
-toward -0.5. <code class="docutils literal notranslate"><span class="pre">QuadratureRule</span> <span class="pre">=</span> <span class="pre">reduced</span></code> behaves like Gauss with fewer points
-(-0.4999976 at 8); <code class="docutils literal notranslate"><span class="pre">lobatto</span></code> puts points on the knots, where <span class="math notranslate nohighlight">\(1/r\)</span> is
-infinite, and is stopped at assembly with a message. Assembly time is
-0.24-0.39 s for 4-10 points and the eigensolve does not depend on the rule.</p>
-<p><strong>Basis.</strong> At equal DOFs (50 653) the smooth B-splines are about 100 times more
-accurate than the C0 element bases, which span the same space as each other
-and differ only in conditioning:</p>
-<table class="docutils align-default">
+<p>Recommended box half widths are 10 a.u. for the ground state, 20 a.u. for
+<span class="math notranslate nohighlight">\(n = 2\)</span> (on <span class="math notranslate nohighlight">\(\pm 10\)</span> the <span class="math notranslate nohighlight">\(n = 2\)</span> energies are
+3–6·10<sup>-3</sup> too low) and about 35 a.u. for <span class="math notranslate nohighlight">\(n = 3\)</span>. On
+<span class="math notranslate nohighlight">\(\pm 20\)</span> with <span class="math notranslate nohighlight">\(N_{\exp} = 15\)</span> (79 507 DOFs) the 1s level and the
+four <span class="math notranslate nohighlight">\(n = 2\)</span> states agree with the exact energies to 2·10<sup>-6</sup>.</p>
+<p><strong>Grading.</strong> Refining the inner region (5 elements of 0.05 a.u.) changes the
+ground-state energy by less than 10<sup>-6</sup>; the accuracy is limited by the
+outer, exponentially graded elements (13 instead of 10 exponential elements:
+error 3.2·10<sup>-6</sup> → 7.8·10<sup>-7</sup>). Smaller inner elements at a fixed
+element count increase the error (<span class="math notranslate nohighlight">\(R_1\)</span> = 0.01–0.02:
+8–18·10<sup>-6</sup>) because the outer elements become coarser. The outermost
+exponential element is 3.1 a.u. wide on <span class="math notranslate nohighlight">\(\pm 10\)</span> and 5 a.u. on
+<span class="math notranslate nohighlight">\(\pm 20\)</span>, which is too coarse for ionised or excited electrons during
+propagation. <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> limits this width without changing the bound
+states noticeably (<span class="math notranslate nohighlight">\(\pm 10\)</span>, <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">1</span></code>: 68 921 DOFs,
+<span class="math notranslate nohighlight">\(E_0 = -0.49999866\)</span>).</p>
+<p><strong>Quadrature.</strong> The nucleus lies on a knot, where no Gauss-Legendre point
+falls. On the 8 elements that touch it, the 8-point rule integrates the
+<span class="math notranslate nohighlight">\(1/r\)</span> singularity with a relative error of 1.6·10<sup>-4</sup>; the
+ground-state energy changes by 7·10<sup>-7</sup> from 8 to 10 points. Fewer
+points under-integrate the singularity and overestimate the attraction, which
+can cancel the discretisation error by accident (4 points: -0.500009, below the
+exact value; 6 points: -0.4999990). Convergence must therefore be judged in the
+number of points, not by the distance to -0.5. <code class="docutils literal notranslate"><span class="pre">QuadratureRule</span> <span class="pre">=</span> <span class="pre">reduced</span></code>
+behaves like a Gauss rule with fewer points (-0.4999976 with 8 points);
+<code class="docutils literal notranslate"><span class="pre">lobatto</span></code> places points on the knots, where <span class="math notranslate nohighlight">\(1/r\)</span> is infinite, and the
+run stops after assembly with a message. The assembly takes 0.24–0.39 s for 4
+to 10 points; the eigensolve time does not depend on the rule.</p>
+<p><strong>Basis.</strong> At equal size (50 653 DOFs) the smooth B-splines are about 100 times
+more accurate than the <span class="math notranslate nohighlight">\(C^0\)</span> element bases, which span the same space as
+each other and differ only in conditioning (<a class="reference internal" href="Grid-Domain.html"><span class="doc">Grid &amp; Domain</span></a>):</p>
+<table class="docutils align-default" id="id7">
+<caption><span class="caption-number">Table 3 </span><span class="caption-text">Ground-state error of 3D hydrogen for the four bases</span><a class="headerlink" href="#id7" title="Link to this table"></a></caption>
 <colgroup>
 <col />
 <col />
@@ -506,31 +645,128 @@ and differ only in conditioning:</p>
 </colgroup>
 <thead>
 <tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">Basis</span></code></p></th>
-<th class="head"><p>error of E0</p></th>
-<th class="head"><p>eigensolve</p></th>
+<th class="head"><p>Error of <span class="math notranslate nohighlight">\(E_0\)</span></p></th>
+<th class="head"><p>Eigensolve time</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bspline</span></code></p></td>
-<td><p>1.1e-6</p></td>
+<td><p>1.1·10<sup>-6</sup></p></td>
 <td><p>13.3 s</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bernstein</span></code></p></td>
-<td><p>1.3e-4</p></td>
+<td><p>1.3·10<sup>-4</sup></p></td>
 <td><p>6.9 s</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lagrange</span></code></p></td>
-<td><p>1.3e-4</p></td>
+<td><p>1.3·10<sup>-4</sup></p></td>
 <td><p>14.3 s</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">spectral</span></code></p></td>
-<td><p>1.3e-4</p></td>
+<td><p>1.3·10<sup>-4</sup></p></td>
 <td><p>16.8 s</p></td>
 </tr>
 </tbody>
 </table>
-<p>(<code class="docutils literal notranslate"><span class="pre">Preconditioner</span> <span class="pre">=</span> <span class="pre">mg</span></code> requires <code class="docutils literal notranslate"><span class="pre">bspline</span></code>: its prolongation is B-spline
-knot insertion.)</p>
+</section>
+<section id="high-harmonic-generation">
+<h3>High-harmonic generation<a class="headerlink" href="#high-harmonic-generation" title="Link to this heading"></a></h3>
+<p>HHG requires resolution at both ends of the grid: far out, where the returning
+electron travels, and at the nucleus, where it recombines
+<a class="reference internal" href="References.html#corkum1993" id="id4"><span>[Corkum1993]</span></a> <a class="reference internal" href="References.html#lewenstein1994" id="id5"><span>[Lewenstein1994]</span></a>.</p>
+<p>Setup: 2D hydrogen-like atom (<span class="math notranslate nohighlight">\(V = -0.5/r\)</span>, <span class="math notranslate nohighlight">\(I_p = 0.5\)</span>), 800 nm,
+<span class="math notranslate nohighlight">\(10^{14}\)</span> W/cm², flat-top pulse, box <span class="math notranslate nohighlight">\([-65,65]\times[-40,40]\)</span> with
+CAP, degree 3, <code class="docutils literal notranslate"><span class="pre">Propagator</span> <span class="pre">=</span> <span class="pre">pade22</span></code>. The error measure is the deviation of
+the integrated odd-harmonic yields of <span class="math notranslate nohighlight">\(|\tilde A|^2\)</span> from a reference
+grid (<span class="math notranslate nohighlight">\(R_1 = 0.02\)</span>, <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0.25</span></code>, 179k DOFs), in decades,
+<span class="math notranslate nohighlight">\(|\log_{10} I/I_{\mathrm{ref}}|\)</span>. The harmonic cutoff lies at H24.</p>
+<table class="docutils align-default" id="id8">
+<caption><span class="caption-number">Table 4 </span><span class="caption-text">Harmonic-yield error against the hydrogenic grid</span><a class="headerlink" href="#id8" title="Link to this table"></a></caption>
+<colgroup>
+<col />
+<col />
+<col />
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Grid (<span class="math notranslate nohighlight">\(R_1 = 0.05\)</span>, <span class="math notranslate nohighlight">\(N_{\mathrm{lin}} = 5\)</span>,
+<span class="math notranslate nohighlight">\(N_{\exp} = 10\)</span> unless stated)</p></th>
+<th class="head"><p>DOFs</p></th>
+<th class="head"><p>Plateau median</p></th>
+<th class="head"><p>Plateau max</p></th>
+<th class="head"><p>H27–H35 max</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>no cap (elements up to 28 a.u.)</p></td>
+<td><p>1 089</p></td>
+<td><p>1.18</p></td>
+<td><p>2.35</p></td>
+<td><p>2.98</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">2.0</span></code></p></td>
+<td><p>5 185</p></td>
+<td><p>0.088</p></td>
+<td><p>0.48</p></td>
+<td><p>4.4</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">1.0</span></code></p></td>
+<td><p>14 553</p></td>
+<td><p>0.007</p></td>
+<td><p>0.031</p></td>
+<td><p>0.018</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> = 0.7, 0.5, 0.35</p></td>
+<td><p>26k–94k</p></td>
+<td><p>0.007</p></td>
+<td><p>0.031</p></td>
+<td><p>0.010</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0.5</span></code>, <span class="math notranslate nohighlight">\(R_1 = 0.1\)</span>, <span class="math notranslate nohighlight">\(N_{\mathrm{lin}} = 3\)</span></p></td>
+<td><p>46 341</p></td>
+<td><p>0.023</p></td>
+<td><p>0.097</p></td>
+<td><p>0.030</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0.5</span></code>, <span class="math notranslate nohighlight">\(R_1 = 0.2\)</span>, <span class="math notranslate nohighlight">\(N_{\mathrm{lin}} = 2\)</span></p></td>
+<td><p>44 589</p></td>
+<td><p>0.066</p></td>
+<td><p>0.27</p></td>
+<td><p>0.082</p></td>
+</tr>
+</tbody>
+</table>
+<p>The last two rows keep the linear region <span class="math notranslate nohighlight">\(N_{\mathrm{lin}} R_1\)</span>
+(0.3 and 0.4 a.u.) comparable to the other rows while coarsening the
+innermost elements.</p>
+<figure class="align-default" id="fig-knot-sequences-hhg">
+<a class="reference internal image-reference" href="_images/Knot-Sequences-hhg.svg"><img alt="_images/Knot-Sequences-hhg.svg" src="_images/Knot-Sequences-hhg.svg" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 3 </span><span class="caption-text">Harmonic-yield error against <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> for <span class="math notranslate nohighlight">\(R_1 = 0.05\)</span>
+(values of the table above; open symbols: no cap). The dotted line marks
+the width <span class="math notranslate nohighlight">\(\pi/(2k_{\max}) \approx 1.0\)</span> a.u. of
+<a class="reference internal" href="#equation-eq-knot-sequences-hmax">Eq. (19)</a>.</span><a class="headerlink" href="#fig-knot-sequences-hhg" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<p><a class="reference internal" href="#fig-knot-sequences-hhg"><span class="std std-numref">Fig. 3</span></a> shows that the outer element width converges
+at about four elements per wavelength of the fastest returning electron,
+<a class="reference internal" href="#equation-eq-knot-sequences-hmax">Eq. (19)</a> with <span class="math notranslate nohighlight">\(k_{\max}\)</span> from
+<a class="reference internal" href="#equation-eq-knot-sequences-kmax">Eq. (18)</a> (<span class="math notranslate nohighlight">\(\pi/(2k_{\max}) \approx 1.0\)</span> a.u. here);
+twice this width (2.0 a.u., about <span class="math notranslate nohighlight">\(\pi/k_{\max}\)</span>) fails. The remaining
+error of 1.6 % (0.007 decades) is set by the element size at the nucleus,
+whose contribution grows approximately as <span class="math notranslate nohighlight">\(R_1^{1.5}\)</span>; keep
+<span class="math notranslate nohighlight">\(R_1 \le 0.05\)</span> a.u. The acceleration and current spectra agree with each
+other to 0.001–0.005 decades in every run, so their agreement does not reveal
+an under-resolved grid; only refinement does.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code> the automatic width
+(<a class="reference internal" href="#field-resolution-check">Field-resolution check</a>) is 0.976 a.u. for this run and yields the
+converged spectrum (plateau median 0.007, maximum 0.031 decades). For runs
+with a shortened <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> set <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> explicitly, since the
+automatic value is derived from the part of the pulse inside
+<span class="math notranslate nohighlight">\([0, \mathrm{FinalTime}]\)</span>.</p>
+</section>
 </section>
 </section>
 
@@ -538,8 +774,8 @@ knot insertion.)</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="Boundary-Conditions.html" class="btn btn-neutral float-left" title="Boundary Conditions" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="HDF5-Output.html" class="btn btn-neutral float-right" title="HDF5 Output Schema" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="Grid-Domain.html" class="btn btn-neutral float-left" title="Grid &amp; Domain" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="Boundary-Conditions.html" class="btn btn-neutral float-right" title="Boundary Conditions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

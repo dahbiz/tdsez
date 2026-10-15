@@ -1,83 +1,97 @@
 Architecture
 ============
 
-TDSE-Z is organized as a small pipeline. Each stage owns one concern and
-passes PETSc objects to the next stage.
+TDSE-Z is organised as a pipeline of C++ classes. Each class owns one stage of
+the computation and hands PETSc objects to the next. ``main()`` in
+``src/tdsez.cpp`` constructs the objects in order
+(:numref:`fig-architecture-classes`); the solver stages are described in
+:doc:`Overview`.
 
-Execution pipeline
-------------------
+.. figure:: figures/architecture_classes.svg
+   :name: fig-architecture-classes
+   :width: 100%
 
-.. code-block:: text
+   Classes of the ``tdsez.x`` executable and the source files that implement
+   them. Dashed arrows are used only for the indicated input settings.
 
-   input file
-       |
-       v
-   TDSEZParser ---- expressions, defaults, validation
-       |
-       v
-   TDSEZCore ------ IGA grid, knots, H/M, eigenstates
-       |
-       v
-   TDSEZAssembler - K, V, dipoles, velocity, CAP
-       |
-       +----------------------+
-       |                      |
-       v                      v
-   TDSEZManager --------> TDSEZPropagator
-   observables/HDF5       PETSc TS time stepping
+Modules
+-------
 
-The command-line executable in ``src/tdsez.cpp`` coordinates these objects. The
-individual classes are intentionally usable from tests and small applications.
+.. list-table::
+   :header-rows: 1
+   :widths: 22 30 48
 
-Public modules
---------------
+   * - Type
+     - Sources
+     - Responsibility
+   * - ``TDSEZParser``
+     - ``src/parser.cpp``, ``src/parser_validation.cpp``
+     - Reads ``key = value`` files, resolves key aliases, compiles the
+       muParser expressions and validates the parameter set
+       (``ValidateOrThrow``). Parameters are static members.
+   * - ``TDSEZCore``
+     - ``src/core.cpp``, ``src/core_knots.cpp``
+     - Creates the PetIGA context and knot vectors, assembles
+       :math:`\mathbf H` and :math:`\mathbf M`, solves the eigenproblem with
+       SLEPc, builds the initial state and writes
+       ``static/EigenData_<input>.h5``.
+   * - ``TDSEZAssembler``
+     - ``src/assembler_class.cpp``, ``src/assembly/*.cpp``
+     - Assembles the kinetic, potential, dipole, velocity, force, CAP and
+       :math:`L_z` matrices. ``assembly.cpp`` holds the point kernels,
+       ``sumfact.cpp`` the sum-factorised element integrals, ``band.cpp`` the
+       banded insertion and ``cap.cpp`` the absorbing potential.
+   * - ``TDSEZManager``
+     - ``src/manager.cpp``, ``src/monitor.cpp``
+     - Holds the operators used during propagation, the residual and
+       Jacobian callbacks, the per-step monitors, the HDF5 ring buffers and
+       viewers.
+   * - ``TDSEZPropagator``
+     - ``src/propagator.cpp``
+     - Runs PETSc TS (``cn``) or the rational stage solves (``pade22``,
+       ``magnus4``) and configures the Krylov solver and preconditioner.
+   * - ``TDSEZTSurff``
+     - ``src/tsurff.cpp``
+     - Accumulates the t-SURFF surface flux during propagation and writes
+       ``td/surff_<input>.h5`` (``TSurff = 1``).
+   * - ``TDSEZTensorOps``
+     - ``src/tensorops.cpp``
+     - Applies the separable operators in factorised (Kronecker) form in 2D
+       and 3D.
+   * - ``TDSEZQuadObs``
+     - ``src/quadobs.cpp``
+     - Evaluates the monitor expectation values from :math:`\psi` at the
+       quadrature points.
+   * - ``TDSEZProfile``
+     - ``src/timing.cpp``
+     - Phase wall times, PETSc log stages and the final timing summary.
+   * - ``TDSEZInfo``
+     - ``include/tdsez_info.hpp``
+     - Terminal formatting: headings, key-value rows, memory reports.
 
-``TDSEZParser``
-   Reads ``key = value`` files, binds muParser expressions, normalizes aliases,
-   and rejects invalid domains, masses, dimensions, and state selectors before
-   PETSc objects are assembled. Public declarations are in
-   ``include/tdsez_parser.hpp``.
-
-``TDSEZCore``
-   Owns the PetIGA context and static generalized eigenproblem
-   :math:`H\psi=EM\psi`. It creates the knot vectors, assembles the Hamiltonian
-   and mass matrices, solves with SLEPc, and writes eigenstate provenance.
-
-``TDSEZAssembler``
-   Builds the operator matrices used by the static and time-dependent stages.
-   The implementation is split between ``src/assembler_class.cpp`` and the
-   kernels in ``src/assembly/``.
-
-``TDSEZManager``
-   Owns runtime observables, HDF5 buffers, state projections, and output
-   metadata. It keeps the output schema stable when individual observables are
-   disabled.
-
-``TDSEZPropagator``
-   Configures PETSc TS with the Crank–Nicolson theta method, residual and
-   Jacobian callbacks, and the selected preconditioner.
-
-``TDSEZInfo``
-   Provides consistent terminal headings, tables, units, and timing summaries.
+Free functions complete the pipeline: ``TDSEZSetupMultigrid``
+(``src/multigrid.cpp``, ``Preconditioner = mg``) and the diagnostics in
+``src/diagnostics.cpp`` (transition dipole matrix, length/velocity check,
+operator export). The post-processors ``src/tdmprocessor.cpp``,
+``src/tdmselect.cpp`` and ``src/drecprocessor.cpp`` are separate executables.
 
 Ownership rules
 ---------------
 
 * PETSc and PetIGA objects are created collectively on ``PETSC_COMM_WORLD``.
-* Classes destroy only objects they own; aliases exposed by getters remain
-  owned by the creating class.
-* HDF5 handles are opened lazily and closed by ``CloseHDF5`` after the final
-  buffered rows are written.
-* MPI rank 0 owns human-readable summaries and sequential postprocessor files;
-  all ranks still participate in collective PETSc and HDF5 operations.
+* Each class destroys only the objects it creates; matrices exposed through
+  getters remain owned by the creating class.
+* The HDF5 viewers are opened when ``TDSEZManager`` is constructed;
+  ``CloseHDF5`` writes the remaining buffered rows and closes them.
+* MPI rank 0 prints the terminal summaries and writes the text logs; all
+  ranks take part in collective PETSc and HDF5 operations.
 
 Generated API reference
 -----------------------
 
-Build the class and function reference with::
+The Doxygen reference of all classes and functions (``Doxyfile``, inputs
+``include/`` and ``src/``) is built with::
 
     cmake --build build --target docs
 
-The generated entry point is ``docs/doxygen/html/index.html``. Doxygen reads
-the public headers first, while source files provide implementation details and
-call-site links.
+and written to ``docs/doxygen/html/index.html``. See :doc:`API-Reference`.
