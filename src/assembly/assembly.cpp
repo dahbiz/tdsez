@@ -30,6 +30,8 @@
 
 #include "tdsez_internal.hpp"
 
+#include <cstdint>
+#include <cstring>
 #include <map>
 
 const PhysicsDerivativesFull &TDSEZInvMassDerivatives(const std::vector<PetscReal> &x)
@@ -37,15 +39,95 @@ const PhysicsDerivativesFull &TDSEZInvMassDerivatives(const std::vector<PetscRea
     thread_local std::vector<PetscReal> key;
     thread_local PhysicsDerivativesFull last;
     if (x == key) return last;
-    std::map<std::vector<PetscReal>, PetscReal> seen;   // 1/m at the stencil points
-    auto invMass = [&seen](const std::vector<PetscReal> &xx) {
-        auto it = seen.find(xx);
-        if (it != seen.end()) return it->second;
-        const PetscReal v = 1.0 / TDSEZParser::MassDist(xx[0], (xx.size() > 1 ? xx[1] : 0.0), (xx.size() > 2 ? xx[2] : 0.0));
-        seen.emplace(xx, v);
-        return v;
+    const int dim = (int)x.size();
+    if (dim > 3) {
+        std::map<std::vector<PetscReal>, PetscReal> seen;
+        auto invMass = [&seen](const std::vector<PetscReal> &xx) {
+            auto it = seen.find(xx);
+            if (it != seen.end()) return it->second;
+            const PetscReal v = 1.0 / TDSEZParser::MassDist(xx[0], xx[1], xx[2]);
+            seen.emplace(xx, v);
+            return v;
+        };
+        last = TDSEZCompDerivative(invMass, x, 1e-4);
+        key = x;
+        return last;
+    }
+    // TDSEZCompDerivative(1/MassDist, x, 1e-4) without allocations: the same
+    // stencil points built with the same arithmetic, the same formulas, and 1/m
+    // evaluated once per distinct point (first point of equal coordinates, as
+    // the std::map lookup it replaces), so the values are bitwise identical.
+    struct Slot { PetscReal r[3]; PetscReal v; std::uint64_t gen; };
+    constexpr unsigned NS = 512;                       // >= 2 x 264 stencil points (3D)
+    thread_local Slot table[NS] = {};
+    thread_local std::uint64_t gen = 0;
+    ++gen;                                             // slots of earlier points are empty
+    auto F = [dim](const PetscReal *r) {
+        PetscReal c[3] = {0.0, 0.0, 0.0};
+        for (int d = 0; d < dim; ++d) c[d] = r[d] + 0.0;   // -0 == +0, as the map compares
+        std::uint64_t hsh = 1469598103934665603ull;
+        for (int d = 0; d < 3; ++d) {
+            std::uint64_t b;
+            std::memcpy(&b, &c[d], sizeof b);
+            hsh = (hsh ^ b) * 1099511628211ull;
+        }
+        for (unsigned k = (unsigned)(hsh ^ (hsh >> 29)) & (NS - 1);; k = (k + 1) & (NS - 1)) {
+            Slot &s = table[k];
+            if (s.gen != gen) {
+                s.gen = gen;
+                std::memcpy(s.r, r, sizeof(PetscReal) * dim);
+                s.v = 1.0 / TDSEZParser::MassDist(r[0], (dim > 1 ? r[1] : 0.0), (dim > 2 ? r[2] : 0.0));
+                return s.v;
+            }
+            bool eq = true;
+            for (int d = 0; d < dim; ++d) eq = eq && (s.r[d] == r[d]);
+            if (eq) return s.v;
+        }
     };
-    last = TDSEZCompDerivative(invMass, x, 1e-4);
+    const PetscReal h = 1e-4;
+    const PetscReal inv_h = 1.0 / h;
+    const PetscReal inv_12h = inv_h / 12.0;
+    const PetscReal inv_4h2 = 1.0 / (4.0 * h * h);
+    last.first.resize(dim);
+    last.second.resize(dim * dim);
+    last.third.resize(dim * dim * dim);
+    PetscReal x0[3] = {0.0, 0.0, 0.0};
+    for (int d = 0; d < dim; ++d) x0[d] = x[d];
+    for (int i = 0; i < dim; ++i) {
+        PetscReal p1[3], m1[3], p2[3], m2[3];
+        std::memcpy(p1, x0, sizeof x0); std::memcpy(m1, x0, sizeof x0);
+        std::memcpy(p2, x0, sizeof x0); std::memcpy(m2, x0, sizeof x0);
+        p1[i] = x0[i] + h; m1[i] = x0[i] - h; p2[i] = x0[i] + 2.0 * h; m2[i] = x0[i] - 2.0 * h;
+        const PetscReal f_p1 = F(p1), f_m1 = F(m1), f_p2 = F(p2), f_m2 = F(m2);
+        last.first[i] = (-f_p2 + 8.0 * f_p1 - 8.0 * f_m1 + f_m2) * inv_12h;
+    }
+    for (int i = 0; i < dim; ++i)
+        for (int j = 0; j < dim; ++j) {
+            PetscReal pp[3], pm[3], mp[3], mm[3];
+            std::memcpy(pp, x0, sizeof x0); std::memcpy(pm, x0, sizeof x0);
+            std::memcpy(mp, x0, sizeof x0); std::memcpy(mm, x0, sizeof x0);
+            pp[i] += h; pp[j] += h;
+            pm[i] += h; pm[j] -= h;
+            mp[i] -= h; mp[j] += h;
+            mm[i] -= h; mm[j] -= h;
+            const PetscReal f_pp = F(pp), f_pm = F(pm), f_mp = F(mp), f_mm = F(mm);
+            last.second[i * dim + j] = (f_pp - f_pm - f_mp + f_mm) * inv_4h2;
+        }
+    for (int i = 0; i < dim; ++i)
+        for (int j = 0; j < dim; ++j)
+            for (int k = 0; k < dim; ++k) {
+                PetscReal f[8];
+                for (int s = 0; s < 8; ++s) {              // s = 0..7: ppp ppm pmp pmm mpp mpm mmp mmm
+                    PetscReal r[3];
+                    std::memcpy(r, x0, sizeof x0);
+                    if (s & 4) r[i] -= h; else r[i] += h;
+                    if (s & 2) r[j] -= h; else r[j] += h;
+                    if (s & 1) r[k] -= h; else r[k] += h;
+                    f[s] = F(r);
+                }
+                last.third[(i * dim + j) * dim + k] =
+                    (f[0] - f[1] - f[2] + f[3] - f[4] + f[5] + f[6] - f[7]) * inv_h * inv_h * inv_h / 8.0;
+            }
     key = x;
     return last;
 }

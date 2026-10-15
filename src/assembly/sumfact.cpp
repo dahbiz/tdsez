@@ -28,6 +28,8 @@
 // ============================================================================
 
 #include "tdsez_internal.hpp"
+#include "tdsez_forcecoeffs.hpp"
+#include "tdsez_quadobs.hpp"
 #include <petscblaslapack.h>
 #include <algorithm>
 #include <string>
@@ -178,61 +180,6 @@ void Store(const Scratch &S, PetscInt nen, PetscScalar factor, Sym sym, PetscSca
     }
 }
 
-/// Coefficients of the force matrix of axis a with the mass-gradient
-/// corrections of TDSEZformPotentialGrad{X,Y,Z} (and TDSEZFormPhyX), f = 1/m:
-///
-///   dV_a(i,j) = sum_q w [ -(dV/dx_a) f B_i B_j - 1/4 sum_t c_t D^al_t B_i D^be_t B_j ],
-///
-///   (B, B):          sum_e f_e f_ea + f sum_e f_eea
-///   (B, d_a B):      2 |grad f|^2 + 2 f lap f - 2 (f_a^2 + f f_aa)
-///   (B, d_e B):      2 (f_e f_a + f f_ae)                 e != a
-///   (B, d_a d_e B):  4 f f_e                              e != a
-///   (d_e B, d_e B):  2 f f_a for e != a, -2 f f_a for e = a
-///
-/// (third derivatives read with the index order of each kernel). Arrays per
-/// point, weights included; pairs (x,y), (x,z), (y,z).
-struct ForceCoeffs {
-    std::vector<PetscReal> BB, Bd[3], Bp[3], dd[3];
-    void Resize(size_t nq)
-    {
-        BB.assign(nq, 0.0);
-        for (int d = 0; d < 3; ++d) { Bd[d].assign(nq, 0.0); Bp[d].assign(nq, 0.0); dd[d].assign(nq, 0.0); }
-    }
-};
-
-inline int PairIndex(int i, int j) { return i + j - 1; }   // (0,1)->0, (0,2)->1, (1,2)->2 (i < j)
-
-void AddForceCorrections(int a, PetscInt dim, PetscReal f, const PhysicsDerivativesFull &ops, PetscReal w,
-                         size_t q, ForceCoeffs &C)
-{
-    const PetscInt n = (PetscInt)ops.first.size();
-    auto F1 = [&](int i) { return i < dim ? ops.first[i] : 0.0; };
-    auto F2 = [&](int i, int j) {                                  // kernels read (min, max)
-        if (i > j) std::swap(i, j);
-        return (j < dim) ? ops.second[i * n + j] : 0.0;
-    };
-    auto F3 = [&](int i, int j, int k) { return (i < dim && j < dim && k < dim) ? ops.third[(i * n + j) * n + k] : 0.0; };
-    // sum_e f_eea in the index order of each kernel
-    PetscReal t3 = 0.0;
-    if (a == 0)      t3 = F3(0, 0, 0) + F3(0, 1, 1) + F3(0, 2, 2);
-    else if (a == 1) t3 = F3(0, 0, 1) + F3(1, 1, 1) + F3(1, 2, 2);
-    else             t3 = F3(2, 2, 2) + F3(1, 1, 2) + F3(0, 0, 2);
-    PetscReal g2 = 0.0, lap = 0.0, mix = 0.0;
-    for (int e = 0; e < dim; ++e) { g2 += F1(e) * F1(e); lap += F2(e, e); mix += F1(e) * F2(e, a); }
-    const PetscReal s = -0.25 * w;
-    C.BB[q] += s * (mix + f * t3);
-    for (int e = 0; e < dim; ++e) {
-        if (e == a) {
-            C.Bd[e][q] += s * (2.0 * g2 + 2.0 * f * lap - 2.0 * (F1(a) * F1(a) + f * F2(a, a)));
-            C.dd[e][q] += s * (-2.0 * f * F1(a));
-        } else {
-            C.Bd[e][q] += s * 2.0 * (F1(e) * F1(a) + f * F2(a, e));
-            C.Bp[PairIndex(std::min(a, e), std::max(a, e))][q] += s * 4.0 * f * F1(e);
-            C.dd[e][q] += s * 2.0 * f * F1(a);
-        }
-    }
-}
-
 /// Element force matrix from ForceCoeffs (C.BB holds the classical term too).
 void ForceElement(const Axis1D *A, PetscInt dim, PetscInt nen, const ForceCoeffs &C, Scratch &S, PetscScalar *work)
 {
@@ -250,18 +197,6 @@ void ForceElement(const Axis1D *A, PetscInt dim, PetscInt nen, const ForceCoeffs
         Contract(A, dim, V0, e2, C.Bp[k].data(), true, S);
     }
     Store(S, nen, 1.0, Sym::General, work);
-}
-
-/// Whether the Mass expression depends on x, y or z (cached per expression).
-bool MassVaries()
-{
-    static std::string expr;
-    static bool varies = true, valid = false;
-    if (!valid || expr != TDSEZParser::MassExpr.GetExpr()) {
-        try { varies = !TDSEZParser::MassExpr.GetUsedVar().empty(); } catch (const mu::Parser::exception_type &) { varies = true; }
-        expr = TDSEZParser::MassExpr.GetExpr(); valid = true;
-    }
-    return varies;
 }
 
 PetscBool SumFactEnabled()
@@ -282,6 +217,32 @@ PetscBool SumFactCheck()
         init = PETSC_TRUE;
     }
     return on;
+}
+
+/// Copy the force coefficients of element e into the store (see ForceCoeffStore).
+void KeepForceCoeffs(IGA iga, IGAElement e, PetscInt dim, size_t nq, const ForceCoeffs Fc[3])
+{
+    ForceCoeffStore &st = TDSEZForceCoeffStore();
+    if (st.nq == 0) {
+        size_t ne = 1;
+        for (PetscInt d = 0; d < dim; ++d) { st.start[d] = iga->elem_start[d]; st.width[d] = iga->elem_width[d]; ne *= (size_t)st.width[d]; }
+        st.nq = (PetscInt)nq;
+        st.done.assign(ne, 0);
+        for (int d = 0; d < 3; ++d) {
+            st.axis[d] = TDSEZPhyAxesOn[d] != 0;
+            if (st.axis[d]) st.F[d].Resize(ne * nq);
+        }
+    }
+    if ((PetscInt)nq != st.nq) return;
+    size_t el = 0;
+    for (PetscInt d = dim - 1; d >= 0; --d) el = el * (size_t)st.width[d] + (size_t)(e->ID[d] - st.start[d]);
+    for (int d = 0; d < 3; ++d) {
+        if (!st.axis[d]) continue;
+        auto put = [&](const std::vector<PetscReal> &src, std::vector<PetscReal> &dst) { std::copy(src.begin(), src.begin() + nq, dst.begin() + el * nq); };
+        put(Fc[d].BB, st.F[d].BB);
+        for (int k = 0; k < 3; ++k) { put(Fc[d].Bd[k], st.F[d].Bd[k]); put(Fc[d].Bp[k], st.F[d].Bp[k]); put(Fc[d].dd[k], st.F[d].dd[k]); }
+    }
+    if (!st.done[el]) { st.done[el] = 1; ++st.filled; }
 }
 
 /// Sum-factorised TDSEZFormPhyAxes: [K, V, Md] + [D_d, Vel_d, dV_d] per active
@@ -366,6 +327,7 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsi
         Contract(A, dim, V0, V0, cM.data(), false, S);
         Store(S, nen, 1.0, Sym::Symmetric, work[2]);
     }
+    if (corr && TDSEZQuadObsEnabled()) KeepForceCoeffs(iga, e, dim, nq, Fc);
     PetscInt k = 3;
     for (int d = 0; d < 3; ++d) {
         if (!TDSEZPhyAxesOn[d]) continue;
@@ -448,6 +410,12 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
 }
 
 } // namespace
+
+ForceCoeffStore &TDSEZForceCoeffStore()
+{
+    static ForceCoeffStore store;
+    return store;
+}
 
 
 /// Element matrices of @p kernel for @p element into work[0..nmat-1] (zeroed

@@ -347,8 +347,10 @@ mat-vecs slow down by an order of magnitude. Prefer degree 3 in 3D, set
 “Peak memory” in the run summary.</p></li>
 <li><p><strong>Observables</strong>: in 2D/3D M, the dipoles, the velocities and K are applied
 in factorised (Kronecker) form, checked against the assembled matrices at the
-first step (printed at start-up). The remaining per-step cost is the sparse
-products with V and the force matrices dV/dx_a.</p></li>
+first step (printed at start-up). &lt;V&gt;, the forces dV/dx_a, the CAP and, for
+a varying mass, &lt;1/m&gt;, &lt;K&gt; and the velocities are taken from psi at the
+quadrature points (also checked at the first step); <code class="docutils literal notranslate"><span class="pre">-tdsez_quad_obs</span> <span class="pre">0</span></code>
+restores the matrix products.</p></li>
 </ul>
 </section>
 </section>

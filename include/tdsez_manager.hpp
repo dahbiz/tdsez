@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "tdsez_tensorops.hpp"
+#include "tdsez_quadobs.hpp"
 
 class TDSEZCore;
 class TDSEZAssembler;
@@ -216,6 +217,20 @@ class TDSEZManager
     /// Build and validate the factorised operators on psi; free the matrices
     /// only the monitors used (velocities, uncoupled dipoles, K).
     PetscErrorCode SetupTensorOps(Vec psi);
+    /// Expectation values from psi at the quadrature points (2D/3D), each
+    /// checked against its matrix at the first monitor call; the matrices they
+    /// replace are freed (V, force dV_a, and for a varying mass K, Md, Vel_a).
+    TDSEZQuadObs *quadObs_ = PETSC_NULLPTR;
+    TDSEZQuadObs::Values qv_;                 ///< values of the current monitor call
+    bool qPot_ = false, qKin_ = false, qInvM_ = false, qCap_ = false, qH_ = false;
+    bool qForce_[3] = {false, false, false}, qVel_[3] = {false, false, false};
+    PetscErrorCode SetupQuadObs(Vec psi);
+    /// Replace res[1..4] (<H>, <1/m>, <K>, <V>) by the quadrature values in use.
+    void OverrideExpectations(PetscScalar res[]) const;
+    bool QuadForce(int a) const { return qForce_[a]; }
+    bool QuadVel(int a) const { return qVel_[a]; }
+    PetscScalar QuadForceValue(int a) const { return qv_.force[a]; }
+    PetscScalar QuadVelValue(int a) const { return qv_.vel[a]; }
     /// @brief Whether the time-series buffers should be written now: always at
     ///        multiples of FLUSH_INTERVAL; at multiples of OutputStrideTS only if
     ///        at least kMinFlushSeconds have passed since the last write. Every

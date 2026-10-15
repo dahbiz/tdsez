@@ -39,6 +39,9 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | Banded insertion | 3D, $`p=7`$, $`10^3`$ elements, 4 ranks: $`\mathbf H,\mathbf M`$ | 12.1 s | 2.1 s | $`5.9\times`$ |
 | | same, time-dependent operators | 54.2 s | 6.5 s | $`8.4\times`$ |
 | | 3D, $`p=7`$, $`20^3`$ elements, 4 ranks: $`\mathbf H,\mathbf M`$ | 258 s | 11.5 s | $`22\times`$ |
+| Monitor expectations at the quadrature points (1e) | 3D varying mass, discrete acceleration, 50 steps: whole run | 142 s | 90 s | $`1.6\times`$ |
+| | same, operator acceleration: monitors | 6.24 s | 4.43 s | $`-29\%`$ |
+| Allocation-free $`1/m`$ derivatives (1e) | 3D, $`p=4`$, varying mass: force assembly | 28.1 s | 18.5 s | $`-34\%`$ |
 
 ## 1. Crank–Nicolson solver set-up
 
@@ -194,10 +197,53 @@ switches the factorised path off.
 | xyz-polarised, before | 25.8 s | 0.87 s |
 | xyz-polarised, factorised | 12.8 s | 0.54 s |
 
-Outputs (dipoles, energies, currents) equal to $`4\times10^{-15}`$. The remaining
-monitor cost is the sparse products with $`V`$ and, for the operator-form
-acceleration, the force matrices $`\partial_aV`$, which depend on the potential.
-With xyz polarisation the propagator also keeps all three dipole matrices.
+Outputs (dipoles, energies, currents) equal to $`4\times10^{-15}`$. The
+products with $`V`$ and the force matrices are replaced in 1e. With xyz
+polarisation the propagator also keeps all three dipole matrices.
+
+## 1e. Monitor expectation values from the quadrature points
+
+Every monitor operator is $`A_{ij}=\sum_q c(q)\,D^\alpha B_i(q)\,D^\beta B_j(q)`$
+on the assembly quadrature, so
+$`\langle\psi|A|\psi\rangle=\sum_q c(q)\,\overline{D^\alpha\psi(q)}\,D^\beta\psi(q)`$
+is the same number without the matrix. $`\psi`$ and its derivatives (first
+order per axis; the mixed second derivatives for the mass-gradient force
+corrections) are evaluated element by element by sum factorisation from the
+ghosted coefficients, and the sums are reduced once per monitor call
+(`src/quadobs.cpp`). This gives $`\langle V\rangle`$, $`\langle 1/m\rangle`$,
+$`\langle K\rangle`$ for a varying mass, the CAP, the forces
+$`\langle\partial_aV\rangle`$ with their corrections, the velocities for a
+varying mass, and $`w^H\mathrm{Vel}_a\psi`$ for the discrete acceleration.
+Each value is checked against its assembled matrix on the state at the first
+monitor call (agreement to $`10^{-10}`$ relative required; observed
+$`10^{-15}`$), then $`V`$, $`\partial_aV`$ and $`\mathrm{Vel}_a`$ are freed.
+Dirichlet walls and 1D keep the matrices; `-tdsez_quad_obs 0` switches the path
+off.
+
+The per-point coefficients of the force corrections are the ones the
+sum-factorised assembly has just computed; it keeps them per owned element and
+the monitor takes them over (with `-tdsez_sumfact 0` the monitor tabulates them
+itself). The point sums accumulate per point and are summed once per call: with
+`-fno-fast-math` a running scalar sum is a serial dependency chain the compiler
+may not vectorise.
+
+The $`1/m`$ derivatives of the force corrections (finite-difference stencil up
+to third order, 264 evaluations per point in 3D) are computed without
+allocations: the same stencil points, the same arithmetic and the same
+de-duplication as before, so the values are bitwise identical.
+
+| 3D, $`p=4`$, $`28^3`$ splines, 8 ranks, 50 steps | monitors, matrices | monitors, quadrature | run |
+|---|---|---|---|
+| varying mass, operator acceleration | 6.24 s | 4.43 s | 66.1 → 61.0 s |
+| varying mass, discrete acceleration | 81.1 s | 40.0 s | 142 → 90 s |
+
+| same case, 20 steps | before | after |
+|---|---|---|
+| TD operator assembly (forces with corrections) | 28.1 s | 18.5 s |
+
+Outputs equal to the matrix path to $`8\times10^{-15}`$ (relative). Peak memory
+does not change: it is reached during the assembly, before the matrices are
+freed.
 
 ## 2. Fourth-order propagators (`Propagator = pade22 | magnus4`)
 

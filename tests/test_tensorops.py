@@ -118,3 +118,30 @@ def test_sumfact_force_corrections_match_per_point():
             err = np.max(np.abs(ref[k] - new[k])) / max(np.max(np.abs(ref[k])), 1e-300)
             _step(f"{name}: {k} equal", err < 1e-11, f"{err:.2e}")
         _step(f"{name}: acceleration non-trivial", np.max(np.abs(new["dipoles"][:, -1])) > 0)
+
+
+def test_quadrature_expectations_match_matrices():
+    """<V>, <1/m>, <K>, the forces and the velocities taken from psi at the
+    quadrature points give the same time series as the assembled matrices
+    (-tdsez_quad_obs 0): constant mass with CAP and operator acceleration,
+    variable mass with operator (force corrections) and discrete acceleration."""
+    cases = {
+        "qo_cap": CASES["t3d_cap"] + "AccelerationMethod = operator\n",
+        "qo_vm_op": CASES["t3d_varmass"].replace("Mass = 1 + 0.3*tanh(x/2)", "Mass = 1 + 0.3*tanh(x/2) + 0.2*exp(-y*y/3)")
+        + "AccelerationMethod = operator\nPolarization = xy\nLaserY = 0.02*cos(t)\n",
+        "qo_vm_disc": CASES["t3d_varmass"] + "AccelerationMethod = discrete\n",
+    }
+    cases["qo_vm_op_2d"] = cases["qo_vm_op"].replace("Dimension = 3", "Dimension = 2").replace(
+        "WavepacketMomentum = 0.5, 0.0, 0.3", "WavepacketMomentum = 0.5, 0.2")
+    for name, text in cases.items():
+        ref, _ = _run(name + "_mat", text, ["-tdsez_quad_obs", "0"])
+        new, out = _run(name + "_quad", text, [])
+        _step(f"{name}: quadrature expectations in use", "quadrature points" in out, out[-800:])
+        runs = {"": new}
+        if name == "qo_vm_op":
+            # per-point assembly: the force coefficients are tabulated by the monitor itself
+            runs[" (per-point assembly)"], _ = _run(name + "_pp", text, ["-tdsez_sumfact", "0"])
+        for tag, got in runs.items():
+            for k in ref:
+                err = np.max(np.abs(ref[k] - got[k])) / max(np.max(np.abs(ref[k])), 1e-300)
+                _step(f"{name}{tag}: {k} equal", err < 1e-11, f"{err:.2e}")

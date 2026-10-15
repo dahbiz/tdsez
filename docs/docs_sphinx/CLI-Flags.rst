@@ -92,6 +92,11 @@ Propagation Flags
      - bool
      - Apply M, the dipoles, the velocities and K in the monitors as assembled
        sparse matrices instead of in factorised (Kronecker) form (2D/3D).
+   * - ``-tdsez_quad_obs 0``
+     - bool
+     - Take <V>, <1/m>, <K>, the CAP, the forces dV/dx_a and the velocities
+       of the monitors from the assembled matrices instead of from psi at the
+       quadrature points (2D/3D).
    * - ``-tdsez_ilu_levels <n>``
      - int
      - ILU fill level of the ASM subdomain preconditioner of every propagator

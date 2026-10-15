@@ -71,5 +71,7 @@ Performance in 3D
   "Peak memory" in the run summary.
 - **Observables**: in 2D/3D M, the dipoles, the velocities and K are applied
   in factorised (Kronecker) form, checked against the assembled matrices at the
-  first step (printed at start-up). The remaining per-step cost is the sparse
-  products with V and the force matrices dV/dx_a.
+  first step (printed at start-up). <V>, the forces dV/dx_a, the CAP and, for
+  a varying mass, <1/m>, <K> and the velocities are taken from psi at the
+  quadrature points (also checked at the first step); ``-tdsez_quad_obs 0``
+  restores the matrix products.

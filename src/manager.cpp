@@ -1,4 +1,5 @@
 #include "tdsez_internal.hpp"
+#include "tdsez_forcecoeffs.hpp"
 #include <algorithm>
 #include <cctype>
 
@@ -493,6 +494,8 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             // (SEGV at teardown). Only destroy matrices the manager owns.
             if (kspMass)       KSPDestroy(&kspMass);
             delete tensorOps_;
+            delete quadObs_;
+            TDSEZForceCoeffStore().Release();
             for (Vec &v : accelWork) if (v) VecDestroy(&v);
 
             // Free the buffers
@@ -601,8 +604,8 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
         PetscCall(MatMult(m_H, psi, tmpVec[1]));
         PetscFunctionReturn(PETSC_SUCCESS);
     }
-    PetscCall(MatMult(m_V, psi, tmpVec[4]));
     if (!monitorChecked_) {
+        PetscCall(MatMult(m_V, psi, tmpVec[4]));
         PetscCall(MatMult(m_K, psi, tmpVec[3]));
         PetscCall(MatMult(m_H,  psi, tmpVec[1]));
         PetscCall(MatMult(m_Md, psi, tmpVec[2]));
@@ -633,29 +636,44 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
         PetscCall(VecDestroy(&r));
         monitorChecked_ = PETSC_TRUE;
         PetscCall(SetupTensorOps(psi));
+        PetscCall(SetupQuadObs(psi));
         // Operators the shortcuts make redundant are freed: K (K psi = H psi -
         // V psi) and Md (Md = M/m). Each is a full matrix (memory-bound in 3D).
-        if (hFromKV_ || (tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin))) {
+        if (m_K && ((hFromKV_ && !qPot_) || qKin_ || (tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin)))) {
             PetscCall(MatDestroy(&assembler_->K)); m_K = PETSC_NULLPTR;
         }
-        if (invMassConst_ != 0.0) { PetscCall(MatDestroy(&assembler_->Md)); m_Md = PETSC_NULLPTR; }
+        if (m_Md && (invMassConst_ != 0.0 || qInvM_)) { PetscCall(MatDestroy(&assembler_->Md)); m_Md = PETSC_NULLPTR; }
         PetscCall(PetscInfo(NULL, "Monitor shortcuts: H=K+V %s, constant 1/m %s\n",
                             hFromKV_ ? "on" : "off", invMassConst_ != 0.0 ? "on" : "off"));
         PetscFunctionReturn(PETSC_SUCCESS);
     }
-    if (hFromKV_ && tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin)) {
+    // Steady state. Products replaced by quadrature values are zeroed; the
+    // monitors overwrite their expectation values (OverrideExpectations).
+    if (quadObs_) PetscCall(quadObs_->Expect(psi, qv_));
+    if (qPot_) PetscCall(VecZeroEntries(tmpVec[4]));
+    else       PetscCall(MatMult(m_V, psi, tmpVec[4]));
+    const bool tensorK = tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin);
+    if (qH_) {
+        // operator acceleration: H psi is not needed, <H> = <K> + <V> (+ <CAP>)
+        if (tensorK) PetscCall(ApplyOp(TDSEZTensorOps::Kin, m_K, psi, tmpVec[3]));
+        else         PetscCall(VecZeroEntries(tmpVec[3]));
+        PetscCall(VecZeroEntries(tmpVec[1]));
+    } else if (hFromKV_ && tensorK && !qPot_) {
         // no CAP: H psi = K psi + V psi with the factorised K (one sparse product less)
         PetscCall(ApplyOp(TDSEZTensorOps::Kin, m_K, psi, tmpVec[3]));
         PetscCall(VecWAXPY(tmpVec[1], 1.0, tmpVec[3], tmpVec[4]));
     } else {
         PetscCall(MatMult(m_H, psi, tmpVec[1]));
-        if (m_K)          PetscCall(MatMult(m_K, psi, tmpVec[3]));
-        else if (hFromKV_) PetscCall(VecWAXPY(tmpVec[3], -1.0, tmpVec[4], tmpVec[1]));   // K psi = H psi - V psi
-        else              PetscCall(ApplyOp(TDSEZTensorOps::Kin, m_K, psi, tmpVec[3]));
+        if (m_K)                   PetscCall(MatMult(m_K, psi, tmpVec[3]));
+        else if (tensorK)          PetscCall(ApplyOp(TDSEZTensorOps::Kin, m_K, psi, tmpVec[3]));
+        else if (hFromKV_ && !qPot_) PetscCall(VecWAXPY(tmpVec[3], -1.0, tmpVec[4], tmpVec[1]));   // K psi = H psi - V psi
+        else                       PetscCall(VecZeroEntries(tmpVec[3]));                         // <K> from quadrature
     }
     if (invMassConst_ != 0.0) {
         PetscCall(VecCopy(tmpVec[0], tmpVec[2]));
         PetscCall(VecScale(tmpVec[2], invMassConst_));
+    } else if (qInvM_) {
+        PetscCall(VecZeroEntries(tmpVec[2]));
     } else {
         PetscCall(MatMult(m_Md, psi, tmpVec[2]));
     }
@@ -717,6 +735,112 @@ PetscErrorCode TDSEZManager::SetupTensorOps(Vec psi)
         }
     }
     PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// @brief Quadrature expectation values (see TDSEZQuadObs): built at the first
+///        monitor call, each value checked against its assembled matrix on psi
+///        (|quad - matrix| <= 1e-10 |A psi| |psi|), and only then used; the
+///        matrices then read by nothing else are freed. Dirichlet walls keep the
+///        matrices; -tdsez_quad_obs 0 switches this off. Called from
+///        MonitorProducts while tmpVec[1..4] hold H, Md, K, V psi.
+PetscErrorCode TDSEZManager::SetupQuadObs(Vec psi)
+{
+    PetscFunctionBeginUser;
+    if (quadObs_) PetscFunctionReturn(PETSC_SUCCESS);
+    if (!TDSEZQuadObsEnabled()) { TDSEZForceCoeffStore().Release(); PetscFunctionReturn(PETSC_SUCCESS); }
+
+    const bool op = !TDSEZDiscreteAccelerationActive();
+    const bool tensorK = tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin);
+    const Mat dV[3] = {m_dVdx, m_dVdy, m_dVdz}, Vl[3] = {m_VelX, m_VelY, m_VelZ};
+    unsigned what = 0;
+    if (m_V) what |= TDSEZQuadObs::Pot;
+    if (m_Md && invMassConst_ == 0.0) what |= TDSEZQuadObs::InvMass;
+    if (m_K && !tensorK) what |= TDSEZQuadObs::Kin;
+    if (op && TDSEZParser::EnableCAP) what |= TDSEZQuadObs::Cap;
+    for (int a = 0; a < 3; ++a) {
+        if (op && dV[a]) what |= TDSEZQuadObs::Force;
+        const bool tensorV = tensorOps_ && tensorOps_->Usable((TDSEZTensorOps::Op)(TDSEZTensorOps::VelX + a));
+        if (Vl[a] && !tensorV) what |= TDSEZQuadObs::Vel;
+    }
+    if (!what) { TDSEZForceCoeffStore().Release(); PetscFunctionReturn(PETSC_SUCCESS); }
+    quadObs_ = new TDSEZQuadObs;
+    unsigned forceAxes = 0;
+    for (int a = 0; a < 3; ++a) if (op && dV[a]) forceAxes |= 1u << a;
+    PetscCall(quadObs_->Setup(core_->iga, what, op && MassVaries(), forceAxes));
+    TDSEZForceCoeffStore().Release();
+    if (!quadObs_->Ready()) { delete quadObs_; quadObs_ = PETSC_NULLPTR; PetscFunctionReturn(PETSC_SUCCESS); }
+    TDSEZQuadObs::Values v;
+    PetscCall(quadObs_->Expect(psi, v));
+
+    PetscReal npsi, worst = 0;
+    PetscCall(VecNorm(psi, NORM_2, &npsi));
+    Vec tmp;
+    PetscCall(VecDuplicate(psi, &tmp));
+    auto agree = [&](Vec Apsi, PetscScalar q, bool *flag) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        PetscScalar ref; PetscReal na;
+        PetscCall(VecDot(Apsi, psi, &ref));                 // psi^H A psi
+        PetscCall(VecNorm(Apsi, NORM_2, &na));
+        const PetscReal err = PetscAbsScalar(q - ref) / PetscMax(na * npsi, (PetscReal)1e-300);
+        *flag = err <= 1e-10;
+        if (*flag) worst = PetscMax(worst, err);
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
+    std::string used;
+    auto note = [&](bool f, const char *n) { if (f) used += std::string(used.empty() ? "" : ", ") + n; };
+    if (what & TDSEZQuadObs::Pot) { PetscCall(agree(tmpVec[4], v.pot, &qPot_)); note(qPot_, "V"); }
+    if (what & TDSEZQuadObs::InvMass) { PetscCall(agree(tmpVec[2], v.invMass, &qInvM_)); note(qInvM_, "1/m"); }
+    if (what & TDSEZQuadObs::Kin) { PetscCall(agree(tmpVec[3], v.kin, &qKin_)); note(qKin_, "K"); }
+    for (int a = 0; a < 3; ++a) {
+        if ((what & TDSEZQuadObs::Force) && dV[a]) {
+            PetscCall(MatMult(dV[a], psi, tmp));
+            PetscCall(agree(tmp, v.force[a], &qForce_[a]));
+            note(qForce_[a], (std::string("dV/d") + "xyz"[a]).c_str());
+        }
+        const bool tensorV = tensorOps_ && tensorOps_->Usable((TDSEZTensorOps::Op)(TDSEZTensorOps::VelX + a));
+        if ((what & TDSEZQuadObs::Vel) && Vl[a] && !tensorV) {
+            PetscCall(MatMult(Vl[a], psi, tmp));
+            PetscCall(agree(tmp, v.vel[a], &qVel_[a]));
+            note(qVel_[a], (std::string("Vel") + "xyz"[a]).c_str());
+        }
+    }
+    // operator acceleration: <H> = <K> + <V> (+ <CAP>) without the product with H
+    if (op && qPot_ && (qKin_ || tensorK || m_K) && (!TDSEZParser::EnableCAP || (what & TDSEZQuadObs::Cap))) {
+        PetscScalar kin;
+        if (qKin_) kin = v.kin;
+        else PetscCall(VecDot(tmpVec[3], psi, &kin));     // K or factorised K (equal, checked)
+        const PetscScalar h = kin + v.pot + ((what & TDSEZQuadObs::Cap) ? v.cap : 0.0);
+        bool ok;
+        PetscCall(agree(tmpVec[1], h, &ok));
+        qH_ = ok && (qKin_ || tensorK);
+        qCap_ = qH_ && (what & TDSEZQuadObs::Cap);
+        note(qH_, "H");
+    }
+    PetscCall(VecDestroy(&tmp));
+    qv_ = v;                                   // this call's values (the monitor body reads them)
+    if (!used.empty())
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Monitor expectation values from the quadrature points: %s (max relative difference %.1e)\n",
+                              used.c_str(), (double)worst));
+    // free what nothing else reads
+    if (qPot_) { PetscCall(MatDestroy(&assembler_->V)); m_V = PETSC_NULLPTR; }
+    Mat *dVa[3] = {&assembler_->dVdx, &assembler_->dVdy, &assembler_->dVdz}, *mdV[3] = {&m_dVdx, &m_dVdy, &m_dVdz};
+    Mat *Vla[3] = {&assembler_->VelX, &assembler_->VelY, &assembler_->VelZ}, *mVl[3] = {&m_VelX, &m_VelY, &m_VelZ};
+    for (int a = 0; a < 3; ++a) {
+        if (qForce_[a]) { PetscCall(MatDestroy(dVa[a])); *mdV[a] = PETSC_NULLPTR; }
+        if (qVel_[a])   { PetscCall(MatDestroy(Vla[a])); *mVl[a] = PETSC_NULLPTR; }
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+void TDSEZManager::OverrideExpectations(PetscScalar res[]) const
+{
+    if (!quadObs_) return;
+    if (qInvM_) res[2] = qv_.invMass;
+    if (qKin_)  res[3] = qv_.kin;
+    if (qPot_)  res[4] = qv_.pot;
+    if (qH_)    res[1] = res[3] + res[4] + (qCap_ ? qv_.cap : 0.0);
 }
 
 
@@ -798,13 +922,19 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
         PetscCall(VecAXPY(r, E[a], s));
     }
     PetscCall(KSPSolve(kspMass, r, w));
+    PetscScalar zq[3] = {0, 0, 0};
+    if (qVel_[0] || qVel_[1] || qVel_[2]) PetscCall(quadObs_->VelocityBilinear(w, psi, zq));
 
     for (int a = 0; a < 3; ++a) {
         acc[a] = 0.0;
-        if (!on[a] || !HasOp(vop[a], Vel[a])) continue;
         PetscScalar z;
-        PetscCall(ApplyOp(vop[a], Vel[a], psi, s));
-        PetscCall(VecDot(s, w, &z));                 // z = w^H (Vel psi)
+        if (HasOp(vop[a], Vel[a])) {
+            if (!on[a]) continue;
+            PetscCall(ApplyOp(vop[a], Vel[a], psi, s));
+            PetscCall(VecDot(s, w, &z));             // z = w^H (Vel psi)
+        } else if (on[a] && qVel_[a]) {
+            z = zq[a];                               // w^H Vel psi from the quadrature points
+        } else continue;
         acc[a] = -2.0 * charge * PetscImaginaryPart(z);
     }
     PetscFunctionReturn(PETSC_SUCCESS);
