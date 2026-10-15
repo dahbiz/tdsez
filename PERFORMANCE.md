@@ -51,7 +51,7 @@ Crank–Nicolson solves at every step
 \mathbf H^{n+1/2} = \mathbf H\!\left(t_n + \tfrac{\Delta t}{2}\right),
 ```
 
-with GMRES and a restricted additive-Schwarz preconditioner with ILU subdomain
+with GMRES and a restricted additive-Schwarz preconditioner with ILU(0) subdomain
 solves.
 
 * **Preconditioner reuse.** The system matrix changes between steps only
@@ -68,6 +68,20 @@ solves.
 
 Measured on 3D test problems: propagation $`2.5\times`$ faster, complete runs
 $`1.7`$–$`2.3\times`$ faster.
+
+* **ILU(0) subdomains.** Subdomains above 4000 rows used ILU(1). In 3D, degree
+  4 ($`110\,592`$ DOFs, 8 ranks), ILU(0) needs the same 7 GMRES iterations, its
+  set-up takes 4.6 s instead of 45.7 s, the step 4.5 s instead of 11.4 s, and the
+  dipole time series agree to $`8\times10^{-15}`$. In 2D ILU(1) saved at most one
+  iteration and was 10–20% slower per step. ILU(0) is the default;
+  `-tdsez_ilu_levels n` restores another level.
+* **Constant mass detected.** A `Mass` expression without `x`, `y`, `z` now sets
+  `MassIsConstant` automatically. Without it, the multi-axis force kernels
+  computed finite-difference derivatives of $`1/m`$ (about 260 expression
+  evaluations per quadrature point and axis): the 3D degree-4 benchmark spent
+  more than 10 minutes per rank in the time-dependent operator assembly, 19 s
+  with the detection. The derivatives of a constant are exactly zero, so the
+  operators are unchanged.
 
 ## 2. Fourth-order propagators (`Propagator = pade22 | magnus4`)
 

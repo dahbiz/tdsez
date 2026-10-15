@@ -100,6 +100,17 @@ Autocorrelation
    * - 2
      - :math:`\text{Im} \langle \psi(0) | \psi(t) \rangle`
 
+t-SURFF Spectra
+---------------
+
+File: ``td/surff_*.h5`` (only with ``TSurff = 1``). Datasets ``momenta``,
+``amplitude`` (Re, Im), ``pes`` :math:`=|b(\mathbf k)|^2`, on a grid also
+``k_x``/``k_y``/``k_z`` and ``pes_grid``; ``amplitude_flux`` with
+``SurffInterior = 1``. Attributes ``final_time``, ``radius``,
+``exterior_mass``, ``exterior_potential``, ``charge``, ``A_final``,
+``stride``, ``n_surface_points``, ``n_samples``, ``interior``. See
+:doc:`TSurff`.
+
 Eigenstate Data
 ---------------
 

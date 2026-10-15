@@ -259,9 +259,19 @@ void TDSEZParser::ValidateOrThrow()
             throw std::runtime_error("ValidateOrThrow: non-finite TimeStep/FinalTime");
     }
 
+    // --- constant mass: detected from the expression ---
+    // A Mass expression without x, y, z is constant; the fast constant-mass
+    // assembly (no finite-difference mass derivatives, which vanish exactly
+    // then) applies without MassIsConstant = 1 in the input.
+    if (!MassIsConstant) {
+        try { if (MassExpr.GetUsedVar().empty()) MassIsConstant = PETSC_TRUE; }
+        catch (const mu::Parser::exception_type &) { /* reported when evaluated */ }
+    }
+
     // --- requested states ---
-    if (NBoundStates < 1)
-        throw std::runtime_error("ValidateOrThrow: NBoundStates must be >= 1");
+    // (0 is allowed with an analytic initial state; checked below)
+    if (NBoundStates < 0)
+        throw std::runtime_error("ValidateOrThrow: NBoundStates must be >= 0");
 
     // --- initial state selection ---
     // Parse InitialState into a mode + (index,coeff) terms, and guard indices
@@ -271,6 +281,7 @@ void TDSEZParser::ValidateOrThrow()
     //   "sup: a*N + b*M [+c*P]"-> mode 2, coherent superposition of <=3 states
     //   "analytic:quesne01"    -> mode 3, projected exact Quesne n=0,1 state
     //   "analytic:massstep01"  -> mode 4, projected exact sharp-interface state
+    //   "wavepacket"           -> mode 5, projected Gaussian wave packet
     {
         const std::string &s = InitialState;
         InitialStateTerms.clear();
@@ -317,6 +328,11 @@ void TDSEZParser::ValidateOrThrow()
                 throw std::runtime_error(
                     "ValidateOrThrow: InitialState='analytic:quesne01' is a 1D benchmark");
             InitialStateMode = 3;
+        } else if (s == "wavepacket") {
+            for (PetscInt d = 0; d < Dimension; ++d)
+                if (!(WavepacketWidth[d] > 0.0))
+                    throw std::runtime_error("ValidateOrThrow: WavepacketWidth must be > 0 on every axis");
+            InitialStateMode = 5;
         } else if (s == "analytic:massstep01") {
             if (Dimension != 1)
                 throw std::runtime_error(
@@ -380,9 +396,12 @@ void TDSEZParser::ValidateOrThrow()
             throw std::runtime_error(
                 "ValidateOrThrow: InitialState must be 'ground', 'state:N', \""
                 "'sup: c*N + c*M [+ c*P]' (complex coeffs need parens: '(0.7+0.7i)*0'), "
-                "'analytic:quesne01', or 'analytic:massstep01' (got '" + s + "')");
+                "'analytic:quesne01', 'analytic:massstep01' or 'wavepacket' (got '" + s + "')");
         }
     }
+    if (NBoundStates == 0 && InitialStateMode < 3)
+        throw std::runtime_error("ValidateOrThrow: NBoundStates = 0 (no eigenproblem) needs an analytic "
+                                 "InitialState (wavepacket, analytic:quesne01, analytic:massstep01)");
 
     // --- bound-state save format ---
     if (BoundStateFormat != "complex" && BoundStateFormat != "real")
@@ -512,6 +531,48 @@ void TDSEZParser::ValidateOrThrow()
                     "Set e.g. Laser" + (char)std::toupper("xyz"[d]) + " = Ampx*sin(Omegax*t)*sin(pi*t/T)^2.");
     }
 
+
+    // The propagation assembles s dV/dx_d on every axis (acceleration output);
+    // an empty expression used to abort inside muParser.
+    if (EnablePropagation) {
+        const std::string *dV[3] = {&PotentialDerivativeX, &PotentialDerivativeY, &PotentialDerivativeZ};
+        for (int d = 0; d < (int)Dimension; ++d)
+            if (dV[d]->find_first_not_of(" \t") == std::string::npos)
+                throw std::runtime_error(std::string("ValidateOrThrow: PotentialDerivative") + (char)std::toupper("xyz"[d]) +
+                    " is empty; give dV/d" + "xyz"[d] + " of Potential (0 for a constant potential)");
+    }
+
+
+    // t-SURFF: extraction box |x_d| = R inside every axis and in front of the
+    // CAP layers; a momentum grid or a momentum file.
+    if (TSurff) {
+        if (!EnablePropagation)
+            throw std::runtime_error("ValidateOrThrow: TSurff = 1 needs EnablePropagation = 1");
+        if (!(SurffRadius > 0.0))
+            throw std::runtime_error("ValidateOrThrow: TSurff = 1 needs SurffRadius > 0");
+        const PetscReal lo[3] = {LMinX, LMinY, LMinZ}, hi[3] = {LMaxX, LMaxY, LMaxZ};
+        const PetscReal w = EnableCAP ? 2.62206 / (2.0 * 0.2 * CAPKmin) : 0.0;
+        for (PetscInt d = 0; d < Dimension; ++d) {
+            if (!(-SurffRadius > lo[d] && SurffRadius < hi[d]))
+                throw std::runtime_error("ValidateOrThrow: the t-SURFF surface |x| = SurffRadius must lie inside the "
+                    + std::string(1, "xyz"[d]) + " domain");
+            if (EnableCAP && !(-SurffRadius > lo[d] + w && SurffRadius < hi[d] - w))
+                throw std::runtime_error("ValidateOrThrow: the t-SURFF surface must lie in front of the CAP layer ("
+                    + std::string(1, "xyz"[d]) + " axis: |x| < " + std::to_string(PetscMin(-lo[d], hi[d]) - w) + ")");
+        }
+        if (SurffMomenta.empty()) {
+            for (PetscInt d = 0; d < Dimension; ++d) {
+                if (!SurffKminSet) SurffKmin[d] = -SurffKmax[d];
+                if (SurffNk[d] < 1 || (SurffNk[d] > 1 && !(SurffKmax[d] > SurffKmin[d])))
+                    throw std::runtime_error("ValidateOrThrow: TSurff = 1 needs SurffNk >= 1 and SurffKmax > SurffKmin "
+                        "on every axis (or a SurffMomenta file)");
+            }
+        }
+        if (OutputStrideSurff < 1)
+            throw std::runtime_error("ValidateOrThrow: OutputStrideSurff must be >= 1");
+        if (SurffQuadrature < 0 || SurffQuadrature > 64)
+            throw std::runtime_error("ValidateOrThrow: SurffQuadrature must be in [0, 64] (0 = NQuadratures)");
+    }
 
     // KnotSequence: every axis must name an implemented sequence (an unknown
     // name used to fall back to uniform knots with only a warning).

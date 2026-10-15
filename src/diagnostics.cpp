@@ -559,6 +559,7 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
     TDSEZ->vMat_x.assign(N * N, 0.0);
     TDSEZ->vMat_y.assign(N * N, 0.0);
     TDSEZ->vMat_z.assign(N * N, 0.0);
+    if (N == 0) PetscFunctionReturn(PETSC_SUCCESS);  // NBoundStates = 0
 
     Vec tmp;
     PetscCall(VecDuplicate(TDSEZ->boundstates[0], &tmp));

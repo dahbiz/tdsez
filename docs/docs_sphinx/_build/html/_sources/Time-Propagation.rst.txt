@@ -31,21 +31,40 @@ Time Parameters
 Time Stepper
 ------------
 
-TDSE-Z uses the PETSc TS framework with **Crank-Nicolson (theta = 0.5)** as the
-implicit time-stepper. The method is unitary (norm-preserving) and second-order
-accurate.
+``Propagator`` selects the scheme; all are unitary for a Hermitian
+Hamiltonian:
 
-The residual at each step is evaluated as:
+- ``cn`` (default): Crank-Nicolson (PETSc TS, :math:`\theta = 1/2`), second
+  order, one sparse solve per step.
+- ``pade22``: exponential midpoint rule with a Pade(2,2) exponential, fourth
+  order in the field-free phase, two solves per step.
+- ``magnus4``: commutator-free fourth-order Magnus with Pade(2,2) exponentials,
+  four solves per step.
+
+The Galerkin equation of motion is
 
 .. math::
    :nowrap:
 
    \begin{equation}
-   F = iM \frac{\partial \psi}{\partial t} - H\psi - E(t)D\psi = 0
+   iM \frac{d c}{d t} = \big(H + s\,\mathbf E(t)\cdot\mathbf D\big)c ,
+   \qquad s = -q ,
    \end{equation}
 
-where M is the mass matrix, H is the Hamiltonian, E(t) is the laser field, and D
-is the dipole operator.
+with the mass matrix :math:`M`, the Hamiltonian :math:`H` (kinetic, potential
+and CAP) and the dipole matrices :math:`\mathbf D`.
+
+Each linear system is solved with right-preconditioned GMRES to a relative
+residual of :math:`10^{-12}`, preconditioned by restricted additive Schwarz
+with one subdomain per rank and ILU(0) on each subdomain. The
+preconditioner is built once and reused. ``-tdsez_ilu_levels n`` changes the
+fill level; in our tests ILU(1) saved at most one iteration in 2D and none in
+3D, where its factorisation is about 10 times slower (degree 4).
+
+The rational propagators reach a given accuracy with a much larger step: on
+the free-packet t-SURFF benchmark (:doc:`TSurff`, T = 40) ``pade22`` at
+:math:`\Delta t = 0.025` reaches a spectrum error of :math:`1.2\times10^{-6}`
+against :math:`3.3\times10^{-4}` for ``cn`` at :math:`\Delta t = 0.0125`.
 
 Choosing a Time Step
 --------------------

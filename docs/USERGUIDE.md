@@ -48,6 +48,7 @@ tdsez.cpp (main entry)
 - Velocity-gauge currents: intra-band, inter-band, bound-continuum decomposition
 - Berry phase accumulation for circular polarization
 - Transition dipole matrix computation and length-velocity gauge consistency check
+- t-SURFF photoelectron momentum spectra (`TSurff = 1`, written to `td/surff_<input>.h5`; see the t-SURFF page of the documentation)
 
 ---
 
@@ -250,6 +251,7 @@ Dipole operators are saved to `static/Dx_<input>.bin` (and Dy, Dz for multi-axis
 - `"ground"` — Use the 0th converged bound state (ground state)
 - `"state:N"` — Use the Nth converged bound state (0-based index). E.g., `"state:2"` = 3rd eigenstate
 - `"sup: a*N + b*M [+ c*P]"` — Coherent superposition. Real coefficients a, b, c (up to 3 states). E.g., `"sup: 0.5*0 + 0.866*1"` = 0.5·ψ₀ + 0.866·ψ₁
+- `"wavepacket"` — Gaussian wave packet ∏_d (2π w_d²)^(-1/4) exp(−(x_d−c_d)²/4w_d² + i k_d x_d), set by `WavepacketCenter`, `WavepacketMomentum`, `WavepacketWidth` (per axis). With an analytic initial state, `NBoundStates = 0` skips the eigensolver.
 
 ### 4.12 Degenerate State Splitting (2D only)
 
@@ -258,6 +260,22 @@ Dipole operators are saved to `static/Dx_<input>.bin` (and Dy, Dz for multi-axis
 | `EnableLzDiag` / `LzDiag` | bool | 0 | Enable Lz² diagonalisation to split degenerate energy shells by angular momentum quantum number. 2D only |
 
 When enabled, degenerate states are re-orthogonalized in the Lz² eigenbasis, assigning quantum numbers (n_r, m) and providing a clean mapping between energy levels and angular momentum.
+
+### 4.13 t-SURFF Photoelectron Spectra
+
+Computed only with `TSurff = 1`; output in `td/surff_<input>.h5`.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `TSurff` | bool | 0 | Compute the t-SURFF momentum spectrum |
+| `SurffRadius` | real | — | Surface \|x_d\| = R (inside every axis, in front of the CAP layer) |
+| `SurffKmax` / `SurffKmin` | real[3] | — / −Kmax | Momentum grid limits per axis |
+| `SurffNk` | int[3] | — | Grid points per axis |
+| `SurffMomenta` | file | — | Momentum list (rows `kx [ky kz]`) instead of the grid |
+| `OutputStrideSurff` | int | 1 | Sampling stride (final time always sampled) |
+| `SurffQuadrature` | int | 0 | Gauss points per knot span on the surface (0 = `NQuadratures`) |
+| `SurffInterior` | bool | 0 | Add the projection of ψ(T) inside the box (free-particle tests) |
+| `SurffMassTolerance` / `SurffPotentialTolerance` | real | 1e-6 / 1e-6 | Allowed variation of mass (relative) and potential (Ha) outside the surface |
 
 ### 4.14 Miscellaneous
 
@@ -366,7 +384,11 @@ HDF5 multi-timestep dataset. Each timestep stores a PETSc vector (complex, distr
 
 HDF5 multi-timestep dataset storing ⟨ψ(0)\|ψ(t)⟩. Only written at `OutputStrideAC` steps.
 
-### 6.4 Eigenstate Data (`static/EigenData_<input>.h5`)
+### 6.4 t-SURFF Spectra (`td/surff_<input>.h5`)
+
+Only with `TSurff = 1`. Datasets `momenta` (Nk x d), `amplitude` (Re, Im of b(k)), `pes` = |b(k)|^2 = dP/d^dk; on a grid also `k_x`/`k_y`/`k_z` and `pes_grid`; `amplitude_flux` with `SurffInterior = 1`. Attributes: `final_time`, `radius`, `exterior_mass`, `exterior_potential`, `charge`, `A_final`, `stride`, `n_surface_points`, `n_samples`, `interior`.
+
+### 6.5 Eigenstate Data (`static/EigenData_<input>.h5`)
 
 **Datasets:**
 - `spectrum` — eigenvalues (real, 1D array, size = NBoundStates)

@@ -9,6 +9,7 @@
 
 class TDSEZCore;
 class TDSEZAssembler;
+class TDSEZTSurff;
 
 /**
  * @brief Orchestrates time propagation, diagnostics and HDF5 output.
@@ -92,6 +93,8 @@ class TDSEZManager
     void setPsi0(Vec p) { m_psi0 = p; }  ///< Set the initial state vector.
     void setHt(Mat h)   { m_Ht   = h; }  ///< Set the transient H copy.
     /// @}
+    /// t-SURFF observer sampled by the monitors (not owned; null unless TSurff = 1).
+    TDSEZTSurff *tsurff = PETSC_NULLPTR;
     /// @brief Active polarization flags (set by PolarizationSelector()).
     PetscBool hasX = PETSC_FALSE, hasY = PETSC_FALSE, hasZ = PETSC_FALSE;
 

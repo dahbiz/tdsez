@@ -138,6 +138,47 @@ Common Use Cases
      - ``sup: a*N + b*M + c*P``
      - Three-state dynamics
 
+Gaussian Wave Packet
+--------------------
+
+``InitialState = wavepacket`` starts from the normalised Gaussian
+
+.. math::
+
+   \psi_0(\mathbf r) = \prod_d (2\pi w_d^2)^{-1/4}
+   \exp\!\Big(-\frac{(x_d-c_d)^2}{4w_d^2} + i k_{0,d}\,x_d\Big),
+
+projected onto the spline basis (:math:`|\psi_0|^2` has standard deviation
+:math:`w_d`, the momentum distribution
+:math:`\prod_d (2w_d^2/\pi)^{1/2} e^{-2w_d^2(k_d-k_{0,d})^2}`).
+
+.. list-table::
+   :widths: 30 15 15 40
+   :header-rows: 1
+
+   * - Key
+     - Type
+     - Default
+     - Description
+   * - WavepacketCenter
+     - real[3]
+     - 0
+     - centre :math:`c_d` per axis
+   * - WavepacketMomentum
+     - real[3]
+     - 0
+     - mean momentum :math:`k_{0,d}`
+   * - WavepacketWidth
+     - real[3]
+     - 1
+     - width :math:`w_d > 0`
+
+With an analytic initial state (``wavepacket``, ``analytic:*``) the eigenstates
+are not needed: ``NBoundStates = 0`` skips the eigensolver. This matters for free
+or weakly bound systems, where the shift-invert solve near the bottom of a
+gapless continuum is slow (very slow in 3D). Populations and the current
+decomposition are then empty. Used by the t-SURFF benchmark (:doc:`TSurff`).
+
 Requirements
 ------------
 

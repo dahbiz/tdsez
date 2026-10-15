@@ -1,5 +1,17 @@
 #include "tdsez_internal.hpp"
 
+/// ILU fill level of the ASM subdomain solves (-tdsez_ilu_levels overrides).
+/// ILU(0): ILU(1) saved at most one GMRES iteration (none in 3D) while its
+/// fill made the 3D factorisation 10x slower (degree 4: 45 s against 4.6 s,
+/// 2.5x slower steps). The 1e-12 solve tolerance is unchanged.
+static PetscInt TDSEZILULevels(PetscInt localRows)
+{
+    (void)localRows;
+    PetscInt levels = 0;
+    PetscOptionsGetInt(NULL, NULL, "-tdsez_ilu_levels", &levels, NULL);
+    return levels;
+}
+
 /**
  * @file propagator.cpp
  * @brief TDSEZPropagator: PETSc TS time-stepping for the TDSE, including
@@ -160,11 +172,9 @@ PetscErrorCode TDSEZPropagator::Evolve()
             // Enforce structured Incomplete LU (Bypasses full LU fill-in slowness)
             ierr = PCSetType(subpc, PCILU);                                    CHKERRQ(ierr);
 
-            // Adaptive ILU: stronger fill on larger subdomains,
-            // zero-fill keeps overhead low on small subdomain problems.
             PetscInt local_rows = 0;
             PetscCall(MatGetLocalSize(J_, &local_rows, NULL));
-            PetscCall(PCFactorSetLevels(subpc, (local_rows > 4000) ? 1 : 0));  CHKERRQ(ierr);
+            PetscCall(PCFactorSetLevels(subpc, TDSEZILULevels(local_rows)));
 
             // Lock memory structures now that the drop threshold is gone
             ierr = PCFactorSetReuseOrdering(subpc, PETSC_TRUE);                CHKERRQ(ierr);
@@ -252,7 +262,7 @@ static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix)
             PC subpc;
             PetscCall(KSPGetPC(subksp[i], &subpc));
             PetscCall(PCSetType(subpc, PCILU));
-            PetscCall(PCFactorSetLevels(subpc, (localRows > 4000) ? 1 : 0));
+            PetscCall(PCFactorSetLevels(subpc, TDSEZILULevels(localRows)));
             PetscCall(PCFactorSetReuseOrdering(subpc, PETSC_TRUE));
             PetscCall(PCFactorSetReuseFill(subpc, PETSC_TRUE));
             PetscCall(PCFactorSetShiftType(subpc, MAT_SHIFT_INBLOCKS));

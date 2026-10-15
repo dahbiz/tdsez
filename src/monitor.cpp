@@ -1,4 +1,5 @@
 #include "tdsez_internal.hpp"
+#include "tdsez_tsurff.hpp"
 
 /**
  * @file monitor.cpp
@@ -411,6 +412,7 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     profile.steps = PetscMax(profile.steps, step);
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
 
 
     // ------------------------
@@ -658,6 +660,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     if (profile.stageObservables >= 0) PetscCall(PetscLogStagePush(profile.stageObservables));
     profile.steps = PetscMax(profile.steps, step);
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
 
 
     /* ----------------------------------------------------------------
@@ -957,6 +960,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     profile.steps = PetscMax(profile.steps, step);
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
 
 
     // ------------------------

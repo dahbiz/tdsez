@@ -38,15 +38,13 @@ Mass
      - muParser
      - ``1.0``
      - Position-dependent mass M(x,y,z). Use ``1.0`` for constant mass
-   * - invMassX / Y / Z
-     - muParser
-     - ``0.0``
-     - Gradients of 1/m
    * - MassIsConstant
      - bool
      - auto
-     - Set to ``1`` for constant mass. Disables quantum-correction terms,
-       speeding assembly
+     - 1 when the ``Mass`` expression contains no ``x``, ``y``, ``z`` (detected
+       automatically). Enables the fast constant-mass assembly: the
+       finite-difference mass-gradient corrections, exactly zero then, are
+       skipped. Setting 1 by hand for a varying mass drops those corrections.
 
 Physical Constants
 ------------------

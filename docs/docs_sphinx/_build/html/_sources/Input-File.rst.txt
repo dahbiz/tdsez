@@ -135,15 +135,15 @@ Potential and Mass
    * - PotentialDerivativeX / PotentialDerivativeY / PotentialDerivativeZ
      - string
      - (none)
-     - Analytical gradient components. If omitted, auto-diff used via muParser. Provide for exact gradients or higher performance.
+     - Gradient of Potential along x, y, z (used for the dipole acceleration). Required on every axis of the run when EnablePropagation = 1 (0 for a constant potential).
    * - Mass
      - string
      - "1.0"
      - Position-dependent mass m(x,y,z). Must be strictly positive everywhere in the domain. muParser expression in x, y, z.
    * - MassIsConstant
      - bool
-     - false
-     - 1 = mass is scalar constant 1.0 (skip spatial eval). Use when Mass = "1.0" to avoid unnecessary function calls.
+     - auto
+     - 1 when Mass has no x, y, z (detected automatically): fast constant-mass assembly. Setting 1 for a varying mass drops the mass-gradient corrections.
 
 Laser Field
 -----------
@@ -211,7 +211,7 @@ Eigensolver (TISE)
    * - NBoundStates / NumberOfBoundStates
      - int
      - 1
-     - Number of bound states to compute. Must be >= 1.
+     - Number of bound states to compute. 0 skips the eigensolver; allowed only with an analytic InitialState (wavepacket, analytic:quesne01, analytic:massstep01).
    * - NBoundStatesSave / SaveBoundStates
      - bool
      - 0 (false)
@@ -244,6 +244,61 @@ Time Propagation
      - real
      - 100.0
      - Total propagation time in atomic units. Alias: TotalTime. Must be > 0.
+   * - Propagator
+     - string
+     - "cn"
+     - Time stepper. "cn": Crank-Nicolson, Pade(1,1), second order, one sparse solve per step. "pade22": exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, two solves per step). "magnus4": commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, four solves per step). The rational propagators are unitary for Hermitian H and allow much larger TimeStep at equal accuracy.
+
+t-SURFF Photoelectron Spectra
+-----------------------------
+
+Computed only with ``TSurff = 1``; written to ``td/surff_<input>.h5``. See
+:doc:`TSurff`.
+
+.. list-table:: t-SURFF
+   :widths: 25 10 15 50
+   :header-rows: 1
+
+   * - Parameter
+     - Type
+     - Default
+     - Description
+   * - TSurff
+     - bool
+     - 0
+     - 1 = compute the t-SURFF momentum spectrum (needs EnablePropagation = 1).
+   * - SurffRadius
+     - real
+     - (none)
+     - Surface ``|x_d| = R``; inside every axis and in front of the CAP layer.
+   * - SurffKmax / SurffKmin
+     - real[3]
+     - (none) / -SurffKmax
+     - Momentum grid limits per axis.
+   * - SurffNk
+     - int[3]
+     - (none)
+     - Grid points per axis.
+   * - SurffMomenta
+     - string
+     - (none)
+     - File of momenta (rows "kx [ky kz]") instead of the grid.
+   * - OutputStrideSurff
+     - int
+     - 1
+     - Flux sampling stride in steps (the final time is always sampled).
+   * - SurffQuadrature
+     - int
+     - 0
+     - Gauss points per knot span on the surface (0 = NQuadratures).
+   * - SurffInterior
+     - bool
+     - 0
+     - 1 = add the projection of psi(FinalTime) inside the box (free-particle benchmarks; keep 0 for bound systems).
+   * - SurffMassTolerance / SurffPotentialTolerance
+     - real
+     - 1e-6 / 1e-6
+     - Allowed relative mass / absolute potential (Ha) variation outside the surface.
 
 Output Control
 --------------
@@ -303,7 +358,7 @@ Initial State
    * - InitialState / StartState
      - string
      - "ground"
-     - Initial state selector. Three formats: "ground" for 0th bound state, "state:N" for Nth state (0-based), "sup: a*N + b*M [+ c*P]" for coherent superposition of up to 3 bound states with real coefficients.
+     - Initial state selector. Three formats: "ground" for 0th bound state, "state:N" for Nth state (0-based), "sup: a*N + b*M [+ c*P]" for coherent superposition of up to 3 bound states, "wavepacket" for a Gaussian wave packet (WavepacketCenter, WavepacketMomentum, WavepacketWidth; see Initial State).
    * - NormalizeInitialState / NormalizePsi0
      - bool
      - 1 (true)
@@ -320,10 +375,6 @@ Boundary Conditions and CAP
    :widths: 25 10 15 50
    :header-rows: 1
 
-   * - Propagator
-     - string
-     - "cn"
-     - Time stepper. "cn": Crank-Nicolson, Pade(1,1), second order, one sparse solve per step. "pade22": exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, two solves per step). "magnus4": commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, four solves per step). The rational propagators are unitary for Hermitian H and allow much larger TimeStep at equal accuracy.
    * - Parameter
      - Type
      - Default

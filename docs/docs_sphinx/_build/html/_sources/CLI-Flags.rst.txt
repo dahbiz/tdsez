@@ -74,6 +74,22 @@ Assembly and Eigensolver Flags
      - Relative energy tolerance for treating eigenvalues as one degenerate
        level (default ``1e-9``); see :doc:`Eigensolver`.
 
+Propagation Flags
+-----------------
+
+.. list-table::
+   :widths: 30 12 58
+   :header-rows: 1
+
+   * - Flag
+     - Type
+     - Description
+   * - ``-tdsez_ilu_levels <n>``
+     - int
+     - ILU fill level of the ASM subdomain preconditioner of every propagator
+       (default 0). Level 1 saves at most one GMRES iteration but its fill makes
+       3D factorisations about 10x slower; the 1e-12 solve tolerance is the same.
+
 Note: ``-mat_type`` and ``-vec_type`` are re-injected as ``-iga_mat_type`` /
 ``-iga_vec_type`` to reach PetIGA. The solver strips PETSc-known flags before
 processing.

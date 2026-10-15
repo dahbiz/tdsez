@@ -1,0 +1,41 @@
+# High-harmonic generation from a 1D soft-core atom, V = -1/sqrt(x^2+1) (Ip = 0.670 Ha).
+# 800 nm (omega = 0.057 a.u.), 1e14 W/cm^2 (E0 = 0.0534 a.u.), 16-cycle
+# flat-top pulse: 2-cycle sin^2 ramps and 12 flat cycles.
+#   Up = E0^2/(4 omega^2) = 0.219 Ha
+#   cutoff ~ 1.32 Ip + 3.17 Up = 1.58 Ha  (harmonic ~28)
+#   quiver radius alpha = E0/omega^2 = 16.4 a.u.
+# The field is E = -dA/dt of the vector potential A = (E0/omega) f(t) sin(omega t),
+# so A and E vanish at both ends of the pulse (zero field area, no drift).
+#
+#   tdsez.x -inp hhg_1d.inp
+#   python hhg_spectrum.py td/TimeEvolutionData_hhg_1d.inp.h5 --omega 0.057 --plot hhg.png
+
+Dimension         = 1
+Domain            = -70.0, 70.0
+SplineDegree      = 7
+NQuadratures      = 10
+KnotSequence      = uniform
+NSplines          = 560
+Charge            = -1.0
+Mass              = 1.0
+
+Potential            = -1.0 / sqrt(x*x + 1.0)
+PotentialDerivativeX = x / (x*x + 1.0)^1.5
+
+TargetEigenvalue  = -0.8
+NBoundStates      = 4
+InitialState      = ground
+
+# Tr = 2 cycles, Tf = Tr + 12 cycles, Tp = Tf + 2 cycles (cycle = 2 pi/omega = 110.23)
+Variables         = E0=0.0534, w=0.057
+Variables         = Tr=220.4625, Tf=1543.2375, Tp=1763.7
+Polarization      = x
+LaserX            = -(E0/w)*( (t<Tr ? (pi/(2*Tr))*sin(pi*t/Tr) : t<Tf ? 0 : t<Tp ? -(pi/(2*Tr))*sin(pi*(t-Tf)/Tr) : 0)*sin(w*t) + w*(t<Tr ? sin(pi*t/(2*Tr))^2 : t<Tf ? 1 : t<Tp ? cos(pi*(t-Tf)/(2*Tr))^2 : 0)*cos(w*t) )
+
+EnablePropagation = 1
+Propagator        = pade22
+TimeStep          = 0.05
+FinalTime         = 1763.7
+EnableCAP         = 1
+CAPKmin           = 0.3
+OutputStrideWFS   = 100000

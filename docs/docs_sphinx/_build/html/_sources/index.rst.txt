@@ -89,6 +89,8 @@ Documentation
    Knot-Sequences
    HDF5-Output
    Observables
+   TSurff
+   HHG
    Physics-Conventions
 
 Citation

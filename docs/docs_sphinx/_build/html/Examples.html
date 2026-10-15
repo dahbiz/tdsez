@@ -92,6 +92,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-photoelectron-spectra">t-SURFF Photoelectron Spectra</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
@@ -147,10 +148,12 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#gaussian-wave-packet">Gaussian Wave Packet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#validated-examples-examples">Validated Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#d-systems">1D Systems</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#harmonic-oscillator">Harmonic Oscillator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#d-atomic-ionization">1D Atomic Ionization</a></li>
@@ -174,6 +177,7 @@
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#propagation-flags">Propagation Flags</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
 </ul>
@@ -192,7 +196,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-tip">Performance Tip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-in-3d">Performance in 3D</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
@@ -219,6 +223,7 @@
 <li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#t-surff-spectra">t-SURFF Spectra</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
 </ul>
 </li>
@@ -230,6 +235,21 @@
 <li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Observables.html#berry-phase">Berry Phase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="TSurff.html">Photoelectron Spectra (t-SURFF)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#method">Method</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#input-keys">Input Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#output-td-surff-input-h5">Output: <code class="docutils literal notranslate"><span class="pre">td/surff_&lt;input&gt;.h5</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-1-free-wave-packet-analytic-benchmark">Example 1: free wave packet (analytic benchmark)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-2-above-threshold-ionisation-of-a-1d-atom">Example 2: above-threshold ionisation of a 1D atom</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#choosing-the-parameters">Choosing the parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HHG.html">Simulating HHG Correctly</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#worked-example">Worked Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#the-spectrum">The Spectrum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#checklist">Checklist</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
@@ -268,6 +288,20 @@
 capabilities of TDSE-Z.</p>
 <div class="toctree-wrapper compound">
 </div>
+<section id="validated-examples-examples">
+<h2>Validated Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)<a class="headerlink" href="#validated-examples-examples" title="Link to this heading"></a></h2>
+<p>These decks are in the repository and their results are checked in the
+documentation:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">examples/hhg/hhg_1d.inp</span></code> + <code class="docutils literal notranslate"><span class="pre">hhg_spectrum.py</span></code> — high-harmonic generation
+from a 1D soft-core atom, spectrum from the acceleration, current and dipole;
+see <a class="reference internal" href="HHG.html"><span class="doc">Simulating HHG Correctly</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">examples/tsurff/free_packet_1d.inp</span></code> — t-SURFF against the analytic free
+wave packet in a laser pulse (error 3e-5); see <a class="reference internal" href="TSurff.html"><span class="doc">Photoelectron Spectra (t-SURFF)</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">examples/tsurff/ati_1d.inp</span></code> + <code class="docutils literal notranslate"><span class="pre">plot_tsurff.py</span></code> — above-threshold
+ionisation spectrum with t-SURFF; see <a class="reference internal" href="TSurff.html"><span class="doc">Photoelectron Spectra (t-SURFF)</span></a>.</p></li>
+</ul>
+</section>
 <section id="d-systems">
 <h2>1D Systems<a class="headerlink" href="#d-systems" title="Link to this heading"></a></h2>
 <section id="harmonic-oscillator">

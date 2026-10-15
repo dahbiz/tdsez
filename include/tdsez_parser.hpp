@@ -289,7 +289,39 @@ class TDSEZParser
         // Parsed in ValidateOrThrow:
         //   0 = ground (== state:0), 1 = single state:InitialStateIndex,
         //   2 = superposition, 3 = analytic Quesne, 4 = analytic mass step.
-        /// Parsed initial-state mode: 0=ground, 1=single, 2=superposition, 3=Quesne, 4=mass step.
+        /// Gaussian wave packet (InitialState = wavepacket), per axis:
+        /// psi0 = prod_d (2 pi w_d^2)^(-1/4) exp(-(x_d-c_d)^2/(4 w_d^2) + i k_d x_d),
+        /// i.e. |psi0|^2 has standard deviation w_d (WavepacketWidth).
+        inline static PetscReal             WavepacketCenter[3]   = {0.0, 0.0, 0.0};
+        inline static PetscReal             WavepacketMomentum[3] = {0.0, 0.0, 0.0};
+        inline static PetscReal             WavepacketWidth[3]    = {1.0, 1.0, 1.0};
+
+        // ---- t-SURFF photoelectron spectra (computed only with TSurff = 1) ----
+        /// Enable the t-SURFF observer (output: td/surff_<input>.h5).
+        inline static PetscBool             TSurff             = PETSC_FALSE;
+        /// Half-width R of the extraction box |x_d| = R.
+        inline static PetscReal             SurffRadius        = 0.0;
+        /// Momentum grid per axis: SurffNk points in [SurffKmin, SurffKmax]
+        /// (SurffKmin defaults to -SurffKmax). Ignored when SurffMomenta is set.
+        inline static PetscReal             SurffKmin[3]       = {0.0, 0.0, 0.0};
+        inline static PetscReal             SurffKmax[3]       = {0.0, 0.0, 0.0};
+        inline static PetscInt              SurffNk[3]         = {0, 0, 0};
+        inline static PetscBool             SurffKminSet       = PETSC_FALSE;
+        /// Optional text file of momenta (one kx [ky [kz]] row each), instead of the grid.
+        inline static std::string           SurffMomenta;
+        /// Sample the surface flux every N steps (1 = every step).
+        inline static PetscInt              OutputStrideSurff  = 1;
+        /// Gauss points per element along the surface (0 = NQuadratures).
+        inline static PetscInt              SurffQuadrature    = 0;
+        /// Exterior homogeneity tolerances (relative mass, absolute potential in Ha).
+        inline static PetscReal             SurffMassTolerance      = 1e-6;
+        inline static PetscReal             SurffPotentialTolerance = 1e-6;
+        /// Add the projection of psi(FinalTime) inside the box on the Volkov
+        /// states (exact for a free carrier at any FinalTime; it contains the
+        /// bound states' plane-wave content, so keep 0 for bound systems).
+        inline static PetscBool             SurffInterior      = PETSC_FALSE;
+
+        /// Parsed initial-state mode: 0=ground, 1=single, 2=superposition, 3=Quesne, 4=mass step, 5=wave packet.
         inline static PetscInt              InitialStateMode   = 0;
         /// Index of the selected bound state (mode 1).
         inline static PetscInt              InitialStateIndex  = 0;

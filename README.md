@@ -55,6 +55,9 @@ and MPI parallelism are built on [PETSc](https://petsc.org) and
   sharp interfaces), energy decomposition, currents, bound-state populations,
   autocorrelation, Berry phase, transition-dipole matrices and wavefunction
   snapshots.
+- Photoelectron momentum spectra by t-SURFF (`TSurff = 1`, separate
+  `td/surff_<input>.h5`), validated against the analytic free wave packet in
+  1D, 2D and 3D.
 - HDF5 output; the bound-state file records the input file, code version, units
   and eigenpair residuals.
 
@@ -153,7 +156,9 @@ cmake --build build --target docs          # API reference -> docs/doxygen/html
 | `src/manager.cpp`, `src/propagator.cpp`, `src/monitor.cpp` | Time propagation, observables, HDF5 output |
 | `src/diagnostics.cpp` | Transition matrices and consistency checks |
 | `include/` | Public headers; `tdsez_internal.hpp` collects shared declarations |
+| `src/tsurff.cpp` | t-SURFF photoelectron spectra |
 | `tests/` | Regression and analytic test suite |
+| `examples/` | Validated decks and scripts: HHG (`hhg/`), t-SURFF (`tsurff/`) |
 | `docs/` | User guide sources and website |
 
 ## Citation

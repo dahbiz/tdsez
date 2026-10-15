@@ -52,8 +52,21 @@ When using xyz polarization, buffer size is bumped to 16 temporary vectors to
 prevent segfault. Ensure ``OutputStrideTS > 0`` or ``OutputStrideWFS > 0`` if
 you expect output.
 
-Performance Tip
----------------
+Performance in 3D
+-----------------
 
-Constant mass is much faster. Set ``MassIsConstant = 1`` to disable finite-difference
-gradient computations of 1/m -- the dominant cost in the variable-mass assembly path.
+- **Assembly**: a constant ``Mass`` expression is detected automatically
+  (``MassIsConstant``) and uses the fast assembly. A position-dependent mass
+  computes finite-difference derivatives of 1/m at every quadrature point,
+  which dominates the 3D operator assembly.
+- **Eigensolver**: shift-invert near the bottom of a gapless spectrum (free or
+  nearly free carriers) converges slowly, and the 3D direct factorisation is
+  memory-bound. With an analytic initial state use ``NBoundStates = 0``.
+- **Memory**: every stored operator has :math:`(2p+1)^3` non-zeros per row
+  (729 for degree 4), about 24 bytes each. With 8 ranks the 110 592-DOF degree-4
+  benchmark peaks at 16–20 GB; past the physical memory the run swaps and
+  mat-vecs slow down by an order of magnitude. Prefer degree 3 in 3D, set
+  ``ObserveAllAxes = 0`` when only the driven axis is needed, and check
+  "Peak memory" in the run summary.
+- **Observables**: in 3D the per-step observables (about 14 sparse products)
+  cost more than the time step itself.

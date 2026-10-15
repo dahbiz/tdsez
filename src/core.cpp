@@ -602,296 +602,309 @@ PetscErrorCode TDSEZCore::Solve()
     } else if (TDSEZParser::InitialStateMode == 4) {
         info.kv("Initial state", "analytic mass-step n=0,1 (M-projected)");
         info.kv("Normalization", "yes");
+    } else if (TDSEZParser::InitialStateMode == 5) {
+        info.kv("Initial state", "Gaussian wave packet (M-projected)");
+        info.kv("Normalization", "yes");
     } else {
         info.kv("Initial state",  "state:%" PetscInt_FMT, TDSEZParser::InitialStateIndex);
     }
     info.blank();
 
-    // Solver infp
-    info.section("SOLVER CONFIGURATION");
-    info.blank();
-    info.kv("Eigensolver",        "%s", "Krylov-Schur  (EPSKRYLOVSCHUR)");
-    info.kv("Spectral transform", "%s", "Shift-invert  (STSINVERT)");
-    info.kv("Inner linear solver","%s", inner_solver);
-    info.blank();
-    info.kv("Target eigenvalue (sigma)",       "%s a.u.", TDSEZ_fmtAu((double)PetscRealPart(targetEV)).c_str());
-    info.kv("Eigenpairs requested (nev)", "%" PetscInt_FMT, nev);
-    info.kv("Search subspace dim  (ncv)", "%" PetscInt_FMT, ncv);
-    info.kv("Max projected dim    (mpd)", "%" PetscInt_FMT, mpd);
-    info.kv("Convergence tolerance",      "%.0e",      1e-10);
-    info.kv("Max iterations",             "%" PetscInt_FMT, (PetscInt)1000);
-    info.kv("Krylov restart ratio",       "%.2e",      isHuge ? 0.3 : 0.5);
-    info.blank();
-    info.kv("Subspace RAM estimate", "%.3e GB",
-       (double)ncv * mat_rows * 16.0 / 1e9);
-    info.blank();
+    // NBoundStates = 0 (analytic initial states only): no eigenproblem.
+    if (nev == 0) {
+        nconv = 0;
+        info.section("EIGENSOLVER");
+        info.blank();
+        info.status("ⵣ", "NBoundStates = 0: eigensolver skipped (analytic initial state)");
+        info.blank();
+    } else {
+        // Solver infp
+        info.section("SOLVER CONFIGURATION");
+        info.blank();
+        info.kv("Eigensolver",        "%s", "Krylov-Schur  (EPSKRYLOVSCHUR)");
+        info.kv("Spectral transform", "%s", "Shift-invert  (STSINVERT)");
+        info.kv("Inner linear solver","%s", inner_solver);
+        info.blank();
+        info.kv("Target eigenvalue (sigma)",       "%s a.u.", TDSEZ_fmtAu((double)PetscRealPart(targetEV)).c_str());
+        info.kv("Eigenpairs requested (nev)", "%" PetscInt_FMT, nev);
+        info.kv("Search subspace dim  (ncv)", "%" PetscInt_FMT, ncv);
+        info.kv("Max projected dim    (mpd)", "%" PetscInt_FMT, mpd);
+        info.kv("Convergence tolerance",      "%.0e",      1e-10);
+        info.kv("Max iterations",             "%" PetscInt_FMT, (PetscInt)1000);
+        info.kv("Krylov restart ratio",       "%.2e",      isHuge ? 0.3 : 0.5);
+        info.blank();
+        info.kv("Subspace RAM estimate", "%.3e GB",
+           (double)ncv * mat_rows * 16.0 / 1e9);
+        info.blank();
 
-    // Memory estimate before factorization / setup
-    info.section("MEMORY  (process 0)");
-    info.blank();
-    info.memKV("Baseline");
+        // Memory estimate before factorization / setup
+        info.section("MEMORY  (process 0)");
+        info.blank();
+        info.memKV("Baseline");
 
-    // EPS creation and setup
-    PetscCall(EPSCreate(PETSC_COMM_WORLD, &eps));
-    PetscCall(EPSSetOperators(eps, H, M));
-    PetscCall(EPSSetProblemType(eps, EPS_GHEP));
-    // With STSINVERT (shift-invert, below) the spectral transformation maps the
-    // original eigenvalue lambda to mu = 1/(lambda - sigma). EPS_SMALLEST_REAL
-    // would then return the eigenvalues FARTHEST from the shift (wrong end of the
-    // spectrum) and silently miss the true ground state. The correct pairing for
-    // "eigenvalues nearest the target" under shift-invert is EPS_TARGET_REAL.
-    PetscCall(EPSSetWhichEigenpairs(eps, EPS_TARGET_REAL));
-    PetscCall(EPSSetTarget(eps, targetEV));
-    PetscCall(EPSSetTolerances(eps, 1e-15, 8000));
-    PetscCall(EPSSetType(eps, EPSKRYLOVSCHUR));
-    PetscCall(EPSKrylovSchurSetDimensions(eps, nev, ncv, mpd));
-    PetscCall(EPSKrylovSchurSetRestart(eps, isHuge ? 0.3 : 0.5));
+        // EPS creation and setup
+        PetscCall(EPSCreate(PETSC_COMM_WORLD, &eps));
+        PetscCall(EPSSetOperators(eps, H, M));
+        PetscCall(EPSSetProblemType(eps, EPS_GHEP));
+        // With STSINVERT (shift-invert, below) the spectral transformation maps the
+        // original eigenvalue lambda to mu = 1/(lambda - sigma). EPS_SMALLEST_REAL
+        // would then return the eigenvalues FARTHEST from the shift (wrong end of the
+        // spectrum) and silently miss the true ground state. The correct pairing for
+        // "eigenvalues nearest the target" under shift-invert is EPS_TARGET_REAL.
+        PetscCall(EPSSetWhichEigenpairs(eps, EPS_TARGET_REAL));
+        PetscCall(EPSSetTarget(eps, targetEV));
+        PetscCall(EPSSetTolerances(eps, 1e-15, 8000));
+        PetscCall(EPSSetType(eps, EPSKRYLOVSCHUR));
+        PetscCall(EPSKrylovSchurSetDimensions(eps, nev, ncv, mpd));
+        PetscCall(EPSKrylovSchurSetRestart(eps, isHuge ? 0.3 : 0.5));
 
-    PetscCall(EPSGetST(eps, &st));
-    // The shift-invert shift is offset slightly below the target. Inputs often
-    // set the target to a known eigenvalue (e.g. the exact ground state); a
-    // shift that coincides with an eigenvalue makes (H - sigma M) singular to
-    // rounding and pollutes every other computed eigenvector (residuals
-    // ~1e-2 instead of ~1e-15). The target itself is unchanged, so the
-    // selection of the eigenvalues nearest to it is unaffected.
-    const PetscReal shiftOffset = 1e-3 * PetscMax((PetscReal)1.0, PetscAbsScalar(targetEV));
-    PetscCall(STSetShift(st, targetEV - shiftOffset));
-    PetscCall(STSetMatStructure(st, SAME_NONZERO_PATTERN));
-    // PetscCall(STSetMatMode(st, ST_MATMODE_COPY));
-    PetscCall(STSetType(st, STSINVERT));
+        PetscCall(EPSGetST(eps, &st));
+        // The shift-invert shift is offset slightly below the target. Inputs often
+        // set the target to a known eigenvalue (e.g. the exact ground state); a
+        // shift that coincides with an eigenvalue makes (H - sigma M) singular to
+        // rounding and pollutes every other computed eigenvector (residuals
+        // ~1e-2 instead of ~1e-15). The target itself is unchanged, so the
+        // selection of the eigenvalues nearest to it is unaffected.
+        const PetscReal shiftOffset = 1e-3 * PetscMax((PetscReal)1.0, PetscAbsScalar(targetEV));
+        PetscCall(STSetShift(st, targetEV - shiftOffset));
+        PetscCall(STSetMatStructure(st, SAME_NONZERO_PATTERN));
+        // PetscCall(STSetMatMode(st, ST_MATMODE_COPY));
+        PetscCall(STSetType(st, STSINVERT));
     
 
-    PetscCall(STGetKSP(st, &ksp));
-    PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
-    PetscCall(EPSSetTolerances(eps, 1e-12, 2000));
+        PetscCall(STGetKSP(st, &ksp));
+        PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
+        PetscCall(EPSSetTolerances(eps, 1e-12, 2000));
 
-if (useDirect) {
+    if (useDirect) {
 
-        // Direct solve via MUMPS or cuSPARSE
-        PetscCall(KSPSetType(ksp, KSPPREONLY));
-        PetscCall(KSPGetPC(ksp, &pc));
-        PetscCall(PCSetType(pc, PCLU));
+            // Direct solve via MUMPS or cuSPARSE
+            PetscCall(KSPSetType(ksp, KSPPREONLY));
+            PetscCall(KSPGetPC(ksp, &pc));
+            PetscCall(PCSetType(pc, PCLU));
 
-        MatType mtype;
-        PetscCall(MatGetType(H, &mtype));
+            MatType mtype;
+            PetscCall(MatGetType(H, &mtype));
 
-        if (strstr(mtype, "cuda") || strstr(mtype, "cusparse")) {
-            PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERCUSPARSE));
-        } else {
-            PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERMUMPS));
-            PetscCall(KSPSetOptionsPrefix(ksp, "st_"));
-            PetscCall(PCSetOptionsPrefix(pc,  "st_"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-st_mat_mumps_icntl_14", "50"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-st_mat_mumps_icntl_28", "2"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-st_mat_mumps_icntl_29", "2"));
-        }
-
-    } else {
-
-        // Iterative solve: strategy depends on problem size 
-        //
-        //  isHuge  : > 10M DOFs  — FGMRES + ASM + ILU(2)
-        //  isLarge :  1M-10M     — FGMRES + ASM + ILU(3)  ← 5M lives here
-        //  isMedium: 100k-1M     — FGMRES + ASM + ILU(3)
-        //  small   : < 100k      — FGMRES + BJACOBI + ILU(2)
-        //
-        //  Key fixes vs original:
-        //   - dtol 1e8 → 1e3  (stops silent divergence)
-        //   - rtol 1e-10 → 1e-6  (shift-invert needs ~1e-6, not 1e-11)
-        //   - restart 50 → 100  (5M needs larger Krylov space)
-        //   - ILU levels increased for large problems
-        //   - sub_ksp_type preonly (no inner iterative, just apply ILU)
-        //   - RCM ordering respects B-spline band structure
-
-        PetscCall(KSPSetType(ksp, KSPFGMRES));
-        PetscCall(KSPGMRESSetRestart(ksp, isHuge ? 50 : 100));
-
-        // dtol=1e3 catches divergence early instead of spinning
-        PetscCall(KSPSetTolerances(ksp,
-                  isHuge ? 1e-8 : 1e-10,    // rtol
-                  PETSC_DEFAULT,           // abstol
-                  1e3,                     // dtol  (was 1e8 — dangerous)
-                  isHuge ? 100 : 200));    // maxits
-
-        PetscCall(KSPGetPC(ksp, &pc));
-
-        if (isHuge) {
-            // ── > 10M DOFs ─────────────────────────────────────
-            // Minimal ILU — just enough to help FGMRES direction
-            PetscCall(PCSetType(pc, PCASM));
-            PetscCall(PCASMSetOverlap(pc, 1));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_ksp_type",                    "preonly"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_type",                     "ilu"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_levels",            "1"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_mat_ordering_type", "rcm"));
-
-        } else if (isLarge) {
-            // ILU(4) + RCM + overlap 1 — strongest iterative option
-            // before resorting to direct solve
-            // If still not converging: use -use_direct_solve 1
-            PetscCall(PCSetType(pc, PCASM));
-            PetscCall(PCASMSetOverlap(pc, 1));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_ksp_type",                    "preonly"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_type",                     "ilu"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_levels",            "4"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_mat_ordering_type", "rcm"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_fill",              "20"));
-
-        } else if (isMedium) {
-            // 100k–1M DOFs
-            PetscCall(PCSetType(pc, PCASM));
-            PetscCall(PCASMSetOverlap(pc, 2));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_ksp_type",                    "preonly"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_type",                     "ilu"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_levels",            "3"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_mat_ordering_type", "rcm"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_fill",              "15"));
+            if (strstr(mtype, "cuda") || strstr(mtype, "cusparse")) {
+                PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERCUSPARSE));
+            } else {
+                PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERMUMPS));
+                PetscCall(KSPSetOptionsPrefix(ksp, "st_"));
+                PetscCall(PCSetOptionsPrefix(pc,  "st_"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-st_mat_mumps_icntl_14", "50"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-st_mat_mumps_icntl_28", "2"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR, "-st_mat_mumps_icntl_29", "2"));
+            }
 
         } else {
-            // < 100k DOFs
-            PetscCall(PCSetType(pc, PCBJACOBI));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_ksp_type",                    "preonly"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_type",                     "ilu"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_levels",            "2"));
-            PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
-                      "-sub_pc_factor_mat_ordering_type", "rcm"));
+
+            // Iterative solve: strategy depends on problem size 
+            //
+            //  isHuge  : > 10M DOFs  — FGMRES + ASM + ILU(2)
+            //  isLarge :  1M-10M     — FGMRES + ASM + ILU(3)  ← 5M lives here
+            //  isMedium: 100k-1M     — FGMRES + ASM + ILU(3)
+            //  small   : < 100k      — FGMRES + BJACOBI + ILU(2)
+            //
+            //  Key fixes vs original:
+            //   - dtol 1e8 → 1e3  (stops silent divergence)
+            //   - rtol 1e-10 → 1e-6  (shift-invert needs ~1e-6, not 1e-11)
+            //   - restart 50 → 100  (5M needs larger Krylov space)
+            //   - ILU levels increased for large problems
+            //   - sub_ksp_type preonly (no inner iterative, just apply ILU)
+            //   - RCM ordering respects B-spline band structure
+
+            PetscCall(KSPSetType(ksp, KSPFGMRES));
+            PetscCall(KSPGMRESSetRestart(ksp, isHuge ? 50 : 100));
+
+            // dtol=1e3 catches divergence early instead of spinning
+            PetscCall(KSPSetTolerances(ksp,
+                      isHuge ? 1e-8 : 1e-10,    // rtol
+                      PETSC_DEFAULT,           // abstol
+                      1e3,                     // dtol  (was 1e8 — dangerous)
+                      isHuge ? 100 : 200));    // maxits
+
+            PetscCall(KSPGetPC(ksp, &pc));
+
+            if (isHuge) {
+                // ── > 10M DOFs ─────────────────────────────────────
+                // Minimal ILU — just enough to help FGMRES direction
+                PetscCall(PCSetType(pc, PCASM));
+                PetscCall(PCASMSetOverlap(pc, 1));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_ksp_type",                    "preonly"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_type",                     "ilu"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_levels",            "1"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_mat_ordering_type", "rcm"));
+
+            } else if (isLarge) {
+                // ILU(4) + RCM + overlap 1 — strongest iterative option
+                // before resorting to direct solve
+                // If still not converging: use -use_direct_solve 1
+                PetscCall(PCSetType(pc, PCASM));
+                PetscCall(PCASMSetOverlap(pc, 1));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_ksp_type",                    "preonly"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_type",                     "ilu"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_levels",            "4"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_mat_ordering_type", "rcm"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_fill",              "20"));
+
+            } else if (isMedium) {
+                // 100k–1M DOFs
+                PetscCall(PCSetType(pc, PCASM));
+                PetscCall(PCASMSetOverlap(pc, 2));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_ksp_type",                    "preonly"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_type",                     "ilu"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_levels",            "3"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_mat_ordering_type", "rcm"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_fill",              "15"));
+
+            } else {
+                // < 100k DOFs
+                PetscCall(PCSetType(pc, PCBJACOBI));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_ksp_type",                    "preonly"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_type",                     "ilu"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_levels",            "2"));
+                PetscCall(PetscOptionsSetValue(PETSC_NULLPTR,
+                          "-sub_pc_factor_mat_ordering_type", "rcm"));
+            }
         }
-    }
 
 
-    PetscCall(KSPSetFromOptions(ksp));
-    PetscCall(PCSetFromOptions(pc));
-    PetscCall(STSetFromOptions(st));
-    // The B-spline overlap matrix becomes very ill-conditioned at high degree
-    // (3D, p >= 7). x^H M x then carries a rounding-level imaginary part that
-    // exceeds SLEPc's default definiteness check (~10 eps) although M is
-    // symmetric positive definite by construction, and the solve aborts with
-    // "inner product is not well defined". A relative tolerance of 1e-10 is
-    // still strict; the eigenpairs are validated by their residuals.
-    // Overridable with -bv_definite_tol.
-    {
-        BV bv;
-        PetscCall(EPSGetBV(eps, &bv));
-        PetscCall(BVSetDefiniteTolerance(bv, 1e-10));
-    }
-    PetscCall(EPSSetFromOptions(eps));
-
-
-    PetscInt nbound = TDSEZParser::NBoundStates;  // = 21
-
-    PetscCall(EPSMonitorSet(eps,
-        [](EPS, PetscInt its, PetscInt nconv,
-        PetscScalar *, PetscScalar *,
-        PetscReal *errest, PetscInt nest, void* ctx) -> PetscErrorCode
+        PetscCall(KSPSetFromOptions(ksp));
+        PetscCall(PCSetFromOptions(pc));
+        PetscCall(STSetFromOptions(st));
+        // The B-spline overlap matrix becomes very ill-conditioned at high degree
+        // (3D, p >= 7). x^H M x then carries a rounding-level imaginary part that
+        // exceeds SLEPc's default definiteness check (~10 eps) although M is
+        // symmetric positive definite by construction, and the solve aborts with
+        // "inner product is not well defined". A relative tolerance of 1e-10 is
+        // still strict; the eigenpairs are validated by their residuals.
+        // Overridable with -bv_definite_tol.
         {
-            PetscFunctionBegin;
-            PetscInt  nbound = *static_cast<PetscInt*>(ctx);
-            static PetscInt prev_nconv = 0;
-            PetscInt  delta = nconv - prev_nconv;
-            prev_nconv = nconv;
-            (void)errest; (void)nest;
-            PetscPrintf(PETSC_COMM_WORLD,
-                "      EPS  it=%-4d  nconv=%4d/%-7d  (%5.1f%%)  Δconv=%+4d\n",
-                (int)its, (int)nconv, (int)nbound,
-                100.0 * nconv / nbound,
-                (int)delta);
-            PetscFunctionReturn(PETSC_SUCCESS);
-        },
-        &nbound, PETSC_NULLPTR));
+            BV bv;
+            PetscCall(EPSGetBV(eps, &bv));
+            PetscCall(BVSetDefiniteTolerance(bv, 1e-10));
+        }
+        PetscCall(EPSSetFromOptions(eps));
 
-    PetscCall(EPSSetUp(eps));
-    info.memKV("After factorization / setup");
 
-    if (useDirect) 
-    {
-        Mat F;
-        PetscCall(KSPGetPC(ksp, &pc));
-        PetscCall(PCFactorGetMatrix(pc, &F));
-        PetscCall(MatMumpsSetIcntl(F, 14, 20));
-        PetscCall(MatMumpsSetIcntl(F, 28,  2));
-        PetscCall(MatMumpsSetIcntl(F, 29,  2));
-    }
+        PetscInt nbound = TDSEZParser::NBoundStates;  // = 21
 
-    // Solve
-    info.section("SOLVE");
-    info.blank();
-    info.status("◆", "Starting EPSSolve ...");
-    info.blank();
+        PetscCall(EPSMonitorSet(eps,
+            [](EPS, PetscInt its, PetscInt nconv,
+            PetscScalar *, PetscScalar *,
+            PetscReal *errest, PetscInt nest, void* ctx) -> PetscErrorCode
+            {
+                PetscFunctionBegin;
+                PetscInt  nbound = *static_cast<PetscInt*>(ctx);
+                static PetscInt prev_nconv = 0;
+                PetscInt  delta = nconv - prev_nconv;
+                prev_nconv = nconv;
+                (void)errest; (void)nest;
+                PetscPrintf(PETSC_COMM_WORLD,
+                    "      EPS  it=%-4d  nconv=%4d/%-7d  (%5.1f%%)  Δconv=%+4d\n",
+                    (int)its, (int)nconv, (int)nbound,
+                    100.0 * nconv / nbound,
+                    (int)delta);
+                PetscFunctionReturn(PETSC_SUCCESS);
+            },
+            &nbound, PETSC_NULLPTR));
 
-    PetscCall(EPSSolve(eps));
+        PetscCall(EPSSetUp(eps));
+        info.memKV("After factorization / setup");
 
-    info.blank();
-    info.memKV("After solve");
-    info.blank();
+        if (useDirect) 
+        {
+            Mat F;
+            PetscCall(KSPGetPC(ksp, &pc));
+            PetscCall(PCFactorGetMatrix(pc, &F));
+            PetscCall(MatMumpsSetIcntl(F, 14, 20));
+            PetscCall(MatMumpsSetIcntl(F, 28,  2));
+            PetscCall(MatMumpsSetIcntl(F, 29,  2));
+        }
 
-    // ── Results ──────────────────────────────────────────────────────
-    PetscCall(EPSGetConverged(eps, &nconv));
-    EPSConvergedReason reason;
-    PetscInt its;
-    PetscCall(EPSGetConvergedReason(eps, &reason));
-    PetscCall(EPSGetIterationNumber(eps, &its));
-
-    info.section("RESULTS");
-    info.blank();
-    info.kv("Outer iterations",    "%" PetscInt_FMT, its);
-    info.kv("Converged pairs",     "%" PetscInt_FMT " / %" PetscInt_FMT, nconv, nev);
-    info.kv("Stop reason",         "%s",             EPSConvergedReasons[reason]);
-    info.blank();
-
-    if (nconv == 0) 
-    {
-        info.status("ⵀ", "No eigenpairs converged  —  error estimates:");
+        // Solve
+        info.section("SOLVE");
         info.blank();
-        for (PetscInt i = 0; i < PetscMin(nev, (PetscInt)5); i++) 
+        info.status("◆", "Starting EPSSolve ...");
+        info.blank();
+
+        PetscCall(EPSSolve(eps));
+
+        info.blank();
+        info.memKV("After solve");
+        info.blank();
+
+        // ── Results ──────────────────────────────────────────────────────
+        PetscCall(EPSGetConverged(eps, &nconv));
+        EPSConvergedReason reason;
+        PetscInt its;
+        PetscCall(EPSGetConvergedReason(eps, &reason));
+        PetscCall(EPSGetIterationNumber(eps, &its));
+
+        info.section("RESULTS");
+        info.blank();
+        info.kv("Outer iterations",    "%" PetscInt_FMT, its);
+        info.kv("Converged pairs",     "%" PetscInt_FMT " / %" PetscInt_FMT, nconv, nev);
+        info.kv("Stop reason",         "%s",             EPSConvergedReasons[reason]);
+        info.blank();
+
+        if (nconv == 0) 
         {
-            PetscReal errest;
-            PetscCall(EPSGetErrorEstimate(eps, i, &errest));
-            char lbl[48];
-            snprintf(lbl, sizeof(lbl), "  pair %" PetscInt_FMT " residual", i);
-            info.kv(lbl, "%.3e", (double)errest);
+            info.status("ⵀ", "No eigenpairs converged  —  error estimates:");
+            info.blank();
+            for (PetscInt i = 0; i < PetscMin(nev, (PetscInt)5); i++) 
+            {
+                PetscReal errest;
+                PetscCall(EPSGetErrorEstimate(eps, i, &errest));
+                char lbl[48];
+                snprintf(lbl, sizeof(lbl), "  pair %" PetscInt_FMT " residual", i);
+                info.kv(lbl, "%.3e", (double)errest);
+            }
+            info.blank();
+            info.footer();
+            MPI_Abort(PETSC_COMM_WORLD, 1);
+        }
+
+        // Reproducible eigenpairs: whole degenerate shells, canonical basis inside
+        // each shell, fixed phases. Every later use reads eigVecs / eigVals.
+        PetscCall(TDSEZCanonicalEigenpairs(eps, iga, M, nev, eigVecs, eigVals));
+        nconv = (PetscInt)eigVecs.size();
+
+        // Print converged eigenvalues
+        info.status("ⵣ", "Eigenvalues (converged):");
+        info.blank();
+        for (PetscInt i = 0; i < nconv; i++) {
+            PetscScalar eigr = eigVals[i];
+            PetscReal   errest;
+            PetscCall(TDSEZRelResidual(H, M, eigVecs[i], eigVals[i], &errest));
+            char lbl[48], val[80];
+            snprintf(lbl, sizeof(lbl), "  E[%" PetscInt_FMT "]", i);
+            snprintf(val, sizeof(val), "%s a.u. | %s eV  (rtol: %.2e)",
+                     TDSEZ_fmtAu((double)PetscRealPart(eigr)).c_str(),
+                     TDSEZ_fmtEv((double)PetscRealPart(eigr)).c_str(), (double)errest);
+            info.kv(lbl, "%s", val);
         }
         info.blank();
-        info.footer();
-        MPI_Abort(PETSC_COMM_WORLD, 1);
-    }
 
-    // Reproducible eigenpairs: whole degenerate shells, canonical basis inside
-    // each shell, fixed phases. Every later use reads eigVecs / eigVals.
-    PetscCall(TDSEZCanonicalEigenpairs(eps, iga, M, nev, eigVecs, eigVals));
-    nconv = (PetscInt)eigVecs.size();
-
-    // Print converged eigenvalues
-    info.status("ⵣ", "Eigenvalues (converged):");
-    info.blank();
-    for (PetscInt i = 0; i < nconv; i++) {
-        PetscScalar eigr = eigVals[i];
-        PetscReal   errest;
-        PetscCall(TDSEZRelResidual(H, M, eigVecs[i], eigVals[i], &errest));
-        char lbl[48], val[80];
-        snprintf(lbl, sizeof(lbl), "  E[%" PetscInt_FMT "]", i);
-        snprintf(val, sizeof(val), "%s a.u. | %s eV  (rtol: %.2e)",
-                 TDSEZ_fmtAu((double)PetscRealPart(eigr)).c_str(),
-                 TDSEZ_fmtEv((double)PetscRealPart(eigr)).c_str(), (double)errest);
-        info.kv(lbl, "%s", val);
     }
-    info.blank();
 
     // Extract initial state
     //   mode 0/1 -> single converged eigenstate (ground or state:N)
@@ -964,7 +977,8 @@ if (useDirect) {
         }
         info.blank();
     } else if (TDSEZParser::InitialStateMode == 3 ||
-               TDSEZParser::InitialStateMode == 4) {
+               TDSEZParser::InitialStateMode == 4 ||
+               TDSEZParser::InitialStateMode == 5) {
         // These states are analytic; neither is constructed from EPS vectors.
         // Assemble b_i = integral N_i(x) psi_exact(x,0) dx, then solve M c=b.
         const PetscBool quesne = TDSEZParser::InitialStateMode == 3;
@@ -994,6 +1008,17 @@ if (useDirect) {
             const PetscReal phi1 = c1 * common * (alpha + 1.0 - z);
             return (phi0 + phi1) / PetscSqrtReal(2.0);
         };
+        // Gaussian wave packet, normalised in the continuum (InitialState = wavepacket)
+        auto wavepacket = [](const PetscReal *x) -> PetscScalar {
+            PetscScalar v = 1.0;
+            for (PetscInt d = 0; d < TDSEZParser::Dimension; ++d) {
+                const PetscReal w = TDSEZParser::WavepacketWidth[d];
+                const PetscReal u = x[d] - TDSEZParser::WavepacketCenter[d];
+                v *= PetscPowReal(2.0 * PETSC_PI * w * w, -0.25) *
+                     PetscExpScalar(PetscCMPLX(-u * u / (4.0 * w * w), TDSEZParser::WavepacketMomentum[d] * x[d]));
+            }
+            return v;
+        };
         Vec rhs = PETSC_NULLPTR;
         PetscCall(IGACreateVec(iga, &rhs));
         PetscCall(VecSet(rhs, 0.0));
@@ -1006,7 +1031,8 @@ if (useDirect) {
             PetscCall(PetscArrayzero(local, element->nen));
             PetscCall(IGAElementBeginPoint(element, &point));
             while (IGAElementNextPoint(element, point)) {
-                const PetscScalar value = psiExact(point->point[0]);
+                const PetscScalar value = (TDSEZParser::InitialStateMode == 5)
+                                        ? wavepacket(point->point) : psiExact(point->point[0]);
                 const PetscReal weight = point->weight[0] * point->detJac[0];
                 for (PetscInt i = 0; i < point->nen; ++i)
                     local[i] += weight * point->shape[0][i] * value;
@@ -1051,8 +1077,9 @@ if (useDirect) {
         PetscCall(MatMult(M, initialPsi, Mpsi));
         PetscCall(VecDot(Mpsi, initialPsi, &nrm2));
         PetscCall(VecDestroy(&Mpsi));
-        info.status("ⵣ", quesne ? "Analytic Quesne n=0,1 state projected into spline basis"
-                                 : "Analytic mass-step n=0,1 state projected into spline basis");
+        info.status("ⵣ", TDSEZParser::InitialStateMode == 5 ? "Gaussian wave packet projected into spline basis"
+                         : quesne ? "Analytic Quesne n=0,1 state projected into spline basis"
+                                  : "Analytic mass-step n=0,1 state projected into spline basis");
         info.kv("  projection KSP iterations", "%" PetscInt_FMT, projectionIts);
         info.kv("  projection residual", "%.3e", (double)projectionResidual);
         info.kv("  ||psi||_M (before)", "%.12f", (double)nrm);

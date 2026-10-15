@@ -1,5 +1,7 @@
 #include "tdsez_logo.hpp"
 #include "tdsez_internal.hpp"
+#include "tdsez_tsurff.hpp"
+#include <memory>
 
 /**
  * @file tdsez.cpp
@@ -143,7 +145,7 @@ int main(int argc, char *argv[])
         markPhase(TDSEZProfile::Eigensolve);
         if (TDSEZ.initialPsi) PetscCallAbort(PETSC_COMM_WORLD, VecGetSize(TDSEZ.initialPsi, &reportDofs));
 
-        PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Output());
+        if (TDSEZParser::NBoundStates > 0) PetscCallAbort(PETSC_COMM_WORLD, TDSEZ.Output());
         markPhase(TDSEZProfile::StaticOutput);
 
         // Decide whether the dipole operator assembler must be built. It is
@@ -241,7 +243,19 @@ int main(int argc, char *argv[])
             PetscCall(PetscLogStagePush(profile.stagePropagation));
             manager.outputFilename = "td/TimeEvolutionData_" + dipPrefix + ".h5";
             TDSEZPropagator propagator(manager);
+            // t-SURFF (TSurff = 1): passive surface-flux observer, separate output file.
+            std::unique_ptr<TDSEZTSurff> tsurff;
+            if (TDSEZParser::TSurff) {
+                tsurff = std::make_unique<TDSEZTSurff>();
+                PetscCall(tsurff->Setup(TDSEZ.iga, TDSEZ.initialPsi));
+                manager.tsurff = tsurff.get();
+            }
             PetscCallAbort(PETSC_COMM_WORLD, propagator.Evolve());
+            if (tsurff) {
+                // Both propagators evolve TDSEZ.initialPsi in place up to FinalTime.
+                PetscCall(tsurff->Finish("td/surff_" + dipPrefix + ".h5", TDSEZParser::FinalTime, TDSEZ.initialPsi));
+                manager.tsurff = PETSC_NULLPTR;
+            }
             PetscCall(PetscLogStagePop());
             markPhase(TDSEZProfile::Propagation);
             propagated = PETSC_TRUE;

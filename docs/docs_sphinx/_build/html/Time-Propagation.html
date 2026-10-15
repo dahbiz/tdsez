@@ -92,6 +92,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#laser-field">Laser Field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#eigensolver-tise">Eigensolver (TISE)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#time-propagation">Time Propagation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Input-File.html#t-surff-photoelectron-spectra">t-SURFF Photoelectron Spectra</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#output-control">Output Control</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#initial-state">Initial State</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Input-File.html#boundary-conditions-and-cap">Boundary Conditions and CAP</a></li>
@@ -147,10 +148,12 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="Initial-State.html#normalization">Normalization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Initial-State.html#common-use-cases">Common Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Initial-State.html#gaussian-wave-packet">Gaussian Wave Packet</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Initial-State.html#requirements">Requirements</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="Examples.html#validated-examples-examples">Validated Examples (<code class="docutils literal notranslate"><span class="pre">examples/</span></code>)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Examples.html#d-systems">1D Systems</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="Examples.html#harmonic-oscillator">Harmonic Oscillator</a></li>
 <li class="toctree-l3"><a class="reference internal" href="Examples.html#d-atomic-ionization">1D Atomic Ionization</a></li>
@@ -174,6 +177,7 @@
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#option-precedence">Option Precedence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#key-cli-flags">Key CLI Flags</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#assembly-and-eigensolver-flags">Assembly and Eigensolver Flags</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#propagation-flags">Propagation Flags</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#petiga-specific-options">PetIGA-Specific Options</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CLI-Flags.html#help-and-diagnostics">Help and Diagnostics</a></li>
 </ul>
@@ -192,7 +196,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#silent-all-zero-autocorrelation">Silent All-Zero Autocorrelation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#bdd-current-not-conserved">“BDD Current: NOT CONSERVED”</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#segmentation-fault-during-propagation">Segmentation Fault During Propagation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-tip">Performance Tip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Troubleshooting.html#performance-in-3d">Performance in 3D</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Boundary-Conditions.html">Boundary Conditions</a><ul>
@@ -219,6 +223,7 @@
 <li class="toctree-l3"><a class="reference internal" href="HDF5-Output.html#autocorrelation">Autocorrelation</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#t-surff-spectra">t-SURFF Spectra</a></li>
 <li class="toctree-l2"><a class="reference internal" href="HDF5-Output.html#eigenstate-data">Eigenstate Data</a></li>
 </ul>
 </li>
@@ -230,6 +235,21 @@
 <li class="toctree-l2"><a class="reference internal" href="Observables.html#autocorrelation">Autocorrelation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Observables.html#berry-phase">Berry Phase</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Observables.html#populations">Populations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="TSurff.html">Photoelectron Spectra (t-SURFF)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#method">Method</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#input-keys">Input Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#output-td-surff-input-h5">Output: <code class="docutils literal notranslate"><span class="pre">td/surff_&lt;input&gt;.h5</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-1-free-wave-packet-analytic-benchmark">Example 1: free wave packet (analytic benchmark)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#example-2-above-threshold-ionisation-of-a-1d-atom">Example 2: above-threshold ionisation of a 1D atom</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TSurff.html#choosing-the-parameters">Choosing the parameters</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="HHG.html">Simulating HHG Correctly</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#worked-example">Worked Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#the-spectrum">The Spectrum</a></li>
+<li class="toctree-l2"><a class="reference internal" href="HHG.html#checklist">Checklist</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Physics-Conventions.html">Physics Conventions</a><ul>
@@ -303,15 +323,33 @@ The propagation integrates the TDSE using PETSc’s time-stepping framework.</p>
 </section>
 <section id="time-stepper">
 <h2>Time Stepper<a class="headerlink" href="#time-stepper" title="Link to this heading"></a></h2>
-<p>TDSE-Z uses the PETSc TS framework with <strong>Crank-Nicolson (theta = 0.5)</strong> as the
-implicit time-stepper. The method is unitary (norm-preserving) and second-order
-accurate.</p>
-<p>The residual at each step is evaluated as:</p>
+<p><code class="docutils literal notranslate"><span class="pre">Propagator</span></code> selects the scheme; all are unitary for a Hermitian
+Hamiltonian:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cn</span></code> (default): Crank-Nicolson (PETSc TS, <span class="math notranslate nohighlight">\(\theta = 1/2\)</span>), second
+order, one sparse solve per step.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pade22</span></code>: exponential midpoint rule with a Pade(2,2) exponential, fourth
+order in the field-free phase, two solves per step.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">magnus4</span></code>: commutator-free fourth-order Magnus with Pade(2,2) exponentials,
+four solves per step.</p></li>
+</ul>
+<p>The Galerkin equation of motion is</p>
 <div class="math notranslate nohighlight">
 \begin{equation}
-F = iM \frac{\partial \psi}{\partial t} - H\psi - E(t)D\psi = 0
-\end{equation}</div><p>where M is the mass matrix, H is the Hamiltonian, E(t) is the laser field, and D
-is the dipole operator.</p>
+iM \frac{d c}{d t} = \big(H + s\,\mathbf E(t)\cdot\mathbf D\big)c ,
+\qquad s = -q ,
+\end{equation}</div><p>with the mass matrix <span class="math notranslate nohighlight">\(M\)</span>, the Hamiltonian <span class="math notranslate nohighlight">\(H\)</span> (kinetic, potential
+and CAP) and the dipole matrices <span class="math notranslate nohighlight">\(\mathbf D\)</span>.</p>
+<p>Each linear system is solved with right-preconditioned GMRES to a relative
+residual of <span class="math notranslate nohighlight">\(10^{-12}\)</span>, preconditioned by restricted additive Schwarz
+with one subdomain per rank and ILU(0) on each subdomain. The
+preconditioner is built once and reused. <code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">n</span></code> changes the
+fill level; in our tests ILU(1) saved at most one iteration in 2D and none in
+3D, where its factorisation is about 10 times slower (degree 4).</p>
+<p>The rational propagators reach a given accuracy with a much larger step: on
+the free-packet t-SURFF benchmark (<a class="reference internal" href="TSurff.html"><span class="doc">Photoelectron Spectra (t-SURFF)</span></a>, T = 40) <code class="docutils literal notranslate"><span class="pre">pade22</span></code> at
+<span class="math notranslate nohighlight">\(\Delta t = 0.025\)</span> reaches a spectrum error of <span class="math notranslate nohighlight">\(1.2\times10^{-6}\)</span>
+against <span class="math notranslate nohighlight">\(3.3\times10^{-4}\)</span> for <code class="docutils literal notranslate"><span class="pre">cn</span></code> at <span class="math notranslate nohighlight">\(\Delta t = 0.0125\)</span>.</p>
 </section>
 <section id="choosing-a-time-step">
 <h2>Choosing a Time Step<a class="headerlink" href="#choosing-a-time-step" title="Link to this heading"></a></h2>

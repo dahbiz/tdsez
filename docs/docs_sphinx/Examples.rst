@@ -10,6 +10,20 @@ capabilities of TDSE-Z.
 
 
 
+Validated Examples (``examples/``)
+----------------------------------
+
+These decks are in the repository and their results are checked in the
+documentation:
+
+- ``examples/hhg/hhg_1d.inp`` + ``hhg_spectrum.py`` — high-harmonic generation
+  from a 1D soft-core atom, spectrum from the acceleration, current and dipole;
+  see :doc:`HHG`.
+- ``examples/tsurff/free_packet_1d.inp`` — t-SURFF against the analytic free
+  wave packet in a laser pulse (error 3e-5); see :doc:`TSurff`.
+- ``examples/tsurff/ati_1d.inp`` + ``plot_tsurff.py`` — above-threshold
+  ionisation spectrum with t-SURFF; see :doc:`TSurff`.
+
 1D Systems
 ----------
 

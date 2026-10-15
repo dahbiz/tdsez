@@ -198,6 +198,21 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"ParticleCharge", R(Q)},     // intuitive alias
                 {"MassIsConstant", B(MassIsConstant)},
                 {"ObserveAllAxes", B(ObserveAllAxes)},
+                // t-SURFF (only computed with TSurff = 1) and the wave-packet initial state
+                {"TSurff",            B(TSurff)},
+                {"SurffRadius",       R(SurffRadius)},
+                {"SurffKmax",         H{[](const std::string &v){ ParseAxisList(v, SurffKmax); }}},
+                {"SurffKmin",         H{[](const std::string &v){ ParseAxisList(v, SurffKmin); SurffKminSet = PETSC_TRUE; }}},
+                {"SurffNk",           H{[](const std::string &v){ ParseAxisList(v, SurffNk); }}},
+                {"SurffMomenta",      S(SurffMomenta)},
+                {"OutputStrideSurff", I(OutputStrideSurff)},
+                {"SurffQuadrature",   I(SurffQuadrature)},
+                {"SurffMassTolerance",      R(SurffMassTolerance)},
+                {"SurffPotentialTolerance", R(SurffPotentialTolerance)},
+                {"SurffInterior",     B(SurffInterior)},
+                {"WavepacketCenter",   H{[](const std::string &v){ ParseAxisList(v, WavepacketCenter); }}},
+                {"WavepacketMomentum", H{[](const std::string &v){ ParseAxisList(v, WavepacketMomentum); }}},
+                {"WavepacketWidth",    H{[](const std::string &v){ ParseAxisList(v, WavepacketWidth); }}},
 
                 // --- solver ---
                 {"TargetEigenvalue", R(TargetEigenvalue)},
@@ -317,12 +332,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
             std::string l = v; for (auto &c : l) c = (char)std::tolower((unsigned char)c);
             return l.empty() || l == "custom"; };
         static const std::unordered_map<std::string, Removed> removed = {
-            {"TSurff",            {"t-SURFF has been removed", never}},
-            {"SurffNk",           {"t-SURFF has been removed", never}},
-            {"SurffKmax",         {"t-SURFF has been removed", never}},
-            {"OutputStrideSurff", {"t-SURFF has been removed", never}},
-            {"SurffCouplingSign", {"t-SURFF has been removed", never}},
-            {"SurffRadius",       {"t-SURFF has been removed", never}},
+            {"SurffCouplingSign", {"the coupling sign of t-SURFF follows Charge", never}},
             {"EnvelopeType",      {"the pulse envelope is written in the field expression (LaserX/Y/Z or Laser)", isCustom}},
             {"Envelope",          {"the pulse envelope is written in the field expression (LaserX/Y/Z or Laser)", never}},
             {"Hbar",              {"TDSE-Z works in atomic units (hbar = 1)", isOne}},
