@@ -127,6 +127,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#preconditioners">Preconditioners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#accuracy-of-the-rational-propagators">Accuracy of the Rational Propagators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
@@ -330,9 +332,11 @@ you expect output.</p>
 <h2>Performance in 3D<a class="headerlink" href="#performance-in-3d" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p><strong>Assembly</strong>: a constant <code class="docutils literal notranslate"><span class="pre">Mass</span></code> expression is detected automatically
-(<code class="docutils literal notranslate"><span class="pre">MassIsConstant</span></code>) and uses the fast assembly. A position-dependent mass
-computes finite-difference derivatives of 1/m at every quadrature point,
-which dominates the 3D operator assembly.</p></li>
+(<code class="docutils literal notranslate"><span class="pre">MassIsConstant</span></code>). A position-dependent mass uses the same fast
+(sum-factorised) assembly with the discrete acceleration (the default); only
+<code class="docutils literal notranslate"><span class="pre">AccelerationMethod</span> <span class="pre">=</span> <span class="pre">operator</span></code> with a varying mass needs the slow per-point
+path, for the finite-difference mass-gradient corrections of the force
+matrices.</p></li>
 <li><p><strong>Eigensolver</strong>: shift-invert near the bottom of a gapless spectrum (free or
 nearly free carriers) converges slowly, and the 3D direct factorisation is
 memory-bound. With an analytic initial state use <code class="docutils literal notranslate"><span class="pre">NBoundStates</span> <span class="pre">=</span> <span class="pre">0</span></code>.</p></li>

@@ -526,6 +526,7 @@ set(TDSEZ_SOURCES
     src/assembly/assembly.cpp
     src/assembly/sumfact.cpp
     src/assembly/band.cpp
+    src/assembly/cap.cpp
     src/assembler_class.cpp
     src/core_knots.cpp
     src/core.cpp

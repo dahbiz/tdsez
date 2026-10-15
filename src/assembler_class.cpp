@@ -111,7 +111,27 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
 
     if (TDSEZParser::EnableCAP)
     {
-        TDSEZAssembleMatrixTimed(iga, &CAP, TDSEZformCap, "Absorbing CAP");
+        {
+            PetscLogDouble t0, t1;
+            PetscTime(&t0);
+            TDSEZAssembleSeparableCAP(iga, &CAP);
+            PetscTime(&t1);
+            PetscPrintf(PETSC_COMM_WORLD, "      %-20s : %7.4f sec\n", "Absorbing CAP", t1 - t0);
+            // -tdsez_cap_check: compare with the element-kernel assembly
+            PetscBool check = PETSC_FALSE;
+            PetscOptionsGetBool(NULL, NULL, "-tdsez_cap_check", &check, NULL);
+            if (check) {
+                Mat ref = PETSC_NULLPTR;
+                PetscReal diff = 0, scale = 0;
+                TDSEZAssembleMatrixTimed(iga, &ref, TDSEZformCap, "CAP (element check)");
+                MatNorm(ref, NORM_INFINITY, &scale);
+                MatAXPY(ref, -1.0, CAP, SAME_NONZERO_PATTERN);
+                MatNorm(ref, NORM_INFINITY, &diff);
+                PetscPrintf(PETSC_COMM_WORLD, "      CAP check: max row-sum difference %.3e (relative %.3e)\n",
+                            (double)diff, (double)(diff / PetscMax(scale, (PetscReal)1e-300)));
+                MatDestroy(&ref);
+            }
+        }
 
         // ── CAP absorption-region diagnostic (printed before propagation) ──
         // Mirrors TDSEZformCap: a Manolopoulos layer of width w = c/(2 delta kmin)

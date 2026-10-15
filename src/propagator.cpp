@@ -39,7 +39,7 @@ static PetscErrorCode TDSEZCNPostStep(TS ts)
 
 /// @brief Construct the TDSEZPropagator. Activates the complex absorbing
 ///        potential (CAP) by adding it to the Hamiltonian, creates work
-///        matrices (Ht = copy of H, J_ = sparsity clone of H).
+///        the CAP is merged into H and destroyed.
 /// @param manager  Reference to the TDSEZManager owning the operators and
 ///                 callback pointers.
 TDSEZPropagator::TDSEZPropagator(TDSEZManager &manager) : tdse_(*manager.getCore()), manager_(manager)
@@ -56,11 +56,8 @@ TDSEZPropagator::TDSEZPropagator(TDSEZManager &manager) : tdse_(*manager.getCore
         manager.setCAP(PETSC_NULLPTR);
         manager.getAssembler()->CAP = PETSC_NULLPTR;
     }
-    // create work vectors and copy matrices
-    Mat Ht = PETSC_NULLPTR;
-    MatDuplicate(manager.H(), MAT_COPY_VALUES, &Ht);  // Ht = H0
-    manager.setHt(Ht);
-    MatDuplicate(manager.H(), MAT_DO_NOT_COPY_VALUES, &J_);
+    // The Crank-Nicolson Jacobian J_ is created in Evolve(), only when the
+    // TS path runs (the rational propagators use their own stage matrices).
 
     PetscFunctionReturnVoid();
 }
@@ -98,6 +95,7 @@ PetscErrorCode TDSEZPropagator::Evolve()
     ierr = TSSetExactFinalTime(ts_, TS_EXACTFINALTIME_MATCHSTEP); CHKERRQ(ierr);
 
     ierr = TSSetIFunction(ts_, PETSC_NULLPTR, manager_.TDSEZIFunctionPtr, &manager_); CHKERRQ(ierr);
+    if (!J_) PetscCall(MatDuplicate(manager_.H(), MAT_DO_NOT_COPY_VALUES, &J_));
     ierr = TSSetIJacobian(ts_, J_, J_, manager_.TDSEZIJacobianPtr, &manager_); CHKERRQ(ierr);
 
     // Jacobian structure fixed
@@ -163,15 +161,21 @@ PetscErrorCode TDSEZPropagator::Evolve()
     // <x>(t); right preconditioning brings these to ~1e-14 at the same cost.
     ierr = KSPSetPCSide(ksp, PC_RIGHT); CHKERRQ(ierr);
 
-    if (TDSEZParser::Preconditioner == "mg") {
-        // Geometric B-spline multigrid; flexible GMRES keeps the full operator
-        // and the 1e-12 tolerance. The Galerkin coarse operators are built at
-        // the first solve (J is filled then) and reused like the ASM factors.
+    if (TDSEZParser::Preconditioner != "asm") {
+        // Geometric B-spline multigrid (mg) or PETSc algebraic multigrid
+        // (gamg); flexible GMRES keeps the full operator and the 1e-12
+        // tolerance. The coarse levels are built at the first solve (J is
+        // filled then) and reused like the ASM factors.
         PetscInt levels = 0;
         PetscCall(KSPSetType(ksp, KSPFGMRES));
         PetscCall(KSPGMRESSetRestart(ksp, restart));
-        PetscCall(TDSEZSetupMultigrid(tdse_.iga, pc, &levels));
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner: geometric B-spline multigrid, %d levels\n", (int)levels));
+        if (TDSEZParser::Preconditioner == "mg") {
+            PetscCall(TDSEZSetupMultigrid(tdse_.iga, pc, &levels));
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner: geometric B-spline multigrid, %d levels\n", (int)levels));
+        } else {
+            PetscCall(PCSetType(pc, PCGAMG));
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner: PETSc algebraic multigrid (GAMG)\n"));
+        }
         PetscCall(TSSetFromOptions(ts_));
         PetscCall(TSSetUp(ts_));
         PetscCall(TSSetPostStep(ts_, TDSEZCNPostStep));
@@ -281,13 +285,14 @@ static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix,
     PetscCall(KSPSetPCSide(ksp, PC_RIGHT));
     PetscCall(KSPSetReusePreconditioner(ksp, PETSC_TRUE));
     PetscCall(KSPGetPC(ksp, &pc));
-    if (TDSEZParser::Preconditioner == "mg") {
+    if (TDSEZParser::Preconditioner != "asm") {
         // flexible GMRES: the outer solve keeps the full operator and its
         // tolerance whatever the multigrid cycle does
         PetscInt levels = 0;
         PetscCall(KSPSetType(ksp, KSPFGMRES));
         PetscCall(KSPGMRESSetRestart(ksp, rows > 100000 ? 50 : 30));
-        PetscCall(TDSEZSetupMultigrid(iga, pc, &levels));
+        if (TDSEZParser::Preconditioner == "mg") PetscCall(TDSEZSetupMultigrid(iga, pc, &levels));
+        else PetscCall(PCSetType(pc, PCGAMG));
         PetscCall(KSPSetFromOptions(ksp));
         PetscCall(KSPSetUp(ksp));
         PetscCall(PCSetUp(pc));

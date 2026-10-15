@@ -80,6 +80,10 @@ Recommendation: set ``PhysicsOutput = population`` to monitor the bound-state
 population, and compare HHG spectra with a larger box or a smaller ``CAPKmin``
 to check that reflections are negligible.
 
+With ``BoundaryType = Dirichlet`` the wall coefficients are fixed to zero; the
+CAP does not couple them (since 2026-10-15; before, the CAP rows of the wall
+coefficients were added to the identity rows of :math:`H`).
+
 Reflecting vs Absorbing Boundaries
 ----------------------------------
 

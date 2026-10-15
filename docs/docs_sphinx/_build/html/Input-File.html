@@ -615,7 +615,7 @@ parentheses where applicable — all aliases are equivalent to the canonical nam
 <tr class="row-even"><td><p>Preconditioner</p></td>
 <td><p>string</p></td>
 <td><p>“asm”</p></td>
-<td><p>Preconditioner of the propagator solves: “asm” (additive Schwarz, ILU(0) subdomains) or “mg” (geometric B-spline multigrid with exact knot-insertion prolongation). Same result, different cost; see Time Propagation.</p></td>
+<td><p>Preconditioner of the propagator solves: “asm” (additive Schwarz, ILU(0) subdomains), “mg” (geometric B-spline multigrid with exact knot-insertion prolongation) or “gamg” (PETSc algebraic multigrid; give it the ASM/ILU smoother options, see Time Propagation). Same result, different cost.</p></td>
 </tr>
 <tr class="row-odd"><td><p>MGLevels</p></td>
 <td><p>int</p></td>

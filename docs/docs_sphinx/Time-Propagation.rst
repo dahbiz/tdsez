@@ -70,6 +70,11 @@ changes the cost, never the result (dipole series agree to :math:`10^{-12}`).
 
 - ``asm`` (default): restricted additive Schwarz, one subdomain per rank with
   ILU(0) (see above).
+- ``gamg``: PETSc algebraic multigrid (smoothed aggregation) inside flexible
+  GMRES. Its default Chebyshev/Jacobi smoothing needs hundreds of iterations on
+  this complex operator; use it with the ASM/ILU(0) smoother,
+  ``-mg_levels_ksp_type richardson -mg_levels_ksp_max_it 1 -mg_levels_pc_type asm
+  -mg_levels_sub_pc_type ilu`` (``benchmarks/preconditioners/run.sh`` does).
 - ``mg``: geometric multigrid on the B-spline space, inside flexible GMRES.
   Coarse levels drop every other simple interior knot of each axis (C0 and
   other repeated knots are kept), so the coarse spaces are nested in the fine
@@ -113,6 +118,10 @@ Measured (iterations per solve, time per step relative to ``asm``):
      - 6-8
      - 4
      - 1.2x
+   * - same, 8 ranks, 40 steps: solve time per step (set-up)
+     - 0.089 s (1.1 s)
+     - 0.158 s (1.7 s)
+     - ``gamg``: 4 its, 0.134 s (5.7 s)
 
 Multigrid needs fewer and more uniform iterations, but on up to 12 ranks of
 one machine each V-cycle costs more than the iterations it saves. It is meant

@@ -251,7 +251,7 @@ Time Propagation
    * - Preconditioner
      - string
      - "asm"
-     - Preconditioner of the propagator solves: "asm" (additive Schwarz, ILU(0) subdomains) or "mg" (geometric B-spline multigrid with exact knot-insertion prolongation). Same result, different cost; see Time Propagation.
+     - Preconditioner of the propagator solves: "asm" (additive Schwarz, ILU(0) subdomains), "mg" (geometric B-spline multigrid with exact knot-insertion prolongation) or "gamg" (PETSc algebraic multigrid; give it the ASM/ILU smoother options, see Time Propagation). Same result, different cost.
    * - MGLevels
      - int
      - 0

@@ -242,6 +242,23 @@ inline PhysicsDerivativesFull TDSEZCompDerivative(
 }
 
 /**
+ * @brief Derivatives of 1/m at x (x as the kernels pass it: 1, 2 or 3
+ *        coordinates): TDSEZCompDerivative(1/MassDist, x, 1e-4), identical values.
+ * @details The batched force kernels of the three axes ask for the same point
+ *          one after another, so the last result is kept per thread; within one
+ *          evaluation 1/m is computed once per distinct stencil point (the
+ *          stencils of permuted index triples share their points).
+ */
+const PhysicsDerivativesFull &TDSEZInvMassDerivatives(const std::vector<PetscReal> &x);
+/// As TDSEZInvMassDerivatives, but zero when the discrete acceleration is used
+/// (the force matrices, the only users, are then not read).
+const PhysicsDerivativesFull &TDSEZForceMassDerivatives(const std::vector<PetscReal> &x);
+
+/// @brief Assemble the CAP from 1D matrices (W = sum_d W_d is separable; see
+///        src/assembly/cap.cpp). Same matrix as the element kernel TDSEZformCap.
+PetscErrorCode TDSEZAssembleSeparableCAP(IGA iga, Mat *CAP);
+
+/**
  * @brief Manolopoulos complex absorbing potential profile.
  * @details Smooth CAP that is zero inside [0, x_max - Δ] and ramps up
  * smoothly to a large value at x_max, avoiding reflections.

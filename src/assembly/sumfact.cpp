@@ -195,19 +195,23 @@ PetscBool SumFactCheck()
 }
 
 /// Sum-factorised TDSEZFormPhyAxes: [K, V, Md] + [D_d, Vel_d, dV_d] per active
-/// axis. Only for a constant mass: the per-axis force kernels then have
-/// exactly zero mass-gradient corrections (finite differences of a constant),
-/// so dV_d is the classical term -B_a (dV/dx_d)(1/m) B_b.
+/// axis. dV_d is the classical term -B_a (dV/dx_d)(1/m) B_b, which is what the
+/// per-axis force kernels compute when their mass-gradient corrections vanish:
+/// for a constant mass (finite differences of a constant), or when the discrete
+/// acceleration is used (the force matrices are then not read, and the kernels
+/// skip the corrections). K, Md and Vel take 1/m at every quadrature point, so
+/// a position-dependent mass is handled exactly.
 bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsigned need)
 {
     const PetscInt dim = e->dim;
     if (dim < 2 || dim > 3 || e->dof != 1 || e->geometry || e->rational) return false;
-    // MassIsConstant = 1 in the input, and the mass expression really has no
-    // x/y/z dependence (the per-axis force kernels compute the corrections
-    // from the expression itself, whatever the flag says).
-    if (TDSEZParser::MassIsConstant != PETSC_TRUE) return false;
-    try { if (!TDSEZParser::MassExpr.GetUsedVar().empty()) return false; }
-    catch (const mu::Parser::exception_type &) { return false; }
+    if (!TDSEZDiscreteAccelerationActive()) {
+        // operator-form acceleration: only a truly constant mass (MassIsConstant
+        // and no x/y/z in the expression) has vanishing force corrections
+        if (TDSEZParser::MassIsConstant != PETSC_TRUE) return false;
+        try { if (!TDSEZParser::MassExpr.GetUsedVar().empty()) return false; }
+        catch (const mu::Parser::exception_type &) { return false; }
+    }
     PetscInt nexp = 3;
     for (int d = 0; d < 3; ++d) if (TDSEZPhyAxesOn[d]) { if (d >= dim) return false; nexp += 3; }
     if (nexp != nmat) return false;

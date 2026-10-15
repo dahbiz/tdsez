@@ -111,6 +111,46 @@ $`1.7`$–$`2.3\times`$ faster.
   not pay off yet; it is meant for large rank counts where one-level ASM, having
   no coarse space, degrades. ASM stays the default.
 
+## 1c. Algebraic multigrid, memory, CAP and variable-mass assembly
+
+* **GAMG** (`Preconditioner = gamg`): with PETSc's default Chebyshev/Jacobi
+  smoothing 218–279 iterations (2D) — unusable on this complex operator. With
+  the ASM/ILU(0) smoother: 3D $`p=3`$, 110k DOFs, 8 ranks, 40 CN steps:
+
+  | | its | set-up | solve / step | wall / step |
+  |---|---|---|---|---|
+  | asm | 7.0 | 1.1 s | 0.089 s | 0.835 s |
+  | mg | 4.0 | 1.7 s | 0.158 s | 0.982 s |
+  | gamg | 4.0 | 5.7 s | 0.134 s | 1.069 s |
+
+  No speed-up on one node; see `benchmarks/preconditioners` for the cluster test.
+* **Memory.** The 3D observables ran 6× slower per mat-vec than the propagation
+  (5.3 against 33 GFlop/s, same flops) because the run was paging: about 15
+  stored operators at 114 MB per rank each. The unused copy `Ht` of H is gone,
+  the Crank–Nicolson Jacobian is only created for `cn`, and the monitor frees
+  `K` (no CAP: $`K\psi = H\psi - V\psi`$) and `Md` (constant mass: $`M/m`$) after
+  checking the identities on the first step. 3D benchmark: 1797 → 1642 MB per
+  rank, 0.835 → 0.746 s per step, outputs identical to $`10^{-15}`$.
+* **Separable CAP.** $`W(\mathbf r)=\sum_d W_d(x_d)`$ on a tensor rule, so the CAP
+  matrix is $`-i\sum_d W_d\otimes\prod_{e\ne d}M_e`$ of 1D matrices built from
+  PetIGA's 1D quadrature tables, filled row by row (no element loop over the
+  free core). 3D, 8 ranks: 3.30 s → 0.053 s; equal to the element assembly to
+  $`7\times10^{-16}`$ (`-tdsez_cap_check`).
+* **Variable-mass assembly.** With a position-dependent mass the
+  time-dependent operators were built point by point: twelve dense element
+  matrices accumulated at every quadrature point, plus finite-difference
+  derivatives of $`1/m`$ for the mass-gradient corrections of the force
+  matrices. Those corrections are used only by the operator-form acceleration;
+  with the discrete form (the default for a varying mass) the force matrices are
+  never read. In that case the sum-factorised path, which already takes $`1/m`$
+  at every quadrature point for K, Md and the velocities, is now used, and the
+  unused force matrices are freed. The remaining per-point kernels use real
+  arithmetic (bit-identical) and share one memoised derivative evaluation per
+  point. 3D variable mass, $`p=4`$, 16$`^3`$ elements, 8 ranks: operator assembly
+  68.6 s → 2.1 s, run 73.6 s → 6.1 s; element matrices equal to the per-point
+  kernels to $`2\times10^{-15}`$ (`-tdsez_sumfact_check`), outputs equal to
+  run-to-run noise.
+
 ## 2. Fourth-order propagators (`Propagator = pade22 | magnus4`)
 
 Both use the $`(2,2)`$ Padé approximant of the step exponential,

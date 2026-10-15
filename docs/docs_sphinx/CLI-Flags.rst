@@ -84,6 +84,10 @@ Propagation Flags
    * - Flag
      - Type
      - Description
+   * - ``-tdsez_cap_check``
+     - flag
+     - Also assemble the CAP with the element kernel and print the largest
+       difference to the separable assembly (diagnostic).
    * - ``-tdsez_ilu_levels <n>``
      - int
      - ILU fill level of the ASM subdomain preconditioner of every propagator

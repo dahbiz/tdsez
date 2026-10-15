@@ -56,9 +56,11 @@ Performance in 3D
 -----------------
 
 - **Assembly**: a constant ``Mass`` expression is detected automatically
-  (``MassIsConstant``) and uses the fast assembly. A position-dependent mass
-  computes finite-difference derivatives of 1/m at every quadrature point,
-  which dominates the 3D operator assembly.
+  (``MassIsConstant``). A position-dependent mass uses the same fast
+  (sum-factorised) assembly with the discrete acceleration (the default); only
+  ``AccelerationMethod = operator`` with a varying mass needs the slow per-point
+  path, for the finite-difference mass-gradient corrections of the force
+  matrices.
 - **Eigensolver**: shift-invert near the bottom of a gapless spectrum (free or
   nearly free carriers) converges slowly, and the 3D direct factorisation is
   memory-bound. With an analytic initial state use ``NBoundStates = 0``.

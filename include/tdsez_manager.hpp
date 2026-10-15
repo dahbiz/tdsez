@@ -60,7 +60,6 @@ class TDSEZManager
     Mat m_dVdx = PETSC_NULLPTR, m_dVdy = PETSC_NULLPTR, m_dVdz = PETSC_NULLPTR; ///< -∇V components
     Mat m_Md = PETSC_NULLPTR;  ///< mass-derivative operator (energy/dipole diagnostics)
     Mat m_CAP = PETSC_NULLPTR; ///< complex absorbing potential (consumed by propagator)
-    Mat m_Ht  = PETSC_NULLPTR; ///< transient H copy used inside the TS step
     Mat m_Lz  = PETSC_NULLPTR; ///< angular-momentum operator (2D degeneracy split; NULL in 3D)
     Vec m_psi0 = PETSC_NULLPTR; ///< initial state |ψ(0)⟩ (for autocorrelation)
     /// @}
@@ -82,7 +81,6 @@ class TDSEZManager
     Mat       dVdz()  const { return m_dVdz; }  ///< -dV/dz
     Mat       Md()    const { return m_Md; }    ///< mass-derivative operator
     Mat       CAP()   const { return m_CAP; }   ///< complex absorbing potential
-    Mat       Ht()    const { return m_Ht; }    ///< transient H copy inside TS step
     Mat       Lz()    const { return m_Lz; }    ///< angular momentum (2D only)
     Vec       psi0()  const { return m_psi0; }  ///< initial state |ψ(0)⟩
     /// @}
@@ -91,7 +89,6 @@ class TDSEZManager
     /// @{
     void setCAP(Mat c)  { m_CAP  = c; }  ///< Set the CAP matrix.
     void setPsi0(Vec p) { m_psi0 = p; }  ///< Set the initial state vector.
-    void setHt(Mat h)   { m_Ht   = h; }  ///< Set the transient H copy.
     /// @}
     /// t-SURFF observer sampled by the monitors (not owned; null unless TSurff = 1).
     TDSEZTSurff *tsurff = PETSC_NULLPTR;

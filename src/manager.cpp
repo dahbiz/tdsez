@@ -456,6 +456,13 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
                 PetscViewerHDF5PushTimestepping(ACViewer);
             }
 
+            // The force matrices dV/dx_d feed only the operator-form
+            // acceleration; with the discrete form they are never read.
+            if (TDSEZDiscreteAccelerationActive()) {
+                MatDestroy(&assembler_->dVdx); MatDestroy(&assembler_->dVdy); MatDestroy(&assembler_->dVdz);
+                m_dVdx = m_dVdy = m_dVdz = PETSC_NULLPTR;
+            }
+
             // Final Housekeeping
             inputFile = core_->inputFile;
             boundstates = core_->boundstates;
@@ -467,7 +474,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
         }
 
 /// @brief Destroy the TDSEZManager. Frees work vectors, ring buffers,
-///        and HDF5 viewers. Only destroys matrices the manager owns (Ht);
+///        and HDF5 viewers. The operator matrices are owned by the core and the assembler;
 ///        aliased matrices (CAP, Md, Lz, etc.) are owned by the assembler.
 ///        Embeds knot vectors into the WFS file after the collective viewer
 ///        is closed (rank 0 only).
@@ -482,7 +489,6 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             // initializer list) — the TDSEZAssembler destructor already owns
             // and destroys them. Destroying them here too is a double-free
             // (SEGV at teardown). Only destroy matrices the manager owns.
-            if (m_Ht)          MatDestroy(&m_Ht);
             if (kspMass)       KSPDestroy(&kspMass);
             for (Vec &v : accelWork) if (v) VecDestroy(&v);
 
@@ -582,7 +588,8 @@ PetscBool TDSEZDiscreteAccelerationActive()
 ///          identities are checked on psi: H psi = K psi + V psi (holds when no
 ///          CAP was merged into H) and Md psi = c M psi (constant mass). Each
 ///          shortcut is used afterwards only if it holds to 1e-12 relative, so
-///          the written observables are unchanged up to rounding.
+///          the written observables are unchanged up to rounding; K and Md are
+///          then freed.
 PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
 {
     PetscFunctionBeginUser;
@@ -591,9 +598,9 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
         PetscCall(MatMult(m_H, psi, tmpVec[1]));
         PetscFunctionReturn(PETSC_SUCCESS);
     }
-    PetscCall(MatMult(m_K, psi, tmpVec[3]));
     PetscCall(MatMult(m_V, psi, tmpVec[4]));
     if (!monitorChecked_) {
+        PetscCall(MatMult(m_K, psi, tmpVec[3]));
         PetscCall(MatMult(m_H,  psi, tmpVec[1]));
         PetscCall(MatMult(m_Md, psi, tmpVec[2]));
         Vec r;
@@ -622,12 +629,17 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
         }
         PetscCall(VecDestroy(&r));
         monitorChecked_ = PETSC_TRUE;
+        // Operators the shortcuts make redundant are freed: K (K psi = H psi -
+        // V psi) and Md (Md = M/m). Each is a full matrix (memory-bound in 3D).
+        if (hFromKV_) { PetscCall(MatDestroy(&assembler_->K)); m_K = PETSC_NULLPTR; }
+        if (invMassConst_ != 0.0) { PetscCall(MatDestroy(&assembler_->Md)); m_Md = PETSC_NULLPTR; }
         PetscCall(PetscInfo(NULL, "Monitor shortcuts: H=K+V %s, constant 1/m %s\n",
                             hFromKV_ ? "on" : "off", invMassConst_ != 0.0 ? "on" : "off"));
         PetscFunctionReturn(PETSC_SUCCESS);
     }
-    if (hFromKV_) PetscCall(VecWAXPY(tmpVec[1], 1.0, tmpVec[3], tmpVec[4]));
-    else          PetscCall(MatMult(m_H, psi, tmpVec[1]));
+    PetscCall(MatMult(m_H, psi, tmpVec[1]));
+    if (m_K) PetscCall(MatMult(m_K, psi, tmpVec[3]));
+    else     PetscCall(VecWAXPY(tmpVec[3], -1.0, tmpVec[4], tmpVec[1]));   // K psi = H psi - V psi
     if (invMassConst_ != 0.0) {
         PetscCall(VecCopy(tmpVec[0], tmpVec[2]));
         PetscCall(VecScale(tmpVec[2], invMassConst_));

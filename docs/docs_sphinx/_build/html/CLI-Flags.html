@@ -124,6 +124,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Time-Propagation.html">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-parameters">Time Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#preconditioners">Preconditioners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#accuracy-of-the-rational-propagators">Accuracy of the Rational Propagators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#choosing-a-time-step">Choosing a Time Step</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#propagation-control">Propagation Control</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Time-Propagation.html#monitoring-propagation">Monitoring Propagation</a></li>
@@ -389,7 +391,12 @@ level (default <code class="docutils literal notranslate"><span class="pre">1e-9
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_cap_check</span></code></p></td>
+<td><p>flag</p></td>
+<td><p>Also assemble the CAP with the element kernel and print the largest
+difference to the separable assembly (diagnostic).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
 <td><p>int</p></td>
 <td><p>ILU fill level of the ASM subdomain preconditioner of every propagator
 (default 0). Level 1 saves at most one GMRES iteration but its fill makes

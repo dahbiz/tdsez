@@ -29,6 +29,39 @@
  */
 
 #include "tdsez_internal.hpp"
+
+#include <map>
+
+const PhysicsDerivativesFull &TDSEZInvMassDerivatives(const std::vector<PetscReal> &x)
+{
+    thread_local std::vector<PetscReal> key;
+    thread_local PhysicsDerivativesFull last;
+    if (x == key) return last;
+    std::map<std::vector<PetscReal>, PetscReal> seen;   // 1/m at the stencil points
+    auto invMass = [&seen](const std::vector<PetscReal> &xx) {
+        auto it = seen.find(xx);
+        if (it != seen.end()) return it->second;
+        const PetscReal v = 1.0 / TDSEZParser::MassDist(xx[0], (xx.size() > 1 ? xx[1] : 0.0), (xx.size() > 2 ? xx[2] : 0.0));
+        seen.emplace(xx, v);
+        return v;
+    };
+    last = TDSEZCompDerivative(invMass, x, 1e-4);
+    key = x;
+    return last;
+}
+
+/// 1/m derivatives for the force kernels: the mass-gradient corrections of the
+/// force matrices are needed only by the operator-form acceleration. With the
+/// discrete acceleration the force matrices are not read; their corrections are
+/// skipped (zero derivatives), as in TDSEZFormPhyX and the sum-factorised path.
+const PhysicsDerivativesFull &TDSEZForceMassDerivatives(const std::vector<PetscReal> &x)
+{
+    if (!TDSEZDiscreteAccelerationActive()) return TDSEZInvMassDerivatives(x);
+    thread_local PhysicsDerivativesFull zero;
+    const size_t d = x.size();
+    if (zero.first.size() != d) { zero.first.assign(d, 0.0); zero.second.assign(d * d, 0.0); zero.third.assign(d * d * d, 0.0); }
+    return zero;
+}
 #include <algorithm>
 #include <vector>
 
@@ -788,14 +821,6 @@ PetscErrorCode TDSEZFormPhyX(
     // evaluations per quadrature point — the dominant cost in the variable-mass path.
     const bool massIsConstant = (TDSEZParser::MassIsConstant == PETSC_TRUE);
 
-    // invMassFunc: used only in the variable-mass path.
-    // Must take std::vector to match TDSEZCompDerivative's signature.
-    // The heap allocation this implies per FD call is unavoidable without
-    // changing TDSEZCompDerivative itself — but it only runs when
-    // MassIsConstant==0, so constant-mass runs pay none of this cost.
-    auto invMassFunc = [](const std::vector<PetscReal>& xx) {
-        return 1.0 / TDSEZParser::MassDist(xx[0], (xx.size() > 1 ? xx[1] : 0.0), (xx.size() > 2 ? xx[2] : 0.0));
-    };
 
     if (dim == 1)
     {
@@ -813,7 +838,7 @@ PetscErrorCode TDSEZFormPhyX(
         // then precompute all (a,b)-invariant combinations.
         PetscReal two_fx2=0, f_2fxx=0, f_fxxx=0, neg2_f_fx=0, neg2_fx2_fxx=0, fx_fxx=0;
         if (!massIsConstant) {
-            PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, 0.0, 0.0}, 1e-4);
+            const PhysicsDerivativesFull &ops = TDSEZInvMassDerivatives(std::vector<PetscReal>{x, 0.0, 0.0});
             const PetscReal fx   = ops.first[0];
             const PetscReal fxx  = ops.second[0];
             const PetscReal fxxx = ops.third[0];
@@ -888,7 +913,7 @@ PetscErrorCode TDSEZFormPhyX(
         PetscReal two_f_fx=0, fx_fxx=0, fy_fxy=0;
         PetscReal fy_fx=0, f_fxy=0, fx2_f_fxx=0;
         if (!massIsConstant) {
-            PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y, 0.0}, 1e-4);
+            const PhysicsDerivativesFull &ops = TDSEZInvMassDerivatives(std::vector<PetscReal>{x, y, 0.0});
             const PetscReal fx  = ops.first[0],  fy  = ops.first[1];
             const PetscReal fxx = ops.second[0*2+0], fyy = ops.second[1*2+1];
             const PetscReal fxy = ops.second[0*2+1];
@@ -979,7 +1004,7 @@ PetscErrorCode TDSEZFormPhyX(
         PetscReal two_f_fx=0, ffx_x=0, ffx_y=0, ffx_z=0;
         PetscReal fz_fxz=0, fy_fxy_fx_fxx=0;
         if (corr) {
-            PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y, z}, 1e-4);
+            const PhysicsDerivativesFull &ops = TDSEZInvMassDerivatives(std::vector<PetscReal>{x, y, z});
             const PetscReal fx = ops.first[0], fy = ops.first[1], fz = ops.first[2];
             const PetscReal fxx = ops.second[0*3+0], fyy = ops.second[1*3+1], fzz = ops.second[2*3+2];
             const PetscReal fxy = ops.second[0*3+1], fxz = ops.second[0*3+2];
@@ -1634,7 +1659,7 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
         const PetscReal (*dB)[1];
         IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
     
-        PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x}, 1e-4);
+        const PhysicsDerivativesFull &ops = TDSEZForceMassDerivatives(std::vector<PetscReal>{x});
         PetscReal f    = invMassFunc({x});
         PetscReal fx   = ops.first[0];
         PetscReal fxx  = ops.second[0]; 
@@ -1642,27 +1667,27 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
     
         for (PetscInt a = 0; a < nen; a++) 
         {
-            PetscScalar Ba   = B[a];     
-            PetscScalar dBax = dB[a][0];
+            PetscReal Ba   = B[a];     
+            PetscReal dBax = dB[a][0];
         
             for (PetscInt b = 0; b < nen; b++) 
             {
-                PetscScalar Bb   = B[b];
-                PetscScalar dBbx = dB[b][0]; 
+                PetscReal Bb   = B[b];
+                PetscReal dBbx = dB[b][0]; 
     
                 // Row 0: -Ba * dVdx * f * Bb
-                PetscScalar classical = -Ba * dVdx * f * Bb;
+                PetscReal classical = -Ba * dVdx * f * Bb;
                 // Row 1: 2 * Bi * Bj_x * fx^2
-                PetscScalar R1 = 2.0 * Ba * dBbx * (fx * fx);
+                PetscReal R1 = 2.0 * Ba * dBbx * (fx * fx);
                 // Row 3: f * [ 2 * Bi * Bj_x * fxx + Bi * Bb * fxxx ]
-                PetscScalar R3 = f * (2.0 * Ba * dBbx * fxx + Ba * Bb * fxxx);
+                PetscReal R3 = f * (2.0 * Ba * dBbx * fxx + Ba * Bb * fxxx);
                 // Row 4: -2 * f * fx * (dBax * dBbx)
-                PetscScalar R4 = -2.0 * f * fx * (dBax * dBbx);
+                PetscReal R4 = -2.0 * f * fx * (dBax * dBbx);
                 // Row 5: -2 * Bi * Bj_x * (fx*fx + f*fxx)
-                PetscScalar R5 = -2.0 * Ba * dBbx * (fx*fx + f*fxx);
+                PetscReal R5 = -2.0 * Ba * dBbx * (fx*fx + f*fxx);
                 // Row 6: Bi * Bj * fx * fxx
-                PetscScalar R6 = Ba * Bb * (fx * fxx);
-                PetscScalar quantum = -0.25 * (R1 + R3 + R4 + R5 + R6);
+                PetscReal R6 = Ba * Bb * (fx * fxx);
+                PetscReal quantum = -0.25 * (R1 + R3 + R4 + R5 + R6);
 
                 dVdr[a * nen + b] = classical + quantum;
             }
@@ -1677,7 +1702,7 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
         IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
 
         // Mass derivatives (assuming dim=2, so 3rd order tensor size is 2^3=8)
-        PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y}, 1e-4);
+        const PhysicsDerivativesFull &ops = TDSEZForceMassDerivatives(std::vector<PetscReal>{x, y});
         PetscReal f    = invMassFunc({x, y});
         PetscReal fx   = ops.first[0];
         PetscReal fy   = ops.first[1];
@@ -1689,39 +1714,39 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
 
         for (PetscInt a = 0; a < nen; a++) 
         {
-            PetscScalar Ba = B[a];     
-            PetscScalar dBax = dB[a][0];
-            PetscScalar dBay = dB[a][1]; 
+            PetscReal Ba = B[a];     
+            PetscReal dBax = dB[a][0];
+            PetscReal dBay = dB[a][1]; 
     
             for (PetscInt b = 0; b < nen; b++) 
             {
-                PetscScalar Bb = B[b];
-                PetscScalar dBbx = dB[b][0]; 
-                PetscScalar dBby = dB[b][1]; 
-                PetscScalar dBbxy = ddB[b][0][1];
+                PetscReal Bb = B[b];
+                PetscReal dBbx = dB[b][0]; 
+                PetscReal dBby = dB[b][1]; 
+                PetscReal dBbxy = ddB[b][0][1];
 
                 // Row 0: -Ba * dVdx * f * Bb
-                PetscScalar classical = -Ba * dVdx * f * Bb;
+                PetscReal classical = -Ba * dVdx * f * Bb;
                 
                 // Row 1: 2 * Bi * Bj_x * (fx^2 + fy^2)
-                PetscScalar R1 = 2.0 * Ba * dBbx * (fx*fx + fy*fy);
+                PetscReal R1 = 2.0 * Ba * dBbx * (fx*fx + fy*fy);
 
                 // Row 3: f * ( 4*fy*Bi*Bj_xy + 2*Bi*Bj_x*(fyy+fxx) + Bi*Bj*(fxyy+fxxx) )
-                PetscScalar R3 = f * (4.0 * fy * Ba * dBbxy + 
+                PetscReal R3 = f * (4.0 * fy * Ba * dBbxy + 
                                       2.0 * Ba * dBbx * (fyy + fxx) + 
                                       Ba * Bb * (fxyy + fxxx));
 
                 // Row 4: 2 * f * fx * (Bay*Bby - Bax*Bbx)
-                PetscScalar R4 = 2.0 * f * fx * (dBay * dBby - dBax * dBbx);
+                PetscReal R4 = 2.0 * f * fx * (dBay * dBby - dBax * dBbx);
 
                 // Row 5: 2 * ( Bi*Bby*(fy*fx + f*fxy) - Bi*Bbx*(fx*fx + f*fxx) )
-                PetscScalar R5 = 2.0 * (Ba * dBby * (fy*fx + f*fxy) - 
+                PetscReal R5 = 2.0 * (Ba * dBby * (fy*fx + f*fxy) - 
                                         Ba * dBbx * (fx*fx + f*fxx));
 
                 // Row 6: Bi * Bj * (fy*fxy + fx*fxx)
-                PetscScalar R6 = Ba * Bb * (fy * fxy + fx * fxx);
+                PetscReal R6 = Ba * Bb * (fy * fxy + fx * fxx);
 
-                PetscScalar quantum = -0.25 * (R1 + R3 + R4 + R5 + R6);
+                PetscReal quantum = -0.25 * (R1 + R3 + R4 + R5 + R6);
 
                 dVdr[a * nen + b] = classical + quantum;
             }
@@ -1735,7 +1760,7 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
         IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
     
         // 1. Derivatives of f (Inverse Mass) - Index mapping: i*dim + j
-        PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y, z}, 1e-4);
+        const PhysicsDerivativesFull &ops = TDSEZForceMassDerivatives(std::vector<PetscReal>{x, y, z});
         PetscReal f    = invMassFunc({x, y, z});
         PetscReal fx = ops.first[0], fy = ops.first[1], fz = ops.first[2];
         
@@ -1755,36 +1780,36 @@ PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx)
         PetscReal ffx_z = fz*fx + f*fxz;
     
         for (PetscInt a = 0; a < nen; a++) {
-            PetscScalar Ba = B[a], dBax = dB[a][0], dBay = dB[a][1], dBaz = dB[a][2];
+            PetscReal Ba = B[a], dBax = dB[a][0], dBay = dB[a][1], dBaz = dB[a][2];
     
             for (PetscInt b = 0; b < nen; b++) {
-                PetscScalar Bb = B[b], dBbx = dB[b][0], dBby = dB[b][1], dBbz = dB[b][2];
-                PetscScalar dBbxy = ddB[b][0][1], dBbxz = ddB[b][0][2];
+                PetscReal Bb = B[b], dBbx = dB[b][0], dBby = dB[b][1], dBbz = dB[b][2];
+                PetscReal dBbxy = ddB[b][0][1], dBbxz = ddB[b][0][2];
     
                 // Row 0: -Ba * dVdx * f * Bb
-                PetscScalar classical = -Ba * dVdx * f * Bb;
+                PetscReal classical = -Ba * dVdx * f * Bb;
                     
                 // Row 1: 2 * Bi * Bj_x * (fx^2 + fy^2 + fz^2)
-                PetscScalar row1 = 2.0 * Ba * dBbx * (fx*fx + fy*fy + fz*fz);
+                PetscReal row1 = 2.0 * Ba * dBbx * (fx*fx + fy*fy + fz*fz);
     
                 // Row 2: fz * (4*f*Bi*Bj_xz + Bi*Bj*fxz)
-                PetscScalar row2 = fz * (4.0 * f * Ba * dBbxz + Ba * Bb * fxz);
+                PetscReal row2 = fz * (4.0 * f * Ba * dBbxz + Ba * Bb * fxz);
     
                 // Row 3: f * [4*fy*Bi*Bj_xy + 2*Bi*Bj_x*(fxx+fyy+fzz) + Bi*Bj*(fxxx+fxyy+fxzz)]
-                PetscScalar row3 = f * (4.0 * fy * Ba * dBbxy + 
+                PetscReal row3 = f * (4.0 * fy * Ba * dBbxy + 
                                         2.0 * Ba * dBbx * (fxx + fyy + fzz) + 
                                         Ba * Bb * (fxxx + fxyy + fxzz));
     
                 // Row 4: 2*f*fx * (Baz*Bbz + Bay*Bby - Bax*Bbx)
-                PetscScalar row4 = 2.0 * f * fx * (dBaz * dBbz + dBay * dBby - dBax * dBbx);
+                PetscReal row4 = 2.0 * f * fx * (dBaz * dBbz + dBay * dBby - dBax * dBbx);
     
                 // Row 5: 2 * [ Ba*dBbz*ffx_z + Ba*dBby*ffx_y - Ba*dBbx*ffx_x ]
-                PetscScalar row5 = 2.0 * (Ba * dBbz * ffx_z + Ba * dBby * ffx_y - Ba * dBbx * ffx_x);
+                PetscReal row5 = 2.0 * (Ba * dBbz * ffx_z + Ba * dBby * ffx_y - Ba * dBbx * ffx_x);
 
                 // Row 6: Bi * Bj * (fy*fxy + fx*fxx)
-                PetscScalar row6 = Ba * Bb * (fy * fxy + fx * fxx);
+                PetscReal row6 = Ba * Bb * (fy * fxy + fx * fxx);
     
-                PetscScalar quantum = -0.25 * (row1 + row2 + row3 + row4 + row5 + row6);
+                PetscReal quantum = -0.25 * (row1 + row2 + row3 + row4 + row5 + row6);
     
                 dVdr[a * nen + b] = classical + quantum;
             }
@@ -1834,7 +1859,7 @@ PetscErrorCode TDSEZformPotentialGradY(IGAPoint p, PetscScalar *dVdr, void *ctx)
         IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
         IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
 
-        PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, (dim==2 ? std::vector<PetscReal>{x,y} : std::vector<PetscReal>{x,y,z}), 1e-4);
+        const PhysicsDerivativesFull &ops = TDSEZForceMassDerivatives((dim==2 ? std::vector<PetscReal>{x,y} : std::vector<PetscReal>{x,y,z}));
         
         PetscReal f = invMassFunc((dim==2 ? std::vector<PetscReal>{x,y} : std::vector<PetscReal>{x,y,z}));
         PetscReal fx = ops.first[0], fy = ops.first[1], fz = (dim==3 ? ops.first[2] : 0.0);
@@ -1857,37 +1882,37 @@ PetscErrorCode TDSEZformPotentialGradY(IGAPoint p, PetscScalar *dVdr, void *ctx)
         {
             for (PetscInt b = 0; b < nen; b++) 
             {
-                PetscScalar Ba = B[a], Bb = B[b];
-                PetscScalar dBax = dB[a][0], dBay = dB[a][1], dBaz = (dim==3 ? dB[a][2] : 0.0);
-                PetscScalar dBbx = dB[b][0], dBby = dB[b][1], dBbz = (dim==3 ? dB[b][2] : 0.0);
+                PetscReal Ba = B[a], Bb = B[b];
+                PetscReal dBax = dB[a][0], dBay = dB[a][1], dBaz = (dim==3 ? dB[a][2] : 0.0);
+                PetscReal dBbx = dB[b][0], dBby = dB[b][1], dBbz = (dim==3 ? dB[b][2] : 0.0);
                 
                 // ddB indices: [basis][deriv1][deriv2]
-                PetscScalar dBbxy = ddB[b][0][1];
-                PetscScalar dBbyz = (dim==3 ? ddB[b][1][2] : 0.0);
+                PetscReal dBbxy = ddB[b][0][1];
+                PetscReal dBbyz = (dim==3 ? ddB[b][1][2] : 0.0);
 
-                PetscScalar classical = -Ba * dVdy * f * Bb;
+                PetscReal classical = -Ba * dVdy * f * Bb;
 
                 // Row 1: 2 * Bi * Bj_y * |grad f|^2
-                PetscScalar r1 = 2.0 * Ba * dBby * (fx*fx + fy*fy + fz*fz);
+                PetscReal r1 = 2.0 * Ba * dBby * (fx*fx + fy*fy + fz*fz);
 
                 // Row 2: fz * (4*f*Bi*Bj_yz + Bi*Bb*fyz)
-                PetscScalar r2 = fz * (4.0 * f * Ba * dBbyz + Ba * Bb * fyz);
+                PetscReal r2 = fz * (4.0 * f * Ba * dBbyz + Ba * Bb * fyz);
 
                 // Row 3: f * (4*fx*Bi*Bj_xy + 2*Bi*Bj_y*Laplacian + Bi*Bb*dy(Laplacian))
-                PetscScalar r3 = f * (4.0 * fx * Ba * dBbxy + 
+                PetscReal r3 = f * (4.0 * fx * Ba * dBbxy + 
                                       2.0 * Ba * dBby * (fxx + fyy + fzz) + 
                                       Ba * Bb * (fxxy + fyyy + fyzz));
 
                 // Row 4: 2*f*fy * (Baz*Bbz - Bay*Bby + Bax*Bbx)
-                PetscScalar r4 = 2.0 * f * fy * (dBaz * dBbz - dBay * dBby + dBax * dBbx);
+                PetscReal r4 = 2.0 * f * fy * (dBaz * dBbz - dBay * dBby + dBax * dBbx);
 
                 // Row 5: 2 * (Bi*Bbz*(ffy)_z - Bi*Bby*(ffy)_y + Bi*Bbx*(ffy)_x)
-                PetscScalar r5 = 2.0 * (Ba * dBbz * ffy_z - Ba * dBby * ffy_y + Ba * dBbx * ffy_x);
+                PetscReal r5 = 2.0 * (Ba * dBbz * ffy_z - Ba * dBby * ffy_y + Ba * dBbx * ffy_x);
 
                 // Row 6: Bi * Bb * (fy*fyy + fx*fxy)
-                PetscScalar r6 = Ba * Bb * (fy * fyy + fx * fxy);
+                PetscReal r6 = Ba * Bb * (fy * fyy + fx * fxy);
 
-                PetscScalar quantum = -0.25 * (r1 + r2 + r3 + r4 + r5 + r6);
+                PetscReal quantum = -0.25 * (r1 + r2 + r3 + r4 + r5 + r6);
                 dVdr[a * nen + b] = classical + quantum;
             }
         }
@@ -1937,7 +1962,7 @@ PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx)
     IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
     IGAPointGetShapeFuns(p, 2, (const PetscReal**)&ddB);
 
-    PhysicsDerivativesFull ops = TDSEZCompDerivative(invMassFunc, {x, y, z}, 1e-4);
+    const PhysicsDerivativesFull &ops = TDSEZForceMassDerivatives(std::vector<PetscReal>{x, y, z});
     
     PetscReal f = invMassFunc({x, y, z});
     PetscReal fx = ops.first[0], fy = ops.first[1], fz = ops.first[2];
@@ -1959,34 +1984,34 @@ PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx)
     {
         for (PetscInt b = 0; b < nen; b++) 
         {
-            PetscScalar Ba = B[a], Bb = B[b];
-            PetscScalar dBax = dB[a][0], dBay = dB[a][1], dBaz = dB[a][2];
-            PetscScalar dBbx = dB[b][0], dBby = dB[b][1], dBbz = dB[b][2];
+            PetscReal Ba = B[a], Bb = B[b];
+            PetscReal dBax = dB[a][0], dBay = dB[a][1], dBaz = dB[a][2];
+            PetscReal dBbx = dB[b][0], dBby = dB[b][1], dBbz = dB[b][2];
             
-            PetscScalar dBbyz = ddB[b][1][2];
-            PetscScalar dBbxz = ddB[b][0][2];
+            PetscReal dBbyz = ddB[b][1][2];
+            PetscReal dBbxz = ddB[b][0][2];
 
-            PetscScalar classical = -Ba * dVdz * f * Bb;
+            PetscReal classical = -Ba * dVdz * f * Bb;
 
             // Row 1: 2 * Bi * Bj_z * |grad f|^2
-            PetscScalar r1 = 2.0 * Ba * dBbz * (fx*fx + fy*fy + fz*fz);
+            PetscReal r1 = 2.0 * Ba * dBbz * (fx*fx + fy*fy + fz*fz);
 
             // Row 2 & 3 Combined: f * (4fy*Bi*Bj_yz + 4fx*Bi*Bj_xz + 2*Bi*Bj_z*Laplacian + Bi*Bb*dz(Laplacian))
-            PetscScalar r23 = f * (4.0 * fy * Ba * dBbyz + 
+            PetscReal r23 = f * (4.0 * fy * Ba * dBbyz + 
                                    4.0 * fx * Ba * dBbxz + 
                                    2.0 * Ba * dBbz * (fxx + fyy + fzz) + 
                                    Ba * Bb * (fzzz + fyyz + fxxz));
 
             // Row 4: -2*f*fz * (Baz*Bbz - Bay*Bby - Bax*Bbx)
-            PetscScalar r4 = -2.0 * f * fz * (dBaz * dBbz - dBay * dBby - dBax * dBbx);
+            PetscReal r4 = -2.0 * f * fz * (dBaz * dBbz - dBay * dBby - dBax * dBbx);
 
             // Row 5: -2 * (Bi*Bbz*(ffz)_z - Bi*Bby*(ffz)_y - Bi*Bbx*(ffz)_x)
-            PetscScalar r5 = -2.0 * (Ba * dBbz * ffz_z - Ba * dBby * ffz_y - Ba * dBbx * ffz_x);
+            PetscReal r5 = -2.0 * (Ba * dBbz * ffz_z - Ba * dBby * ffz_y - Ba * dBbx * ffz_x);
 
             // Row 6: Bi * Bb * (fz*fzz + fy*fyz + fx*fxz)
-            PetscScalar r6 = Ba * Bb * (fz * fzz + fy * fyz + fx * fxz);
+            PetscReal r6 = Ba * Bb * (fz * fzz + fy * fyz + fx * fxz);
 
-            PetscScalar quantum = -0.25 * (r1 + r23 + r4 + r5 + r6);
+            PetscReal quantum = -0.25 * (r1 + r23 + r4 + r5 + r6);
             dVdr[a * nen + b] = classical + quantum;
         }
     }

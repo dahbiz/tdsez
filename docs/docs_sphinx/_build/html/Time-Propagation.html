@@ -357,6 +357,11 @@ changes the cost, never the result (dipole series agree to <span class="math not
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> (default): restricted additive Schwarz, one subdomain per rank with
 ILU(0) (see above).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gamg</span></code>: PETSc algebraic multigrid (smoothed aggregation) inside flexible
+GMRES. Its default Chebyshev/Jacobi smoothing needs hundreds of iterations on
+this complex operator; use it with the ASM/ILU(0) smoother,
+<code class="docutils literal notranslate"><span class="pre">-mg_levels_ksp_type</span> <span class="pre">richardson</span> <span class="pre">-mg_levels_ksp_max_it</span> <span class="pre">1</span> <span class="pre">-mg_levels_pc_type</span> <span class="pre">asm</span>
+<span class="pre">-mg_levels_sub_pc_type</span> <span class="pre">ilu</span></code> (<code class="docutils literal notranslate"><span class="pre">benchmarks/preconditioners/run.sh</span></code> does).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">mg</span></code>: geometric multigrid on the B-spline space, inside flexible GMRES.
 Coarse levels drop every other simple interior knot of each axis (C0 and
 other repeated knots are kept), so the coarse spaces are nested in the fine
@@ -408,6 +413,11 @@ known degree dependence of standard smoothers for B-spline discretisations.</p>
 <td><p>6-8</p></td>
 <td><p>4</p></td>
 <td><p>1.2x</p></td>
+</tr>
+<tr class="row-even"><td><p>same, 8 ranks, 40 steps: solve time per step (set-up)</p></td>
+<td><p>0.089 s (1.1 s)</p></td>
+<td><p>0.158 s (1.7 s)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">gamg</span></code>: 4 its, 0.134 s (5.7 s)</p></td>
 </tr>
 </tbody>
 </table>
