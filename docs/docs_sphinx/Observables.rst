@@ -109,8 +109,12 @@ equivalent forms, chosen by ``AccelerationMethod``:
   solve with :math:`M` per output step.
 
 ``auto`` uses the discrete form when the mass depends on position
-(``MassIsConstant = 0``), the operator form otherwise. Both agree to rounding
-for smooth problems; they differ once the wave packet reaches a reflecting
+(``MassIsConstant = 0``), the operator form otherwise. For smooth problems
+the two agree up to the spatial discretisation error and converge to each
+other with the grid (3D position-dependent mass, degree 4: relative
+difference 2.4e-4 at h = 1.1, 1.5e-5 at h = 0.75); for an eigenstate the
+discrete form is exactly zero, the operator form zero to the same
+discretisation error. They differ once the wave packet reaches a reflecting
 wall, where only the discrete form contains the wall force. Use an absorbing
 potential for HHG.
 
