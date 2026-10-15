@@ -286,6 +286,13 @@ class TDSEZParser
         /// "pade22" (exponential midpoint rule with a Pade(2,2) exponential) or
         /// "magnus4" (commutator-free 4th-order Magnus, Pade(2,2) exponentials).
         inline static std::string           Propagator         = "cn";
+        /// Preconditioner of the propagator solves: "asm" (additive Schwarz,
+        /// ILU(0) subdomains) or "mg" (geometric B-spline multigrid).
+        inline static std::string           Preconditioner     = "asm";
+        /// Multigrid levels (0 = coarsen until about 2000 DOFs) and smoothing
+        /// sweeps (Richardson with ASM/ILU(0)) before and after each coarse correction.
+        inline static PetscInt              MGLevels           = 0;
+        inline static PetscInt              MGSmooth           = 1;
         // Parsed in ValidateOrThrow:
         //   0 = ground (== state:0), 1 = single state:InitialStateIndex,
         //   2 = superposition, 3 = analytic Quesne, 4 = analytic mass step.

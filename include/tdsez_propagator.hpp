@@ -7,6 +7,24 @@
 class TDSEZCore;
 class TDSEZManager;
 
+/// Preconditioner refresh: the preconditioner is built from the operator of
+/// one step and reused; when a solve needs more than twice the iterations of
+/// the first solve after the last build (plus 5), it is rebuilt from the
+/// current operator. With strong fields s E(t).r changes the operator so much
+/// that a preconditioner built at t = 0 stops working. The solve tolerance is
+/// not affected.
+struct TDSEZPCRefresh {
+    PetscInt base = -1, rebuilds = 0;
+    /// Record a solve; true when the preconditioner should be rebuilt.
+    bool Stale(PetscInt its)
+    {
+        if (base < 0) { base = its; return false; }
+        if (its <= 2 * base + 5) return false;
+        base = -1; ++rebuilds;
+        return true;
+    }
+};
+
 /**
  * @brief Time-stepping driver wrapping the PETSc TS integrator.
  * @details Owns the TS context and the Jacobian matrix.  Evolve() sets up
@@ -74,6 +92,7 @@ private:
     KSP kspStage_[2] = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< one solver per stage shift
     Vec work_[3]     = {PETSC_NULLPTR, PETSC_NULLPTR, PETSC_NULLPTR};
     PetscInt nStageSolves_ = 0, nStageIts_ = 0;        ///< solver statistics
+    TDSEZPCRefresh stageRefresh_[2];                    ///< preconditioner refresh per stage solver
     /// @}
 };
 

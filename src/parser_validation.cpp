@@ -223,6 +223,10 @@ void TDSEZParser::ValidateOrThrow()
     if (Propagator != "cn" && Propagator != "pade22" && Propagator != "magnus4")
         throw std::runtime_error("ValidateOrThrow: Propagator must be 'cn', 'pade22' "
                                  "or 'magnus4' (got '" + Propagator + "')");
+    if (Preconditioner != "asm" && Preconditioner != "mg")
+        throw std::runtime_error("ValidateOrThrow: Preconditioner must be 'asm' or 'mg' (got '" + Preconditioner + "')");
+    if (MGLevels < 0 || MGLevels == 1 || MGSmooth < 1)
+        throw std::runtime_error("ValidateOrThrow: MGLevels must be 0 (automatic) or >= 2 and MGSmooth >= 1");
 
     // --- spline degree ---
     if (SplineDegree < 1 || SplineDegree > 14)

@@ -83,6 +83,34 @@ $`1.7`$–$`2.3\times`$ faster.
   with the detection. The derivatives of a constant are exactly zero, so the
   operators are unchanged.
 
+## 1b. Preconditioner refresh and geometric multigrid
+
+* **Refresh.** The preconditioner is built once and reused. With a strong field
+  ($`E = 2`$ a.u., $`\Delta t = 0.2`$, 2D) the operator drifts away from the one it
+  was built from: 4, 13, 24, 65, 249, 641 GMRES iterations in successive steps,
+  then failure (ASM and multigrid alike). A solve that needs more than twice the
+  iterations of the first solve after the last build (plus 5) now triggers a
+  rebuild at the next step; the run converges with 4–8 rebuilds. Ordinary runs
+  never reach the threshold.
+* **Geometric multigrid** (`Preconditioner = mg`): nested coarse B-spline spaces
+  (every other simple knot dropped), exact knot-insertion prolongation, Galerkin
+  coarse operators, ASM/ILU(0) Richardson smoothing, MUMPS on the coarsest
+  level, flexible GMRES outside. Same results as ASM to $`10^{-12}`$.
+
+| Case (ranks) | ASM its | MG its | MG / ASM time per step |
+|---|---|---|---|
+| 2D $`p=5`$, 40k DOFs, CN $`\Delta t=0.02`$ (1, 4, 8, 12) | 3–7 | 2–4 | 1.4–1.8 |
+| same, $`\Delta t=0.2`$ | 4–11 | 2–6 | 1.3–1.7 |
+| 2D variable mass / Coulomb / no CAP (8) | 6–13 | 3–5 | 1.1–1.5 |
+| 3D $`p=3`$, 110k DOFs, CN (4, 8) | 6–8 | 4 | 1.2 |
+| 2D field: $`\tau\max\lvert E\cdot r\rvert`$ = 0.075–1.5 (8) | 5–20 | 3–18 | 1.4–1.7 |
+| 2D field: $`\tau\max\lvert E\cdot r\rvert`$ = 3 (8) | 5–33 | diverges | — |
+
+  SOR smoothing was tried first and failed the degree test: 14–26 iterations on
+  one rank, 60–80 on four ($`p=5`$). On a single 12-core machine multigrid does
+  not pay off yet; it is meant for large rank counts where one-level ASM, having
+  no coarse space, degrades. ASM stays the default.
+
 ## 2. Fourth-order propagators (`Propagator = pade22 | magnus4`)
 
 Both use the $`(2,2)`$ Padé approximant of the step exponential,

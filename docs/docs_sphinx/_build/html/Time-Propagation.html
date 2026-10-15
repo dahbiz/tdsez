@@ -127,6 +127,8 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Time Propagation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#time-parameters">Time Parameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#time-stepper">Time Stepper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#preconditioners">Preconditioners</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#accuracy-of-the-rational-propagators">Accuracy of the Rational Propagators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#choosing-a-time-step">Choosing a Time Step</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#propagation-control">Propagation Control</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#monitoring-propagation">Monitoring Propagation</a></li>
@@ -346,6 +348,91 @@ with one subdomain per rank and ILU(0) on each subdomain. The
 preconditioner is built once and reused. <code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">n</span></code> changes the
 fill level; in our tests ILU(1) saved at most one iteration in 2D and none in
 3D, where its factorisation is about 10 times slower (degree 4).</p>
+</section>
+<section id="preconditioners">
+<h2>Preconditioners<a class="headerlink" href="#preconditioners" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">Preconditioner</span></code> selects how each linear system is preconditioned. The outer
+solve is always the full B-spline operator to the same tolerance, so the choice
+changes the cost, never the result (dipole series agree to <span class="math notranslate nohighlight">\(10^{-12}\)</span>).</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> (default): restricted additive Schwarz, one subdomain per rank with
+ILU(0) (see above).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mg</span></code>: geometric multigrid on the B-spline space, inside flexible GMRES.
+Coarse levels drop every other simple interior knot of each axis (C0 and
+other repeated knots are kept), so the coarse spaces are nested in the fine
+one and the prolongation is exact: knot insertion per axis, as a tensor
+product, mapped through each level’s parallel ordering (checked at set-up on
+a linear function). Coarse operators are Galerkin products
+<span class="math notranslate nohighlight">\(P^TAP\)</span>; smoothing is one Richardson sweep with ASM/ILU(0) before and
+after the coarse correction (<code class="docutils literal notranslate"><span class="pre">MGSmooth</span></code>); the coarsest level (about 2000
+DOFs, or <code class="docutils literal notranslate"><span class="pre">MGLevels</span></code> levels) is solved directly with MUMPS. PETSc options
+with the solver prefix (<code class="docutils literal notranslate"><span class="pre">-mg_levels_*</span></code>, <code class="docutils literal notranslate"><span class="pre">-mg_coarse_*</span></code>; <code class="docutils literal notranslate"><span class="pre">-pade_stage1_</span></code>
+/ <code class="docutils literal notranslate"><span class="pre">-pade_stage2_</span></code> prefixes for the rational propagators) override the
+defaults.</p></li>
+</ul>
+<p>Gauss-Seidel/SOR smoothing is not used: on degree-5 splines it needed 14-26
+iterations on one rank (60-80 on four) against 1-4 with ILU smoothing, the
+known degree dependence of standard smoothers for B-spline discretisations.</p>
+<p>Measured (iterations per solve, time per step relative to <code class="docutils literal notranslate"><span class="pre">asm</span></code>):</p>
+<table class="docutils align-default">
+<colgroup>
+<col />
+<col />
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Case</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">asm</span></code> its</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">mg</span></code> its</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">mg</span></code> time</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>2D, p = 5, 40k DOFs, <code class="docutils literal notranslate"><span class="pre">cn</span></code>, <span class="math notranslate nohighlight">\(\Delta t\)</span> = 0.02, 1-12 ranks</p></td>
+<td><p>3-7</p></td>
+<td><p>2-4</p></td>
+<td><p>1.4-1.8x</p></td>
+</tr>
+<tr class="row-odd"><td><p>same, <span class="math notranslate nohighlight">\(\Delta t\)</span> = 0.2</p></td>
+<td><p>4-11</p></td>
+<td><p>2-6</p></td>
+<td><p>1.3-1.7x</p></td>
+</tr>
+<tr class="row-even"><td><p>2D variable mass / Coulomb / no CAP, 8 ranks</p></td>
+<td><p>6-13</p></td>
+<td><p>3-5</p></td>
+<td><p>1.1-1.5x</p></td>
+</tr>
+<tr class="row-odd"><td><p>3D, p = 3, 110k DOFs, <code class="docutils literal notranslate"><span class="pre">cn</span></code>, 4 and 8 ranks</p></td>
+<td><p>6-8</p></td>
+<td><p>4</p></td>
+<td><p>1.2x</p></td>
+</tr>
+</tbody>
+</table>
+<p>Multigrid needs fewer and more uniform iterations, but on up to 12 ranks of
+one machine each V-cycle costs more than the iterations it saves. It is meant
+for large rank counts, where one-level ASM degrades because it has no coarse
+space; measure both on the target machine.</p>
+<p><strong>Strong fields.</strong> The operator is
+<span class="math notranslate nohighlight">\(M + i\tau(H + s\,\mathbf E\cdot\mathbf r)\)</span> (<span class="math notranslate nohighlight">\(\tau = \Delta t/2\)</span>
+for <code class="docutils literal notranslate"><span class="pre">cn</span></code>). When <span class="math notranslate nohighlight">\(\tau\max|\mathbf E\cdot\mathbf r|\)</span> exceeds about 1.5
+the field term dominates and the operator behaves like an indefinite Helmholtz
+operator that the coarse levels cannot represent: in 2D tests multigrid needed
+3-18 iterations up to 1.5 and diverged at 3, where <code class="docutils literal notranslate"><span class="pre">asm</span></code> still converged.
+TDSE-Z prints a warning at start-up in that regime. Physical strong-field runs
+(<span class="math notranslate nohighlight">\(E \le 0.2\)</span> a.u., <span class="math notranslate nohighlight">\(\Delta t \le 0.05\)</span>, box <span class="math notranslate nohighlight">\(\le 100\)</span> a.u.)
+stay well below it.</p>
+<p><strong>Preconditioner refresh.</strong> The preconditioner is built from the operator of
+one step and reused. When a solve needs more than twice the iterations of the
+first solve after the last build (plus 5), it is rebuilt from the current
+operator (both preconditioners, all propagators). Without this, a field of
+2 a.u. took 4, 13, 24, 65, 249, 641 iterations in successive steps and then
+failed; with it the run converges with a few rebuilds (printed at the end).</p>
+</section>
+<section id="accuracy-of-the-rational-propagators">
+<h2>Accuracy of the Rational Propagators<a class="headerlink" href="#accuracy-of-the-rational-propagators" title="Link to this heading"></a></h2>
 <p>The rational propagators reach a given accuracy with a much larger step: on
 the free-packet t-SURFF benchmark (<a class="reference internal" href="TSurff.html"><span class="doc">Photoelectron Spectra (t-SURFF)</span></a>, T = 40) <code class="docutils literal notranslate"><span class="pre">pade22</span></code> at
 <span class="math notranslate nohighlight">\(\Delta t = 0.025\)</span> reaches a spectrum error of <span class="math notranslate nohighlight">\(1.2\times10^{-6}\)</span>

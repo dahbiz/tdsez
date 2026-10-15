@@ -49,6 +49,10 @@ and MPI parallelism are built on [PETSc](https://petsc.org) and
   reproducible basis.
 - Time propagation by Crank–Nicolson, a unitary Padé(2,2) exponential midpoint
   rule, or a fourth-order commutator-free Magnus integrator.
+- Propagator solves preconditioned by additive Schwarz (default) or geometric
+  B-spline multigrid (exact knot-insertion prolongation, Galerkin coarse levels);
+  the preconditioner is rebuilt automatically when a strong field changes the
+  operator.
 
 **Observables**
 - Dipole, velocity and acceleration (operator or equation-of-motion form, exact at
@@ -157,6 +161,7 @@ cmake --build build --target docs          # API reference -> docs/doxygen/html
 | `src/diagnostics.cpp` | Transition matrices and consistency checks |
 | `include/` | Public headers; `tdsez_internal.hpp` collects shared declarations |
 | `src/tsurff.cpp` | t-SURFF photoelectron spectra |
+| `src/multigrid.cpp` | Geometric B-spline multigrid preconditioner |
 | `tests/` | Regression and analytic test suite |
 | `examples/` | Validated decks and scripts: HHG (`hhg/`), t-SURFF (`tsurff/`) |
 | `docs/` | User guide sources and website |

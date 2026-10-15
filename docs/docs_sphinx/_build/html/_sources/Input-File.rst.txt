@@ -248,6 +248,18 @@ Time Propagation
      - string
      - "cn"
      - Time stepper. "cn": Crank-Nicolson, Pade(1,1), second order, one sparse solve per step. "pade22": exponential midpoint rule with a Pade(2,2) exponential (fourth-order field-free phase, second order in the field variation, two solves per step). "magnus4": commutator-free fourth-order Magnus with Pade(2,2) exponentials (fourth order, four solves per step). The rational propagators are unitary for Hermitian H and allow much larger TimeStep at equal accuracy.
+   * - Preconditioner
+     - string
+     - "asm"
+     - Preconditioner of the propagator solves: "asm" (additive Schwarz, ILU(0) subdomains) or "mg" (geometric B-spline multigrid with exact knot-insertion prolongation). Same result, different cost; see Time Propagation.
+   * - MGLevels
+     - int
+     - 0
+     - Multigrid levels (0 = coarsen until about 2000 DOFs; otherwise >= 2).
+   * - MGSmooth
+     - int
+     - 1
+     - Richardson sweeps with ASM/ILU(0) before and after each coarse correction.
 
 t-SURFF Photoelectron Spectra
 -----------------------------

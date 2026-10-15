@@ -1,4 +1,5 @@
 #include "tdsez_internal.hpp"
+#include "tdsez_multigrid.hpp"
 
 /// ILU fill level of the ASM subdomain solves (-tdsez_ilu_levels overrides).
 /// ILU(0): ILU(1) saved at most one GMRES iteration (none in 3D) while its
@@ -10,6 +11,19 @@ static PetscInt TDSEZILULevels(PetscInt localRows)
     PetscInt levels = 0;
     PetscOptionsGetInt(NULL, NULL, "-tdsez_ilu_levels", &levels, NULL);
     return levels;
+}
+
+/// Crank-Nicolson: one SNES/KSP solve per TS step (SNESKSPONLY).
+static TDSEZPCRefresh cnRefresh;
+static PetscErrorCode TDSEZCNPostStep(TS ts)
+{
+    PetscFunctionBeginUser;
+    SNES snes; KSP ksp; PetscInt its;
+    PetscCall(TSGetSNES(ts, &snes));
+    PetscCall(SNESGetKSP(snes, &ksp));
+    PetscCall(KSPGetIterationNumber(ksp, &its));
+    if (cnRefresh.Stale(its)) PetscCall(SNESSetLagPreconditioner(snes, -2));   // rebuild at the next solve
+    PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /**
@@ -149,6 +163,24 @@ PetscErrorCode TDSEZPropagator::Evolve()
     // <x>(t); right preconditioning brings these to ~1e-14 at the same cost.
     ierr = KSPSetPCSide(ksp, PC_RIGHT); CHKERRQ(ierr);
 
+    if (TDSEZParser::Preconditioner == "mg") {
+        // Geometric B-spline multigrid; flexible GMRES keeps the full operator
+        // and the 1e-12 tolerance. The Galerkin coarse operators are built at
+        // the first solve (J is filled then) and reused like the ASM factors.
+        PetscInt levels = 0;
+        PetscCall(KSPSetType(ksp, KSPFGMRES));
+        PetscCall(KSPGMRESSetRestart(ksp, restart));
+        PetscCall(TDSEZSetupMultigrid(tdse_.iga, pc, &levels));
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner: geometric B-spline multigrid, %d levels\n", (int)levels));
+        PetscCall(TSSetFromOptions(ts_));
+        PetscCall(TSSetUp(ts_));
+        PetscCall(TSSetPostStep(ts_, TDSEZCNPostStep));
+        PetscCall(TSSolve(ts_, tdse_.initialPsi));
+        if (cnRefresh.rebuilds)
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner rebuilt %d times (operator changed with the field)\n", (int)cnRefresh.rebuilds));
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
+
     ierr = PCSetType(pc, PCASM); CHKERRQ(ierr);
     // ierr = PCASMSetOverlap(pc, 1); CHKERRQ(ierr);
     ierr = PCASMSetType(pc, PC_ASM_RESTRICT); CHKERRQ(ierr);
@@ -184,8 +216,8 @@ PetscErrorCode TDSEZPropagator::Evolve()
             ierr = PCFactorSetShiftType(subpc, MAT_SHIFT_INBLOCKS);            CHKERRQ(ierr);
             ierr = PCFactorSetShiftAmount(subpc, 1e-12);                        CHKERRQ(ierr);
 
-            // Subdomain internal solution constraints
-            ierr = KSPSetReusePreconditioner(subksp[i], PETSC_TRUE);           CHKERRQ(ierr);
+            // Subdomain internal solution constraints (reuse is decided by the
+            // outer solver, so a refresh also refactors the subdomains)
             ierr = KSPSetTolerances(subksp[i], 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, 1000); CHKERRQ(ierr);
             ierr = KSPSetType(subksp[i], KSPPREONLY); CHKERRQ(ierr);
         }
@@ -193,9 +225,12 @@ PetscErrorCode TDSEZPropagator::Evolve()
 
     ierr = PCSetUp(pc);  CHKERRQ(ierr);
     ierr = TSSetUp(ts_); CHKERRQ(ierr);
+    PetscCall(TSSetPostStep(ts_, TDSEZCNPostStep));
 
     // ---------------- Solve ----------------
     ierr = TSSolve(ts_, tdse_.initialPsi); CHKERRQ(ierr);
+    if (cnRefresh.rebuilds)
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner rebuilt %d times (operator changed with the field)\n", (int)cnRefresh.rebuilds));
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -231,7 +266,7 @@ PetscErrorCode TDSEZPropagator::Evolve()
 ///        right preconditioning (tolerance on the true residual), restricted
 ///        additive Schwarz with ILU subdomain solves, preconditioner built once
 ///        and reused. Options prefix pade_stage{1,2}_.
-static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix)
+static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix, IGA iga)
 {
     PetscFunctionBeginUser;
     PC pc;
@@ -246,6 +281,18 @@ static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix)
     PetscCall(KSPSetPCSide(ksp, PC_RIGHT));
     PetscCall(KSPSetReusePreconditioner(ksp, PETSC_TRUE));
     PetscCall(KSPGetPC(ksp, &pc));
+    if (TDSEZParser::Preconditioner == "mg") {
+        // flexible GMRES: the outer solve keeps the full operator and its
+        // tolerance whatever the multigrid cycle does
+        PetscInt levels = 0;
+        PetscCall(KSPSetType(ksp, KSPFGMRES));
+        PetscCall(KSPGMRESSetRestart(ksp, rows > 100000 ? 50 : 30));
+        PetscCall(TDSEZSetupMultigrid(iga, pc, &levels));
+        PetscCall(KSPSetFromOptions(ksp));
+        PetscCall(KSPSetUp(ksp));
+        PetscCall(PCSetUp(pc));
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
     PetscCall(PCSetType(pc, PCASM));
     PetscCall(PCASMSetType(pc, PC_ASM_RESTRICT));
     PetscCall(KSPSetFromOptions(ksp));
@@ -267,7 +314,6 @@ static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix)
             PetscCall(PCFactorSetReuseFill(subpc, PETSC_TRUE));
             PetscCall(PCFactorSetShiftType(subpc, MAT_SHIFT_INBLOCKS));
             PetscCall(PCFactorSetShiftAmount(subpc, 1e-12));
-            PetscCall(KSPSetReusePreconditioner(subksp[i], PETSC_TRUE));
             PetscCall(KSPSetType(subksp[i], KSPPREONLY));
         }
         PetscCall(PCSetUp(pc));
@@ -369,6 +415,12 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
         PetscInt its = 0;
         PetscCall(KSPGetConvergedReason(kspStage_[k], &reason));
         PetscCall(KSPGetIterationNumber(kspStage_[k], &its));
+        // preconditioner refresh: rebuild from the next stage matrix if this
+        // solve took far more iterations than after the last build
+        PetscBool reuse;
+        PetscCall(KSPGetReusePreconditioner(kspStage_[k], &reuse));
+        if (!reuse) PetscCall(KSPSetReusePreconditioner(kspStage_[k], PETSC_TRUE));   // just rebuilt
+        if (stageRefresh_[k].Stale(its)) PetscCall(KSPSetReusePreconditioner(kspStage_[k], PETSC_FALSE));
         PetscCheck(reason > 0, PETSC_COMM_WORLD, PETSC_ERR_NOT_CONVERGED,
                    "Pade(2,2) stage %d solve did not converge (reason %d)", k + 1, (int)reason);
         nStageSolves_++; nStageIts_ += its;
@@ -420,7 +472,7 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         for (int k = 0; k < 2; ++k) {
             PetscCall(BuildStageMatrix(Astage_[k], g[k], E0));
             PetscCall(KSPCreate(PETSC_COMM_WORLD, &kspStage_[k]));
-            PetscCall(TDSEZConfigureStageKSP(kspStage_[k], Astage_[k], prefix[k]));
+            PetscCall(TDSEZConfigureStageKSP(kspStage_[k], Astage_[k], prefix[k], tdse_.iga));
         }
     }
     PetscCall(PetscPrintf(PETSC_COMM_WORLD,
