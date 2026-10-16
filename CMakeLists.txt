@@ -543,7 +543,7 @@ set(TDSEZ_SOURCES
 )
 
 tdsez_add_target(tdsez ${TDSEZ_SOURCES}
-    LINK_LIBS slepc petiga ${MUPARSER_LINK} hdf5 hdf5_hl
+    LINK_LIBS slepc petiga ${MUPARSER_LINK} hdf5
 )
 # The solver executable is tdsez.x; the CMake target stays "tdsez" (make tdsez).
 set_target_properties(tdsez PROPERTIES OUTPUT_NAME tdsez.x)
@@ -574,7 +574,7 @@ tdsez_add_target(tdmprocessor
 # Standalone; PETSc + HDF5.
 tdsez_add_target(tdmselect
     src/tdmselect.cpp
-    LINK_LIBS hdf5 hdf5_hl
+    LINK_LIBS hdf5
 )
 
 # --- drecprocessor: exact recombination dipole d_rec(E) --------------------
@@ -582,7 +582,7 @@ tdsez_add_target(tdmselect
 # neighbouring box eigenstates). Standalone; PETSc + HDF5.
 tdsez_add_target(drecprocessor
     src/drecprocessor.cpp
-    LINK_LIBS hdf5 hdf5_hl
+    LINK_LIBS hdf5
 )
 
 # ------------------------------------------------------------------------------

@@ -24,7 +24,7 @@ Dependencies
      - Installed in the PETSc prefix (``$PETSC_DIR/include/petiga.h``,
        ``$PETSC_DIR/lib/libpetiga``).
    * - HDF5
-     - ``hdf5`` and ``hdf5_hl`` libraries in ``$PETSC_DIR/lib``.
+     - ``hdf5`` library in ``$PETSC_DIR/lib`` (the high-level ``hdf5_hl`` library is not needed).
    * - muParser
      - Found through its CMake package, otherwise linked as ``muparser``
        from ``$PETSC_DIR/lib``.
