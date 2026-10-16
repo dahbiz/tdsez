@@ -364,11 +364,11 @@
 axis. It couples to the carrier in the length gauge, the only gauge
 implemented:</p>
 <div class="math notranslate nohighlight" id="equation-eq-laser-field-coupling">
-<span class="eqno">(24)<a class="headerlink" href="#equation-eq-laser-field-coupling" title="Link to this equation"></a></span>\[H(t) = H_0 + s\,\mathbf E(t)\cdot\mathbf r
+<span class="eqno">(25)<a class="headerlink" href="#equation-eq-laser-field-coupling" title="Link to this equation"></a></span>\[H(t) = H_0 + s\,\mathbf E(t)\cdot\mathbf r
      = H_0 + s \sum_{a\in P} E_a(t)\,x_a ,
 \qquad s = -q ,\]</div>
 <p>where <span class="math notranslate nohighlight">\(H_0\)</span> is the field-free Hamiltonian
-(<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-hamiltonian">Eq. (22)</a>), <span class="math notranslate nohighlight">\(q\)</span> the <code class="docutils literal notranslate"><span class="pre">Charge</span></code> and
+(<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-hamiltonian">Eq. (23)</a>), <span class="math notranslate nohighlight">\(q\)</span> the <code class="docutils literal notranslate"><span class="pre">Charge</span></code> and
 <span class="math notranslate nohighlight">\(P\)</span> the set of polarised axes. In the discrete equations
 <span class="math notranslate nohighlight">\(x_a\)</span> is the dipole matrix <span class="math notranslate nohighlight">\((D_a)_{ij} = \int B_i\,x_a\,B_j\,d\mathbf r\)</span>
 (<a class="reference internal" href="Physics-Conventions.html"><span class="doc">Physics Conventions</span></a>). For an electron (<span class="math notranslate nohighlight">\(q = -1\)</span>,
@@ -460,7 +460,7 @@ nonzero time integral, so the carrier keeps a drift momentum after the pulse.
 Writing the field as the derivative of a vector potential that vanishes at
 both ends of the pulse avoids this:</p>
 <div class="math notranslate nohighlight" id="equation-eq-laser-field-vector-potential">
-<span class="eqno">(25)<a class="headerlink" href="#equation-eq-laser-field-vector-potential" title="Link to this equation"></a></span>\[A(t) = \frac{E_0}{\omega}\,f(t)\,\sin(\omega t), \qquad
+<span class="eqno">(26)<a class="headerlink" href="#equation-eq-laser-field-vector-potential" title="Link to this equation"></a></span>\[A(t) = \frac{E_0}{\omega}\,f(t)\,\sin(\omega t), \qquad
 E(t) = -\frac{dA}{dt}
      = -\frac{E_0}{\omega}\left[f'(t)\,\sin(\omega t)
        + \omega\,f(t)\,\cos(\omega t)\right],\]</div>
@@ -468,7 +468,7 @@ E(t) = -\frac{dA}{dt}
 <code class="docutils literal notranslate"><span class="pre">examples/hhg/hhg_1d.inp</span></code> uses a flat-top envelope with <span class="math notranslate nohighlight">\(\sin^2\)</span> ramps
 of duration <span class="math notranslate nohighlight">\(T_r\)</span>,</p>
 <div class="math notranslate nohighlight" id="equation-eq-laser-field-envelope">
-<span class="eqno">(26)<a class="headerlink" href="#equation-eq-laser-field-envelope" title="Link to this equation"></a></span>\[\begin{split}f(t) = \begin{cases}
+<span class="eqno">(27)<a class="headerlink" href="#equation-eq-laser-field-envelope" title="Link to this equation"></a></span>\[\begin{split}f(t) = \begin{cases}
   \sin^2\!\left(\dfrac{\pi t}{2T_r}\right), &amp; 0 \le t &lt; T_r,\\[4pt]
   1, &amp; T_r \le t &lt; T_f,\\[4pt]
   \cos^2\!\left(\dfrac{\pi (t-T_f)}{2T_r}\right), &amp; T_f \le t &lt; T_p,\\[4pt]
@@ -488,8 +488,8 @@ LaserX = -(E0/w)*( (t&lt;Tr ? (pi/(2*Tr))*sin(pi*t/Tr) : t&lt;Tf ? 0 : t&lt;Tp ?
 </a>
 <figcaption>
 <p><span class="caption-number">Fig. 5 </span><span class="caption-text">Field <span class="math notranslate nohighlight">\(E(t)\)</span> (top, dashed: <span class="math notranslate nohighlight">\(\pm E_0 f(t)\)</span>) and vector potential
-<span class="math notranslate nohighlight">\(A(t)\)</span> (bottom) of <a class="reference internal" href="#equation-eq-laser-field-vector-potential">Eq. (25)</a> and
-<a class="reference internal" href="#equation-eq-laser-field-envelope">Eq. (26)</a> for the parameters of
+<span class="math notranslate nohighlight">\(A(t)\)</span> (bottom) of <a class="reference internal" href="#equation-eq-laser-field-vector-potential">Eq. (26)</a> and
+<a class="reference internal" href="#equation-eq-laser-field-envelope">Eq. (27)</a> for the parameters of
 <code class="docutils literal notranslate"><span class="pre">examples/hhg/hhg_1d.inp</span></code> (800 nm, <span class="math notranslate nohighlight">\(E_0 = 0.0534\)</span> a.u., 2-cycle
 ramps, 12 flat cycles). Dotted lines mark <span class="math notranslate nohighlight">\(T_r\)</span> and <span class="math notranslate nohighlight">\(T_f\)</span>.</span><a class="headerlink" href="#fig-laser-field-pulse" title="Link to this image"></a></p>
 </figcaption>
@@ -551,7 +551,7 @@ of the dominant component. From these, with
 <span class="math notranslate nohighlight">\(I_p = -\texttt{TargetEigenvalue}\)</span> (or 0.5 when the target is not
 negative), TDSE-Z derives the three-step-model scales <a class="reference internal" href="References.html#corkum1993" id="id1"><span>[Corkum1993]</span></a></p>
 <div class="math notranslate nohighlight" id="equation-eq-laser-field-scales">
-<span class="eqno">(27)<a class="headerlink" href="#equation-eq-laser-field-scales" title="Link to this equation"></a></span>\[U_p = \frac{E_0^2}{4\omega^2}, \qquad
+<span class="eqno">(28)<a class="headerlink" href="#equation-eq-laser-field-scales" title="Link to this equation"></a></span>\[U_p = \frac{E_0^2}{4\omega^2}, \qquad
 k_{\max} = \sqrt{2\,(3.17\,U_p + I_p)}, \qquad
 h = \frac{\pi}{2k_{\max}}, \qquad
 \alpha = \frac{E_0}{\omega^2} .\]</div>

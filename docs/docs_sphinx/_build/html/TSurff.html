@@ -378,18 +378,18 @@ two points in 1D, the edges of a square in 2D, the faces of a cube in 3D.
 Outside the surface the carrier must be free, with constant mass <span class="math notranslate nohighlight">\(m\)</span>,
 constant potential <span class="math notranslate nohighlight">\(V_0\)</span> and the field coupling of the run:</p>
 <div class="math notranslate nohighlight" id="equation-eq-tsurff-hamiltonian">
-<span class="eqno">(63)<a class="headerlink" href="#equation-eq-tsurff-hamiltonian" title="Link to this equation"></a></span>\[H = -\frac{1}{2m}\nabla^2 + V_0 + s\,\mathbf E(t)\cdot\mathbf r ,
+<span class="eqno">(64)<a class="headerlink" href="#equation-eq-tsurff-hamiltonian" title="Link to this equation"></a></span>\[H = -\frac{1}{2m}\nabla^2 + V_0 + s\,\mathbf E(t)\cdot\mathbf r ,
 \qquad s = -q ,\quad q = \text{Charge}.\]</div>
-<p>The length-gauge Volkov states of <a class="reference internal" href="#equation-eq-tsurff-hamiltonian">Eq. (63)</a> are</p>
+<p>The length-gauge Volkov states of <a class="reference internal" href="#equation-eq-tsurff-hamiltonian">Eq. (64)</a> are</p>
 <div class="math notranslate nohighlight" id="equation-eq-tsurff-volkov">
-<span class="eqno">(64)<a class="headerlink" href="#equation-eq-tsurff-volkov" title="Link to this equation"></a></span>\[\chi_{\mathbf k}(\mathbf r,t) = (2\pi)^{-d/2}\,
+<span class="eqno">(65)<a class="headerlink" href="#equation-eq-tsurff-volkov" title="Link to this equation"></a></span>\[\chi_{\mathbf k}(\mathbf r,t) = (2\pi)^{-d/2}\,
 e^{\,i(\mathbf k+\mathbf A(t))\cdot\mathbf r - i\Phi_{\mathbf k}(t)},
 \qquad \dot{\mathbf A} = -s\,\mathbf E ,\quad
 \dot\Phi_{\mathbf k} = \frac{|\mathbf k+\mathbf A|^2}{2m} + V_0 ,\]</div>
 <p>and the amplitude of the part of the wave function that has left the box is
 the time integral of the flux through the surface,</p>
 <div class="math notranslate nohighlight" id="equation-eq-tsurff-amplitude">
-<span class="eqno">(65)<a class="headerlink" href="#equation-eq-tsurff-amplitude" title="Link to this equation"></a></span>\[b(\mathbf k) = \frac{i}{2}\int_0^T\!dt \oint dS\;
+<span class="eqno">(66)<a class="headerlink" href="#equation-eq-tsurff-amplitude" title="Link to this equation"></a></span>\[b(\mathbf k) = \frac{i}{2}\int_0^T\!dt \oint dS\;
 \chi^*_{\mathbf k}\Big[-\frac{1}{m}\partial_n\psi
 - \frac{i}{m}\,\hat n\cdot(\mathbf k+\mathbf A)\,\psi\Big].\]</div>
 <p><span class="math notranslate nohighlight">\(|b(\mathbf k)|^2 = dP/d^d k\)</span> is the distribution of the <strong>canonical</strong>
@@ -419,12 +419,12 @@ points per span (0 selects <code class="docutils literal notranslate"><span clas
 surface points are obtained from one sparse product with a precomputed trace
 matrix. At set-up the trace matrix is compared with a direct B-spline
 evaluation; a relative difference above <span class="math notranslate nohighlight">\(10^{-10}\)</span> stops the run.</p></li>
-<li><p><strong>Time integral.</strong> The integral in <a class="reference internal" href="#equation-eq-tsurff-amplitude">Eq. (65)</a> uses the
+<li><p><strong>Time integral.</strong> The integral in <a class="reference internal" href="#equation-eq-tsurff-amplitude">Eq. (66)</a> uses the
 trapezoidal rule over the samples (every <code class="docutils literal notranslate"><span class="pre">OutputStrideSurff</span></code>-th step and
 the final time); it is second order in the sampling interval.</p></li>
 <li><p><strong>Volkov phase.</strong> <span class="math notranslate nohighlight">\(\mathbf A\)</span>, <span class="math notranslate nohighlight">\(\int\mathbf A\,dt\)</span> and
 <span class="math notranslate nohighlight">\(\int(A^2/2m+V_0)\,dt\)</span> are integrated with classical RK4 sub-steps of
-at most <code class="docutils literal notranslate"><span class="pre">TimeStep/2</span></code>, so the Volkov phase in <a class="reference internal" href="#equation-eq-tsurff-volkov">Eq. (64)</a> does not
+at most <code class="docutils literal notranslate"><span class="pre">TimeStep/2</span></code>, so the Volkov phase in <a class="reference internal" href="#equation-eq-tsurff-volkov">Eq. (65)</a> does not
 depend on the sampling stride.</p></li>
 <li><p><strong>Momentum grid.</strong> On a tensor grid the Volkov factors separate by axis:
 per sample and face the surface sum is one small GEMM plus axpy updates,
@@ -615,13 +615,13 @@ energy (needs a grid).</p></td>
 <h2>Example 1: free wave packet (analytic benchmark)<a class="headerlink" href="#example-1-free-wave-packet-analytic-benchmark" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">InitialState</span> <span class="pre">=</span> <span class="pre">wavepacket</span></code> starts from the Gaussian</p>
 <div class="math notranslate nohighlight" id="equation-eq-tsurff-packet">
-<span class="eqno">(66)<a class="headerlink" href="#equation-eq-tsurff-packet" title="Link to this equation"></a></span>\[\psi_0 = \prod_d (2\pi w_d^2)^{-1/4}
+<span class="eqno">(67)<a class="headerlink" href="#equation-eq-tsurff-packet" title="Link to this equation"></a></span>\[\psi_0 = \prod_d (2\pi w_d^2)^{-1/4}
 \exp\!\Big(-\frac{(x_d-c_d)^2}{4w_d^2} + i k_{0,d}x_d\Big)\]</div>
 <p>(<code class="docutils literal notranslate"><span class="pre">WavepacketCenter</span></code>, <code class="docutils literal notranslate"><span class="pre">WavepacketMomentum</span></code>, <code class="docutils literal notranslate"><span class="pre">WavepacketWidth</span></code>). For a free
 carrier the canonical momentum is conserved in any uniform field, so the exact
 spectrum is</p>
 <div class="math notranslate nohighlight" id="equation-eq-tsurff-exact">
-<span class="eqno">(67)<a class="headerlink" href="#equation-eq-tsurff-exact" title="Link to this equation"></a></span>\[|b(\mathbf k)|^2 = \prod_d \Big(\frac{2w_d^2}{\pi}\Big)^{1/2}
+<span class="eqno">(68)<a class="headerlink" href="#equation-eq-tsurff-exact" title="Link to this equation"></a></span>\[|b(\mathbf k)|^2 = \prod_d \Big(\frac{2w_d^2}{\pi}\Big)^{1/2}
 e^{-2w_d^2(k_d-k_{0,d})^2}\]</div>
 <p>for any pulse, mass, constant potential and charge sign. <code class="docutils literal notranslate"><span class="pre">NBoundStates</span> <span class="pre">=</span> <span class="pre">0</span></code>
 skips the eigensolver, which is allowed with an analytic initial state. File
@@ -659,7 +659,7 @@ SurffNk            = 121
 </pre></div>
 </div>
 <p>Measured accuracy, maximum of <span class="math notranslate nohighlight">\(\big||b|^2-|b|^2_{\rm exact}\big|\)</span>
-relative to the peak of <a class="reference internal" href="#equation-eq-tsurff-exact">Eq. (67)</a>:</p>
+relative to the peak of <a class="reference internal" href="#equation-eq-tsurff-exact">Eq. (68)</a>:</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 55.0%" />

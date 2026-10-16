@@ -376,7 +376,7 @@ can be read with the Python package <code class="docutils literal notranslate"><
 </figcaption>
 </figure>
 <table class="docutils align-default" id="table-hdf5-output-files">
-<caption><span class="caption-number">Table 10 </span><span class="caption-text">Output files</span><a class="headerlink" href="#table-hdf5-output-files" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 11 </span><span class="caption-text">Output files</span><a class="headerlink" href="#table-hdf5-output-files" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 38.0%" />
 <col style="width: 62.0%" />
@@ -453,9 +453,9 @@ is recorded; the buffering only affects when rows reach the file.</p>
 </table>
 <p><code class="docutils literal notranslate"><span class="pre">E*</span></code> is the physical field <span class="math notranslate nohighlight">\(E_a(t)\)</span> (zero on axes not in
 <code class="docutils literal notranslate"><span class="pre">Polarization</span></code>), <span class="math notranslate nohighlight">\(D_a = q\langle x_a\rangle\)</span> the dipole
-(<a class="reference internal" href="Observables.html#equation-eq-observables-dipole">Eq. (48)</a>) and <span class="math notranslate nohighlight">\(A_a = q\,\mathrm d\langle
+(<a class="reference internal" href="Observables.html#equation-eq-observables-dipole">Eq. (49)</a>) and <span class="math notranslate nohighlight">\(A_a = q\,\mathrm d\langle
 v_a\rangle/\mathrm dt = \ddot D_a\)</span> the acceleration
-(<a class="reference internal" href="Observables.html#equation-eq-observables-acc-operator">Eq. (51)</a>, <a class="reference internal" href="Observables.html#equation-eq-observables-acc-discrete">Eq. (52)</a>). All
+(<a class="reference internal" href="Observables.html#equation-eq-observables-acc-operator">Eq. (52)</a>, <a class="reference internal" href="Observables.html#equation-eq-observables-acc-discrete">Eq. (53)</a>). All
 axes are observed by default, so the response along axes without a field is
 recorded too; with <code class="docutils literal notranslate"><span class="pre">ObserveAllAxes</span> <span class="pre">=</span> <span class="pre">0</span></code> the <code class="docutils literal notranslate"><span class="pre">D</span></code> and <code class="docutils literal notranslate"><span class="pre">A</span></code> columns of the
 axes not in <code class="docutils literal notranslate"><span class="pre">Polarization</span></code> are zero.</p>
@@ -506,14 +506,14 @@ axes not in <code class="docutils literal notranslate"><span class="pre">Polariz
 </tbody>
 </table>
 <p>The energies are the real parts of unnormalised expectation values
-(<a class="reference internal" href="Observables.html#equation-eq-observables-energies">Eq. (49)</a>).</p>
+(<a class="reference internal" href="Observables.html#equation-eq-observables-energies">Eq. (50)</a>).</p>
 </section>
 <section id="currents">
 <h3><code class="docutils literal notranslate"><span class="pre">currents</span></code><a class="headerlink" href="#currents" title="Link to this heading"></a></h3>
 <p>Columns 0-2 are <code class="docutils literal notranslate"><span class="pre">t</span></code>, <span class="math notranslate nohighlight">\(\langle L_z\rangle\)</span> and the phase increment
-<span class="math notranslate nohighlight">\(\Delta\Gamma\)</span> (<a class="reference internal" href="Observables.html#equation-eq-observables-dgamma">Eq. (57)</a>). The remaining columns are
+<span class="math notranslate nohighlight">\(\Delta\Gamma\)</span> (<a class="reference internal" href="Observables.html#equation-eq-observables-dgamma">Eq. (58)</a>). The remaining columns are
 the current <span class="math notranslate nohighlight">\(J_a = q\langle v_a\rangle = \dot D_a\)</span> and its intra-band,
-inter-band and bound-continuum parts (<a class="reference internal" href="Observables.html#equation-eq-observables-current-split">Eq. (56)</a>):</p>
+inter-band and bound-continuum parts (<a class="reference internal" href="Observables.html#equation-eq-observables-current-split">Eq. (57)</a>):</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 14.0%" />
@@ -544,7 +544,7 @@ inter-band and bound-continuum parts (<a class="reference internal" href="Observ
 <section id="populations">
 <h3><code class="docutils literal notranslate"><span class="pre">populations</span></code><a class="headerlink" href="#populations" title="Link to this heading"></a></h3>
 <p><span class="math notranslate nohighlight">\(N + 1\)</span> columns: <code class="docutils literal notranslate"><span class="pre">t</span></code> followed by <span class="math notranslate nohighlight">\(P_0, \dots, P_{N-1}\)</span>
-(<a class="reference internal" href="Observables.html#equation-eq-observables-population">Eq. (59)</a>), where <span class="math notranslate nohighlight">\(N\)</span> is the number of bound
+(<a class="reference internal" href="Observables.html#equation-eq-observables-population">Eq. (60)</a>), where <span class="math notranslate nohighlight">\(N\)</span> is the number of bound
 states kept by the eigensolver (<code class="docutils literal notranslate"><span class="pre">NBoundStates</span></code>, extended to the end of a
 degenerate level).</p>
 </section>
@@ -552,7 +552,7 @@ degenerate level).</p>
 <h3><code class="docutils literal notranslate"><span class="pre">autocorrelation</span></code><a class="headerlink" href="#autocorrelation" title="Link to this heading"></a></h3>
 <p>Three columns: <code class="docutils literal notranslate"><span class="pre">t</span></code>, <span class="math notranslate nohighlight">\(\mathrm{Re}\,C(t)\)</span> and <span class="math notranslate nohighlight">\(\mathrm{Im}\,C(t)\)</span>
 with <span class="math notranslate nohighlight">\(C(t) = \langle\psi(0)|\psi(t)\rangle_M\)</span>
-(<a class="reference internal" href="Observables.html#equation-eq-observables-autocorrelation">Eq. (58)</a>), recorded every step like the other
+(<a class="reference internal" href="Observables.html#equation-eq-observables-autocorrelation">Eq. (59)</a>), recorded every step like the other
 datasets.</p>
 </section>
 </section>
@@ -628,7 +628,7 @@ of basis functions).</p></td>
 <p><code class="docutils literal notranslate"><span class="pre">eig_residual</span></code> is the backward error of each kept eigenpair
 <span class="math notranslate nohighlight">\((E, \mathbf v)\)</span>,</p>
 <div class="math notranslate nohighlight" id="equation-eq-hdf5-output-backward-error">
-<span class="eqno">(60)<a class="headerlink" href="#equation-eq-hdf5-output-backward-error" title="Link to this equation"></a></span>\[\eta = \frac{\|\mathbf H\mathbf v - E\,\mathbf M\mathbf v\|_2}
+<span class="eqno">(61)<a class="headerlink" href="#equation-eq-hdf5-output-backward-error" title="Link to this equation"></a></span>\[\eta = \frac{\|\mathbf H\mathbf v - E\,\mathbf M\mathbf v\|_2}
             {\big(\|\mathbf H\|_\infty + |E|\,\|\mathbf M\|_\infty\big)\,\|\mathbf v\|_2} ,\]</div>
 <p>with the 2-norm for vectors and the infinity norm for matrices.</p>
 <p>The knot vectors are stored in PetIGA’s compact form, of length

@@ -672,8 +672,17 @@ the defaults 0.9 (<code class="docutils literal notranslate"><span class="pre">s
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> (<code class="docutils literal notranslate"><span class="pre">HydrogenicMaxSpacing</span></code>)</p></td>
 <td><p>list[3]</p></td>
 <td><p>0</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code>: largest element width (a.u.); 0 derives it from the
-field when propagating, a negative value disables the cap.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code>: largest element width (a.u.); 0 derives it per axis
+from the field when propagating (see <code class="docutils literal notranslate"><span class="pre">TransverseElementFactor</span></code>), a
+negative value disables the cap.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">TransverseElementFactor</span></code></p></td>
+<td><p>real</p></td>
+<td><p>2</p></td>
+<td><p>Element width allowed on axes not coupled to the field, as a multiple of
+the polarised-axis width <span class="math notranslate nohighlight">\(\pi/(2k_{\max})\)</span>; used by the automatic
+<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> and the field-resolution check (<a class="reference internal" href="Knot-Sequences.html"><span class="doc">Knot Sequences</span></a>).
+Must be at least 1.</p></td>
 </tr>
 </tbody>
 </table>

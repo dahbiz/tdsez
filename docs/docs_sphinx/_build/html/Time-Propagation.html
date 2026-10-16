@@ -427,7 +427,7 @@ until fewer than 2000 DOFs remain. Otherwise <span class="math notranslate nohig
 <h2>Equation of Motion<a class="headerlink" href="#equation-of-motion" title="Link to this heading"></a></h2>
 <p>The Galerkin discretisation in the B-spline basis gives</p>
 <div class="math notranslate nohighlight" id="equation-eq-time-propagation-eom">
-<span class="eqno">(39)<a class="headerlink" href="#equation-eq-time-propagation-eom" title="Link to this equation"></a></span>\[i\,\mathbf M\,\dot{\mathbf c}(t) = \mathbf H_E(t)\,\mathbf c(t),
+<span class="eqno">(40)<a class="headerlink" href="#equation-eq-time-propagation-eom" title="Link to this equation"></a></span>\[i\,\mathbf M\,\dot{\mathbf c}(t) = \mathbf H_E(t)\,\mathbf c(t),
 \qquad
 \mathbf H_E(t) = \mathbf H + s\,\mathbf E(t)\cdot\mathbf D,
 \qquad s = -q ,\]</div>
@@ -437,9 +437,9 @@ complex absorbing potential, added to <span class="math notranslate nohighlight"
 the position matrices <span class="math notranslate nohighlight">\(\mathbf D = (\mathbf D_x, \mathbf D_y, \mathbf
 D_z)\)</span> of the axes in <code class="docutils literal notranslate"><span class="pre">Polarization</span></code> and the carrier charge
 <span class="math notranslate nohighlight">\(q\)</span> = <code class="docutils literal notranslate"><span class="pre">Charge</span></code> (<a class="reference internal" href="Physics-Conventions.html"><span class="doc">Physics Conventions</span></a>). Every propagator advances
-<a class="reference internal" href="#equation-eq-time-propagation-eom">Eq. (39)</a> by solving sparse systems of the form</p>
+<a class="reference internal" href="#equation-eq-time-propagation-eom">Eq. (40)</a> by solving sparse systems of the form</p>
 <div class="math notranslate nohighlight" id="equation-eq-time-propagation-shifted">
-<span class="eqno">(40)<a class="headerlink" href="#equation-eq-time-propagation-shifted" title="Link to this equation"></a></span>\[(\mathbf M + g\,\mathbf H_E)\,\mathbf y = \mathbf b\]</div>
+<span class="eqno">(41)<a class="headerlink" href="#equation-eq-time-propagation-shifted" title="Link to this equation"></a></span>\[(\mathbf M + g\,\mathbf H_E)\,\mathbf y = \mathbf b\]</div>
 <p>with a complex shift <span class="math notranslate nohighlight">\(g\)</span> proportional to the step length. All three
 schemes are unitary for a Hermitian <span class="math notranslate nohighlight">\(\mathbf H_E\)</span> (no CAP).</p>
 </section>
@@ -454,12 +454,12 @@ per step with <span class="math notranslate nohighlight">\(g = i h/2\)</span>. S
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">pade22</span></code></dt><dd><p>Exponential midpoint rule with the (2,2) Padé approximant</p>
 <div class="math notranslate nohighlight" id="equation-eq-time-propagation-r22">
-<span class="eqno">(41)<a class="headerlink" href="#equation-eq-time-propagation-r22" title="Link to this equation"></a></span>\[R_{22}(z) = \frac{1 + z/2 + z^2/12}{1 - z/2 + z^2/12},
+<span class="eqno">(42)<a class="headerlink" href="#equation-eq-time-propagation-r22" title="Link to this equation"></a></span>\[R_{22}(z) = \frac{1 + z/2 + z^2/12}{1 - z/2 + z^2/12},
 \qquad z = -i h\,\mathbf M^{-1}\mathbf H_E(t + h/2) .\]</div>
 <p>The numerator has the roots <span class="math notranslate nohighlight">\(-3 \pm i\sqrt3\)</span>, so <span class="math notranslate nohighlight">\(R_{22}\)</span>
 factorises into two Cayley-type stages, each unitary,</p>
 <div class="math notranslate nohighlight" id="equation-eq-time-propagation-stages">
-<span class="eqno">(42)<a class="headerlink" href="#equation-eq-time-propagation-stages" title="Link to this equation"></a></span>\[(\mathbf M + g_k\,\mathbf H_E)\,\mathbf y_k
+<span class="eqno">(43)<a class="headerlink" href="#equation-eq-time-propagation-stages" title="Link to this equation"></a></span>\[(\mathbf M + g_k\,\mathbf H_E)\,\mathbf y_k
 = (\mathbf M + \bar g_k\,\mathbf H_E)\,\mathbf y_{k-1},
 \qquad g_{1,2} = \frac{h\,(\mp\sqrt3 + 3i)}{12},
 \qquad k = 1, 2 ,\]</div>
@@ -469,7 +469,7 @@ the field-free phase and second order in the time dependence of the field.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">magnus4</span></code></dt><dd><p>Commutator-free fourth-order Magnus integrator <a class="reference internal" href="References.html#blanesmoan2006" id="id3"><span>[BlanesMoan2006]</span></a> <a class="reference internal" href="References.html#alvermann2011" id="id4"><span>[Alvermann2011]</span></a>,</p>
 <div class="math notranslate nohighlight" id="equation-eq-time-propagation-magnus">
-<span class="eqno">(43)<a class="headerlink" href="#equation-eq-time-propagation-magnus" title="Link to this equation"></a></span>\[\mathbf U = \exp\!\big(h(a_1\mathbf A_1 + a_2\mathbf A_2)\big)\,
+<span class="eqno">(44)<a class="headerlink" href="#equation-eq-time-propagation-magnus" title="Link to this equation"></a></span>\[\mathbf U = \exp\!\big(h(a_1\mathbf A_1 + a_2\mathbf A_2)\big)\,
             \exp\!\big(h(a_2\mathbf A_1 + a_1\mathbf A_2)\big),
 \qquad
 \mathbf A_j = -i\,\mathbf M^{-1}\mathbf H_E(t + c_j h),\]</div>
@@ -478,7 +478,7 @@ the field-free phase and second order in the time dependence of the field.</p>
 factor is a half step with an effective field
 <span class="math notranslate nohighlight">\(2(a_2\mathbf E_1 + a_1\mathbf E_2)\)</span> (applied first) and
 <span class="math notranslate nohighlight">\(2(a_1\mathbf E_1 + a_2\mathbf E_2)\)</span>, evaluated with
-<a class="reference internal" href="#equation-eq-time-propagation-stages">Eq. (42)</a>. Fourth order overall, four solves per
+<a class="reference internal" href="#equation-eq-time-propagation-stages">Eq. (43)</a>. Fourth order overall, four solves per
 step.</p>
 </dd>
 </dl>
@@ -488,7 +488,7 @@ solve.</p>
 </section>
 <section id="linear-solver">
 <h2>Linear Solver<a class="headerlink" href="#linear-solver" title="Link to this heading"></a></h2>
-<p>Every system <a class="reference internal" href="#equation-eq-time-propagation-shifted">Eq. (40)</a> is solved with GMRES
+<p>Every system <a class="reference internal" href="#equation-eq-time-propagation-shifted">Eq. (41)</a> is solved with GMRES
 <a class="reference internal" href="References.html#saad1986" id="id5"><span>[Saad1986]</span></a> (restart 30, or 50 above <span class="math notranslate nohighlight">\(10^5\)</span> unknowns; at most 1000
 iterations) to a relative residual of <span class="math notranslate nohighlight">\(10^{-12}\)</span>. The preconditioner is
 applied from the right, so the stopping test acts on the true residual of the
@@ -501,7 +501,7 @@ its factorisation was about 10 times slower in 3D (degree 4).</p>
 (refresh below). The solves use a non-zero initial guess; for <code class="docutils literal notranslate"><span class="pre">pade22</span></code> and
 <code class="docutils literal notranslate"><span class="pre">magnus4</span></code> it is extrapolated from previous steps (below).</p>
 <p><strong>Rational propagators.</strong> The stage matrices of
-<a class="reference internal" href="#equation-eq-time-propagation-stages">Eq. (42)</a> are assembled with the following structure
+<a class="reference internal" href="#equation-eq-time-propagation-stages">Eq. (43)</a> are assembled with the following structure
 (<a class="reference internal" href="#fig-time-propagation-step"><span class="std std-numref">Fig. 7</span></a>):</p>
 <ul>
 <li><p><span class="math notranslate nohighlight">\(\mathbf B_k = \mathbf M + g_k\mathbf H\)</span> is cached and recomputed only
@@ -515,7 +515,7 @@ structure (checked once), otherwise by matrix additions.</p></li>
 increment <span class="math notranslate nohighlight">\(\boldsymbol\delta = \mathbf y - \mathbf x\)</span> extrapolated from
 the last <span class="math notranslate nohighlight">\(q\)</span> steps,</p>
 <div class="math notranslate nohighlight" id="equation-eq-time-propagation-guess">
-<span class="eqno">(44)<a class="headerlink" href="#equation-eq-time-propagation-guess" title="Link to this equation"></a></span>\[\mathbf y^{(n)}_{\text{init}} = \mathbf x^{(n)}
+<span class="eqno">(45)<a class="headerlink" href="#equation-eq-time-propagation-guess" title="Link to this equation"></a></span>\[\mathbf y^{(n)}_{\text{init}} = \mathbf x^{(n)}
 + \sum_{j=1}^{q} (-1)^{j-1}\binom{q}{j}\,\boldsymbol\delta^{(n-j)} ,\]</div>
 <p>with <span class="math notranslate nohighlight">\(q\)</span> = <code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span></code> (1 to 5, default 3);
 <code class="docutils literal notranslate"><span class="pre">-pade_extrapolate_guess</span> <span class="pre">0</span></code> starts from <span class="math notranslate nohighlight">\(\mathbf x\)</span> instead.</p>
@@ -583,7 +583,7 @@ needed 14 to 26 iterations on one rank (60 to 80 on four) against 1 to 4 with
 ILU smoothing, in line with the known degree dependence of standard smoothers
 for B-spline discretisations.</p>
 <table class="docutils align-default" id="table-time-propagation-mg">
-<caption><span class="caption-number">Table 6 </span><span class="caption-text">Iterations per solve and time per step of <code class="docutils literal notranslate"><span class="pre">mg</span></code> relative to
+<caption><span class="caption-number">Table 7 </span><span class="caption-text">Iterations per solve and time per step of <code class="docutils literal notranslate"><span class="pre">mg</span></code> relative to
 <code class="docutils literal notranslate"><span class="pre">asm</span></code></span><a class="headerlink" href="#table-time-propagation-mg" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 46.0%" />
@@ -622,7 +622,7 @@ for B-spline discretisations.</p>
 </tbody>
 </table>
 <table class="docutils align-default" id="table-time-propagation-gamg">
-<caption><span class="caption-number">Table 7 </span><span class="caption-text">Algebraic and geometric multigrid against ASM: 3D, p = 3,
+<caption><span class="caption-number">Table 8 </span><span class="caption-text">Algebraic and geometric multigrid against ASM: 3D, p = 3,
 110k DOFs, <code class="docutils literal notranslate"><span class="pre">cn</span></code>, 8 ranks, 40 steps</span><a class="headerlink" href="#table-time-propagation-gamg" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 25.0%" />
@@ -664,7 +664,7 @@ stage solver (<code class="docutils literal notranslate"><span class="pre">-pade
 following timings were taken with <code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 8 ranks and <span class="math notranslate nohighlight">\(h = 0.05\)</span>,
 without the extrapolated initial guess; the ranking does not depend on it.</p>
 <table class="docutils align-default" id="table-time-propagation-pctype">
-<caption><span class="caption-number">Table 8 </span><span class="caption-text">Propagation time and iterations per solve by <code class="docutils literal notranslate"><span class="pre">pc_type</span></code></span><a class="headerlink" href="#table-time-propagation-pctype" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 9 </span><span class="caption-text">Propagation time and iterations per solve by <code class="docutils literal notranslate"><span class="pre">pc_type</span></code></span><a class="headerlink" href="#table-time-propagation-pctype" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 30.0%" />
 <col style="width: 35.0%" />
@@ -716,7 +716,7 @@ the overlap of ASM and need about four times as many iterations.</p>
 difference of the same 2D run (100 <code class="docutils literal notranslate"><span class="pre">pade22</span></code> steps) from a run with an exact
 LU solve (MUMPS) is:</p>
 <table class="docutils align-default" id="table-time-propagation-accuracy">
-<caption><span class="caption-number">Table 9 </span><span class="caption-text">Largest relative difference from an exact solve</span><a class="headerlink" href="#table-time-propagation-accuracy" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 10 </span><span class="caption-text">Largest relative difference from an exact solve</span><a class="headerlink" href="#table-time-propagation-accuracy" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 25.0%" />
 <col style="width: 15.0%" />
@@ -758,7 +758,7 @@ grids).</p>
 rest is preconditioner applications (ILU triangular solves, about 60 %) and
 matrix-vector products. The cost is reduced by fewer iterations:</p>
 <ul class="simple">
-<li><p>the extrapolated initial guess <a class="reference internal" href="#equation-eq-time-propagation-guess">Eq. (44)</a> (default
+<li><p>the extrapolated initial guess <a class="reference internal" href="#equation-eq-time-propagation-guess">Eq. (45)</a> (default
 <span class="math notranslate nohighlight">\(q = 3\)</span>) lowers the mean from 5.5 to 4.1 iterations per solve in 3D
 and from 5.0 to 3.4 in 2D;</p></li>
 <li><p>a looser tolerance, <code class="docutils literal notranslate"><span class="pre">-pade_stage1_ksp_rtol</span> <span class="pre">1e-11</span> <span class="pre">-pade_stage2_ksp_rtol</span>
@@ -790,7 +790,7 @@ above 1.5. Typical strong-field runs (<span class="math notranslate nohighlight"
 coefficient by <span class="math notranslate nohighlight">\(e^{-i\theta}\)</span>, <span class="math notranslate nohighlight">\(\theta = Eh\)</span>. The rational
 approximants reproduce the modulus exactly and the phase approximately:</p>
 <div class="math notranslate nohighlight" id="equation-eq-time-propagation-phase">
-<span class="eqno">(45)<a class="headerlink" href="#equation-eq-time-propagation-phase" title="Link to this equation"></a></span>\[\varphi_{\text{cn}} = 2\arctan\frac{\theta}{2}
+<span class="eqno">(46)<a class="headerlink" href="#equation-eq-time-propagation-phase" title="Link to this equation"></a></span>\[\varphi_{\text{cn}} = 2\arctan\frac{\theta}{2}
 = \theta\Big(1 - \frac{\theta^2}{12} + O(\theta^4)\Big),
 \qquad
 \varphi_{22} = 2\arctan\frac{\theta/2}{1 - \theta^2/12}
@@ -804,7 +804,7 @@ propagators remove this error to fourth order
 </a>
 <figcaption>
 <p><span class="caption-number">Fig. 8 </span><span class="caption-text">Relative phase error of the field-free step,
-<a class="reference internal" href="#equation-eq-time-propagation-phase">Eq. (45)</a>, as a function of
+<a class="reference internal" href="#equation-eq-time-propagation-phase">Eq. (46)</a>, as a function of
 <span class="math notranslate nohighlight">\(\theta = Eh\)</span>. Dashed lines: leading terms
 <span class="math notranslate nohighlight">\(\theta^2/12\)</span> and <span class="math notranslate nohighlight">\(\theta^4/720\)</span>.</span><a class="headerlink" href="#fig-time-propagation-dispersion" title="Link to this image"></a></p>
 </figcaption>

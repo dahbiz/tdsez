@@ -340,48 +340,69 @@ const TDSEZFieldScales &TDSEZEstimateFieldScales()
     return f;
 }
 
-/// Largest hydrogenic element width when HydrogenicHMax = 0: the resolution
-/// width of the field (TDSEZEstimateFieldScales), 0 (no cap) without a field.
-/// Measured on 2D hydrogen-like HHG (800 nm, 1e14 W/cm2, degree 3): this width
-/// converges the harmonic yields to 1.6 % (median), twice it misses the cutoff
-/// by 4 decades, no cap by 1-2 decades over the plateau.
-static PetscReal TDSEZHydrogenicAutoHMax()
+/// Element width that resolves the strong-field dynamics on axis d:
+/// h = pi/(2 k_max) on the axes coupled to the field (Polarization), and
+/// TransverseElementFactor * h on the others, where the electron moves with
+/// the much smaller transverse momentum spread. Measured on 2D hydrogen-like
+/// HHG (800 nm, 1e14 W/cm2, degree 3): h on the laser axis converges the
+/// harmonic yields to 1.6 % (median), 2h there misses the cutoff by 4
+/// decades; across the laser 2h leaves the plateau unchanged and 3h misses
+/// the region beyond the cutoff by 2 decades.
+static PetscReal TDSEZAxisResolution(const TDSEZFieldScales &f, int d)
+{
+    return TDSEZParser::Coupled(d) ? f.h : TDSEZParser::TransverseElementFactor * f.h;
+}
+
+/// Largest hydrogenic element width on axis d when HydrogenicHMax = 0: the
+/// resolution width of the field (TDSEZAxisResolution), 0 (no cap) without a
+/// field. Prints the derivation once.
+static PetscReal TDSEZHydrogenicAutoHMax(int d)
 {
     const TDSEZFieldScales &f = TDSEZEstimateFieldScales();
     if (!f.valid) return 0.0;
-    PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZHydrogenicKnots: HydrogenicHMax = %.3f au from the field (E0 = %.4g, omega = %.4g, Up = %.4g, "
-        "Ip = %.3g, k_max = %.3g; h = pi/(2 k_max)); set HydrogenicHMax > 0 to choose, < 0 for no cap\n",
-        (double)f.h, (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax);
-    return f.h;
+    static bool printed = false;
+    if (!printed) {
+        printed = true;
+        PetscPrintf(PETSC_COMM_WORLD,
+            "TDSEZHydrogenicKnots: HydrogenicHMax from the field (E0 = %.4g, omega = %.4g, Up = %.4g, Ip = %.3g, "
+            "k_max = %.3g): %.3f au on the polarised axes, %.3f au on the others (TransverseElementFactor = %g); "
+            "set HydrogenicHMax > 0 to choose, < 0 for no cap\n",
+            (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax, (double)f.h,
+            (double)(TDSEZParser::TransverseElementFactor * f.h), (double)TDSEZParser::TransverseElementFactor);
+    }
+    return TDSEZAxisResolution(f, d);
 }
 
 /// Spatial resolution of the strong-field dynamics on any knot sequence:
-/// compares the widest element of every axis with pi/(2 k_max) and warns
-/// for the axes that are coarser. Grids are not changed. Silent without a
-/// field (nothing to resolve).
+/// compares the widest element of every axis with its resolution width
+/// (TDSEZAxisResolution) and warns for the axes that are coarser. Grids are
+/// not changed. Silent without a field (nothing to resolve).
 static void TDSEZCheckFieldResolution(IGA iga)
 {
     const TDSEZFieldScales &f = TDSEZEstimateFieldScales();
     if (!f.valid) return;
     PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZ field resolution: E0 = %.4g, omega = %.4g, Up = %.4g, Ip = %.3g -> k_max = %.3g au, "
-        "elements <= pi/(2 k_max) = %.3f au\n",
-        (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax, (double)f.h);
+        "TDSEZ field resolution: E0 = %.4g, omega = %.4g, Up = %.4g, Ip = %.3g -> k_max = %.3g au; elements <= "
+        "pi/(2 k_max) = %.3f au on the polarised axes, %.3f au on the others (TransverseElementFactor = %g)\n",
+        (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax, (double)f.h,
+        (double)(TDSEZParser::TransverseElementFactor * f.h), (double)TDSEZParser::TransverseElementFactor);
     for (PetscInt d = 0; d < iga->dim; ++d) {
         PetscInt m;
         PetscReal *U, hmax = 0, xmax = 0;
         if (IGAAxisGetKnots(iga->axis[d], &m, &U)) continue;
         for (PetscInt k = 0; k < m; ++k)
             if (U[k + 1] - U[k] > hmax) { hmax = U[k + 1] - U[k]; xmax = 0.5 * (U[k] + U[k + 1]); }
-        if (hmax > f.h * (1 + 1e-9))
+        const PetscReal need = TDSEZAxisResolution(f, (int)d);
+        const char *role = TDSEZParser::Coupled((int)d) ? "polarised" : "transverse";
+        if (hmax > need * (1 + 1e-9))
             PetscPrintf(PETSC_COMM_WORLD,
-                "TDSEZ WARNING: %c axis: widest element %.3f au (at %c = %.3g) > %.3f au; the returning electron "
-                "and the harmonic cutoff are under-resolved there (refine NSplines/the grading, or use "
+                "TDSEZ WARNING: %c axis (%s): widest element %.3f au (at %c = %.3g) > %.3f au; the returning "
+                "electron and the harmonic cutoff are under-resolved there (refine NSplines/the grading, or use "
                 "KnotSequence = hydrogenic, which caps the width)\n",
-                "xyz"[d], (double)hmax, "xyz"[d], (double)xmax, (double)f.h);
+                "xyz"[d], role, (double)hmax, "xyz"[d], (double)xmax, (double)need);
         else
-            PetscPrintf(PETSC_COMM_WORLD, "      %c axis: widest element %.3f au: resolved\n", "xyz"[d], (double)hmax);
+            PetscPrintf(PETSC_COMM_WORLD, "      %c axis (%s): widest element %.3f au <= %.3f au: resolved\n",
+                        "xyz"[d], role, (double)hmax, (double)need);
     }
 }
 
@@ -1720,13 +1741,11 @@ PetscErrorCode TDSEZCore::Output()
 
             // Largest hydrogenic element width per axis: the input value, or
             // (0, default) derived from the field for strong-field propagation.
-            PetscReal hmaxAuto = -1;
             auto hydHMax = [&](int d) -> PetscReal {
                 const PetscReal v = TDSEZParser::HydrogenicHMax[d];
                 if (v > 0) return v;
                 if (v < 0) return 0.0;
-                if (hmaxAuto < 0) hmaxAuto = TDSEZHydrogenicAutoHMax();
-                return hmaxAuto;
+                return TDSEZHydrogenicAutoHMax(d);
             };
 
             // ── KNOT VECTOR SETUP ──────────────────────────────────────────────

@@ -360,11 +360,11 @@
   <section id="eigensolver">
 <h1>Eigensolver<a class="headerlink" href="#eigensolver" title="Link to this heading"></a></h1>
 <p>Before the propagation TDSE-Z computes bound states of the field-free
-Hamiltonian <span class="math notranslate nohighlight">\(H_0\)</span> (<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-hamiltonian">Eq. (22)</a>). In the spline
+Hamiltonian <span class="math notranslate nohighlight">\(H_0\)</span> (<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-hamiltonian">Eq. (23)</a>). In the spline
 basis this is the generalised Hermitian eigenproblem</p>
 <div class="math notranslate nohighlight" id="equation-eq-eigensolver-ghep">
-<span class="eqno">(32)<a class="headerlink" href="#equation-eq-eigensolver-ghep" title="Link to this equation"></a></span>\[H_0\,\mathbf c = E\,M\,\mathbf c ,\]</div>
-<p>with <span class="math notranslate nohighlight">\(M\)</span> the overlap matrix (<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-matrices">Eq. (23)</a>). The
+<span class="eqno">(33)<a class="headerlink" href="#equation-eq-eigensolver-ghep" title="Link to this equation"></a></span>\[H_0\,\mathbf c = E\,M\,\mathbf c ,\]</div>
+<p>with <span class="math notranslate nohighlight">\(M\)</span> the overlap matrix (<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-matrices">Eq. (24)</a>). The
 absorbing potential is not part of <span class="math notranslate nohighlight">\(H_0\)</span>; it is added only for the
 propagation (<a class="reference internal" href="Physics-Conventions.html"><span class="doc">Physics Conventions</span></a>). The eigenpairs are used as initial
 states (<a class="reference internal" href="Initial-State.html"><span class="doc">Initial State</span></a>), for populations and current decomposition
@@ -429,11 +429,11 @@ are listed in <a class="reference internal" href="CLI-Flags.html"><span class="d
 </section>
 <section id="shift-invert-krylov-schur">
 <h2>Shift-Invert Krylov-Schur<a class="headerlink" href="#shift-invert-krylov-schur" title="Link to this heading"></a></h2>
-<p>The eigenproblem <a class="reference internal" href="#equation-eq-eigensolver-ghep">Eq. (32)</a> is solved with the Krylov-Schur
+<p>The eigenproblem <a class="reference internal" href="#equation-eq-eigensolver-ghep">Eq. (33)</a> is solved with the Krylov-Schur
 method <a class="reference internal" href="References.html#stewart2002" id="id1"><span>[Stewart2002]</span></a> of SLEPc <a class="reference internal" href="References.html#hernandez2005" id="id2"><span>[Hernandez2005]</span></a> (<code class="docutils literal notranslate"><span class="pre">EPSKRYLOVSCHUR</span></code>, problem
 type <code class="docutils literal notranslate"><span class="pre">EPS_GHEP</span></code>) applied to the shift-and-invert operator</p>
 <div class="math notranslate nohighlight" id="equation-eq-eigensolver-sinvert">
-<span class="eqno">(33)<a class="headerlink" href="#equation-eq-eigensolver-sinvert" title="Link to this equation"></a></span>\[(H_0 - \sigma M)^{-1} M\,\mathbf c = \theta\,\mathbf c, \qquad
+<span class="eqno">(34)<a class="headerlink" href="#equation-eq-eigensolver-sinvert" title="Link to this equation"></a></span>\[(H_0 - \sigma M)^{-1} M\,\mathbf c = \theta\,\mathbf c, \qquad
 \theta = \frac{1}{E - \sigma}, \qquad
 \sigma = \tau - 10^{-3}\max(1, |\tau|) ,\]</div>
 <p>whose largest <span class="math notranslate nohighlight">\(|\theta|\)</span> belong to the eigenvalues <span class="math notranslate nohighlight">\(E\)</span> nearest the
@@ -444,7 +444,7 @@ tolerance is <span class="math notranslate nohighlight">\(10^{-12}\)</span> with
 dimensions are chosen from <span class="math notranslate nohighlight">\(N\)</span> and the problem size.</p>
 <section id="inner-solvers">
 <h3>Inner solvers<a class="headerlink" href="#inner-solvers" title="Link to this heading"></a></h3>
-<p>Each application of <a class="reference internal" href="#equation-eq-eigensolver-sinvert">Eq. (33)</a> solves a linear system with
+<p>Each application of <a class="reference internal" href="#equation-eq-eigensolver-sinvert">Eq. (34)</a> solves a linear system with
 the indefinite matrix <span class="math notranslate nohighlight">\(H_0 - \sigma M\)</span>. Three inner solvers are
 available:</p>
 <ul class="simple">
@@ -483,7 +483,7 @@ defaults, and <code class="docutils literal notranslate"><span class="pre">-eps_
 <code class="docutils literal notranslate"><span class="pre">NBoundStates</span></code> pairs converge, and the backward error of every requested
 pair,</p>
 <div class="math notranslate nohighlight" id="equation-eq-eigensolver-backward-error">
-<span class="eqno">(34)<a class="headerlink" href="#equation-eq-eigensolver-backward-error" title="Link to this equation"></a></span>\[\eta(E, \mathbf c) =
+<span class="eqno">(35)<a class="headerlink" href="#equation-eq-eigensolver-backward-error" title="Link to this equation"></a></span>\[\eta(E, \mathbf c) =
 \frac{\|H_0\mathbf c - E M\mathbf c\|_2}
      {\left(\|H_0\|_\infty + |E|\,\|M\|_\infty\right)\|\mathbf c\|_2} ,\]</div>
 <p>satisfies <span class="math notranslate nohighlight">\(\eta \le 10^{-8}\)</span>. Unlike the relative residual
@@ -511,7 +511,7 @@ eigenstates.</span><a class="headerlink" href="#fig-eigensolver-flow" title="Lin
 </figure>
 <p>The printed residual of each state (<code class="docutils literal notranslate"><span class="pre">res</span></code>) and the dataset
 <code class="docutils literal notranslate"><span class="pre">run_metadata/eig_residual</span></code> in <code class="docutils literal notranslate"><span class="pre">EigenData_&lt;input&gt;.h5</span></code> contain
-<span class="math notranslate nohighlight">\(\eta\)</span> of <a class="reference internal" href="#equation-eq-eigensolver-backward-error">Eq. (34)</a> for the final states.</p>
+<span class="math notranslate nohighlight">\(\eta\)</span> of <a class="reference internal" href="#equation-eq-eigensolver-backward-error">Eq. (35)</a> for the final states.</p>
 </section>
 </section>
 <section id="degenerate-levels-and-reproducible-states">
@@ -523,7 +523,7 @@ currents, saved wavefunctions and superposition initial states would then
 change from run to run. TDSE-Z therefore post-processes the converged pairs.
 Two eigenvalues belong to the same level when</p>
 <div class="math notranslate nohighlight" id="equation-eq-eigensolver-degeneracy">
-<span class="eqno">(35)<a class="headerlink" href="#equation-eq-eigensolver-degeneracy" title="Link to this equation"></a></span>\[|E_i - E_j| \le \varepsilon_{\mathrm{deg}}\,\max(1, |E_i|) ,\]</div>
+<span class="eqno">(36)<a class="headerlink" href="#equation-eq-eigensolver-degeneracy" title="Link to this equation"></a></span>\[|E_i - E_j| \le \varepsilon_{\mathrm{deg}}\,\max(1, |E_i|) ,\]</div>
 <p>with <span class="math notranslate nohighlight">\(\varepsilon_{\mathrm{deg}}\)</span> set by <code class="docutils literal notranslate"><span class="pre">-tdsez_degeneracy_tol</span></code>
 (default <span class="math notranslate nohighlight">\(10^{-9}\)</span>).</p>
 <ol class="arabic simple">

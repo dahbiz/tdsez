@@ -195,6 +195,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"InnerSpacing",            H{[](const std::string &v){ ParseAxisList(v, HydrogenicR1); }}},
                 {"HydrogenicHMax",          H{[](const std::string &v){ ParseAxisList(v, HydrogenicHMax); }}},
                 {"HydrogenicMaxSpacing",    H{[](const std::string &v){ ParseAxisList(v, HydrogenicHMax); }}},
+                {"TransverseElementFactor", R(TransverseElementFactor)},
                 {"Mass",     S(Mass)},
                 {"Charge",    R(Q)},
                 {"ParticleCharge", R(Q)},     // intuitive alias

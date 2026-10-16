@@ -225,11 +225,22 @@ wavelength of the fastest returning electron,
 
    h \le \frac{\pi}{2k_{\max}} .
 
-The start-up output prints :math:`E_0`, :math:`\omega`, :math:`U_p`,
-:math:`I_p`, :math:`k_{\max}` and this width, and for each axis either the
+This applies to the axes coupled to the field (``Polarization``). Across the
+field the electron moves with the much smaller transverse momentum spread,
+and the element width may be larger by ``TransverseElementFactor``
+(:math:`f`, default 2, at least 1),
+
+.. math::
+   :label: eq-knot-sequences-hmax-transverse
+
+   h_\perp \le f\,\frac{\pi}{2k_{\max}} ,
+
+measured in `High-harmonic generation`_. The start-up output prints
+:math:`E_0`, :math:`\omega`, :math:`U_p`, :math:`I_p`, :math:`k_{\max}` and
+both widths, and for each axis (marked polarised or transverse) either the
 widest element ("resolved") or a warning with the axis, the widest element and
 its position. The grid is not modified; only ``hydrogenic`` with
-``HydrogenicHMax = 0`` uses the width as its cap. :math:`E_0` and the
+``HydrogenicHMax = 0`` uses these widths as its per-axis caps. :math:`E_0` and the
 zero-crossing estimate of :math:`\omega` are taken from
 :math:`[0, \mathrm{FinalTime}]`: a test run with a shortened ``FinalTime``
 sees only the beginning of the pulse and may obtain a different width. The
@@ -459,9 +470,60 @@ whose contribution grows approximately as :math:`R_1^{1.5}`; keep
 other to 0.001–0.005 decades in every run, so their agreement does not reveal
 an under-resolved grid; only refinement does.
 
-With ``HydrogenicHMax = 0`` the automatic width
-(`Field-resolution check`_) is 0.976 a.u. for this run and yields the
-converged spectrum (plateau median 0.007, maximum 0.031 decades). For runs
+**Transverse axis.** With the polarised axis kept at 1.0 a.u., the
+transverse element width and box were varied (same reference):
+
+.. list-table:: Transverse resolution, laser along :math:`x`
+   :name: table-knot-sequences-hhg-transverse
+   :widths: 40 12 14 14 12 8
+   :header-rows: 1
+
+   * - Grid (:math:`R_1 = 0.05`, :math:`N_{\mathrm{lin}} = 5`, :math:`N_{\exp} = 10`)
+     - DOFs
+     - plateau median
+     - plateau max
+     - H27–H35 max
+     - norm
+   * - ``HydrogenicHMax = 1.0, 1.0``
+     - 14 553
+     - 0.007
+     - 0.031
+     - 0.018
+     - 0.9947
+   * - ``HydrogenicHMax = 1.0, 2.0``
+     - 8 967
+     - 0.007
+     - 0.032
+     - 0.100
+     - 0.9947
+   * - ``HydrogenicHMax = 1.0, 3.0``
+     - 7 203
+     - 0.012
+     - 0.037
+     - 2.2
+     - 0.9947
+   * - ``HydrogenicHMax = 1.0, 2.0``, :math:`y \in [-25, 25]`
+     - 6 909
+     - 0.20
+     - 0.71
+     - 0.19
+     - 0.979
+
+Twice the polarised-axis width across the field leaves the plateau unchanged
+(:eq:`eq-knot-sequences-hmax-transverse` with :math:`f = 2`); three times
+fails beyond the cutoff. The transverse box must still leave a free core of
+about :math:`\pm 15`–20 a.u. inside the CAP layers, whose width is the same on
+every axis: :math:`\pm 25` with a 21.9 a.u. layer leaves :math:`\pm 3` a.u.,
+absorbs returning electrons (norm 0.979) and spoils the plateau. In 3D both
+transverse axes are coarsened, so the saving is about the square of the 2D
+one.
+
+With ``HydrogenicHMax = 0`` the automatic per-axis widths
+(`Field-resolution check`_) are 1.00 a.u. along the field and 2.00 a.u. across
+it for this run; they give the 8 967-DOF grid of the second row and the
+converged spectrum. With ``TransverseElementFactor = 1`` the same width
+(0.976 a.u.) is used on both axes (14 553-DOF quality, plateau median 0.007,
+maximum 0.031 decades). For runs
 with a shortened ``FinalTime`` set ``HydrogenicHMax`` explicitly, since the
 automatic value is derived from the part of the pulse inside
 :math:`[0, \mathrm{FinalTime}]`.

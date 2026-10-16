@@ -433,10 +433,10 @@ used for every axis.</p>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sup:</span> <span class="pre">c1*N1</span> <span class="pre">+</span> <span class="pre">c2*N2</span> <span class="pre">[+</span> <span class="pre">c3*N3]</span></code></p></td>
 <td><p>Superposition of one to three bound states,
-<a class="reference internal" href="#equation-eq-initial-state-superposition">Eq. (36)</a>.</p></td>
+<a class="reference internal" href="#equation-eq-initial-state-superposition">Eq. (37)</a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">wavepacket</span></code></p></td>
-<td><p>Gaussian wave packet <a class="reference internal" href="#equation-eq-initial-state-wavepacket">Eq. (37)</a>, projected onto
+<td><p>Gaussian wave packet <a class="reference internal" href="#equation-eq-initial-state-wavepacket">Eq. (38)</a>, projected onto
 the basis.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">analytic:quesne01</span></code></p></td>
@@ -467,7 +467,7 @@ fixed phase described in <a class="reference internal" href="Eigensolver.html"><
 <section id="superpositions">
 <h3>Superpositions<a class="headerlink" href="#superpositions" title="Link to this heading"></a></h3>
 <div class="math notranslate nohighlight" id="equation-eq-initial-state-superposition">
-<span class="eqno">(36)<a class="headerlink" href="#equation-eq-initial-state-superposition" title="Link to this equation"></a></span>\[\psi(0) = \frac{1}{\mathcal N} \sum_{k=1}^{n} c_k\,\psi_{N_k},
+<span class="eqno">(37)<a class="headerlink" href="#equation-eq-initial-state-superposition" title="Link to this equation"></a></span>\[\psi(0) = \frac{1}{\mathcal N} \sum_{k=1}^{n} c_k\,\psi_{N_k},
 \qquad n \le 3 ,\]</div>
 <p>with <span class="math notranslate nohighlight">\(\mathcal N = \|\sum_k c_k\psi_{N_k}\|_M\)</span> when
 <code class="docutils literal notranslate"><span class="pre">NormalizeInitialState</span> <span class="pre">=</span> <span class="pre">1</span></code> and <span class="math notranslate nohighlight">\(\mathcal N = 1\)</span> otherwise. For
@@ -496,7 +496,7 @@ relative phase of the terms is reproducible across runs and MPI layouts.</p>
 <h3>Gaussian wave packet<a class="headerlink" href="#gaussian-wave-packet" title="Link to this heading"></a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">InitialState</span> <span class="pre">=</span> <span class="pre">wavepacket</span></code> starts from the normalised Gaussian</p>
 <div class="math notranslate nohighlight" id="equation-eq-initial-state-wavepacket">
-<span class="eqno">(37)<a class="headerlink" href="#equation-eq-initial-state-wavepacket" title="Link to this equation"></a></span>\[\psi_0(\mathbf r) = \prod_{d=1}^{D} (2\pi w_d^2)^{-1/4}
+<span class="eqno">(38)<a class="headerlink" href="#equation-eq-initial-state-wavepacket" title="Link to this equation"></a></span>\[\psi_0(\mathbf r) = \prod_{d=1}^{D} (2\pi w_d^2)^{-1/4}
 \exp\!\left(-\frac{(x_d-c_d)^2}{4w_d^2} + i\,k_{0,d}\,x_d\right),\]</div>
 <p>for which <span class="math notranslate nohighlight">\(|\psi_0|^2\)</span> has standard deviation <span class="math notranslate nohighlight">\(w_d\)</span> along axis
 <span class="math notranslate nohighlight">\(d\)</span> and the momentum density is
@@ -522,7 +522,7 @@ walls and a mass step <span class="math notranslate nohighlight">\(m = 1\)</span
 <p>The wave packet and the analytic states are <span class="math notranslate nohighlight">\(L^2\)</span>-projected onto the
 basis,</p>
 <div class="math notranslate nohighlight" id="equation-eq-initial-state-projection">
-<span class="eqno">(38)<a class="headerlink" href="#equation-eq-initial-state-projection" title="Link to this equation"></a></span>\[M\,\mathbf c = \mathbf b, \qquad
+<span class="eqno">(39)<a class="headerlink" href="#equation-eq-initial-state-projection" title="Link to this equation"></a></span>\[M\,\mathbf c = \mathbf b, \qquad
 b_i = \int B_i(\mathbf r)\,\psi_0(\mathbf r)\,d\mathbf r ,\]</div>
 <p>solved with conjugate gradients (Jacobi preconditioner, relative tolerance
 <span class="math notranslate nohighlight">\(10^{-13}\)</span>), and then always normalised to <span class="math notranslate nohighlight">\(\|\psi(0)\|_M = 1\)</span>,

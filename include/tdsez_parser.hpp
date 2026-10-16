@@ -420,6 +420,10 @@ class TDSEZParser
         /// 0 (default): derived from the field when propagating with a laser
         /// (pi/(2 k_max)), else no cap; < 0: no cap.
         inline static PetscReal             HydrogenicHMax[3]   = {0.0, 0.0, 0.0};
+        /// Element width allowed on axes not coupled to the field, as a
+        /// multiple of the polarised-axis width pi/(2 k_max) (automatic
+        /// HydrogenicHMax and the field-resolution check). >= 1; default 2.
+        inline static PetscReal             TransverseElementFactor = 2.0;
 
         /// Number of quadrature points per element.
         inline static PetscInt  NQuadratures      = 8;

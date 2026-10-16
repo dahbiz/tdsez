@@ -368,7 +368,7 @@ picture is the three-step model <a class="reference internal" href="References.h
 acceleration in the field and recombination with the parent ion, with the
 plateau cutoff <a class="reference internal" href="References.html#krause1992" id="id3"><span>[Krause1992]</span></a></p>
 <div class="math notranslate nohighlight" id="equation-eq-hhg-cutoff">
-<span class="eqno">(68)<a class="headerlink" href="#equation-eq-hhg-cutoff" title="Link to this equation"></a></span>\[\hbar\omega_c \approx I_p + 3.17\,U_p ,\qquad
+<span class="eqno">(69)<a class="headerlink" href="#equation-eq-hhg-cutoff" title="Link to this equation"></a></span>\[\hbar\omega_c \approx I_p + 3.17\,U_p ,\qquad
 U_p = \frac{E_0^2}{4\omega^2} ,\qquad
 \alpha = \frac{E_0}{\omega^2},\]</div>
 <p>where <span class="math notranslate nohighlight">\(U_p\)</span> is the ponderomotive energy and <span class="math notranslate nohighlight">\(\alpha\)</span> the quiver
@@ -425,13 +425,13 @@ than the <span class="math notranslate nohighlight">\(2\alpha + 10 = 42.9\)</spa
 <figcaption>
 <p><span class="caption-number">Fig. 12 </span><span class="caption-text">Box of <code class="docutils literal notranslate"><span class="pre">examples/hhg/hhg_1d.inp</span></code>: soft-core potential, CAP layers at both
 walls, free core and the quiver amplitude <span class="math notranslate nohighlight">\(\alpha = E_0/\omega^2\)</span> of
-<a class="reference internal" href="#equation-eq-hhg-cutoff">Eq. (68)</a>.</span><a class="headerlink" href="#fig-hhg-box" title="Link to this image"></a></p>
+<a class="reference internal" href="#equation-eq-hhg-cutoff">Eq. (69)</a>.</span><a class="headerlink" href="#fig-hhg-box" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p>Measured result (15 s on one core): clean odd harmonics (even/odd peak ratio
 <span class="math notranslate nohighlight">\(10^{-4}\)</span>–<span class="math notranslate nohighlight">\(10^{-3}\)</span>), plateau up to H27–H29 and a sharp cutoff at
 <span class="math notranslate nohighlight">\(1.32\,I_p + 3.17\,U_p = 1.58\)</span> Ha (H27.7); the three equivalent spectra
-of <a class="reference internal" href="#equation-eq-hhg-spectrum">Eq. (69)</a> agree to a few per cent up to H39; final norm 0.992
+of <a class="reference internal" href="#equation-eq-hhg-spectrum">Eq. (70)</a> agree to a few per cent up to H39; final norm 0.992
 (0.8 % ionised, no depletion).</p>
 </section>
 <section id="the-spectrum">
@@ -441,7 +441,7 @@ holds, per axis, the dipole <span class="math notranslate nohighlight">\(D = q\l
 acceleration <span class="math notranslate nohighlight">\(A = q\,d\langle v\rangle/dt\)</span> (<a class="reference internal" href="Observables.html"><span class="doc">Observables</span></a>); the
 <code class="docutils literal notranslate"><span class="pre">currents</span></code> table holds <span class="math notranslate nohighlight">\(J = q\langle v\rangle\)</span>. The emitted spectrum is</p>
 <div class="math notranslate nohighlight" id="equation-eq-hhg-spectrum">
-<span class="eqno">(69)<a class="headerlink" href="#equation-eq-hhg-spectrum" title="Link to this equation"></a></span>\[S(\omega) = |\tilde A(\omega)|^2 = \omega^2|\tilde J(\omega)|^2
+<span class="eqno">(70)<a class="headerlink" href="#equation-eq-hhg-spectrum" title="Link to this equation"></a></span>\[S(\omega) = |\tilde A(\omega)|^2 = \omega^2|\tilde J(\omega)|^2
           = \omega^4|\tilde D(\omega)|^2 ,\]</div>
 <p>and the three forms are identical for exact dynamics <a class="reference internal" href="References.html#burnett1992" id="id5"><span>[Burnett1992]</span></a>.
 <code class="docutils literal notranslate"><span class="pre">hhg_spectrum.py</span></code> computes all three with a window over the whole record and
@@ -539,9 +539,12 @@ widest element of every axis with <span class="math notranslate nohighlight">\(\
 <code class="docutils literal notranslate"><span class="pre">TargetEigenvalue</span></code> (<span class="math notranslate nohighlight">\(I_p = 0.5\)</span> if the target is not negative).
 Near a Coulomb-like core refine the knots (<a class="reference internal" href="Knot-Sequences.html"><span class="doc">Knot Sequences</span></a>). With
 <code class="docutils literal notranslate"><span class="pre">KnotSequence</span> <span class="pre">=</span> <span class="pre">hydrogenic</span></code> the measured requirement is an outer width
-<span class="math notranslate nohighlight">\(\le \pi/(2k_{\max})\)</span> (applied automatically when
-<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code>, the default, and a field is present) and an innermost
-spacing <code class="docutils literal notranslate"><span class="pre">HydrogenicR1</span></code> <span class="math notranslate nohighlight">\(\le\)</span> 0.05 a.u.</p></li>
+<span class="math notranslate nohighlight">\(\le \pi/(2k_{\max})\)</span> along the field and twice that across it
+(<code class="docutils literal notranslate"><span class="pre">TransverseElementFactor</span></code>), applied automatically per axis when
+<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code>, the default, and a field is present, and an innermost
+spacing <code class="docutils literal notranslate"><span class="pre">HydrogenicR1</span></code> <span class="math notranslate nohighlight">\(\le\)</span> 0.05 a.u. on every axis. A smaller
+transverse box is possible as long as a free core of about <span class="math notranslate nohighlight">\(\pm\)</span>
+15–20 a.u. remains inside the CAP layers.</p></li>
 <li><p>Time: resolve the cutoff, <span class="math notranslate nohighlight">\(\omega_c\Delta t \ll 1\)</span>. Crank-Nicolson
 (<code class="docutils literal notranslate"><span class="pre">cn</span></code>) has a relative phase error <span class="math notranslate nohighlight">\((\omega\Delta t)^2/12\)</span> per step;
 the fourth-order propagators (<code class="docutils literal notranslate"><span class="pre">pade22</span></code>, <code class="docutils literal notranslate"><span class="pre">magnus4</span></code>) allow
@@ -558,7 +561,7 @@ the operator form of the acceleration uses it (<code class="docutils literal not
 the default, selects the operator form for a constant mass). A wrong
 derivative gives a wrong <span class="math notranslate nohighlight">\(\tilde A\)</span> while <span class="math notranslate nohighlight">\(\tilde J\)</span> and
 <span class="math notranslate nohighlight">\(\tilde D\)</span> remain correct; the three-way comparison of
-<a class="reference internal" href="#equation-eq-hhg-spectrum">Eq. (69)</a> detects it.</p></li>
+<a class="reference internal" href="#equation-eq-hhg-spectrum">Eq. (70)</a> detects it.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Charge</span> <span class="pre">=</span> <span class="pre">-1</span></code> for electrons. The dipole and acceleration columns carry the
 charge (<span class="math notranslate nohighlight">\(D = q\langle x\rangle\)</span>); the spectra do not depend on its sign.</p></li>
 <li><p>Watch depletion: the final norm (<code class="docutils literal notranslate"><span class="pre">energies</span></code> column 6) and the ground-state

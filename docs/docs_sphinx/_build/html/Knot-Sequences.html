@@ -550,11 +550,18 @@ k_{\max} = \sqrt{2\,(3.17\,U_p + I_p)},\]</div>
 wavelength of the fastest returning electron,</p>
 <div class="math notranslate nohighlight" id="equation-eq-knot-sequences-hmax">
 <span class="eqno">(19)<a class="headerlink" href="#equation-eq-knot-sequences-hmax" title="Link to this equation"></a></span>\[h \le \frac{\pi}{2k_{\max}} .\]</div>
-<p>The start-up output prints <span class="math notranslate nohighlight">\(E_0\)</span>, <span class="math notranslate nohighlight">\(\omega\)</span>, <span class="math notranslate nohighlight">\(U_p\)</span>,
-<span class="math notranslate nohighlight">\(I_p\)</span>, <span class="math notranslate nohighlight">\(k_{\max}\)</span> and this width, and for each axis either the
+<p>This applies to the axes coupled to the field (<code class="docutils literal notranslate"><span class="pre">Polarization</span></code>). Across the
+field the electron moves with the much smaller transverse momentum spread,
+and the element width may be larger by <code class="docutils literal notranslate"><span class="pre">TransverseElementFactor</span></code>
+(<span class="math notranslate nohighlight">\(f\)</span>, default 2, at least 1),</p>
+<div class="math notranslate nohighlight" id="equation-eq-knot-sequences-hmax-transverse">
+<span class="eqno">(20)<a class="headerlink" href="#equation-eq-knot-sequences-hmax-transverse" title="Link to this equation"></a></span>\[h_\perp \le f\,\frac{\pi}{2k_{\max}} ,\]</div>
+<p>measured in <a class="reference internal" href="#high-harmonic-generation">High-harmonic generation</a>. The start-up output prints
+<span class="math notranslate nohighlight">\(E_0\)</span>, <span class="math notranslate nohighlight">\(\omega\)</span>, <span class="math notranslate nohighlight">\(U_p\)</span>, <span class="math notranslate nohighlight">\(I_p\)</span>, <span class="math notranslate nohighlight">\(k_{\max}\)</span> and
+both widths, and for each axis (marked polarised or transverse) either the
 widest element (“resolved”) or a warning with the axis, the widest element and
 its position. The grid is not modified; only <code class="docutils literal notranslate"><span class="pre">hydrogenic</span></code> with
-<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code> uses the width as its cap. <span class="math notranslate nohighlight">\(E_0\)</span> and the
+<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code> uses these widths as its per-axis caps. <span class="math notranslate nohighlight">\(E_0\)</span> and the
 zero-crossing estimate of <span class="math notranslate nohighlight">\(\omega\)</span> are taken from
 <span class="math notranslate nohighlight">\([0, \mathrm{FinalTime}]\)</span>: a test run with a shortened <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code>
 sees only the beginning of the pulse and may obtain a different width. The
@@ -819,9 +826,72 @@ whose contribution grows approximately as <span class="math notranslate nohighli
 <span class="math notranslate nohighlight">\(R_1 \le 0.05\)</span> a.u. The acceleration and current spectra agree with each
 other to 0.001–0.005 decades in every run, so their agreement does not reveal
 an under-resolved grid; only refinement does.</p>
-<p>With <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code> the automatic width
-(<a class="reference internal" href="#field-resolution-check">Field-resolution check</a>) is 0.976 a.u. for this run and yields the
-converged spectrum (plateau median 0.007, maximum 0.031 decades). For runs
+<p><strong>Transverse axis.</strong> With the polarised axis kept at 1.0 a.u., the
+transverse element width and box were varied (same reference):</p>
+<table class="docutils align-default" id="table-knot-sequences-hhg-transverse">
+<caption><span class="caption-number">Table 6 </span><span class="caption-text">Transverse resolution, laser along <span class="math notranslate nohighlight">\(x\)</span></span><a class="headerlink" href="#table-knot-sequences-hhg-transverse" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 12.0%" />
+<col style="width: 14.0%" />
+<col style="width: 14.0%" />
+<col style="width: 12.0%" />
+<col style="width: 8.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Grid (<span class="math notranslate nohighlight">\(R_1 = 0.05\)</span>, <span class="math notranslate nohighlight">\(N_{\mathrm{lin}} = 5\)</span>, <span class="math notranslate nohighlight">\(N_{\exp} = 10\)</span>)</p></th>
+<th class="head"><p>DOFs</p></th>
+<th class="head"><p>plateau median</p></th>
+<th class="head"><p>plateau max</p></th>
+<th class="head"><p>H27–H35 max</p></th>
+<th class="head"><p>norm</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">1.0,</span> <span class="pre">1.0</span></code></p></td>
+<td><p>14 553</p></td>
+<td><p>0.007</p></td>
+<td><p>0.031</p></td>
+<td><p>0.018</p></td>
+<td><p>0.9947</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">1.0,</span> <span class="pre">2.0</span></code></p></td>
+<td><p>8 967</p></td>
+<td><p>0.007</p></td>
+<td><p>0.032</p></td>
+<td><p>0.100</p></td>
+<td><p>0.9947</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">1.0,</span> <span class="pre">3.0</span></code></p></td>
+<td><p>7 203</p></td>
+<td><p>0.012</p></td>
+<td><p>0.037</p></td>
+<td><p>2.2</p></td>
+<td><p>0.9947</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">1.0,</span> <span class="pre">2.0</span></code>, <span class="math notranslate nohighlight">\(y \in [-25, 25]\)</span></p></td>
+<td><p>6 909</p></td>
+<td><p>0.20</p></td>
+<td><p>0.71</p></td>
+<td><p>0.19</p></td>
+<td><p>0.979</p></td>
+</tr>
+</tbody>
+</table>
+<p>Twice the polarised-axis width across the field leaves the plateau unchanged
+(<a class="reference internal" href="#equation-eq-knot-sequences-hmax-transverse">Eq. (20)</a> with <span class="math notranslate nohighlight">\(f = 2\)</span>); three times
+fails beyond the cutoff. The transverse box must still leave a free core of
+about <span class="math notranslate nohighlight">\(\pm 15\)</span>–20 a.u. inside the CAP layers, whose width is the same on
+every axis: <span class="math notranslate nohighlight">\(\pm 25\)</span> with a 21.9 a.u. layer leaves <span class="math notranslate nohighlight">\(\pm 3\)</span> a.u.,
+absorbs returning electrons (norm 0.979) and spoils the plateau. In 3D both
+transverse axes are coarsened, so the saving is about the square of the 2D
+one.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0</span></code> the automatic per-axis widths
+(<a class="reference internal" href="#field-resolution-check">Field-resolution check</a>) are 1.00 a.u. along the field and 2.00 a.u. across
+it for this run; they give the 8 967-DOF grid of the second row and the
+converged spectrum. With <code class="docutils literal notranslate"><span class="pre">TransverseElementFactor</span> <span class="pre">=</span> <span class="pre">1</span></code> the same width
+(0.976 a.u.) is used on both axes (14 553-DOF quality, plateau median 0.007,
+maximum 0.031 decades). For runs
 with a shortened <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> set <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code> explicitly, since the
 automatic value is derived from the part of the pulse inside
 <span class="math notranslate nohighlight">\([0, \mathrm{FinalTime}]\)</span>.</p>

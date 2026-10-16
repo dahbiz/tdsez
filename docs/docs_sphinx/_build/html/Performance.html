@@ -376,11 +376,11 @@ cores) with 2-8 MPI ranks. Cluster scaling is not covered here.</p>
 <figcaption>
 <p><span class="caption-number">Fig. 14 </span><span class="caption-text">Measured speed-ups of individual optimisations (wall time before divided by
 wall time after, logarithmic scale). The test cases are those of
-<a class="reference internal" href="#table-performance-summary"><span class="std std-numref">Table 12</span></a>.</span><a class="headerlink" href="#fig-performance-speedups" title="Link to this image"></a></p>
+<a class="reference internal" href="#table-performance-summary"><span class="std std-numref">Table 13</span></a>.</span><a class="headerlink" href="#fig-performance-speedups" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <table class="docutils align-default" id="table-performance-summary">
-<caption><span class="caption-number">Table 12 </span><span class="caption-text">Measured gains</span><a class="headerlink" href="#table-performance-summary" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 13 </span><span class="caption-text">Measured gains</span><a class="headerlink" href="#table-performance-summary" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 34.0%" />
 <col style="width: 38.0%" />
@@ -458,7 +458,7 @@ wall time after, logarithmic scale). The test cases are those of
 <h2>Linear solves of the propagation<a class="headerlink" href="#linear-solves-of-the-propagation" title="Link to this heading"></a></h2>
 <p>The semi-discrete equation is</p>
 <div class="math notranslate nohighlight" id="equation-eq-perf-semidiscrete">
-<span class="eqno">(70)<a class="headerlink" href="#equation-eq-perf-semidiscrete" title="Link to this equation"></a></span>\[i\,\mathbf M\,\dot{\mathbf c}(t) = \mathbf H(t)\,\mathbf c(t),
+<span class="eqno">(71)<a class="headerlink" href="#equation-eq-perf-semidiscrete" title="Link to this equation"></a></span>\[i\,\mathbf M\,\dot{\mathbf c}(t) = \mathbf H(t)\,\mathbf c(t),
 \qquad
 \mathbf H(t) = \mathbf H_0 + s\,\mathbf E(t)\cdot\mathbf D ,\]</div>
 <p>with overlap matrix <span class="math notranslate nohighlight">\(\mathbf M\)</span>, field-free Hamiltonian
@@ -483,7 +483,7 @@ per step, and the PetIGA element and basis-function block preconditioners
 <p><code class="docutils literal notranslate"><span class="pre">pade22</span></code> and <code class="docutils literal notranslate"><span class="pre">magnus4</span></code> apply the (2,2) Padé approximant of the step
 exponential, which factorises into two Cayley-type stages,</p>
 <div class="math notranslate nohighlight" id="equation-eq-perf-stages">
-<span class="eqno">(71)<a class="headerlink" href="#equation-eq-perf-stages" title="Link to this equation"></a></span>\[\mathbf A_k = \mathbf M + g_k\,\mathbf H_{\mathrm E}
+<span class="eqno">(72)<a class="headerlink" href="#equation-eq-perf-stages" title="Link to this equation"></a></span>\[\mathbf A_k = \mathbf M + g_k\,\mathbf H_{\mathrm E}
 = \underbrace{\mathbf M + g_k\,\mathbf H_0}_{\mathbf B_k} + g_k\,s\,\mathbf E\cdot\mathbf D,
 \qquad k = 1, 2,\]</div>
 <p>with <span class="math notranslate nohighlight">\(g_{1,2} = h(\mp\sqrt3 + 3i)/12\)</span>. <code class="docutils literal notranslate"><span class="pre">magnus4</span></code> is the
@@ -505,7 +505,7 @@ legend gives the maximum error and the propagation time. Crank-Nicolson,
 <code class="docutils literal notranslate"><span class="pre">docs/perf/run.sh</span></code>.</span><a class="headerlink" href="#fig-performance-propagators" title="Link to this image"></a></p>
 </figcaption>
 </figure>
-<p>The stage solver exploits the structure of <a class="reference internal" href="#equation-eq-perf-stages">Eq. (71)</a>:</p>
+<p>The stage solver exploits the structure of <a class="reference internal" href="#equation-eq-perf-stages">Eq. (72)</a>:</p>
 <ul>
 <li><p><strong>Cached field-free parts.</strong> <span class="math notranslate nohighlight">\(\mathbf B_k\)</span> depends only on the step
 length and is computed once per step length.</p></li>
@@ -521,14 +521,14 @@ instead of three.</p></li>
 the stage increment <span class="math notranslate nohighlight">\(\boldsymbol\delta = \mathbf y - \mathbf x\)</span>
 extrapolated from the last <span class="math notranslate nohighlight">\(q\)</span> steps,</p>
 <div class="math notranslate nohighlight" id="equation-eq-perf-guess">
-<span class="eqno">(72)<a class="headerlink" href="#equation-eq-perf-guess" title="Link to this equation"></a></span>\[\mathbf y_0^{(n)} = \mathbf x^{(n)}
+<span class="eqno">(73)<a class="headerlink" href="#equation-eq-perf-guess" title="Link to this equation"></a></span>\[\mathbf y_0^{(n)} = \mathbf x^{(n)}
 + \sum_{j=1}^{q} (-1)^{j-1}\binom{q}{j}\,\boldsymbol\delta^{(n-j)} ,\]</div>
 <p>so the initial residual is <span class="math notranslate nohighlight">\(O(h^q)\)</span>; <span class="math notranslate nohighlight">\(q = 3\)</span> by default
 (<code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span></code>).</p>
 </li>
 </ul>
 <table class="docutils align-default" id="table-performance-stage">
-<caption><span class="caption-number">Table 13 </span><span class="caption-text">Stage solver, <code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 8 ranks, <span class="math notranslate nohighlight">\(\Delta t = 0.05\)</span></span><a class="headerlink" href="#table-performance-stage" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 14 </span><span class="caption-text">Stage solver, <code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 8 ranks, <span class="math notranslate nohighlight">\(\Delta t = 0.05\)</span></span><a class="headerlink" href="#table-performance-stage" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 46.0%" />
 <col style="width: 18.0%" />
@@ -572,7 +572,7 @@ solves and sparse products, so iterations saved translate directly into time.</p
 <h2>Assembly<a class="headerlink" href="#assembly" title="Link to this heading"></a></h2>
 <p>Element matrices are sums over the tensor-product Gauss rule,</p>
 <div class="math notranslate nohighlight" id="equation-eq-perf-element">
-<span class="eqno">(73)<a class="headerlink" href="#equation-eq-perf-element" title="Link to this equation"></a></span>\[E_{ab} = \sum_{q} c(\mathbf r_q)\, D^{\alpha} N_a(\mathbf r_q)\, D^{\beta} N_b(\mathbf r_q),\]</div>
+<span class="eqno">(74)<a class="headerlink" href="#equation-eq-perf-element" title="Link to this equation"></a></span>\[E_{ab} = \sum_{q} c(\mathbf r_q)\, D^{\alpha} N_a(\mathbf r_q)\, D^{\beta} N_b(\mathbf r_q),\]</div>
 <p>with <span class="math notranslate nohighlight">\(c\)</span> the quadrature weight times a coefficient (<span class="math notranslate nohighlight">\(1/2m\)</span>,
 <span class="math notranslate nohighlight">\(V\)</span>, <span class="math notranslate nohighlight">\(1/m\)</span>, <span class="math notranslate nohighlight">\(x_d\)</span>, <span class="math notranslate nohighlight">\(\partial_d V/m\)</span>, CAP, …). The
 B-spline basis <a class="reference internal" href="References.html#deboor2001" id="id7"><span>[deBoor2001]</span></a> and the rule are tensor products, so the sum is
@@ -589,7 +589,7 @@ couples only to functions within <span class="math notranslate nohighlight">\(p\
 up to <span class="math notranslate nohighlight">\((p+1)^{2d}/(2p+1)^d\)</span> redundant insertions per entry (78 at
 <span class="math notranslate nohighlight">\(p = 7\)</span> in 3D) and their inter-rank communication.</p>
 <table class="docutils align-default" id="table-performance-assembly">
-<caption><span class="caption-number">Table 14 </span><span class="caption-text">Assembly, 3D, 4 ranks</span><a class="headerlink" href="#table-performance-assembly" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 15 </span><span class="caption-text">Assembly, 3D, 4 ranks</span><a class="headerlink" href="#table-performance-assembly" title="Link to this table"></a></caption>
 <colgroup>
 <col style="width: 50.0%" />
 <col style="width: 25.0%" />
@@ -628,10 +628,10 @@ Kronecker products of 1D banded matrices (<span class="math notranslate nohighli
 constant mass the velocities and <span class="math notranslate nohighlight">\(\mathbf K\)</span>) are applied in factorised
 form. Expectation values of non-separable operators,</p>
 <div class="math notranslate nohighlight" id="equation-eq-perf-quadrature">
-<span class="eqno">(74)<a class="headerlink" href="#equation-eq-perf-quadrature" title="Link to this equation"></a></span>\[\langle\psi|\mathbf A|\psi\rangle
+<span class="eqno">(75)<a class="headerlink" href="#equation-eq-perf-quadrature" title="Link to this equation"></a></span>\[\langle\psi|\mathbf A|\psi\rangle
 = \sum_q c(\mathbf r_q)\,\overline{D^\alpha\psi(\mathbf r_q)}\,D^\beta\psi(\mathbf r_q),\]</div>
 <p>are evaluated from <span class="math notranslate nohighlight">\(\psi\)</span> at the quadrature points, which gives the same
-number as the matrix of <a class="reference internal" href="#equation-eq-perf-element">Eq. (73)</a> without storing it
+number as the matrix of <a class="reference internal" href="#equation-eq-perf-element">Eq. (74)</a> without storing it
 (<span class="math notranslate nohighlight">\(\langle V\rangle\)</span>, the forces, and for a varying mass
 <span class="math notranslate nohighlight">\(\langle 1/m\rangle\)</span>, <span class="math notranslate nohighlight">\(\langle K\rangle\)</span> and the velocities). Every
 replacement is checked against the assembled matrix on the first step and used

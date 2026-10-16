@@ -366,7 +366,7 @@ in atomic units. Expectation values are formed with the coefficient vector
 <span class="math notranslate nohighlight">\(\mathbf c\)</span> of the state and the matrices of the B-spline basis; the
 inner product is the one of the mass (overlap) matrix,</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-inner">
-<span class="eqno">(46)<a class="headerlink" href="#equation-eq-observables-inner" title="Link to this equation"></a></span>\[\langle\psi|\phi\rangle_M = \mathbf c_\psi^\dagger\,\mathbf M\,\mathbf c_\phi ,
+<span class="eqno">(47)<a class="headerlink" href="#equation-eq-observables-inner" title="Link to this equation"></a></span>\[\langle\psi|\phi\rangle_M = \mathbf c_\psi^\dagger\,\mathbf M\,\mathbf c_\phi ,
 \qquad
 \langle A\rangle = \mathbf c^\dagger\,\mathbf A\,\mathbf c ,\]</div>
 <p>where <span class="math notranslate nohighlight">\(\mathbf A\)</span> is the Galerkin matrix of the operator. Expectation
@@ -402,13 +402,13 @@ paths and the largest relative difference found in the check.</p>
 <section id="norm">
 <h2>Norm<a class="headerlink" href="#norm" title="Link to this heading"></a></h2>
 <div class="math notranslate nohighlight" id="equation-eq-observables-norm">
-<span class="eqno">(47)<a class="headerlink" href="#equation-eq-observables-norm" title="Link to this equation"></a></span>\[N(t) = \langle\psi(t)|\psi(t)\rangle_M = \mathbf c^\dagger\mathbf M\mathbf c .\]</div>
+<span class="eqno">(48)<a class="headerlink" href="#equation-eq-observables-norm" title="Link to this equation"></a></span>\[N(t) = \langle\psi(t)|\psi(t)\rangle_M = \mathbf c^\dagger\mathbf M\mathbf c .\]</div>
 <p>It is the column <code class="docutils literal notranslate"><span class="pre">Norm</span></code> of the <code class="docutils literal notranslate"><span class="pre">energies</span></code> dataset.</p>
 </section>
 <section id="dipole">
 <h2>Dipole<a class="headerlink" href="#dipole" title="Link to this heading"></a></h2>
 <div class="math notranslate nohighlight" id="equation-eq-observables-dipole">
-<span class="eqno">(48)<a class="headerlink" href="#equation-eq-observables-dipole" title="Link to this equation"></a></span>\[D_a(t) = q\,\langle\psi(t)|\,x_a\,|\psi(t)\rangle ,
+<span class="eqno">(49)<a class="headerlink" href="#equation-eq-observables-dipole" title="Link to this equation"></a></span>\[D_a(t) = q\,\langle\psi(t)|\,x_a\,|\psi(t)\rangle ,
 \qquad a \in \{x, y, z\},\]</div>
 <p>computed as <span class="math notranslate nohighlight">\(q\,\mathbf c^\dagger\mathbf D_a\mathbf c\)</span> with the
 position matrix <span class="math notranslate nohighlight">\((\mathbf D_a)_{ij} = \int B_i\,x_a\,B_j\)</span>. The
@@ -422,7 +422,7 @@ axes are observed by default; with <code class="docutils literal notranslate"><s
 <h2>Energies<a class="headerlink" href="#energies" title="Link to this heading"></a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">energies</span></code> dataset stores</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-energies">
-<span class="eqno">(49)<a class="headerlink" href="#equation-eq-observables-energies" title="Link to this equation"></a></span>\[E_{\text{kin}} = \langle K\rangle, \qquad
+<span class="eqno">(50)<a class="headerlink" href="#equation-eq-observables-energies" title="Link to this equation"></a></span>\[E_{\text{kin}} = \langle K\rangle, \qquad
 E_{\text{pot}} = \langle sV\rangle, \qquad
 E_{\text{int}} = s\,\mathbf E(t)\cdot\langle\mathbf r\rangle, \qquad
 E_{\text{tot}} = \mathrm{Re}\,\langle H\rangle + E_{\text{int}} ,\]</div>
@@ -434,7 +434,7 @@ imaginary part of <span class="math notranslate nohighlight">\(\langle H\rangle\
 <span class="math notranslate nohighlight">\(E_{\text{tot}} = E_{\text{kin}} + E_{\text{pot}} + E_{\text{int}}\)</span>. The
 dataset also stores</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-invmass">
-<span class="eqno">(50)<a class="headerlink" href="#equation-eq-observables-invmass" title="Link to this equation"></a></span>\[\langle m^{-1}\rangle = \langle\psi|\,m(\mathbf r)^{-1}\,|\psi\rangle ,\]</div>
+<span class="eqno">(51)<a class="headerlink" href="#equation-eq-observables-invmass" title="Link to this equation"></a></span>\[\langle m^{-1}\rangle = \langle\psi|\,m(\mathbf r)^{-1}\,|\psi\rangle ,\]</div>
 <p>which enters the operator form of the acceleration and indicates which mass
 regions the state occupies. The column layout is given in <a class="reference internal" href="HDF5-Output.html"><span class="doc">HDF5 Output Schema</span></a>.</p>
 </section>
@@ -445,7 +445,7 @@ regions the state occupies. The column layout is given in <a class="reference in
 selected by <code class="docutils literal notranslate"><span class="pre">AccelerationMethod</span></code>.</p>
 <p><strong>operator</strong> (Ehrenfest force, acceleration form <a class="reference internal" href="References.html#burnett1992" id="id1"><span>[Burnett1992]</span></a>):</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-acc-operator">
-<span class="eqno">(51)<a class="headerlink" href="#equation-eq-observables-acc-operator" title="Link to this equation"></a></span>\[A_a(t) = q\,s\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle
+<span class="eqno">(52)<a class="headerlink" href="#equation-eq-observables-acc-operator" title="Link to this equation"></a></span>\[A_a(t) = q\,s\left[\Big\langle -\frac{1}{m}\,\partial_a V \Big\rangle
          + \text{(mass-gradient terms)}
          - E_a(t)\,\Big\langle \frac{1}{m}\Big\rangle\right] .\]</div>
 <p><span class="math notranslate nohighlight">\(\partial_a V\)</span> is the <code class="docutils literal notranslate"><span class="pre">PotentialDerivativeX</span></code>/<code class="docutils literal notranslate"><span class="pre">Y</span></code>/<code class="docutils literal notranslate"><span class="pre">Z</span></code> expression
@@ -453,9 +453,9 @@ selected by <code class="docutils literal notranslate"><span class="pre">Acceler
 form is accurate for a smooth potential and mass and a wave packet that does
 not reach a reflecting wall.</p>
 <p><strong>discrete</strong> (equation of motion of the Galerkin system
-<a class="reference internal" href="Time-Propagation.html#equation-eq-time-propagation-eom">Eq. (39)</a>):</p>
+<a class="reference internal" href="Time-Propagation.html#equation-eq-time-propagation-eom">Eq. (40)</a>):</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-acc-discrete">
-<span class="eqno">(52)<a class="headerlink" href="#equation-eq-observables-acc-discrete" title="Link to this equation"></a></span>\[A_a(t) = -2q\,\mathrm{Im}\big(\mathbf w^\dagger\,\mathbf V_a\,\mathbf c\big),
+<span class="eqno">(53)<a class="headerlink" href="#equation-eq-observables-acc-discrete" title="Link to this equation"></a></span>\[A_a(t) = -2q\,\mathrm{Im}\big(\mathbf w^\dagger\,\mathbf V_a\,\mathbf c\big),
 \qquad
 \mathbf w = \mathbf M^{-1}\big(\mathbf H_h + s\,\mathbf E(t)\cdot\mathbf D\big)\mathbf c ,\]</div>
 <p>with the velocity matrix <span class="math notranslate nohighlight">\(\mathbf V_a\)</span> and
@@ -479,25 +479,25 @@ the wall force; use an absorbing potential for HHG (<a class="reference internal
 <p>The current <span class="math notranslate nohighlight">\(J_a = \dot D_a\)</span> and the acceleration
 <span class="math notranslate nohighlight">\(A_a = \dot J_a\)</span> give equivalent harmonic spectra,</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-hhg">
-<span class="eqno">(53)<a class="headerlink" href="#equation-eq-observables-hhg" title="Link to this equation"></a></span>\[|\tilde A_a(\omega)|^2 = \omega^2\,|\tilde J_a(\omega)|^2
+<span class="eqno">(54)<a class="headerlink" href="#equation-eq-observables-hhg" title="Link to this equation"></a></span>\[|\tilde A_a(\omega)|^2 = \omega^2\,|\tilde J_a(\omega)|^2
 = \omega^4\,|\tilde D_a(\omega)|^2 .\]</div>
 </section>
 <section id="current">
 <h2>Current<a class="headerlink" href="#current" title="Link to this heading"></a></h2>
 <div class="math notranslate nohighlight" id="equation-eq-observables-current">
-<span class="eqno">(54)<a class="headerlink" href="#equation-eq-observables-current" title="Link to this equation"></a></span>\[J_a(t) = q\,\langle\psi(t)|\,v_a\,|\psi(t)\rangle = \dot D_a(t),\]</div>
+<span class="eqno">(55)<a class="headerlink" href="#equation-eq-observables-current" title="Link to this equation"></a></span>\[J_a(t) = q\,\langle\psi(t)|\,v_a\,|\psi(t)\rangle = \dot D_a(t),\]</div>
 <p>with the velocity operator <span class="math notranslate nohighlight">\(v_a\)</span> (<span class="math notranslate nohighlight">\(p_a/m\)</span> for a constant mass).
 The <code class="docutils literal notranslate"><span class="pre">currents</span></code> dataset also splits <span class="math notranslate nohighlight">\(J_a\)</span> with the projections of the
 state on the bound eigenstates <span class="math notranslate nohighlight">\(\phi_n\)</span> kept by the eigensolver
 (<code class="docutils literal notranslate"><span class="pre">NBoundStates</span></code>, extended to the end of a degenerate level),</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-projection">
-<span class="eqno">(55)<a class="headerlink" href="#equation-eq-observables-projection" title="Link to this equation"></a></span>\[c_n(t) = \langle\phi_n|\psi(t)\rangle_M ,
+<span class="eqno">(56)<a class="headerlink" href="#equation-eq-observables-projection" title="Link to this equation"></a></span>\[c_n(t) = \langle\phi_n|\psi(t)\rangle_M ,
 \qquad
 v^{(a)}_{mn} = \langle\phi_m|\,v_a\,|\phi_n\rangle ,\]</div>
 <p>where the matrix <span class="math notranslate nohighlight">\(v^{(a)}_{mn}\)</span> is computed once before the
 propagation:</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-current-split">
-<span class="eqno">(56)<a class="headerlink" href="#equation-eq-observables-current-split" title="Link to this equation"></a></span>\[J^{\text{intra}}_a = q\sum_n |c_n|^2\, v^{(a)}_{nn},
+<span class="eqno">(57)<a class="headerlink" href="#equation-eq-observables-current-split" title="Link to this equation"></a></span>\[J^{\text{intra}}_a = q\sum_n |c_n|^2\, v^{(a)}_{nn},
 \qquad
 J^{\text{inter}}_a = q\sum_{m\ne n} \bar c_m\, c_n\, v^{(a)}_{mn},
 \qquad
@@ -520,8 +520,8 @@ all other cases the column is zero.</p>
 <p>Column <code class="docutils literal notranslate"><span class="pre">dGamma</span></code> of <code class="docutils literal notranslate"><span class="pre">currents</span></code> holds the phase increment of the
 bound-state component between consecutive steps,</p>
 <div class="math notranslate nohighlight" id="equation-eq-observables-dgamma">
-<span class="eqno">(57)<a class="headerlink" href="#equation-eq-observables-dgamma" title="Link to this equation"></a></span>\[\Delta\Gamma(t) = -\arg\Big(\sum_n \bar c_n(t - h)\,c_n(t)\Big),\]</div>
-<p>with <span class="math notranslate nohighlight">\(c_n\)</span> from <a class="reference internal" href="#equation-eq-observables-projection">Eq. (55)</a> (zero at the first
+<span class="eqno">(58)<a class="headerlink" href="#equation-eq-observables-dgamma" title="Link to this equation"></a></span>\[\Delta\Gamma(t) = -\arg\Big(\sum_n \bar c_n(t - h)\,c_n(t)\Big),\]</div>
+<p>with <span class="math notranslate nohighlight">\(c_n\)</span> from <a class="reference internal" href="#equation-eq-observables-projection">Eq. (56)</a> (zero at the first
 step). It contains the dynamical phase; the accumulated phase
 <span class="math notranslate nohighlight">\(\Gamma(t) = \sum_{t' \le t}\Delta\Gamma(t')\)</span> is obtained as the
 cumulative sum of the column.</p>
@@ -529,7 +529,7 @@ cumulative sum of the column.</p>
 <section id="autocorrelation">
 <h2>Autocorrelation<a class="headerlink" href="#autocorrelation" title="Link to this heading"></a></h2>
 <div class="math notranslate nohighlight" id="equation-eq-observables-autocorrelation">
-<span class="eqno">(58)<a class="headerlink" href="#equation-eq-observables-autocorrelation" title="Link to this equation"></a></span>\[C(t) = \langle\psi(0)|\psi(t)\rangle_M = \mathbf c(0)^\dagger\,\mathbf M\,\mathbf c(t),\]</div>
+<span class="eqno">(59)<a class="headerlink" href="#equation-eq-observables-autocorrelation" title="Link to this equation"></a></span>\[C(t) = \langle\psi(0)|\psi(t)\rangle_M = \mathbf c(0)^\dagger\,\mathbf M\,\mathbf c(t),\]</div>
 <p>with <span class="math notranslate nohighlight">\(\psi(0)\)</span> the initial state. <span class="math notranslate nohighlight">\(|C(t)|^2\)</span> is the survival
 probability; the Fourier transform of <span class="math notranslate nohighlight">\(C(t)\)</span> gives the spectrum of
 the states contained in <span class="math notranslate nohighlight">\(\psi(0)\)</span>. The <code class="docutils literal notranslate"><span class="pre">autocorrelation</span></code> dataset
@@ -538,7 +538,7 @@ stores <span class="math notranslate nohighlight">\(t\)</span>, <span class="mat
 <section id="populations">
 <h2>Populations<a class="headerlink" href="#populations" title="Link to this heading"></a></h2>
 <div class="math notranslate nohighlight" id="equation-eq-observables-population">
-<span class="eqno">(59)<a class="headerlink" href="#equation-eq-observables-population" title="Link to this equation"></a></span>\[P_n(t) = |c_n(t)|^2 = \big|\langle\phi_n|\psi(t)\rangle_M\big|^2 ,
+<span class="eqno">(60)<a class="headerlink" href="#equation-eq-observables-population" title="Link to this equation"></a></span>\[P_n(t) = |c_n(t)|^2 = \big|\langle\phi_n|\psi(t)\rangle_M\big|^2 ,
 \qquad n = 0, \dots, N-1 ,\]</div>
 <p>for the <span class="math notranslate nohighlight">\(N\)</span> bound eigenstates kept by the eigensolver. The
 <code class="docutils literal notranslate"><span class="pre">populations</span></code> dataset stores <span class="math notranslate nohighlight">\(t, P_0, \dots, P_{N-1}\)</span>. The sum

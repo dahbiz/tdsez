@@ -76,9 +76,16 @@ def test_hydrogenic_cap_from_the_field():
     deck += "Polarization = x\nLaserX = 0.0534*sin(0.057*t)\nOmegax = 0.057\n"
     rc, E, out = _run("hyd_auto", deck)
     _step("propagating hydrogenic run", rc == 0, out[-1200:])
-    m = re.search(r"HydrogenicHMax = ([0-9.]+) au from the field", out)
-    # E0 = 0.0534 * sin(0.057 * 0.5) over [0, 0.5]: Up ~ 0, k_max = 1 (Ip = 0.5): h = pi/2
-    _step("cap derived from the field", m is not None and abs(float(m.group(1)) - np.pi / 2) < 1e-2, out[-1500:])
+    m = re.search(r"from the field .*?: ([0-9.]+) au on the polarised axes, ([0-9.]+) au on the others", out)
+    # E0 = 0.0534 * sin(0.057 * 0.5) over [0, 0.5]: Up ~ 0, k_max = 1 (Ip = 0.5): h = pi/2 on x,
+    # TransverseElementFactor (2) * h on y
+    _step("cap derived from the field", m is not None and abs(float(m.group(1)) - np.pi / 2) < 1e-2
+          and abs(float(m.group(2)) - np.pi) < 2e-2, out[-1500:])
+    _step("transverse axis reported", "y axis (transverse)" in out and "x axis (polarised)" in out, out[-1500:])
+    rc, E, out = _run("hyd_auto_f1", deck + "TransverseElementFactor = 1\n")
+    m = re.search(r"from the field .*?: ([0-9.]+) au on the polarised axes, ([0-9.]+) au on the others", out)
+    _step("TransverseElementFactor = 1: same width on every axis",
+          rc == 0 and m is not None and abs(float(m.group(2)) - float(m.group(1))) < 1e-9, out[-1500:])
     rc, E, out = _run("hyd_nocap", deck + "HydrogenicHMax = -1, -1\n")
     _step("HydrogenicHMax < 0 disables the cap", rc == 0 and "(capped)" not in out and "from the field" not in out,
           out[-800:])
@@ -94,6 +101,6 @@ def test_cap_width_and_field_resolution_report():
     _step("CAPWidth run", rc == 0, out[-1200:])
     _step("layer set by CAPWidth", "layer w = 12.5 a.u. per wall (CAPWidth)" in out, out[-2500:])
     _step("kmin = 6.555/CAPWidth", "kmin = 0.5244 a.u." in out, out[-2500:])
-    _step("coarse axis reported", "WARNING: x axis: widest element 4.000 au" in out, out[-2500:])
+    _step("coarse axis reported", "WARNING: x axis (polarised): widest element 4.000 au" in out, out[-2500:])
     rc, E, out = _run("cap_off", deck)
     _step("no CAP block without the CAP", rc == 0 and "Manolopoulos" not in out, out[-800:])

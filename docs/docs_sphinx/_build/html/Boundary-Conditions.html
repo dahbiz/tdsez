@@ -436,14 +436,14 @@ wall), and benchmarks whose reference solution vanishes at the box edge.</p>
 <td><p>real</p></td>
 <td><p>0.1</p></td>
 <td><p>Lowest momentum <span class="math notranslate nohighlight">\(k_{\min}\)</span> (a.u.) absorbed with small
-reflection; sets the layer width <a class="reference internal" href="#equation-eq-boundary-conditions-width">Eq. (20)</a>.
+reflection; sets the layer width <a class="reference internal" href="#equation-eq-boundary-conditions-width">Eq. (21)</a>.
 Must be &gt; 0.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CAPWidth</span></code> (<code class="docutils literal notranslate"><span class="pre">CAPLayerWidth</span></code>)</p></td>
 <td><p>real</p></td>
 <td><p>0</p></td>
 <td><p>Layer width <span class="math notranslate nohighlight">\(w\)</span> per wall (a.u.). A positive value overrides
-<code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> through <a class="reference internal" href="#equation-eq-boundary-conditions-width">Eq. (20)</a>; 0 uses
+<code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code> through <a class="reference internal" href="#equation-eq-boundary-conditions-width">Eq. (21)</a>; 0 uses
 <code class="docutils literal notranslate"><span class="pre">CAPKmin</span></code>; a negative value is rejected.</p></td>
 </tr>
 </tbody>
@@ -453,12 +453,12 @@ propagation, with the transmission-free profile of Manolopoulos
 <a class="reference internal" href="References.html#manolopoulos2002" id="id1"><span>[Manolopoulos2002]</span></a>. Every axis <span class="math notranslate nohighlight">\(a\)</span> of the problem receives an
 absorbing layer of width</p>
 <div class="math notranslate nohighlight" id="equation-eq-boundary-conditions-width">
-<span class="eqno">(20)<a class="headerlink" href="#equation-eq-boundary-conditions-width" title="Link to this equation"></a></span>\[w = \frac{c}{2\,\delta\,k_{\min}} \approx \frac{6.555}{k_{\min}},
+<span class="eqno">(21)<a class="headerlink" href="#equation-eq-boundary-conditions-width" title="Link to this equation"></a></span>\[w = \frac{c}{2\,\delta\,k_{\min}} \approx \frac{6.555}{k_{\min}},
 \qquad c = 2.62206,\quad \delta = 0.2,\]</div>
 <p>at both of its walls. Within a layer, with <span class="math notranslate nohighlight">\(u \in [0, w)\)</span> the depth
 measured from the inner edge of the layer and <span class="math notranslate nohighlight">\(r = c\,u/w\)</span>,</p>
 <div class="math notranslate nohighlight" id="equation-eq-boundary-conditions-profile">
-<span class="eqno">(21)<a class="headerlink" href="#equation-eq-boundary-conditions-profile" title="Link to this equation"></a></span>\[W_a = E_{\min}\left(a\,r - b\,r^3 + \frac{4}{(c-r)^2} - \frac{4}{(c+r)^2}\right),
+<span class="eqno">(22)<a class="headerlink" href="#equation-eq-boundary-conditions-profile" title="Link to this equation"></a></span>\[W_a = E_{\min}\left(a\,r - b\,r^3 + \frac{4}{(c-r)^2} - \frac{4}{(c+r)^2}\right),
 \qquad E_{\min} = \tfrac12 k_{\min}^2,
 \quad a = 1 - \frac{16}{c^3},\quad b = \frac{1 - 17/c^3}{c^2},\]</div>
 <p>and <span class="math notranslate nohighlight">\(W_a = 0\)</span> outside the layers. The profile starts at zero at the inner
@@ -473,7 +473,7 @@ reflected.</p>
 <a class="reference internal image-reference" href="_images/Boundary-Conditions-cap.svg"><img alt="_images/Boundary-Conditions-cap.svg" src="_images/Boundary-Conditions-cap.svg" style="width: 90%;" />
 </a>
 <figcaption>
-<p><span class="caption-number">Fig. 4 </span><span class="caption-text">CAP profile <span class="math notranslate nohighlight">\(W(x)/E_{\min}\)</span> of <a class="reference internal" href="#equation-eq-boundary-conditions-profile">Eq. (21)</a>
+<p><span class="caption-number">Fig. 4 </span><span class="caption-text">CAP profile <span class="math notranslate nohighlight">\(W(x)/E_{\min}\)</span> of <a class="reference internal" href="#equation-eq-boundary-conditions-profile">Eq. (22)</a>
 on the axis <span class="math notranslate nohighlight">\([-65, 65]\)</span> a.u. with <code class="docutils literal notranslate"><span class="pre">CAPKmin</span> <span class="pre">=</span> <span class="pre">0.2</span></code>
 (<span class="math notranslate nohighlight">\(w = 32.8\)</span> a.u.); shaded: absorbing layers. Script
 <code class="docutils literal notranslate"><span class="pre">figures/make_Boundary-Conditions-cap.py</span></code>.</span><a class="headerlink" href="#fig-boundary-conditions-cap" title="Link to this image"></a></p>

@@ -381,7 +381,7 @@ binary matrices are sequential, so each program runs on a single MPI rank;
 <code class="docutils literal notranslate"><span class="pre">-gpu</span></code> loads them as CUDA matrices and vectors on one GPU.</p>
 <p>The programs compute matrix elements</p>
 <div class="math notranslate nohighlight" id="equation-eq-post-processing-tdm">
-<span class="eqno">(61)<a class="headerlink" href="#equation-eq-post-processing-tdm" title="Link to this equation"></a></span>\[d^{(a)}_{ij} = \langle\psi_i|\,x_a\,|\psi_j\rangle
+<span class="eqno">(62)<a class="headerlink" href="#equation-eq-post-processing-tdm" title="Link to this equation"></a></span>\[d^{(a)}_{ij} = \langle\psi_i|\,x_a\,|\psi_j\rangle
 = \mathbf c_i^\dagger\,\mathbf D_a\,\mathbf c_j\]</div>
 <p>between eigenstates of the box. They are covered by numerical regression
 tests for a one-dimensional harmonic oscillator; results for continuum
@@ -486,7 +486,7 @@ eigenstates:</p>
 its energy derivative. The program approximates the derivative by a central
 difference over the neighbouring states, sorted by energy,</p>
 <div class="math notranslate nohighlight" id="equation-eq-post-processing-drec">
-<span class="eqno">(62)<a class="headerlink" href="#equation-eq-post-processing-drec" title="Link to this equation"></a></span>\[\mathbf w_j = \frac{\psi_{j+1} - \psi_{j-1}}{E_{j+1} - E_{j-1}},
+<span class="eqno">(63)<a class="headerlink" href="#equation-eq-post-processing-drec" title="Link to this equation"></a></span>\[\mathbf w_j = \frac{\psi_{j+1} - \psi_{j-1}}{E_{j+1} - E_{j-1}},
 \qquad
 d_{\text{rec}}(E_j) = \langle\psi_i|x|\psi_j\rangle
 + i\,g\,\frac{E_{j+1} - E_{j-1}}{2}\,\langle\psi_i|x|\mathbf w_j\rangle ,\]</div>
@@ -528,7 +528,7 @@ state so that it varies smoothly with energy.</p>
 <code class="docutils literal notranslate"><span class="pre">abs_d2</span></code> is the energy-normalised <span class="math notranslate nohighlight">\(\rho_j\,|d_{\text{rec}}|^2\)</span> with
 the central-difference density of states <span class="math notranslate nohighlight">\(\rho_j = 2/(E_{j+1} -
 E_{j-1})\)</span>; <code class="docutils literal notranslate"><span class="pre">dj</span></code> and <code class="docutils literal notranslate"><span class="pre">dw</span></code> are the two matrix elements of
-<a class="reference internal" href="#equation-eq-post-processing-drec">Eq. (62)</a>. The construction approximates an energy
+<a class="reference internal" href="#equation-eq-post-processing-drec">Eq. (63)</a>. The construction approximates an energy
 derivative from finite-box states; its accuracy for a given system should be
 checked against a reference calculation.</p>
 </section>

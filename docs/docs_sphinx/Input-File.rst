@@ -259,8 +259,16 @@ See :doc:`Grid-Domain` and :doc:`Knot-Sequences`.
    * - ``HydrogenicHMax`` (``HydrogenicMaxSpacing``)
      - list[3]
      - 0
-     - ``hydrogenic``: largest element width (a.u.); 0 derives it from the
-       field when propagating, a negative value disables the cap.
+     - ``hydrogenic``: largest element width (a.u.); 0 derives it per axis
+       from the field when propagating (see ``TransverseElementFactor``), a
+       negative value disables the cap.
+   * - ``TransverseElementFactor``
+     - real
+     - 2
+     - Element width allowed on axes not coupled to the field, as a multiple of
+       the polarised-axis width :math:`\pi/(2k_{\max})`; used by the automatic
+       ``HydrogenicHMax`` and the field-resolution check (:doc:`Knot-Sequences`).
+       Must be at least 1.
 
 Potential, mass and carrier
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

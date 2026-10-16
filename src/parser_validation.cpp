@@ -225,6 +225,9 @@ void TDSEZParser::ValidateOrThrow()
                                  "or 'magnus4' (got '" + Propagator + "')");
     if (Preconditioner != "asm" && Preconditioner != "mg" && Preconditioner != "gamg")
         throw std::runtime_error("ValidateOrThrow: Preconditioner must be 'asm', 'mg' or 'gamg' (got '" + Preconditioner + "')");
+    if (!(TransverseElementFactor >= 1.0))
+        throw std::runtime_error("ValidateOrThrow: TransverseElementFactor must be >= 1 (got "
+                                 + std::to_string(TransverseElementFactor) + ")");
     for (std::string *v : {&Basis, &QuadratureRule})
         std::transform(v->begin(), v->end(), v->begin(), [](unsigned char c) { return (char)std::tolower(c); });
     if (Basis != "bspline" && Basis != "bernstein" && Basis != "lagrange" && Basis != "spectral")

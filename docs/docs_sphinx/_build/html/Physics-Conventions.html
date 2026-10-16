@@ -372,7 +372,7 @@ masses <span class="math notranslate nohighlight">\(m_e\)</span>, charge in elem
 <h2>Hamiltonian and Carrier Sign<a class="headerlink" href="#hamiltonian-and-carrier-sign" title="Link to this heading"></a></h2>
 <p>The time-dependent Schrödinger equation is solved in the length gauge:</p>
 <div class="math notranslate nohighlight" id="equation-eq-physics-conventions-tdse">
-<span class="eqno">(28)<a class="headerlink" href="#equation-eq-physics-conventions-tdse" title="Link to this equation"></a></span>\[i\,\frac{\partial\psi}{\partial t} =
+<span class="eqno">(29)<a class="headerlink" href="#equation-eq-physics-conventions-tdse" title="Link to this equation"></a></span>\[i\,\frac{\partial\psi}{\partial t} =
 \left[-\frac{1}{2}\,\nabla\cdot\left(\frac{1}{m(\mathbf r)}\,\nabla\right)
       + s\,V(\mathbf r) + s\,\mathbf E(t)\cdot\mathbf r
       - i\,W(\mathbf r)\right]\psi,
@@ -400,13 +400,13 @@ eigensolver uses the Hermitian <span class="math notranslate nohighlight">\(H_0\
 B-spline basis <a class="reference internal" href="References.html#deboor2001" id="id3"><span>[deBoor2001]</span></a> <a class="reference internal" href="References.html#bachau2001" id="id4"><span>[Bachau2001]</span></a>, assembled with PetIGA
 <a class="reference internal" href="References.html#dalcin2016" id="id5"><span>[Dalcin2016]</span></a> <a class="reference internal" href="References.html#hughes2005" id="id6"><span>[Hughes2005]</span></a>, the Galerkin equations are</p>
 <div class="math notranslate nohighlight" id="equation-eq-physics-conventions-semidiscrete">
-<span class="eqno">(29)<a class="headerlink" href="#equation-eq-physics-conventions-semidiscrete" title="Link to this equation"></a></span>\[i\,M\,\dot{\mathbf c} = \Big(H + s \sum_{a\in P} E_a(t)\,D_a\Big)\,\mathbf c ,\]</div>
+<span class="eqno">(30)<a class="headerlink" href="#equation-eq-physics-conventions-semidiscrete" title="Link to this equation"></a></span>\[i\,M\,\dot{\mathbf c} = \Big(H + s \sum_{a\in P} E_a(t)\,D_a\Big)\,\mathbf c ,\]</div>
 <p>with the overlap matrix <span class="math notranslate nohighlight">\(M\)</span>, <span class="math notranslate nohighlight">\(H = K + V - iW\)</span> (matrices of
-<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-matrices">Eq. (23)</a>, <span class="math notranslate nohighlight">\(W\)</span> only with the CAP) and the dipole
+<a class="reference internal" href="Potential-Mass.html#equation-eq-potential-mass-matrices">Eq. (24)</a>, <span class="math notranslate nohighlight">\(W\)</span> only with the CAP) and the dipole
 matrices <span class="math notranslate nohighlight">\(D_a\)</span>. The Crank-Nicolson propagator integrates the residual
 form</p>
 <div class="math notranslate nohighlight" id="equation-eq-physics-conventions-residual">
-<span class="eqno">(30)<a class="headerlink" href="#equation-eq-physics-conventions-residual" title="Link to this equation"></a></span>\[F(t, \mathbf c, \dot{\mathbf c}) =
+<span class="eqno">(31)<a class="headerlink" href="#equation-eq-physics-conventions-residual" title="Link to this equation"></a></span>\[F(t, \mathbf c, \dot{\mathbf c}) =
 i\,M\,\dot{\mathbf c} - H\,\mathbf c - s \sum_{a\in P} E_a(t)\,D_a\,\mathbf c = 0 .\]</div>
 </section>
 <section id="operators">
@@ -434,7 +434,7 @@ used for all norms, projections and populations.</p></td>
 <td><p><span class="math notranslate nohighlight">\((V_a)_{ij} = -\dfrac{i}{2}\displaystyle\int \frac{1}{m}
 \left(B_i\,\partial_a B_j - \partial_a B_i\,B_j\right) d\mathbf r\)</span>,
 the Galerkin matrix of the symmetrised operator in
-<a class="reference internal" href="#equation-eq-physics-conventions-velocity">Eq. (31)</a>. It is <span class="math notranslate nohighlight">\(-i/2\)</span> times a real
+<a class="reference internal" href="#equation-eq-physics-conventions-velocity">Eq. (32)</a>. It is <span class="math notranslate nohighlight">\(-i/2\)</span> times a real
 antisymmetric matrix, hence Hermitian.</p></td>
 </tr>
 <tr class="row-odd"><td><p>Inverse mass</p></td>
@@ -444,7 +444,7 @@ antisymmetric matrix, hence Hermitian.</p></td>
 </table>
 <p>The velocity operator of the BenDaniel-Duke Hamiltonian is</p>
 <div class="math notranslate nohighlight" id="equation-eq-physics-conventions-velocity">
-<span class="eqno">(31)<a class="headerlink" href="#equation-eq-physics-conventions-velocity" title="Link to this equation"></a></span>\[\hat v_a = i\,[H_0, x_a]
+<span class="eqno">(32)<a class="headerlink" href="#equation-eq-physics-conventions-velocity" title="Link to this equation"></a></span>\[\hat v_a = i\,[H_0, x_a]
          = -\frac{i}{2}\left(\frac{1}{m}\,\partial_a
            + \partial_a\,\frac{1}{m}\right) .\]</div>
 <p>The reported observables are multiplied by the charge: dipole
@@ -455,11 +455,11 @@ and acceleration <span class="math notranslate nohighlight">\(q\,d\langle\hat{\m
 <section id="time-stepping">
 <h2>Time Stepping<a class="headerlink" href="#time-stepping" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Propagator</span></code> selects the integrator of
-<a class="reference internal" href="#equation-eq-physics-conventions-semidiscrete">Eq. (29)</a> (<a class="reference internal" href="Time-Propagation.html"><span class="doc">Time Propagation</span></a>):</p>
+<a class="reference internal" href="#equation-eq-physics-conventions-semidiscrete">Eq. (30)</a> (<a class="reference internal" href="Time-Propagation.html"><span class="doc">Time Propagation</span></a>):</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">cn</span></code> (default): Crank-Nicolson <a class="reference internal" href="References.html#crank1947" id="id7"><span>[Crank1947]</span></a>, PETSc <code class="docutils literal notranslate"><span class="pre">TSTHETA</span></code> with
 <span class="math notranslate nohighlight">\(\theta = 1/2\)</span> <a class="reference internal" href="References.html#petsc" id="id8"><span>[PETSc]</span></a>, applied to
-<a class="reference internal" href="#equation-eq-physics-conventions-residual">Eq. (30)</a>.</p></li>
+<a class="reference internal" href="#equation-eq-physics-conventions-residual">Eq. (31)</a>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pade22</span></code>: exponential midpoint rule with a Padé(2,2) approximation of the
 exponential.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">magnus4</span></code>: commutator-free fourth-order Magnus integrator

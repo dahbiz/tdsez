@@ -187,9 +187,12 @@ Checklist
   ``TargetEigenvalue`` (:math:`I_p = 0.5` if the target is not negative).
   Near a Coulomb-like core refine the knots (:doc:`Knot-Sequences`). With
   ``KnotSequence = hydrogenic`` the measured requirement is an outer width
-  :math:`\le \pi/(2k_{\max})` (applied automatically when
-  ``HydrogenicHMax = 0``, the default, and a field is present) and an innermost
-  spacing ``HydrogenicR1`` :math:`\le` 0.05 a.u.
+  :math:`\le \pi/(2k_{\max})` along the field and twice that across it
+  (``TransverseElementFactor``), applied automatically per axis when
+  ``HydrogenicHMax = 0``, the default, and a field is present, and an innermost
+  spacing ``HydrogenicR1`` :math:`\le` 0.05 a.u. on every axis. A smaller
+  transverse box is possible as long as a free core of about :math:`\pm`
+  15–20 a.u. remains inside the CAP layers.
 - Time: resolve the cutoff, :math:`\omega_c\Delta t \ll 1`. Crank-Nicolson
   (``cn``) has a relative phase error :math:`(\omega\Delta t)^2/12` per step;
   the fourth-order propagators (``pade22``, ``magnus4``) allow
