@@ -1,29 +1,26 @@
-/* Light panel behind the logo: the theme's blue (#2980B9) hides the
-   colours of the logo. */
+/* Sidebar header: dark blue panel with a compact logo. */
 .wy-side-nav-search {
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #dfe5ee;
+  background-color: #1e3a5f !important;
 }
 .wy-side-nav-search > a,
 .wy-side-nav-search .wy-dropdown > a {
-  color: #2c3e50 !important;
+  color: #ffffff !important;
 }
 .wy-side-nav-search > div.version {
-  color: #5a6b7d;
+  color: #c9d6e8;
 }
 .wy-side-nav-search input[type="text"] {
-  border-color: #c9d6e8;
+  border-color: #2f5582;
 }
 .wy-side-nav-search img.logo {
   background-color: transparent !important;
-  max-width: 150px;
+  max-width: 110px !important;
 }
 /* small-screen top bar */
 .wy-nav-top {
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #dfe5ee;
+  background-color: #1e3a5f !important;
 }
 .wy-nav-top a,
 .wy-nav-top i {
-  color: #2c3e50 !important;
+  color: #ffffff !important;
 }

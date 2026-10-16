@@ -27,7 +27,7 @@ html_theme_options = {
     "includehidden": True,
     "titles_only": False,
     "logo_only": True,
-    "style_nav_header_background": "#ffffff",
+    "style_nav_header_background": "#1e3a5f",
 }
 html_logo = "_static/logo.png"
 html_favicon = "_static/favicon.png"
