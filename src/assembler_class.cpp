@@ -16,6 +16,7 @@
  */
 
 #include "tdsez_internal.hpp"
+#include "tdsez_quadobs.hpp"
 
 /// @brief Create, assemble, and time a single IGA matrix using the
 ///        PetIGA form-matrix callback mechanism.
@@ -156,6 +157,28 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
     {
         Mat *mats[6] = {&K, &V, &Md, &Dx, &VelX, &dVdx};
         TDSEZAssembleMatBatchTimed(iga, 6, mats, TDSEZFormPhyX, "Axis operators (x)");
+    }
+    else if (TDSEZMatrixFree())
+    {
+        // -tdsez_mat_free: the monitors and diagnostics use the factorised and
+        // quadrature forms directly (TDSEZManager::SetupMatrixFree). Only the
+        // dipoles of the coupled axes are assembled (propagator stage
+        // matrices) and, for a varying mass, the velocities (not separable).
+        Mat *Dm[3] = {&Dx, &Dy, &Dz}, *Vm[3] = {&VelX, &VelY, &VelZ}, *mats[6];
+        PetscInt n = 0;
+        std::string dax, vax;
+        for (int d = 0; d < 3; ++d) {
+            TDSEZMatFreeDipOn[d] = (d < dim && TDSEZParser::Coupled(d)) ? PETSC_TRUE : PETSC_FALSE;
+            if (TDSEZMatFreeDipOn[d]) { mats[n++] = Dm[d]; dax += "xyz"[d]; }
+        }
+        for (int d = 0; d < 3; ++d) {
+            TDSEZMatFreeVelOn[d] = (d < dim && !TDSEZParser::MassIsConstant && TDSEZParser::Observed(d)) ? PETSC_TRUE : PETSC_FALSE;
+            if (TDSEZMatFreeVelOn[d]) { mats[n++] = Vm[d]; vax += "xyz"[d]; }
+        }
+        if (n > 0)
+            TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormMatFreeAxes,
+                                       ("Dipoles (" + dax + ")" + (vax.empty() ? "" : ", velocities (" + vax + ")")).c_str());
+        info.kv("Matrix-free", "K, V, Md, dV, other dipoles%s", TDSEZParser::MassIsConstant ? ", velocities" : "");
     }
     else if (dim == 2 || dim == 3)
     {

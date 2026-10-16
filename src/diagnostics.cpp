@@ -15,17 +15,14 @@
 ///        the upper triangle and fills the lower by Hermitian conjugation.
 /// @param states    Vector of bound-state eigenvectors.
 /// @param energies  Corresponding energy eigenvalues.
-/// @param Dx        X dipole operator (may be NULL if inactive).
-/// @param Dy        Y dipole operator (may be NULL if inactive).
-/// @param Dz        Z dipole operator (may be NULL if inactive).
+/// @param mgr       Manager holding the dipole operators (assembled or
+///                  factorised); an axis without either is skipped.
 /// @param fileName  Base filename for text output.
 /// @return PetscErrorCode — PETSC_SUCCESS on success.
 PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
     const std::vector<Vec>& states,
     const std::vector<PetscReal>& energies,
-    Mat Dx, Mat Dy, Mat Dz,
-
-
+    TDSEZManager *mgr,
     const std::string& fileName)
 {
     PetscFunctionBeginUser;
@@ -41,14 +38,16 @@ PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
     const char* separator  = "    ─────────────────────────────────────────────────────────────────────────────────────────";
 
     PetscInt nStates = static_cast<PetscInt>(states.size());
+    const bool Dx = mgr->HasOp(TDSEZTensorOps::DipX, mgr->Dx()), Dy = mgr->HasOp(TDSEZTensorOps::DipY, mgr->Dy()),
+               Dz = mgr->HasOp(TDSEZTensorOps::DipZ, mgr->Dz());
     int activeDim = (Dx ? 1 : 0) + (Dy ? 1 : 0) + (Dz ? 1 : 0);
 
     // Precompute D|j> 
     std::vector<Vec> Dx_s(nStates, NULL), Dy_s(nStates, NULL), Dz_s(nStates, NULL);
     for (PetscInt j = 0; j < nStates; j++) {
-        if (Dx) { PetscCall(VecDuplicate(states[j], &Dx_s[j])); PetscCall(MatMult(Dx, states[j], Dx_s[j])); }
-        if (Dy) { PetscCall(VecDuplicate(states[j], &Dy_s[j])); PetscCall(MatMult(Dy, states[j], Dy_s[j])); }
-        if (Dz) { PetscCall(VecDuplicate(states[j], &Dz_s[j])); PetscCall(MatMult(Dz, states[j], Dz_s[j])); }
+        if (Dx) { PetscCall(VecDuplicate(states[j], &Dx_s[j])); PetscCall(mgr->ApplyOp(TDSEZTensorOps::DipX, mgr->Dx(), states[j], Dx_s[j])); }
+        if (Dy) { PetscCall(VecDuplicate(states[j], &Dy_s[j])); PetscCall(mgr->ApplyOp(TDSEZTensorOps::DipY, mgr->Dy(), states[j], Dy_s[j])); }
+        if (Dz) { PetscCall(VecDuplicate(states[j], &Dz_s[j])); PetscCall(mgr->ApplyOp(TDSEZTensorOps::DipZ, mgr->Dz(), states[j], Dz_s[j])); }
     }
 
     // Pre-conjugate the bra states ONCE: <psi_i|D|psi_j> = VecTDot(conj(psi_i), D psi_j).
@@ -343,12 +342,12 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
     const PetscInt N = TDSEZ->NPOP;
     MPI_Comm comm = PETSC_COMM_WORLD;
 
-    const PetscBool doX = (PetscBool)(TDSEZ->hasX && TDSEZ->Dx() &&
-                                      TDSEZ->VelX() && !TDSEZ->vMat_x.empty());
-    const PetscBool doY = (PetscBool)(TDSEZ->hasY && TDSEZ->Dy() &&
-                                      TDSEZ->VelY() && !TDSEZ->vMat_y.empty());
-    const PetscBool doZ = (PetscBool)(TDSEZ->hasZ && TDSEZ->Dz() &&
-                                      TDSEZ->VelZ() && !TDSEZ->vMat_z.empty());
+    const PetscBool doX = (PetscBool)(TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::DipX, TDSEZ->Dx()) &&
+                                      !TDSEZ->vMat_x.empty());
+    const PetscBool doY = (PetscBool)(TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::DipY, TDSEZ->Dy()) &&
+                                      !TDSEZ->vMat_y.empty());
+    const PetscBool doZ = (PetscBool)(TDSEZ->hasZ && TDSEZ->HasOp(TDSEZTensorOps::DipZ, TDSEZ->Dz()) &&
+                                      !TDSEZ->vMat_z.empty());
 
     if (!doX && !doY && !doZ) {
         TDSEZInfo info;
@@ -372,7 +371,7 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
 
     for (PetscInt n = 0; n < N; ++n) {
         if (doX) {
-            PetscCall(MatMult(TDSEZ->Dx(), TDSEZ->boundstates[n], tmp));
+            PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), TDSEZ->boundstates[n], tmp));
             PetscCall(VecMDot(tmp, N, states.data(), dots.data()));
             for (PetscInt m = 0; m < N; ++m) {
                 dMat_x[(size_t)m * N + n] = dots[m];   // d_mn = <phi_m|D|phi_n>
@@ -380,7 +379,7 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
         }
 
         if (doY) {
-            PetscCall(MatMult(TDSEZ->Dy(), TDSEZ->boundstates[n], tmp));
+            PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), TDSEZ->boundstates[n], tmp));
             PetscCall(VecMDot(tmp, N, states.data(), dots.data()));
             for (PetscInt m = 0; m < N; ++m) {
                 dMat_y[(size_t)m * N + n] = dots[m];   // d_mn = <phi_m|D|phi_n>
@@ -388,7 +387,7 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
         }
 
         if (doZ) {
-            PetscCall(MatMult(TDSEZ->Dz(), TDSEZ->boundstates[n], tmp));
+            PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipZ, TDSEZ->Dz(), TDSEZ->boundstates[n], tmp));
             PetscCall(VecMDot(tmp, N, states.data(), dots.data()));
             for (PetscInt m = 0; m < N; ++m) {
                 dMat_z[(size_t)m * N + n] = dots[m];   // d_mn = <phi_m|D|phi_n>
@@ -540,8 +539,8 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
 
     for (PetscInt n = 0; n < N; n++)
     {
-        if (TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR) {
-            PetscCall(MatMult(TDSEZ->VelX(), TDSEZ->boundstates[n], tmp));
+        if (TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) {
+            PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), TDSEZ->boundstates[n], tmp));
             for (PetscInt m = 0; m < N; m++) {
                 PetscScalar val;
                 // VecDot(x, y) = y^H x, so this is <phi_m|Vel|phi_n> = v_mn
@@ -549,8 +548,8 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
                 TDSEZ->vMat_x[m*N+n] = val;
             }
         }
-        if (TDSEZ->hasY && TDSEZ->VelY() != PETSC_NULLPTR) {
-            PetscCall(MatMult(TDSEZ->VelY(), TDSEZ->boundstates[n], tmp));
+        if (TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) {
+            PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), TDSEZ->boundstates[n], tmp));
             for (PetscInt m = 0; m < N; m++) {
                 PetscScalar val;
                 // VecDot(x, y) = y^H x, so this is <phi_m|Vel|phi_n> = v_mn
@@ -558,8 +557,8 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
                 TDSEZ->vMat_y[m*N+n] = val;
             }
         }
-        if (TDSEZ->hasZ && TDSEZ->VelZ() != PETSC_NULLPTR) {
-            PetscCall(MatMult(TDSEZ->VelZ(), TDSEZ->boundstates[n], tmp));
+        if (TDSEZ->hasZ && TDSEZ->HasOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ())) {
+            PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ(), TDSEZ->boundstates[n], tmp));
             for (PetscInt m = 0; m < N; m++) {
                 PetscScalar val;
                 // VecDot(x, y) = y^H x, so this is <phi_m|Vel|phi_n> = v_mn
@@ -574,8 +573,9 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
     // Checks of the bound-state momentum matrix and of the velocity operators.
     TDSEZInfo info;
     info.section("MOMENTUM MATRIX CHECKS");
-    const bool on[3] = {TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR, TDSEZ->hasY && TDSEZ->VelY() != PETSC_NULLPTR,
-                        TDSEZ->hasZ && TDSEZ->VelZ() != PETSC_NULLPTR};
+    const bool on[3] = {TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX()),
+                        TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY()),
+                        TDSEZ->hasZ && TDSEZ->HasOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ())};
     const std::vector<PetscScalar> *vm[3] = {&TDSEZ->vMat_x, &TDSEZ->vMat_y, &TDSEZ->vMat_z};
     const PetscReal tol = 1e-10;
 
@@ -606,10 +606,11 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
     }
     info.kv("max |v_mn - conj(v_nm)|", "%.2e  %s", (double)maxHerm, maxHerm <= tol ? "passed" : "FAILED");
 
-    // 3. The assembled velocity operators are Hermitian.
+    // 3. The assembled velocity operators are Hermitian (a factorised velocity,
+    //    -i/(2m) (G - G^T) with M on the other axes, is Hermitian by construction).
     Mat vel[3] = {TDSEZ->VelX(), TDSEZ->VelY(), TDSEZ->VelZ()};
     for (int a = 0; a < 3; ++a) {
-        if (!on[a]) continue;
+        if (!on[a] || !vel[a]) continue;
         Mat VH;
         PetscCall(MatHermitianTranspose(vel[a], MAT_INITIAL_MATRIX, &VH));
         PetscCall(MatAXPY(VH, -1.0, vel[a], DIFFERENT_NONZERO_PATTERN));

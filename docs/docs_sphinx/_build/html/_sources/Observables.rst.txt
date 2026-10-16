@@ -141,8 +141,10 @@ with the velocity matrix :math:`\mathbf V_a` and
 :math:`q\langle v_a\rangle` for the discrete dynamics, including sharp
 interfaces and walls; with a CAP the absorber is excluded, which gives the
 Ehrenfest acceleration of the physical Hamiltonian. It costs one solve with
-:math:`\mathbf M` per step (LU, with MUMPS when available; options prefix
-``accel_``).
+:math:`\mathbf M` per step: conjugate gradients with a block-Jacobi ILU(0)
+preconditioner to :math:`10^{-14}` relative (about 16 iterations; options prefix
+``accel_``, e.g. ``-accel_ksp_type preonly -accel_pc_type lu`` for a direct
+solve). A solve that does not converge stops the run.
 
 ``auto`` (default) uses the discrete form when the ``Mass`` expression depends
 on :math:`x`, :math:`y` or :math:`z` (and ``MassIsConstant`` is not set), the

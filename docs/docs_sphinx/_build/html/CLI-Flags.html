@@ -510,18 +510,31 @@ Dirichlet walls); 0 uses the assembled sparse matrices.</p></td>
 <span class="math notranslate nohighlight">\(\psi\)</span> at the quadrature points (default 1, 2D/3D, not with
 Dirichlet walls); 0 uses the assembled matrices.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code></p></td>
+<td><p>bool</p></td>
+<td><p>Matrix-free monitors and diagnostics (2D/3D, no Dirichlet walls,
+B-spline basis, CPU): <span class="math notranslate nohighlight">\(K\)</span>, <span class="math notranslate nohighlight">\(V\)</span>, <span class="math notranslate nohighlight">\(M_{1/m}\)</span>, the forces,
+the dipoles of axes not coupled to the field and, for a constant mass,
+the velocities are never assembled; their factorised and
+quadrature-point forms (<code class="docutils literal notranslate"><span class="pre">-tdsez_tensor_ops</span></code>, <code class="docutils literal notranslate"><span class="pre">-tdsez_quad_obs</span></code>) are
+used directly, and the Padé/Magnus stage matrices are formed from
+<span class="math notranslate nohighlight">\(\mathbf M\)</span>, <span class="math notranslate nohighlight">\(\mathbf H\)</span> and <span class="math notranslate nohighlight">\(\mathbf D\)</span> without
+cached field-free parts. <span class="math notranslate nohighlight">\(\mathbf H\)</span>, <span class="math notranslate nohighlight">\(\mathbf M\)</span>, the CAP
+and the coupled dipoles stay assembled. Outputs equal the default run
+to rounding (<a class="reference internal" href="Performance.html"><span class="doc">Performance</span></a>).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-tdsez_ilu_levels</span> <span class="pre">&lt;n&gt;</span></code></p></td>
 <td><p>int</p></td>
 <td><p>ILU fill level of the ASM subdomain blocks of the propagator
 preconditioner (default 0). Level 1 saves at most one GMRES iteration,
 while its fill makes 3D factorisations about ten times slower.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span> <span class="pre">&lt;q&gt;</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-pade_guess_order</span> <span class="pre">&lt;q&gt;</span></code></p></td>
 <td><p>int</p></td>
 <td><p>Order of the extrapolated initial guess of the <code class="docutils literal notranslate"><span class="pre">pade22</span></code> and
 <code class="docutils literal notranslate"><span class="pre">magnus4</span></code> stage solves, 1 to 5 (default 3).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-pade_extrapolate_guess</span> <span class="pre">&lt;bool&gt;</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-pade_extrapolate_guess</span> <span class="pre">&lt;bool&gt;</span></code></p></td>
 <td><p>bool</p></td>
 <td><p>Extrapolated initial guess of the <code class="docutils literal notranslate"><span class="pre">pade22</span></code> and <code class="docutils literal notranslate"><span class="pre">magnus4</span></code> stage
 solves (default 1); 0 disables it.</p></td>

@@ -216,6 +216,11 @@ class TDSEZManager
     /// Build and validate the factorised operators on psi; free the matrices
     /// only the monitors used (velocities, uncoupled dipoles, K).
     PetscErrorCode SetupTensorOps(Vec psi);
+    /// -tdsez_mat_free: build the factorised operators on the layout of
+    /// @p templ without assembled matrices to compare with (the assembler did
+    /// not build them). Called before the bound-state diagnostics.
+    PetscErrorCode SetupMatrixFree(Vec templ);
+    bool matFree_ = false;                    ///< -tdsez_mat_free in effect
     /// Expectation values from psi at the quadrature points (2D/3D), each
     /// checked against its matrix at the first monitor call; the matrices they
     /// replace are freed (V, force dV_a, and for a varying mass K, Md, Vel_a).

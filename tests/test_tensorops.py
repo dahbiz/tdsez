@@ -146,3 +146,23 @@ def test_quadrature_expectations_match_matrices():
             for k in ref:
                 err = np.max(np.abs(ref[k] - got[k])) / max(np.max(np.abs(ref[k])), 1e-300)
                 _step(f"{name}{tag}: {k} equal", err < 1e-11, f"{err:.2e}")
+
+
+def test_matrix_free_matches_assembled():
+    """-tdsez_mat_free assembles neither K, V, Md, the forces, the uncoupled
+    dipoles nor (constant mass) the velocities, and forms the Pade stage
+    matrices from M, H and D without the cached field-free parts: the time
+    series must equal those of the default run to rounding."""
+    cases = {
+        "mf_2d": CASES["t2d_xpol"] + "Propagator = pade22\n",
+        "mf_cap": CASES["t3d_cap"] + "Propagator = pade22\nAccelerationMethod = operator\n",
+        "mf_vm_disc": CASES["t3d_varmass"] + "Propagator = pade22\nAccelerationMethod = discrete\n",
+        "mf_vm_op": CASES["t3d_varmass"] + "Propagator = magnus4\nAccelerationMethod = operator\n",
+    }
+    for name, text in cases.items():
+        ref, _ = _run(name + "_ref", text, [])
+        new, out = _run(name + "_mf", text, ["-tdsez_mat_free"])
+        _step(f"{name}: matrix-free in use", "Matrix-free" in out, out[-800:])
+        for k in ref:
+            err = np.max(np.abs(ref[k] - new[k])) / max(np.max(np.abs(ref[k])), 1e-300)
+            _step(f"{name}: {k} equal", err < 1e-11, f"{err:.2e}")

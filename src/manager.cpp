@@ -377,10 +377,12 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             population.resize(NPOP, 0.0);
             popDots.resize(NPOP, 0.0);
 
-            // select polarization
-            hasX = (m_Dx != PETSC_NULLPTR); 
-            hasY = (m_Dy != PETSC_NULLPTR);
-            hasZ = (m_Dz != PETSC_NULLPTR);
+            // observed axes: those with a dipole operator (with -tdsez_mat_free
+            // the uncoupled dipoles are factorised, not assembled)
+            const bool mf = TDSEZMatrixFree();
+            hasX = (m_Dx != PETSC_NULLPTR || (mf && TDSEZParser::Observed(0))) ? PETSC_TRUE : PETSC_FALSE;
+            hasY = (m_Dy != PETSC_NULLPTR || (mf && TDSEZParser::Observed(1))) ? PETSC_TRUE : PETSC_FALSE;
+            hasZ = (m_Dz != PETSC_NULLPTR || (mf && TDSEZParser::Observed(2))) ? PETSC_TRUE : PETSC_FALSE;
 
             // Determine size and safety margin
             PetscInt expectedSteps = static_cast<PetscInt>(std::ceil(TDSEZParser::FinalTime / TDSEZParser::TimeStep)) + 500;           
@@ -583,7 +585,12 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
         PetscCall(MatMult(m_H, psi, tmpVec[1]));
         PetscFunctionReturn(PETSC_SUCCESS);
     }
-    if (!monitorChecked_) {
+    if (!monitorChecked_ && matFree_) {
+        // nothing assembled to check against: set up the quadrature values
+        // and continue with the steady-state products below
+        monitorChecked_ = PETSC_TRUE;
+        PetscCall(SetupQuadObs(psi));
+    } else if (!monitorChecked_) {
         PetscCall(MatMult(m_V, psi, tmpVec[4]));
         PetscCall(MatMult(m_K, psi, tmpVec[3]));
         PetscCall(MatMult(m_H,  psi, tmpVec[1]));
@@ -660,6 +667,27 @@ PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
 }
 
 
+PetscErrorCode TDSEZManager::SetupMatrixFree(Vec templ)
+{
+    PetscFunctionBeginUser;
+    if (!TDSEZMatrixFree() || tensorOps_) PetscFunctionReturn(PETSC_SUCCESS);
+    matFree_ = true;
+    const PetscReal invMass = TDSEZParser::MassIsConstant ? 1.0 / TDSEZParser::MassDist(0.0, 0.0, 0.0) : 0.0;
+    tensorOps_ = new TDSEZTensorOps;
+    PetscCall(tensorOps_->Setup(core_->iga, templ, invMass));
+    PetscCheck(tensorOps_->Enable(TDSEZTensorOps::Mass), PETSC_COMM_WORLD, PETSC_ERR_SUP,
+               "-tdsez_mat_free: the factorised operators are not available for this vector type or geometry");
+    const char *names[] = {"M", "Dx", "Dy", "Dz", "VelX", "VelY", "VelZ", "K"};
+    std::string used = "M";
+    for (int o = TDSEZTensorOps::DipX; o < TDSEZTensorOps::NOps; ++o)
+        if (tensorOps_->Enable((TDSEZTensorOps::Op)o)) used += std::string(", ") + names[o];
+    hFromKV_ = TDSEZParser::EnableCAP ? PETSC_FALSE : PETSC_TRUE;           // H = K + V by construction
+    invMassConst_ = invMass;                                                 // Md = M/m for a constant mass
+    TDSEZInfo().kv("Factorised operators", "%s (matrix-free)", used.c_str());
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
 PetscErrorCode TDSEZManager::ApplyOp(TDSEZTensorOps::Op op, Mat A, Vec x, Vec y)
 {
     PetscFunctionBeginUser;
@@ -732,6 +760,34 @@ PetscErrorCode TDSEZManager::SetupQuadObs(Vec psi)
 
     const bool op = !TDSEZDiscreteAccelerationActive();
     const bool tensorK = tensorOps_ && tensorOps_->Usable(TDSEZTensorOps::Kin);
+    if (matFree_) {
+        // -tdsez_mat_free: every quantity the monitors read comes from here
+        unsigned what = TDSEZQuadObs::Pot, forceAxes = 0;
+        if (invMassConst_ == 0.0) what |= TDSEZQuadObs::InvMass;
+        if (!tensorK) what |= TDSEZQuadObs::Kin;
+        if (op && TDSEZParser::EnableCAP) what |= TDSEZQuadObs::Cap;
+        for (int a = 0; a < (int)TDSEZParser::Dimension; ++a)
+            if (op && TDSEZParser::Observed(a)) { what |= TDSEZQuadObs::Force; forceAxes |= 1u << a; }
+        quadObs_ = new TDSEZQuadObs;
+        PetscCall(quadObs_->Setup(core_->iga, what, op && MassVaries(), forceAxes));
+        TDSEZForceCoeffStore().Release();
+        PetscCheck(quadObs_->Ready(), PETSC_COMM_WORLD, PETSC_ERR_SUP,
+                   "-tdsez_mat_free: the quadrature expectation values are not available for this run");
+        PetscCall(quadObs_->Expect(psi, qv_));
+        qPot_  = true;
+        qInvM_ = (what & TDSEZQuadObs::InvMass) != 0;
+        qKin_  = (what & TDSEZQuadObs::Kin) != 0;
+        for (int a = 0; a < 3; ++a) qForce_[a] = (forceAxes >> a) & 1u;
+        qH_   = op && (!TDSEZParser::EnableCAP || (what & TDSEZQuadObs::Cap));
+        qCap_ = qH_ && (what & TDSEZQuadObs::Cap);
+        std::string used = "V";
+        if (qInvM_) used += ", 1/m";
+        if (qKin_) used += ", K";
+        for (int a = 0; a < 3; ++a) if (qForce_[a]) used += std::string(", dV/d") + "xyz"[a];
+        if (qH_) used += ", H";
+        TDSEZInfo().kv("Quadrature-point expectations", "%s (matrix-free)", used.c_str());
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
     const Mat dV[3] = {m_dVdx, m_dVdy, m_dVdz}, Vl[3] = {m_VelX, m_VelY, m_VelZ};
     unsigned what = 0;
     if (m_V) what |= TDSEZQuadObs::Pot;
@@ -865,16 +921,19 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
     Vec r = accelWork[0], w = accelWork[1], s = accelWork[2];
 
     if (!kspMass) {
+        // M is Hermitian positive definite: CG with block-Jacobi ILU(0) (a
+        // symmetric preconditioner for a symmetric M) converges in about 16
+        // iterations to 1e-14 relative and keeps no LU factor. A direct LU
+        // (-accel_ksp_type preonly -accel_pc_type lu) has a large fill in 3D
+        // and a full triangular solve at every monitor call.
         PC pc;
         PetscCall(KSPCreate(PetscObjectComm((PetscObject)m_M), &kspMass));
         PetscCall(KSPSetOptionsPrefix(kspMass, "accel_"));
         PetscCall(KSPSetOperators(kspMass, m_M, m_M));
-        PetscCall(KSPSetType(kspMass, KSPPREONLY));
+        PetscCall(KSPSetType(kspMass, KSPCG));
+        PetscCall(KSPSetTolerances(kspMass, 1e-14, PETSC_DEFAULT, PETSC_DEFAULT, 1000));
         PetscCall(KSPGetPC(kspMass, &pc));
-        PetscCall(PCSetType(pc, PCLU));
-#if defined(PETSC_HAVE_MUMPS)
-        PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERMUMPS));
-#endif
+        PetscCall(PCSetType(pc, PCBJACOBI));
         PetscCall(KSPSetFromOptions(kspMass));
         PetscCall(KSPSetUp(kspMass));
     }
@@ -903,6 +962,12 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
         PetscCall(VecAXPY(r, E[a], s));
     }
     PetscCall(KSPSolve(kspMass, r, w));
+    {
+        KSPConvergedReason why;
+        PetscCall(KSPGetConvergedReason(kspMass, &why));
+        PetscCheck(why > 0, PETSC_COMM_WORLD, PETSC_ERR_NOT_CONVERGED,
+                   "discrete acceleration: the mass solve did not converge (%s)", KSPConvergedReasons[why]);
+    }
     PetscScalar zq[3] = {0, 0, 0};
     if (qVel_[0] || qVel_[1] || qVel_[2]) PetscCall(quadObs_->VelocityBilinear(w, psi, zq));
 

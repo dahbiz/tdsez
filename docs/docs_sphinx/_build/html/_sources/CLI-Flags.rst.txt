@@ -124,6 +124,18 @@ Propagation flags
        :math:`\partial V/\partial x_a` and the velocities of the monitors from
        :math:`\psi` at the quadrature points (default 1, 2D/3D, not with
        Dirichlet walls); 0 uses the assembled matrices.
+   * - ``-tdsez_mat_free``
+     - bool
+     - Matrix-free monitors and diagnostics (2D/3D, no Dirichlet walls,
+       B-spline basis, CPU): :math:`K`, :math:`V`, :math:`M_{1/m}`, the forces,
+       the dipoles of axes not coupled to the field and, for a constant mass,
+       the velocities are never assembled; their factorised and
+       quadrature-point forms (``-tdsez_tensor_ops``, ``-tdsez_quad_obs``) are
+       used directly, and the Padé/Magnus stage matrices are formed from
+       :math:`\mathbf M`, :math:`\mathbf H` and :math:`\mathbf D` without
+       cached field-free parts. :math:`\mathbf H`, :math:`\mathbf M`, the CAP
+       and the coupled dipoles stay assembled. Outputs equal the default run
+       to rounding (:doc:`Performance`).
    * - ``-tdsez_ilu_levels <n>``
      - int
      - ILU fill level of the ASM subdomain blocks of the propagator

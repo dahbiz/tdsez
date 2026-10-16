@@ -44,6 +44,9 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | | same, operator acceleration: monitors | 6.24 s | 4.43 s | $`-29\%`$ |
 | Allocation-free $`1/m`$ derivatives (1e) | 3D, $`p=4`$, varying mass: force assembly | 28.1 s | 18.5 s | $`-34\%`$ |
 | Eigensolver inner solves and fallback (1f) | 3D, $`p=7`$, 15.6k DOFs, 4 states | 49.0 s | 19.8 s | $`2.5\times`$ |
+| `-tdsez_mat_free` (1g) | 3D H, CAP, $`p=3`$, 91k DOFs, 4 ranks: TD operator assembly | 3.55 s | 0.42 s | $`8.5\times`$ |
+| | same: peak memory, all ranks | 11.0 GB | 8.8 GB | $`-20\%`$ |
+| Discrete acceleration: CG/block-Jacobi mass solve instead of LU (1g) | same grid, 21 monitor calls | 116 s | 5.4 s | $`21\times`$ |
 
 ## 1. Crank–Nicolson solver set-up
 
@@ -283,6 +286,40 @@ Small 2D problems are somewhat slower with the exact solve; in exchange every
 state is exact to rounding (1D Rydberg states: relative residual
 $`1.6\times10^{-8}`$ before, backward error $`6\times10^{-15}`$ now).
 `-tdsez_eps_inner iterative` restores the iterative inner solve.
+
+## 1g. Matrix-free monitors and the mass solve of the discrete acceleration
+
+`-tdsez_mat_free` (2D/3D, no Dirichlet walls, B-spline basis, CPU) skips the
+assembly of everything only the monitors and the bound-state diagnostics read:
+$`\mathbf K`$, $`\mathbf V`$, $`\mathbf M_{1/m}`$, the forces, the dipoles of
+uncoupled axes and, for a constant mass, the velocities. The factorised (1d)
+and quadrature (1e) forms are used without the check against a matrix. Only
+the coupled dipoles (and for a varying mass the velocities) are assembled, in
+one sum-factorised pass (`TDSEZFormMatFreeAxes`). The Padé/Magnus stage
+matrices are formed as $`(g_k\mathbf H + \mathbf M) + g_k s\,\mathbf E\cdot\mathbf D`$
+in one pass, the same values in the same order of operations as from the
+cached $`\mathbf M + g_k\mathbf H`$, which are therefore not kept (two full
+matrices less). Outputs equal the default run to $`10^{-12}`$ (2D/3D, CAP,
+varying mass, discrete acceleration, Magnus-4; `tests/test_tensorops.py`).
+
+| 3D H, Becke-masked Coulomb, CAP, t-SURFF, $`p=3`$, 91 125 DOFs, 4 ranks, `pade22`, 20 steps | default | `-tdsez_mat_free` |
+|---|---|---|
+| time-dependent operator assembly | 3.55 s | 0.42 s |
+| peak memory, all ranks | 10.97 GB | 8.84 GB |
+| wall time per step | 0.32 s | 0.33 s |
+
+The memory left is $`\mathbf H`$, $`\mathbf M`$, the two stage matrices and
+their ASM/ILU preconditioners; the eigensolve alone reaches 5.5 GB.
+
+The discrete acceleration solves $`\mathbf M\mathbf w = \mathbf r`$ at every
+monitor call. With a MUMPS LU this was a full triangular solve on a factor with
+3D fill (5.5 s per call on the grid above, 116 s for 21 calls, and a larger
+peak memory). $`\mathbf M`$ is Hermitian positive definite, so conjugate
+gradients with a block-Jacobi ILU(0) preconditioner (symmetric for a symmetric
+$`\mathbf M`$) converges to $`10^{-14}`$ relative in about 16 iterations:
+5.4 s for the same 21 calls ($`21\times`$), accelerations equal to the LU
+result to $`2\times10^{-12}`$. The LU stays available with
+`-accel_ksp_type preonly -accel_pc_type lu`.
 
 ## 1h. Propagation solver: alternatives measured and not adopted
 

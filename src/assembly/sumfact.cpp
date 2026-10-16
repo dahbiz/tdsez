@@ -358,6 +358,63 @@ bool SumFactAxes(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsi
     return true;
 }
 
+/// Sum-factorised TDSEZFormMatFreeAxes: [D_d] for the dipole axes, then
+/// [Vel_d] for the velocity axes (same contractions as SumFactAxes).
+bool SumFactMatFree(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsigned need)
+{
+    const PetscInt dim = e->dim;
+    PetscInt nexp = 0;
+    for (int d = 0; d < 3; ++d) {
+        if ((TDSEZMatFreeDipOn[d] || TDSEZMatFreeVelOn[d]) && d >= dim) return false;
+        nexp += (TDSEZMatFreeDipOn[d] ? 1 : 0) + (TDSEZMatFreeVelOn[d] ? 1 : 0);
+    }
+    if (nexp != nmat) return false;
+    thread_local Axis1D A[3];
+    for (PetscInt d = 0; d < dim; ++d) LoadAxis(iga, e, d, A[d]);
+    PetscInt nen = 1;
+    for (PetscInt d = 0; d < dim; ++d) nen *= A[d].n;
+    if (nen != e->nen) return false;
+
+    const PetscInt Q1 = A[0].Q, Q2 = A[1].Q, Q3 = (dim == 3) ? A[2].Q : 1;
+    const size_t nq = (size_t)Q1 * Q2 * Q3;
+    thread_local std::vector<PetscReal> cVel, cD[3];
+    cVel.resize(nq);
+    for (int d = 0; d < 3; ++d) if (TDSEZMatFreeDipOn[d]) cD[d].resize(nq);
+    for (PetscInt q3 = 0; q3 < Q3; ++q3)
+    for (PetscInt q2 = 0; q2 < Q2; ++q2)
+    for (PetscInt q1 = 0; q1 < Q1; ++q1) {
+        const size_t q = (size_t)q1 + (size_t)Q1 * ((size_t)q2 + (size_t)Q2 * q3);
+        const PetscReal r[3] = {A[0].X[q1], A[1].X[q2], (dim == 3) ? A[2].X[q3] : 0.0};
+        const PetscReal w = A[0].W[q1] * A[1].W[q2] * ((dim == 3) ? A[2].W[q3] : 1.0);
+        cVel[q] = -0.5 * w / (PetscReal)TDSEZParser::MassDist(r[0], r[1], r[2]);
+        for (int d = 0; d < 3; ++d) if (TDSEZMatFreeDipOn[d]) cD[d][q] = r[d] * w;
+    }
+    Scratch &S = scratch;
+    Offsets(A, dim, S);
+    const int V0[3] = {0, 0, 0};
+    auto want = [need](PetscInt k) { return ((need >> k) & 1u) != 0; };
+    PetscInt k = 0;
+    for (int d = 0; d < 3; ++d) {
+        if (!TDSEZMatFreeDipOn[d]) continue;
+        if (want(k)) {
+            Contract(A, dim, V0, V0, cD[d].data(), false, S);
+            Store(S, nen, 1.0, Sym::Symmetric, work[k]);
+        }
+        ++k;
+    }
+    for (int d = 0; d < 3; ++d) {
+        if (!TDSEZMatFreeVelOn[d]) continue;
+        if (want(k)) {
+            int ad[3] = {0, 0, 0};
+            ad[d] = 1;
+            Contract(A, dim, V0, ad, cVel.data(), false, S);
+            Store(S, nen, PETSC_i, Sym::AntiSymmetric, work[k]);
+        }
+        ++k;
+    }
+    return true;
+}
+
 /// Coefficient arrays on the element's tensor points and the contractions of
 /// TDSEZFormHam (H, M) and TDSEZFormPhyAxes. Returns false if the
 /// kernel/configuration is not handled (the caller then uses the per-point
@@ -368,6 +425,7 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
     const PetscInt dim = e->dim;
     if (dim < 2 || dim > 3 || e->dof != 1 || e->geometry || e->rational) return false;
     if (kernel == TDSEZFormPhyAxes) return SumFactAxes(iga, e, nmat, work, need);
+    if (kernel == TDSEZFormMatFreeAxes) return SumFactMatFree(iga, e, nmat, work, need);
     if (kernel != TDSEZFormHam || nmat < 2) return false;
 
     thread_local Axis1D A[3];

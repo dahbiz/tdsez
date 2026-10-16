@@ -1945,6 +1945,33 @@ PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx)
 // ---------------------------------------------------------------------------
 PetscBool TDSEZPhyAxesOn[3] = {PETSC_FALSE, PETSC_FALSE, PETSC_FALSE};
 
+PetscBool TDSEZMatFreeDipOn[3] = {PETSC_FALSE, PETSC_FALSE, PETSC_FALSE};
+PetscBool TDSEZMatFreeVelOn[3] = {PETSC_FALSE, PETSC_FALSE, PETSC_FALSE};
+
+/// Per-point kernel for the -tdsez_mat_free batch [D_d ...] + [Vel_d ...].
+PetscErrorCode TDSEZFormMatFreeAxes(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx)
+{
+    PetscFunctionBegin;
+    (void)ctx;
+    typedef PetscErrorCode (*Integrand)(IGAPoint, PetscScalar *, void *);
+    const Integrand D[3] = {DipoleX, DipoleY, DipoleZ}, Vl[3] = {VelocityX, VelocityY, VelocityZ};
+    Integrand ops[6];
+    PetscInt n = 0;
+    for (int d = 0; d < 3; ++d) if (TDSEZMatFreeDipOn[d]) ops[n++] = D[d];
+    for (int d = 0; d < 3; ++d) if (TDSEZMatFreeVelOn[d]) ops[n++] = Vl[d];
+    PetscCheck(n == nmat, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ,
+               "TDSEZFormMatFreeAxes: %" PetscInt_FMT " matrices expected, %" PetscInt_FMT " given", n, nmat);
+    const PetscInt  nen = p->nen;
+    const PetscReal w   = p->weight[0] * p->detJac[0];
+    thread_local std::vector<PetscScalar> tmp;
+    tmp.resize((size_t)nen * nen);
+    for (PetscInt k = 0; k < nmat; ++k) {
+        PetscCall(ops[k](p, tmp.data(), NULL));
+        for (size_t i = 0; i < (size_t)nen * nen; ++i) M[k][i] += w * tmp[i];
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /// Per-point kernel for the batch [K, V, Md, (D_d, Vel_d, dV_d) for active d].
 /// Each matrix is the corresponding single-operator integrand kernel times
 /// weight*detJac, the same contribution IGAComputeMatrix adds per point.

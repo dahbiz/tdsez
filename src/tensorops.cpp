@@ -187,15 +187,21 @@ PetscErrorCode TDSEZTensorOps::Apply(Op op, Vec x, Vec y)
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+bool TDSEZTensorOps::Available(Op op) const
+{
+    if (!ready_) return false;
+    if ((op == VelX || op == VelY || op == VelZ || op == Kin) && invMass_ == 0.0) return false;
+    if (op >= DipX && op <= DipZ && op - DipX >= dim_) return false;
+    if (op >= VelX && op <= VelZ && op - VelX >= dim_) return false;
+    return true;
+}
+
 PetscErrorCode TDSEZTensorOps::Validate(Op op, Mat A, Vec x, PetscReal *relerr)
 {
     PetscFunctionBeginUser;
     *relerr = -1;
     usable_[op] = false;
-    if (!ready_ || !A) PetscFunctionReturn(PETSC_SUCCESS);
-    if ((op == VelX || op == VelY || op == VelZ || op == Kin) && invMass_ == 0.0) PetscFunctionReturn(PETSC_SUCCESS);
-    if (op >= DipX && op <= DipZ && op - DipX >= dim_) PetscFunctionReturn(PETSC_SUCCESS);
-    if (op >= VelX && op <= VelZ && op - VelX >= dim_) PetscFunctionReturn(PETSC_SUCCESS);
+    if (!A || !Available(op)) PetscFunctionReturn(PETSC_SUCCESS);
     Vec y1, y2;
     PetscCall(VecDuplicate(x, &y1));
     PetscCall(VecDuplicate(x, &y2));

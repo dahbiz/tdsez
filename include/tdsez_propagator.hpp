@@ -83,6 +83,7 @@ private:
     PetscErrorCode UpdateStageBase(PetscReal h);
     Mat Base_[2]     = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< cached M + g_k H (field-free)
     int fusedUpdate_ = -1;   ///< A_k = B_k + sum c_a D_a in one pass over the values (-1: not checked yet)
+    int leanStage_ = -1;                                ///< -tdsez_mat_free: stages formed from M, H, D (no Base_)
     PetscReal baseH_ = -1.0;                            ///< step length of Base_
     /// Initial-guess extrapolation: stage output minus input from the previous
     /// step, per stage and per Pade call of a step (slot 0..3).

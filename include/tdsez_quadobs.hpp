@@ -23,6 +23,12 @@
 /// Monitor expectation values from the quadrature points are requested
 /// (-tdsez_quad_obs, default on) and possible (2D/3D, no Dirichlet walls).
 bool TDSEZQuadObsEnabled();
+/// -tdsez_mat_free and the run allows it (TDSEZQuadObsEnabled, factorised
+/// operators on, B-spline basis, CPU): the monitor and diagnostic operators
+/// (K, V, Md, dV, the velocities for a constant mass, the dipoles of uncoupled
+/// axes) are never assembled; their factorised and quadrature forms are used
+/// directly. H, M, the CAP and the coupled dipoles stay assembled.
+bool TDSEZMatrixFree();
 
 class TDSEZQuadObs {
 public:

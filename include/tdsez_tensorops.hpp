@@ -24,6 +24,7 @@
  *
  * Each operator is used only after Validate() found it equal to the assembled
  * matrix on a state to 1e-10 relative; otherwise the caller keeps MatMult.
+ * Matrix-free runs (-tdsez_mat_free) assemble no such matrix and use Enable().
  */
 class TDSEZTensorOps {
 public:
@@ -36,11 +37,16 @@ public:
     PetscErrorCode Setup(IGA iga, Vec templ, PetscReal invMass);
     /// Compare op x against A x on x; marks op usable when they agree.
     PetscErrorCode Validate(Op op, Mat A, Vec x, PetscReal *relerr);
+    /// Matrix-free runs (-tdsez_mat_free): mark op usable without an
+    /// assembled matrix to compare with, if it is separable here.
+    bool Enable(Op op) { usable_[op] = Available(op); return usable_[op]; }
     bool Usable(Op op) const { return ready_ && usable_[op]; }
     /// y = op x.
     PetscErrorCode Apply(Op op, Vec x, Vec y);
 
 private:
+    /// op is separable on this basis (dimension, constant mass for Vel and K).
+    bool Available(Op op) const;
     struct Band { std::vector<PetscReal> v; };   // n x (2p+1): (i, j) at i*bw + j-i+p
     PetscErrorCode Load(Vec x);
     void Term(const Band *A[3], PetscScalar c, bool accumulate, PetscScalar *y);

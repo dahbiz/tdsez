@@ -217,7 +217,9 @@ int main(int argc, char *argv[])
             {
                 PetscLogDouble a, b;
                 PetscTime(&a);
-                PetscCall(TDSEZCompUnifiedDipoleMatrix(manager.boundstates, manager.energies, manager.Dx(), manager.Dy(), manager.Dz(), "DipoleMatrix_" + dipPrefix));
+                if (!manager.boundstates.empty()) PetscCall(manager.SetupMatrixFree(manager.boundstates[0]));
+                else                              PetscCall(manager.SetupMatrixFree(TDSEZ.initialPsi));
+                PetscCall(TDSEZCompUnifiedDipoleMatrix(manager.boundstates, manager.energies, &manager, "DipoleMatrix_" + dipPrefix));
                 PetscTime(&b); profile.Sub(TDSEZProfile::TDSetup, "Bound-state dipole matrix", b - a); a = b;
                 PetscCall(TDSEZPrecomputeMomentumMatrix(&manager));
                 PetscTime(&b); profile.Sub(TDSEZProfile::TDSetup, "Bound-state momentum matrix", b - a); a = b;

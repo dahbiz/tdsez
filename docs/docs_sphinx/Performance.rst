@@ -267,6 +267,38 @@ is then freed. ``-tdsez_tensor_ops 0`` and ``-tdsez_quad_obs 0`` restore the
 matrix products. The time series are written to HDF5 in batches (at most once
 every 2 s of wall time and at the end of the run), with unchanged contents.
 
+With ``-tdsez_mat_free`` the operators that only the monitors and the
+bound-state diagnostics read are not assembled at all, the replacements are
+used without the check, and the Padé/Magnus stage matrices
+:math:`\mathbf M + g_k(\mathbf H + s\mathbf E\cdot\mathbf D)` are formed in
+one pass from :math:`\mathbf M`, :math:`\mathbf H` and :math:`\mathbf D`
+(the same values, in the same order of operations, as with the cached
+field-free parts :math:`\mathbf M + g_k\mathbf H`, which are not kept). The
+time series equal those of the default run to :math:`10^{-12}` (test
+``test_matrix_free_matches_assembled``).
+
+.. list-table:: ``-tdsez_mat_free``, 3D hydrogen with CAP and t-SURFF,
+   :math:`p=3`, 91 125 DOFs, 4 ranks, ``pade22``, 20 steps
+   :header-rows: 1
+   :widths: 40 20 20
+
+   * - 
+     - default
+     - ``-tdsez_mat_free``
+   * - time-dependent operator assembly
+     - 3.55 s
+     - 0.42 s
+   * - peak memory, all ranks
+     - 11.0 GB
+     - 8.8 GB
+   * - wall time per step
+     - 0.32 s
+     - 0.33 s
+
+The remaining memory is :math:`\mathbf H`, :math:`\mathbf M`, the two stage
+matrices and their ASM/ILU preconditioners (about 5.5 GB of the 8.8 GB above
+already during the eigensolve).
+
 Eigensolver
 -----------
 

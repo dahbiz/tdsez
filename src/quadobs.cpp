@@ -1,5 +1,6 @@
 #include "tdsez_quadobs.hpp"
 #include "tdsez_forcecoeffs.hpp"
+#include "tdsez_info.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -28,6 +29,25 @@ PetscReal CapValue(const PetscReal r[3], PetscInt dim)
 }
 
 } // namespace
+
+bool TDSEZMatrixFree()
+{
+    static int on = -1;
+    if (on < 0) {
+        PetscBool req = PETSC_FALSE, tensor = PETSC_TRUE;
+        PetscOptionsGetBool(NULL, NULL, "-tdsez_mat_free", &req, NULL);
+        PetscOptionsGetBool(NULL, NULL, "-tdsez_tensor_ops", &tensor, NULL);
+        std::string basis = TDSEZParser::Basis;
+        std::transform(basis.begin(), basis.end(), basis.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+        const bool bspline = basis.empty() || basis == "bspline" || basis == "b-spline";
+        const bool ok = TDSEZQuadObsEnabled() && tensor && bspline && !TDSEZParser::EnableGPU;
+        on = (req && ok) ? 1 : 0;
+        if (req && !ok)
+            TDSEZInfo().warn("-tdsez_mat_free needs 2D/3D, no Dirichlet walls, the B-spline basis, a CPU run and the "
+                             "factorised and quadrature paths (-tdsez_tensor_ops, -tdsez_quad_obs); assembling all operators");
+    }
+    return on == 1;
+}
 
 bool TDSEZQuadObsEnabled()
 {

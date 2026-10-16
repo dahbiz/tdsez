@@ -1,5 +1,6 @@
 #include "tdsez_internal.hpp"
 #include "tdsez_multigrid.hpp"
+#include "tdsez_quadobs.hpp"
 
 /// ILU fill level of the ASM subdomain solves (-tdsez_ilu_levels overrides).
 /// ILU(0): ILU(1) saved at most one GMRES iteration (none in 3D) while its
@@ -427,6 +428,51 @@ static PetscErrorCode TDSEZFusedCombine(Mat A, Mat B, PetscInt n, const Mat D[],
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/// A = (g H + M) + sum_i c_i D_i in one pass over the value arrays (all
+/// matrices with the structure of A): the same values, in the same order of
+/// operations, as UpdateStageBase followed by TDSEZFusedCombine, without the
+/// cached B_k (-tdsez_mat_free).
+static PetscErrorCode TDSEZFusedStage(Mat A, Mat M, Mat H, PetscScalar g, PetscInt n, const Mat D[], const PetscScalar c[])
+{
+    PetscFunctionBeginUser;
+    Mat a[2], m[2], h[2], d[3][2];
+    const PetscInt *cm;
+    TDSEZAIJBlocks(A, a, &cm);
+    TDSEZAIJBlocks(M, m, &cm);
+    TDSEZAIJBlocks(H, h, &cm);
+    for (PetscInt i = 0; i < n; ++i) TDSEZAIJBlocks(D[i], d[i], &cm);
+    for (int k = 0; k < 2; ++k) {
+        if (!a[k]) continue;
+        PetscInt nz;
+        {
+            PetscInt nr; const PetscInt *ia, *ja; PetscBool done;
+            PetscCall(MatGetRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &nr, &ia, &ja, &done));
+            nz = ia[nr];
+            PetscCall(MatRestoreRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &nr, &ia, &ja, &done));
+        }
+        PetscScalar *va;
+        const PetscScalar *vm, *vh, *vd[3] = {NULL, NULL, NULL};
+        PetscCall(MatSeqAIJGetArrayWrite(a[k], &va));
+        PetscCall(MatSeqAIJGetArrayRead(m[k], &vm));
+        PetscCall(MatSeqAIJGetArrayRead(h[k], &vh));
+        for (PetscInt i = 0; i < n; ++i) PetscCall(MatSeqAIJGetArrayRead(d[i][k], &vd[i]));
+        switch (n) {
+        case 0: for (PetscInt j = 0; j < nz; ++j) va[j] = g * vh[j] + vm[j]; break;
+        case 1: for (PetscInt j = 0; j < nz; ++j) va[j] = (g * vh[j] + vm[j]) + c[0] * vd[0][j]; break;
+        case 2: for (PetscInt j = 0; j < nz; ++j) va[j] = (g * vh[j] + vm[j]) + c[0] * vd[0][j] + c[1] * vd[1][j]; break;
+        default:
+            for (PetscInt j = 0; j < nz; ++j)
+                va[j] = (g * vh[j] + vm[j]) + c[0] * vd[0][j] + c[1] * vd[1][j] + c[2] * vd[2][j];
+        }
+        for (PetscInt i = 0; i < n; ++i) PetscCall(MatSeqAIJRestoreArrayRead(d[i][k], &vd[i]));
+        PetscCall(MatSeqAIJRestoreArrayRead(h[k], &vh));
+        PetscCall(MatSeqAIJRestoreArrayRead(m[k], &vm));
+        PetscCall(MatSeqAIJRestoreArrayWrite(a[k], &va));
+    }
+    PetscCall(PetscObjectStateIncrease((PetscObject)A));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /// @brief Cache B_k = M + g_k H for the step length h. H (including any CAP)
 ///        is fixed during propagation, so this is recomputed only when h
 ///        changes (first step, and a shortened final step).
@@ -471,10 +517,25 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
 
     // A_k = B_k + g_k E.D for both stages.
     PetscCall(PetscLogEventBegin(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
-    PetscCall(UpdateStageBase(h));
     Mat      Dn[3];
     PetscInt n = 0;
     for (int a = 0; a < 3; ++a) if (on[a] && D[a] && E[a] != 0.0) Dn[n++] = D[a];
+    if (leanStage_ < 0) {                   // -tdsez_mat_free: no cached B_k if H, M, D share the structure
+        bool same = TDSEZMatrixFree();
+        for (int a = 0; a < 3 && same; ++a) if (D[a]) PetscCall(TDSEZSameStructure(Astage_[0], D[a], &same));
+        if (same) PetscCall(TDSEZSameStructure(Astage_[0], manager_.M(), &same));
+        if (same) PetscCall(TDSEZSameStructure(Astage_[0], manager_.H(), &same));
+        if (same) PetscCall(TDSEZSameStructure(Astage_[0], Astage_[1], &same));
+        leanStage_ = same ? 1 : 0;
+    }
+    if (leanStage_) {
+        for (int k = 0; k < 2; ++k) {
+            PetscScalar c[3];
+            for (PetscInt i = 0, a = 0; a < 3; ++a) if (on[a] && D[a] && E[a] != 0.0) c[i++] = g[k] * E[a];
+            PetscCall(TDSEZFusedStage(Astage_[k], manager_.M(), manager_.H(), g[k], n, Dn, c));
+        }
+    } else {
+    PetscCall(UpdateStageBase(h));
     if (fusedUpdate_ < 0) {                 // once: every matrix in the sum has the stage structure
         bool same = true;
         for (int a = 0; a < 3 && same; ++a) if (D[a]) PetscCall(TDSEZSameStructure(Astage_[0], D[a], &same));
@@ -495,6 +556,7 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
         for (int a = 0; a < 3; ++a)
             if (on[a] && D[a] && E[a] != 0.0)
                 PetscCall(MatAXPY(Astage_[k], g[k] * E[a], D[a], SAME_NONZERO_PATTERN));
+    }
     }
     PetscCall(PetscLogEventEnd(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
 

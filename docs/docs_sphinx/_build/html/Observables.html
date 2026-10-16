@@ -465,8 +465,10 @@ not reach a reflecting wall.</p>
 <span class="math notranslate nohighlight">\(q\langle v_a\rangle\)</span> for the discrete dynamics, including sharp
 interfaces and walls; with a CAP the absorber is excluded, which gives the
 Ehrenfest acceleration of the physical Hamiltonian. It costs one solve with
-<span class="math notranslate nohighlight">\(\mathbf M\)</span> per step (LU, with MUMPS when available; options prefix
-<code class="docutils literal notranslate"><span class="pre">accel_</span></code>).</p>
+<span class="math notranslate nohighlight">\(\mathbf M\)</span> per step: conjugate gradients with a block-Jacobi ILU(0)
+preconditioner to <span class="math notranslate nohighlight">\(10^{-14}\)</span> relative (about 16 iterations; options prefix
+<code class="docutils literal notranslate"><span class="pre">accel_</span></code>, e.g. <code class="docutils literal notranslate"><span class="pre">-accel_ksp_type</span> <span class="pre">preonly</span> <span class="pre">-accel_pc_type</span> <span class="pre">lu</span></code> for a direct
+solve). A solve that does not converge stops the run.</p>
 <p><code class="docutils literal notranslate"><span class="pre">auto</span></code> (default) uses the discrete form when the <code class="docutils literal notranslate"><span class="pre">Mass</span></code> expression depends
 on <span class="math notranslate nohighlight">\(x\)</span>, <span class="math notranslate nohighlight">\(y\)</span> or <span class="math notranslate nohighlight">\(z\)</span> (and <code class="docutils literal notranslate"><span class="pre">MassIsConstant</span></code> is not set), the
 operator form otherwise. For smooth problems the two forms agree up to the

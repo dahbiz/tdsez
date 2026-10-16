@@ -363,6 +363,11 @@ PetscErrorCode TDSEZFormPhyX(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *
 PetscErrorCode TDSEZFormPhyAxes(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx);
 /// Active axes of TDSEZFormPhyAxes (set by the assembler before the batch).
 extern PetscBool TDSEZPhyAxesOn[3];
+/// -tdsez_mat_free batch: [D_d for TDSEZMatFreeDipOn[d]] + [Vel_d for
+/// TDSEZMatFreeVelOn[d]], the only operators kept assembled besides H, M and
+/// the CAP (sum-factorised in 2D/3D like TDSEZFormPhyAxes).
+PetscErrorCode TDSEZFormMatFreeAxes(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx);
+extern PetscBool TDSEZMatFreeDipOn[3], TDSEZMatFreeVelOn[3];
 PetscErrorCode TDSEZFormLz(IGAPoint p, PetscScalar *L, void *ctx);                        ///< angular momentum Lz
 PetscErrorCode TDSEZFormKinetic(IGAPoint p, PetscScalar*K, void *ctx);                    ///< kinetic energy -∇²/2m
 PetscErrorCode TDSEZFormPotential(IGAPoint p, PetscScalar*V, void *ctx);                  ///< potential V(x)
@@ -416,15 +421,13 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ);
 /// @brief Compute and save the unified transition dipole matrix (TDM).
 /// @param states Converged bound-state vectors.
 /// @param energies Corresponding eigen-energies.
-/// @param Dx x-dipole matrix.
-/// @param Dy y-dipole matrix.
-/// @param Dz z-dipole matrix.
+/// @param mgr Manager: the dipole operators (assembled or factorised).
 /// @param fileName Output filename for the TDM.
 /// @return PetscErrorCode (0 on success).
 PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
     const std::vector<Vec>& states,
     const std::vector<PetscReal>& energies,
-    Mat Dx, Mat Dy, Mat Dz,
+    TDSEZManager *mgr,
     const std::string& fileName);
 
 /// @brief Save a PETSc Mat to a file (dense or sparse format).

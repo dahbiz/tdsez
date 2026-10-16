@@ -640,6 +640,47 @@ only if it agrees to <span class="math notranslate nohighlight">\(10^{-10}\)</sp
 is then freed. <code class="docutils literal notranslate"><span class="pre">-tdsez_tensor_ops</span> <span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">-tdsez_quad_obs</span> <span class="pre">0</span></code> restore the
 matrix products. The time series are written to HDF5 in batches (at most once
 every 2 s of wall time and at the end of the run), with unchanged contents.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code> the operators that only the monitors and the
+bound-state diagnostics read are not assembled at all, the replacements are
+used without the check, and the Padé/Magnus stage matrices
+<span class="math notranslate nohighlight">\(\mathbf M + g_k(\mathbf H + s\mathbf E\cdot\mathbf D)\)</span> are formed in
+one pass from <span class="math notranslate nohighlight">\(\mathbf M\)</span>, <span class="math notranslate nohighlight">\(\mathbf H\)</span> and <span class="math notranslate nohighlight">\(\mathbf D\)</span>
+(the same values, in the same order of operations, as with the cached
+field-free parts <span class="math notranslate nohighlight">\(\mathbf M + g_k\mathbf H\)</span>, which are not kept). The
+time series equal those of the default run to <span class="math notranslate nohighlight">\(10^{-12}\)</span> (test
+<code class="docutils literal notranslate"><span class="pre">test_matrix_free_matches_assembled</span></code>).</p>
+<table class="docutils align-default" id="id10">
+<caption><span class="caption-number">Table 16 </span><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code>, 3D hydrogen with CAP and t-SURFF,
+<span class="math notranslate nohighlight">\(p=3\)</span>, 91 125 DOFs, 4 ranks, <code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 20 steps</span><a class="headerlink" href="#id10" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 50.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"></th>
+<th class="head"><p>default</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>time-dependent operator assembly</p></td>
+<td><p>3.55 s</p></td>
+<td><p>0.42 s</p></td>
+</tr>
+<tr class="row-odd"><td><p>peak memory, all ranks</p></td>
+<td><p>11.0 GB</p></td>
+<td><p>8.8 GB</p></td>
+</tr>
+<tr class="row-even"><td><p>wall time per step</p></td>
+<td><p>0.32 s</p></td>
+<td><p>0.33 s</p></td>
+</tr>
+</tbody>
+</table>
+<p>The remaining memory is <span class="math notranslate nohighlight">\(\mathbf H\)</span>, <span class="math notranslate nohighlight">\(\mathbf M\)</span>, the two stage
+matrices and their ASM/ILU preconditioners (about 5.5 GB of the 8.8 GB above
+already during the eigensolve).</p>
 </section>
 <section id="eigensolver">
 <h2>Eigensolver<a class="headerlink" href="#eigensolver" title="Link to this heading"></a></h2>
