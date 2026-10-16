@@ -167,8 +167,16 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         Mat *Dm[3] = {&Dx, &Dy, &Dz}, *Vm[3] = {&VelX, &VelY, &VelZ}, *mats[6];
         PetscInt n = 0;
         std::string dax, vax;
+        // dipole matrices requested for saving (-save_dipole / SaveDipoleAxes,
+        // SaveDipoleMatrix = x only), as in the save step of the main program
+        std::string save = TDSEZParser::SaveDipoleAxes;
+        for (auto &c : save) c = (char)std::tolower((unsigned char)c);
+        if (save == "all") save = "xyz";
+        if (save.empty() && TDSEZParser::SaveDipoleMatrix) save = "x";
+        if (save == "none") save.clear();
         for (int d = 0; d < 3; ++d) {
-            TDSEZMatFreeDipOn[d] = (d < dim && TDSEZParser::Coupled(d)) ? PETSC_TRUE : PETSC_FALSE;
+            const bool saved = save.find("xyz"[d]) != std::string::npos;
+            TDSEZMatFreeDipOn[d] = (d < dim && (TDSEZParser::Coupled(d) || saved)) ? PETSC_TRUE : PETSC_FALSE;
             if (TDSEZMatFreeDipOn[d]) { mats[n++] = Dm[d]; dax += "xyz"[d]; }
         }
         for (int d = 0; d < 3; ++d) {

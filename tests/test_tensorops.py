@@ -166,3 +166,26 @@ def test_matrix_free_matches_assembled():
         for k in ref:
             err = np.max(np.abs(ref[k] - new[k])) / max(np.max(np.abs(ref[k])), 1e-300)
             _step(f"{name}: {k} equal", err < 1e-11, f"{err:.2e}")
+
+
+def test_matrix_free_saves_requested_dipoles():
+    """SaveDipoleAxes with -tdsez_mat_free: every requested dipole matrix is
+    still assembled and written, equal to the default run's file."""
+    text = CASES["t2d_xpol"] + "Propagator = pade22\nSaveDipoleAxes = xy\n"
+    files = {}
+    for tag, extra in (("ref", []), ("mf", ["-tdsez_mat_free"])):
+        name = f"mf_save_{tag}"
+        _run(name, text, extra)
+        d = os.path.dirname(_write_tmp(name + ".inp", text))
+        for a in "xy":
+            path = os.path.join(d, "static", f"D{a}_{name}.inp.bin")
+            _step(f"{tag}: D{a} written", os.path.exists(path), path)
+            with open(path, "rb") as fh:
+                b = fh.read()
+            _, nr, _, nz = np.frombuffer(b, ">i8", 4)          # PETSc binary AIJ, 64-bit indices
+            off = 32 + 8 * int(nr + nz)
+            files[(tag, a)] = (b[:off], np.frombuffer(b, ">c16", int(nz), off))
+    for a in "xy":
+        (sr, vr), (sm, vm) = files[("ref", a)], files[("mf", a)]
+        err = np.max(np.abs(vr - vm)) / np.max(np.abs(vr))
+        _step(f"D{a}: same structure and values with -tdsez_mat_free", sr == sm and err < 1e-13, f"{err:.1e}")

@@ -650,37 +650,52 @@ field-free parts <span class="math notranslate nohighlight">\(\mathbf M + g_k\ma
 time series equal those of the default run to <span class="math notranslate nohighlight">\(10^{-12}\)</span> (test
 <code class="docutils literal notranslate"><span class="pre">test_matrix_free_matches_assembled</span></code>).</p>
 <table class="docutils align-default" id="id10">
-<caption><span class="caption-number">Table 16 </span><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code>, 3D hydrogen with CAP and t-SURFF,
-<span class="math notranslate nohighlight">\(p=3\)</span>, 91 125 DOFs, 4 ranks, <code class="docutils literal notranslate"><span class="pre">pade22</span></code>, 20 steps</span><a class="headerlink" href="#id10" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 16 </span><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code> (and the old LU mass solve of the
+discrete acceleration), 3D, <span class="math notranslate nohighlight">\(p=3\)</span>, 42 875 DOFs, CAP, <code class="docutils literal notranslate"><span class="pre">pade22</span></code>,
+50 steps, 4 ranks: whole run and peak memory of all ranks</span><a class="headerlink" href="#id10" title="Link to this table"></a></caption>
 <colgroup>
-<col style="width: 50.0%" />
-<col style="width: 25.0%" />
-<col style="width: 25.0%" />
+<col style="width: 34.0%" />
+<col style="width: 22.0%" />
+<col style="width: 22.0%" />
+<col style="width: 22.0%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"></th>
+<tr class="row-odd"><th class="head"><p>mass, acceleration</p></th>
+<th class="head"><p>old LU mass solve</p></th>
 <th class="head"><p>default</p></th>
 <th class="head"><p><code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code></p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>time-dependent operator assembly</p></td>
-<td><p>3.55 s</p></td>
-<td><p>0.42 s</p></td>
+<tr class="row-even"><td><p>constant, operator</p></td>
+<td><p>–</p></td>
+<td><p>11.5 s, 11.4 GB</p></td>
+<td><p>9.0 s, 4.6 GB</p></td>
 </tr>
-<tr class="row-odd"><td><p>peak memory, all ranks</p></td>
-<td><p>11.0 GB</p></td>
-<td><p>8.8 GB</p></td>
+<tr class="row-odd"><td><p>constant, discrete</p></td>
+<td><p>37.7 s, 16.6 GB</p></td>
+<td><p>16.5 s, 11.3 GB</p></td>
+<td><p>13.9 s, 4.7 GB</p></td>
 </tr>
-<tr class="row-even"><td><p>wall time per step</p></td>
-<td><p>0.32 s</p></td>
-<td><p>0.33 s</p></td>
+<tr class="row-even"><td><p>varying, operator</p></td>
+<td><p>–</p></td>
+<td><p>16.6 s, 12.4 GB</p></td>
+<td><p>14.5 s, 7.5 GB</p></td>
+</tr>
+<tr class="row-odd"><td><p>varying, discrete</p></td>
+<td><p>40.1 s, 17.1 GB</p></td>
+<td><p>18.4 s, 12.5 GB</p></td>
+<td><p>16.1 s, 6.9 GB</p></td>
 </tr>
 </tbody>
 </table>
-<p>The remaining memory is <span class="math notranslate nohighlight">\(\mathbf H\)</span>, <span class="math notranslate nohighlight">\(\mathbf M\)</span>, the two stage
-matrices and their ASM/ILU preconditioners (about 5.5 GB of the 8.8 GB above
-already during the eigensolve).</p>
+<p>The time per step is unchanged by <code class="docutils literal notranslate"><span class="pre">-tdsez_mat_free</span></code> (the time stepping uses
+the same assembled stage matrices); the gain is the operator assembly and the
+memory. In 2D (41 209 DOFs, 200 steps) the run times are unchanged and the peak
+memory falls by 30-45 %. For a varying mass the first monitor call tabulates
+the mass-gradient coefficients of the forces itself (with the default assembly
+they come from the sum-factorised pass), a one-time cost of a few seconds in
+3D.</p>
 </section>
 <section id="eigensolver">
 <h2>Eigensolver<a class="headerlink" href="#eigensolver" title="Link to this heading"></a></h2>

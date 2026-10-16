@@ -277,27 +277,40 @@ field-free parts :math:`\mathbf M + g_k\mathbf H`, which are not kept). The
 time series equal those of the default run to :math:`10^{-12}` (test
 ``test_matrix_free_matches_assembled``).
 
-.. list-table:: ``-tdsez_mat_free``, 3D hydrogen with CAP and t-SURFF,
-   :math:`p=3`, 91 125 DOFs, 4 ranks, ``pade22``, 20 steps
+.. list-table:: ``-tdsez_mat_free`` (and the old LU mass solve of the
+   discrete acceleration), 3D, :math:`p=3`, 42 875 DOFs, CAP, ``pade22``,
+   50 steps, 4 ranks: whole run and peak memory of all ranks
    :header-rows: 1
-   :widths: 40 20 20
+   :widths: 34 22 22 22
 
-   * - 
+   * - mass, acceleration
+     - old LU mass solve
      - default
      - ``-tdsez_mat_free``
-   * - time-dependent operator assembly
-     - 3.55 s
-     - 0.42 s
-   * - peak memory, all ranks
-     - 11.0 GB
-     - 8.8 GB
-   * - wall time per step
-     - 0.32 s
-     - 0.33 s
+   * - constant, operator
+     - --
+     - 11.5 s, 11.4 GB
+     - 9.0 s, 4.6 GB
+   * - constant, discrete
+     - 37.7 s, 16.6 GB
+     - 16.5 s, 11.3 GB
+     - 13.9 s, 4.7 GB
+   * - varying, operator
+     - --
+     - 16.6 s, 12.4 GB
+     - 14.5 s, 7.5 GB
+   * - varying, discrete
+     - 40.1 s, 17.1 GB
+     - 18.4 s, 12.5 GB
+     - 16.1 s, 6.9 GB
 
-The remaining memory is :math:`\mathbf H`, :math:`\mathbf M`, the two stage
-matrices and their ASM/ILU preconditioners (about 5.5 GB of the 8.8 GB above
-already during the eigensolve).
+The time per step is unchanged by ``-tdsez_mat_free`` (the time stepping uses
+the same assembled stage matrices); the gain is the operator assembly and the
+memory. In 2D (41 209 DOFs, 200 steps) the run times are unchanged and the peak
+memory falls by 30-45 %. For a varying mass the first monitor call tabulates
+the mass-gradient coefficients of the forces itself (with the default assembly
+they come from the sum-factorised pass), a one-time cost of a few seconds in
+3D.
 
 Eigensolver
 -----------

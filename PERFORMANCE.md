@@ -44,9 +44,9 @@ dipole matrices $`\mathbf D = (\mathbf D_x,\mathbf D_y,\mathbf D_z)`$.
 | | same, operator acceleration: monitors | 6.24 s | 4.43 s | $`-29\%`$ |
 | Allocation-free $`1/m`$ derivatives (1e) | 3D, $`p=4`$, varying mass: force assembly | 28.1 s | 18.5 s | $`-34\%`$ |
 | Eigensolver inner solves and fallback (1f) | 3D, $`p=7`$, 15.6k DOFs, 4 states | 49.0 s | 19.8 s | $`2.5\times`$ |
-| `-tdsez_mat_free` (1g) | 3D H, CAP, $`p=3`$, 91k DOFs, 4 ranks: TD operator assembly | 3.55 s | 0.42 s | $`8.5\times`$ |
-| | same: peak memory, all ranks | 11.0 GB | 8.8 GB | $`-20\%`$ |
-| Discrete acceleration: CG/block-Jacobi mass solve instead of LU (1g) | same grid, 21 monitor calls | 116 s | 5.4 s | $`21\times`$ |
+| `-tdsez_mat_free` (1g) | 3D, $`p=3`$, 43k DOFs, CAP, 50 steps: whole run | 11.5 s | 9.0 s | $`1.3\times`$ |
+| | same: peak memory, all ranks | 11.4 GB | 4.6 GB | $`-60\%`$ |
+| Discrete acceleration: CG/block-Jacobi mass solve instead of LU (1g) | same grid, discrete acceleration: whole run | 37.7 s | 16.5 s | $`2.3\times`$ |
 
 ## 1. Crank–Nicolson solver set-up
 
@@ -302,14 +302,33 @@ cached $`\mathbf M + g_k\mathbf H`$, which are therefore not kept (two full
 matrices less). Outputs equal the default run to $`10^{-12}`$ (2D/3D, CAP,
 varying mass, discrete acceleration, Magnus-4; `tests/test_tensorops.py`).
 
-| 3D H, Becke-masked Coulomb, CAP, t-SURFF, $`p=3`$, 91 125 DOFs, 4 ranks, `pade22`, 20 steps | default | `-tdsez_mat_free` |
-|---|---|---|
-| time-dependent operator assembly | 3.55 s | 0.42 s |
-| peak memory, all ranks | 10.97 GB | 8.84 GB |
-| wall time per step | 0.32 s | 0.33 s |
+Whole run and peak memory of all ranks; 3D, $`p=3`$, 42 875 DOFs, CAP,
+`pade22`, 50 steps, 4 ranks (no swapping in any run):
 
-The memory left is $`\mathbf H`$, $`\mathbf M`$, the two stage matrices and
-their ASM/ILU preconditioners; the eigensolve alone reaches 5.5 GB.
+| mass, acceleration | old LU mass solve | default | `-tdsez_mat_free` |
+|---|---|---|---|
+| constant, operator | – | 11.5 s, 11.4 GB | 9.0 s, 4.6 GB |
+| constant, discrete | 37.7 s, 16.6 GB | 16.5 s, 11.3 GB | 13.9 s, 4.7 GB |
+| varying, operator | – | 16.6 s, 12.4 GB | 14.5 s, 7.5 GB |
+| varying, discrete | 40.1 s, 17.1 GB | 18.4 s, 12.5 GB | 16.1 s, 6.9 GB |
+
+The time per step is unchanged by the flag (the stage solves use the same
+assembled matrices): the operator assembly falls from 3.2 s (6.3 s for a
+varying mass) to 0.4 s (1.0 s) and the memory by 40-60 %. In 2D (41 209 DOFs,
+200 steps) the run times are unchanged and the memory falls by 30-45 %. For a
+varying mass the first monitor call tabulates the mass-gradient force
+coefficients itself, a one-time cost of a few seconds in 3D. On a 91 125-DOF
+hydrogen grid (Becke-masked Coulomb, t-SURFF) the peak memory falls from 11.0
+to 8.8 GB; there the rest is $`\mathbf H`$, $`\mathbf M`$, the two stage
+matrices and their ASM/ILU preconditioners.
+
+Every configuration was also run with and without the flag and all HDF5
+outputs and saved dipole matrices compared (2D/3D; `cn`, `pade22`, `magnus4`;
+operator and discrete acceleration; constant and varying mass; CAP; x, xy, z,
+xyz polarisation; `ObserveAllAxes = 0`; t-SURFF; multigrid; `EnableLzDiag`;
+`SaveDipoleAxes`): equal to $`10^{-14}`$. 1D, Dirichlet walls and the
+Bernstein basis warn and run as without the flag. The test suite also passes
+with the flag forced on for every run (`PETSC_OPTIONS=-tdsez_mat_free`).
 
 The discrete acceleration solves $`\mathbf M\mathbf w = \mathbf r`$ at every
 monitor call. With a MUMPS LU this was a full triangular solve on a factor with
