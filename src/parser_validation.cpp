@@ -590,6 +590,14 @@ void TDSEZParser::ValidateOrThrow()
         }
         if (OutputStrideSurff < 1)
             throw std::runtime_error("ValidateOrThrow: OutputStrideSurff must be >= 1");
+        if (SurffEndTerm && !EnableCAP)
+            throw std::runtime_error("ValidateOrThrow: SurffEndTerm = 1 needs EnableCAP = 1 (the absorber is the "
+                                     "outgoing-wave condition of the end term)");
+        if (SurffEndTerm && SurffInterior)
+            throw std::runtime_error("ValidateOrThrow: SurffEndTerm and SurffInterior both add the part of psi left "
+                                     "at FinalTime; use one of them");
+        if (SurffEndTermDk < 0.0)
+            throw std::runtime_error("ValidateOrThrow: SurffEndTermDk must be >= 0 (0 = automatic)");
         if (SurffQuadrature < 0 || SurffQuadrature > 64)
             throw std::runtime_error("ValidateOrThrow: SurffQuadrature must be in [0, 64] (0 = NQuadratures)");
     }

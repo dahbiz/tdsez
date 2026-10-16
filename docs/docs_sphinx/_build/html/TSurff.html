@@ -258,6 +258,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#method">Method</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#numerics">Numerics</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#exterior-check">Exterior check</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#end-term-the-infinite-time-spectrum">End term: the infinite-time spectrum</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#input-keys">Input Keys</a></li>
@@ -446,6 +447,141 @@ both values. A Coulomb tail must therefore be switched off smoothly before
 <span class="math notranslate nohighlight">\(R\)</span> (see <a class="reference internal" href="#tsurff-example-ati"><span class="std std-ref">Example 2: above-threshold ionisation of a 1D atom</span></a>), or the tolerance raised
 deliberately.</p>
 </section>
+<section id="end-term-the-infinite-time-spectrum">
+<span id="tsurff-end-term"></span><h3>End term: the infinite-time spectrum<a class="headerlink" href="#end-term-the-infinite-time-spectrum" title="Link to this heading"></a></h3>
+<p>The time integral in <a class="reference internal" href="#equation-eq-tsurff-amplitude">Eq. (66)</a> stops at <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code>
+<span class="math notranslate nohighlight">\(T\)</span>. Electrons that have not crossed the surface by then are missing,
+and cutting the flux of the slowest ones (which keep crossing almost
+indefinitely) spreads a spurious floor over all energies, like a truncated
+Fourier transform. Running longer only shifts the problem. With
+<code class="docutils literal notranslate"><span class="pre">SurffEndTerm</span> <span class="pre">=</span> <span class="pre">1</span></code> the flux after <span class="math notranslate nohighlight">\(T\)</span> is added exactly, in the spirit
+of the infinite-time surface flux methods <a class="reference internal" href="References.html#morales2016" id="id4"><span>[Morales2016]</span></a> (implemented
+independently here).</p>
+<p>After the pulse the field is zero, so the Volkov state only gains the phase
+<span class="math notranslate nohighlight">\(e^{iE_{\mathbf k}(t-T)}\)</span>,
+<span class="math notranslate nohighlight">\(E_{\mathbf k} = |\mathbf k+\mathbf A(T)|^2/2m + V_0\)</span>, and
+<span class="math notranslate nohighlight">\(\psi(T+s) = e^{-i\mathbf M^{-1}\mathbf H s}\psi(T)\)</span> with the field-free
+<span class="math notranslate nohighlight">\(\mathbf H\)</span> including the CAP. The remaining flux is therefore the flux
+functional at <span class="math notranslate nohighlight">\(T\)</span> applied to</p>
+<div class="math notranslate nohighlight" id="equation-eq-tsurff-end-term">
+<span class="eqno">(67)<a class="headerlink" href="#equation-eq-tsurff-end-term" title="Link to this equation"></a></span>\[\phi_E = \int_0^\infty e^{iEs}\,\psi(T+s)\,ds ,
+\qquad (E\,\mathbf M - \mathbf H)\,\phi_E = i\,\mathbf M\,\psi(T) ,\]</div>
+<p>evaluated at <span class="math notranslate nohighlight">\(E = E_{\mathbf k}\)</span>. The CAP makes
+<span class="math notranslate nohighlight">\(E\mathbf M - \mathbf H\)</span> invertible and plays the role of the outgoing
+condition <span class="math notranslate nohighlight">\(E + i0\)</span>; <code class="docutils literal notranslate"><span class="pre">SurffEndTerm</span></code> therefore requires <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>
+and a field that is over at <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> (both checked).</p>
+<p>Numerics:</p>
+<ul class="simple">
+<li><p><strong>Energy nodes.</strong> <a class="reference internal" href="#equation-eq-tsurff-end-term">Eq. (67)</a> is solved on nodes uniform in
+<span class="math notranslate nohighlight">\(p = |\mathbf k+\mathbf A(T)|\)</span>, with spacing
+<span class="math notranslate nohighlight">\(\min(\Delta k, 0.25/(R\sqrt d))\)</span> (the surface trace of
+<span class="math notranslate nohighlight">\(\phi_E\)</span> oscillates with period <span class="math notranslate nohighlight">\(pprox 2\pi/(R\sqrt d)\)</span> in
+<span class="math notranslate nohighlight">\(p\)</span>), refined to <span class="math notranslate nohighlight">\(0.25/(L\sqrt d)\)</span> below <span class="math notranslate nohighlight">\(2k_{\min}\)</span> of the
+CAP (<span class="math notranslate nohighlight">\(L\)</span> the largest box half-width), where the absorber reflects and
+box quasi-modes give finer structure. Each node is projected on all momenta
+with the separable flux evaluation of a sample, and combined with 4-point
+Lagrange weights in <span class="math notranslate nohighlight">\(p\)</span>. <code class="docutils literal notranslate"><span class="pre">SurffEndTermDk</span></code> sets a uniform spacing.</p></li>
+<li><p><strong>Multi-shift Krylov.</strong> With a pole <span class="math notranslate nohighlight">\(E_b\)</span>, every node of a window is a
+shift of one preconditioned operator,
+<span class="math notranslate nohighlight">\(\mathbf A_b^{-1}(E\mathbf M - \mathbf H) = \mathbf I + \sigma\mathbf K\)</span>,
+<span class="math notranslate nohighlight">\(\mathbf K = \mathbf A_b^{-1}\mathbf M\)</span>, <span class="math notranslate nohighlight">\(\sigma = E - E_b\)</span>, so one
+Arnoldi basis of <span class="math notranslate nohighlight">\(\mathbf K\)</span> started from
+<span class="math notranslate nohighlight">\(\mathbf A_b^{-1}\mathbf b\)</span> serves all nodes: a step costs one
+application of <span class="math notranslate nohighlight">\(\mathbf A_b^{-1}\)</span> and one product with
+<span class="math notranslate nohighlight">\(\mathbf M\)</span> for the whole window, and each node only updates a small
+Hessenberg least-squares problem (Givens rotations) until its residual is
+below <span class="math notranslate nohighlight">\(10^{-10}\)</span>. Only the surface traces of the basis vectors are
+kept. The next window takes its pole at the first unconverged node.</p></li>
+<li><p><strong>Poles.</strong> 1D/2D: real poles with the exact sparse LU of
+<span class="math notranslate nohighlight">\(\mathbf A_b\)</span> (MUMPS). 3D: complex poles <span class="math notranslate nohighlight">\(E_b(1+0.5i)\)</span>, which damp
+the Helmholtz-type pole operator in proportion to its energy (the
+shifted-Laplacian rule <a class="reference internal" href="References.html#erlangga2006" id="id5"><span>[Erlangga2006]</span></a>), applied by GMRES to
+<span class="math notranslate nohighlight">\(10^{-12}\)</span> with ASM/ILU: no factorisation, so the memory stays that of
+the propagation, and the shifts remain exact for the real energies.</p></li>
+</ul>
+<p>Options (prefix <code class="docutils literal notranslate"><span class="pre">surff_end_</span></code>): <code class="docutils literal notranslate"><span class="pre">-surff_end_eta</span></code> (relative imaginary part
+of the poles), <code class="docutils literal notranslate"><span class="pre">-surff_end_krylov</span></code> (basis size per window, 60),
+<code class="docutils literal notranslate"><span class="pre">-surff_end_window</span></code> (nodes per window, 128), and the usual
+<code class="docutils literal notranslate"><span class="pre">-surff_end_ksp_*</span></code> / <code class="docutils literal notranslate"><span class="pre">-surff_end_pc_*</span></code> for the pole solves.</p>
+<table class="docutils align-default" id="id6">
+<caption><span class="caption-number">Table 12 </span><span class="caption-text">End term against the analytic free-packet spectrum, run stopped
+while the packet is still (partly) inside the box</span><a class="headerlink" href="#id6" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>case</p></th>
+<th class="head"><p>flux only</p></th>
+<th class="head"><p>with end term</p></th>
+<th class="head"><p>cost of the end term</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1D, <span class="math notranslate nohighlight">\(k_0 = 0.8\)</span>, <span class="math notranslate nohighlight">\(T = 16\)</span>, CAP <span class="math notranslate nohighlight">\(k_{\min} = 0.15\)</span></p></td>
+<td><p>69 % (yield 0.637)</p></td>
+<td><p><span class="math notranslate nohighlight">\(4.3       imes10^{-4}\)</span> (yield 0.99999)</p></td>
+<td><p>182 nodes, 0.05 s</p></td>
+</tr>
+<tr class="row-odd"><td><p>2D, <span class="math notranslate nohighlight">\(T = 2\)</span> (packet inside), 1 and 3 ranks</p></td>
+<td><p>98 %</p></td>
+<td><p><span class="math notranslate nohighlight">\(7.1       imes10^{-3}\)</span> (equal to plain t-SURFF run to <span class="math notranslate nohighlight">\(T = 20\)</span>)</p></td>
+<td><p>378 nodes, 5 s</p></td>
+</tr>
+<tr class="row-even"><td><p>3D, 59 319 DOFs, <span class="math notranslate nohighlight">\(T = 7\)</span>, 4 ranks</p></td>
+<td><p>55 %</p></td>
+<td><p><span class="math notranslate nohighlight">\(2.0       imes10^{-2}\)</span> (grid and CAP limited)</p></td>
+<td><p>203 nodes, 24 s, no extra memory</p></td>
+</tr>
+</tbody>
+</table>
+<p>The remaining differences are those of the discretisation and the absorber
+(electrons slower than the CAP’s <span class="math notranslate nohighlight">\(k_{\min}\)</span> are partly reflected), the
+same as for a plain t-SURFF run continued until every electron has crossed.</p>
+<p>Against SCID-TDSE’s infinite-time (iSURFV) spectrum for 3D hydrogen
+(<span class="math notranslate nohighlight">\(\omega = 0.4\)</span>, <span class="math notranslate nohighlight">\(E_0 = 0.05\)</span>, 6-cycle <span class="math notranslate nohighlight">\(\sin^2\)</span> vector
+potential along <span class="math notranslate nohighlight">\(z\)</span>, Coulomb tail switched off between <span class="math notranslate nohighlight">\(r = 5\)</span>
+and 10, surface at <span class="math notranslate nohighlight">\(R = 11.04\)</span>; TDSE-Z with 132 651 DOFs, 4 ranks), the
+photoelectron yields relative to SCID-TDSE are:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 17.0%" />
+<col style="width: 17.0%" />
+<col style="width: 18.0%" />
+<col style="width: 18.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>TDSE-Z</p></th>
+<th class="head"><p>two-photon order</p></th>
+<th class="head"><p>three-photon region</p></th>
+<th class="head"><p><span class="math notranslate nohighlight">\(E &gt; 0.9\)</span></p></th>
+<th class="head"><p>total</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>flux only, <span class="math notranslate nohighlight">\(T = 374\)</span></p></td>
+<td><p>1.026</p></td>
+<td><p>1.61</p></td>
+<td><p>85</p></td>
+<td><p>1.054</p></td>
+</tr>
+<tr class="row-odd"><td><p>with end term, <span class="math notranslate nohighlight">\(T = 174\)</span></p></td>
+<td><p>1.018</p></td>
+<td><p>1.007</p></td>
+<td><p>0.98</p></td>
+<td><p>1.032</p></td>
+</tr>
+</tbody>
+</table>
+<p>The flux-only spectra of both codes fill the minima between the ATI orders with
+a truncation floor (SCID-TDSE’s flux-only spectrum deviates from its own
+infinite-time result in the same way); with the end term the minima, the
+three-photon peak and the tail of the two codes agree. End term: 282 energies,
+3 poles, 228 s, no memory beyond the propagation.</p>
+</section>
 </section>
 <section id="input-keys">
 <h2>Input Keys<a class="headerlink" href="#input-keys" title="Link to this heading"></a></h2>
@@ -516,6 +652,18 @@ the part still inside the box at <code class="docutils literal notranslate"><spa
 at any <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code>; for bound systems it adds the plane-wave content
 of the bound states, so keep 0 there and propagate long enough instead.</p></td>
 </tr>
+<tr class="row-even"><td><p>SurffEndTerm</p></td>
+<td><p>bool</p></td>
+<td><p>0</p></td>
+<td><p>1 = add the flux after <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> (<a class="reference internal" href="#tsurff-end-term"><span class="std std-ref">End term: the infinite-time spectrum</span></a>), giving
+the infinite-time spectrum for any <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> after the pulse.
+Requires <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code>; not with <code class="docutils literal notranslate"><span class="pre">SurffInterior</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p>SurffEndTermDk</p></td>
+<td><p>real</p></td>
+<td><p>0</p></td>
+<td><p>Uniform momentum spacing of the end-term energy nodes (0 = automatic).</p></td>
+</tr>
 <tr class="row-even"><td><p>SurffMassTolerance</p></td>
 <td><p>real</p></td>
 <td><p>1e-6</p></td>
@@ -552,7 +700,7 @@ of the bound states, so keep 0 there and propagate long enough instead.</p></td>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">amplitude</span></code></p></td>
 <td><p>(Nk, 2)</p></td>
 <td><p>Re, Im of <span class="math notranslate nohighlight">\(b(\mathbf k)\)</span> (including the interior term with
-<code class="docutils literal notranslate"><span class="pre">SurffInterior</span> <span class="pre">=</span> <span class="pre">1</span></code>)</p></td>
+<code class="docutils literal notranslate"><span class="pre">SurffInterior</span> <span class="pre">=</span> <span class="pre">1</span></code> or the end term with <code class="docutils literal notranslate"><span class="pre">SurffEndTerm</span> <span class="pre">=</span> <span class="pre">1</span></code>)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pes</span></code></p></td>
 <td><p>(Nk,)</p></td>
@@ -560,7 +708,8 @@ of the bound states, so keep 0 there and propagate long enough instead.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">amplitude_flux</span></code></p></td>
 <td><p>(Nk, 2)</p></td>
-<td><p>flux part only (written only with <code class="docutils literal notranslate"><span class="pre">SurffInterior</span> <span class="pre">=</span> <span class="pre">1</span></code>)</p></td>
+<td><p>flux part up to <code class="docutils literal notranslate"><span class="pre">FinalTime</span></code> only (written with <code class="docutils literal notranslate"><span class="pre">SurffInterior</span> <span class="pre">=</span> <span class="pre">1</span></code>
+or <code class="docutils literal notranslate"><span class="pre">SurffEndTerm</span> <span class="pre">=</span> <span class="pre">1</span></code>)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">k_x</span></code>, <code class="docutils literal notranslate"><span class="pre">k_y</span></code>, <code class="docutils literal notranslate"><span class="pre">k_z</span></code></p></td>
 <td><p>(n_d,)</p></td>
@@ -575,7 +724,8 @@ of the bound states, so keep 0 there and propagate long enough instead.</p></td>
 <p>Attributes: <code class="docutils literal notranslate"><span class="pre">final_time</span></code>, <code class="docutils literal notranslate"><span class="pre">radius</span></code>, <code class="docutils literal notranslate"><span class="pre">exterior_mass</span></code>,
 <code class="docutils literal notranslate"><span class="pre">exterior_potential</span></code> (<span class="math notranslate nohighlight">\(V_0\)</span>, including the carrier sign), <code class="docutils literal notranslate"><span class="pre">charge</span></code>,
 <code class="docutils literal notranslate"><span class="pre">A_final</span></code> (<span class="math notranslate nohighlight">\(d\)</span> components), <code class="docutils literal notranslate"><span class="pre">stride</span></code>, <code class="docutils literal notranslate"><span class="pre">n_surface_points</span></code>,
-<code class="docutils literal notranslate"><span class="pre">n_samples</span></code>, <code class="docutils literal notranslate"><span class="pre">interior</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">n_samples</span></code>, <code class="docutils literal notranslate"><span class="pre">interior</span></code>, <code class="docutils literal notranslate"><span class="pre">end_term</span></code>, <code class="docutils literal notranslate"><span class="pre">end_term_nodes</span></code>,
+<code class="docutils literal notranslate"><span class="pre">end_term_dp</span></code> (largest node spacing).</p>
 <section id="post-processing-script">
 <h3>Post-processing script<a class="headerlink" href="#post-processing-script" title="Link to this heading"></a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">examples/tsurff/plot_tsurff.py</span></code> reads the file, prints the run parameters and
@@ -616,13 +766,13 @@ energy (needs a grid).</p></td>
 <h2>Example 1: free wave packet (analytic benchmark)<a class="headerlink" href="#example-1-free-wave-packet-analytic-benchmark" title="Link to this heading"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">InitialState</span> <span class="pre">=</span> <span class="pre">wavepacket</span></code> starts from the Gaussian</p>
 <div class="math notranslate nohighlight" id="equation-eq-tsurff-packet">
-<span class="eqno">(67)<a class="headerlink" href="#equation-eq-tsurff-packet" title="Link to this equation"></a></span>\[\psi_0 = \prod_d (2\pi w_d^2)^{-1/4}
+<span class="eqno">(68)<a class="headerlink" href="#equation-eq-tsurff-packet" title="Link to this equation"></a></span>\[\psi_0 = \prod_d (2\pi w_d^2)^{-1/4}
 \exp\!\Big(-\frac{(x_d-c_d)^2}{4w_d^2} + i k_{0,d}x_d\Big)\]</div>
 <p>(<code class="docutils literal notranslate"><span class="pre">WavepacketCenter</span></code>, <code class="docutils literal notranslate"><span class="pre">WavepacketMomentum</span></code>, <code class="docutils literal notranslate"><span class="pre">WavepacketWidth</span></code>). For a free
 carrier the canonical momentum is conserved in any uniform field, so the exact
 spectrum is</p>
 <div class="math notranslate nohighlight" id="equation-eq-tsurff-exact">
-<span class="eqno">(68)<a class="headerlink" href="#equation-eq-tsurff-exact" title="Link to this equation"></a></span>\[|b(\mathbf k)|^2 = \prod_d \Big(\frac{2w_d^2}{\pi}\Big)^{1/2}
+<span class="eqno">(69)<a class="headerlink" href="#equation-eq-tsurff-exact" title="Link to this equation"></a></span>\[|b(\mathbf k)|^2 = \prod_d \Big(\frac{2w_d^2}{\pi}\Big)^{1/2}
 e^{-2w_d^2(k_d-k_{0,d})^2}\]</div>
 <p>for any pulse, mass, constant potential and charge sign. <code class="docutils literal notranslate"><span class="pre">NBoundStates</span> <span class="pre">=</span> <span class="pre">0</span></code>
 skips the eigensolver, which is allowed with an analytic initial state. File
@@ -660,7 +810,7 @@ SurffNk            = 121
 </pre></div>
 </div>
 <p>Measured accuracy, maximum of <span class="math notranslate nohighlight">\(\big||b|^2-|b|^2_{\rm exact}\big|\)</span>
-relative to the peak of <a class="reference internal" href="#equation-eq-tsurff-exact">Eq. (68)</a>:</p>
+relative to the peak of <a class="reference internal" href="#equation-eq-tsurff-exact">Eq. (69)</a>:</p>
 <table class="docutils align-default">
 <colgroup>
 <col style="width: 55.0%" />
@@ -770,8 +920,9 @@ the CAP at <code class="docutils literal notranslate"><span class="pre">FinalTim
 <li><p><strong>Final time</strong>: long enough after the pulse for the slowest electron of
 interest to reach the surface,
 <span class="math notranslate nohighlight">\(T - T_{\rm pulse} \gtrsim (R-r_{\rm core})/k_{\min}\)</span>; check by
-comparing two final times. For free-particle tests use
-<code class="docutils literal notranslate"><span class="pre">SurffInterior</span> <span class="pre">=</span> <span class="pre">1</span></code>.</p></li>
+comparing two final times, or use <code class="docutils literal notranslate"><span class="pre">SurffEndTerm</span> <span class="pre">=</span> <span class="pre">1</span></code>, which removes the
+dependence on the final time. For free-particle tests <code class="docutils literal notranslate"><span class="pre">SurffInterior</span> <span class="pre">=</span> <span class="pre">1</span></code>
+is exact as well.</p></li>
 <li><p><strong>Momentum grid</strong>: <span class="math notranslate nohighlight">\(k_{\max}\gtrsim\sqrt{2m\cdot 10U_p}\)</span> covers the
 classical rescattering plateau; resolve the ATI spacing
 <span class="math notranslate nohighlight">\(\Delta k \approx m\omega/k\)</span>.</p></li>

@@ -103,6 +103,130 @@ both values. A Coulomb tail must therefore be switched off smoothly before
 :math:`R` (see :ref:`tsurff-example-ati`), or the tolerance raised
 deliberately.
 
+.. _tsurff-end-term:
+
+End term: the infinite-time spectrum
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The time integral in :eq:`eq-tsurff-amplitude` stops at ``FinalTime``
+:math:`T`. Electrons that have not crossed the surface by then are missing,
+and cutting the flux of the slowest ones (which keep crossing almost
+indefinitely) spreads a spurious floor over all energies, like a truncated
+Fourier transform. Running longer only shifts the problem. With
+``SurffEndTerm = 1`` the flux after :math:`T` is added exactly, in the spirit
+of the infinite-time surface flux methods [Morales2016]_ (implemented
+independently here).
+
+After the pulse the field is zero, so the Volkov state only gains the phase
+:math:`e^{iE_{\mathbf k}(t-T)}`,
+:math:`E_{\mathbf k} = |\mathbf k+\mathbf A(T)|^2/2m + V_0`, and
+:math:`\psi(T+s) = e^{-i\mathbf M^{-1}\mathbf H s}\psi(T)` with the field-free
+:math:`\mathbf H` including the CAP. The remaining flux is therefore the flux
+functional at :math:`T` applied to
+
+.. math::
+   :label: eq-tsurff-end-term
+
+   \phi_E = \int_0^\infty e^{iEs}\,\psi(T+s)\,ds ,
+   \qquad (E\,\mathbf M - \mathbf H)\,\phi_E = i\,\mathbf M\,\psi(T) ,
+
+evaluated at :math:`E = E_{\mathbf k}`. The CAP makes
+:math:`E\mathbf M - \mathbf H` invertible and plays the role of the outgoing
+condition :math:`E + i0`; ``SurffEndTerm`` therefore requires ``EnableCAP = 1``
+and a field that is over at ``FinalTime`` (both checked).
+
+Numerics:
+
+- **Energy nodes.** :eq:`eq-tsurff-end-term` is solved on nodes uniform in
+  :math:`p = |\mathbf k+\mathbf A(T)|`, with spacing
+  :math:`\min(\Delta k, 0.25/(R\sqrt d))` (the surface trace of
+  :math:`\phi_E` oscillates with period :math:`pprox 2\pi/(R\sqrt d)` in
+  :math:`p`), refined to :math:`0.25/(L\sqrt d)` below :math:`2k_{\min}` of the
+  CAP (:math:`L` the largest box half-width), where the absorber reflects and
+  box quasi-modes give finer structure. Each node is projected on all momenta
+  with the separable flux evaluation of a sample, and combined with 4-point
+  Lagrange weights in :math:`p`. ``SurffEndTermDk`` sets a uniform spacing.
+- **Multi-shift Krylov.** With a pole :math:`E_b`, every node of a window is a
+  shift of one preconditioned operator,
+  :math:`\mathbf A_b^{-1}(E\mathbf M - \mathbf H) = \mathbf I + \sigma\mathbf K`,
+  :math:`\mathbf K = \mathbf A_b^{-1}\mathbf M`, :math:`\sigma = E - E_b`, so one
+  Arnoldi basis of :math:`\mathbf K` started from
+  :math:`\mathbf A_b^{-1}\mathbf b` serves all nodes: a step costs one
+  application of :math:`\mathbf A_b^{-1}` and one product with
+  :math:`\mathbf M` for the whole window, and each node only updates a small
+  Hessenberg least-squares problem (Givens rotations) until its residual is
+  below :math:`10^{-10}`. Only the surface traces of the basis vectors are
+  kept. The next window takes its pole at the first unconverged node.
+- **Poles.** 1D/2D: real poles with the exact sparse LU of
+  :math:`\mathbf A_b` (MUMPS). 3D: complex poles :math:`E_b(1+0.5i)`, which damp
+  the Helmholtz-type pole operator in proportion to its energy (the
+  shifted-Laplacian rule [Erlangga2006]_), applied by GMRES to
+  :math:`10^{-12}` with ASM/ILU: no factorisation, so the memory stays that of
+  the propagation, and the shifts remain exact for the real energies.
+
+Options (prefix ``surff_end_``): ``-surff_end_eta`` (relative imaginary part
+of the poles), ``-surff_end_krylov`` (basis size per window, 60),
+``-surff_end_window`` (nodes per window, 128), and the usual
+``-surff_end_ksp_*`` / ``-surff_end_pc_*`` for the pole solves.
+
+.. list-table:: End term against the analytic free-packet spectrum, run stopped
+   while the packet is still (partly) inside the box
+   :header-rows: 1
+   :widths: 40 20 20 20
+
+   * - case
+     - flux only
+     - with end term
+     - cost of the end term
+   * - 1D, :math:`k_0 = 0.8`, :math:`T = 16`, CAP :math:`k_{\min} = 0.15`
+     - 69 % (yield 0.637)
+     - :math:`4.3	imes10^{-4}` (yield 0.99999)
+     - 182 nodes, 0.05 s
+   * - 2D, :math:`T = 2` (packet inside), 1 and 3 ranks
+     - 98 %
+     - :math:`7.1	imes10^{-3}` (equal to plain t-SURFF run to :math:`T = 20`)
+     - 378 nodes, 5 s
+   * - 3D, 59 319 DOFs, :math:`T = 7`, 4 ranks
+     - 55 %
+     - :math:`2.0	imes10^{-2}` (grid and CAP limited)
+     - 203 nodes, 24 s, no extra memory
+
+The remaining differences are those of the discretisation and the absorber
+(electrons slower than the CAP's :math:`k_{\min}` are partly reflected), the
+same as for a plain t-SURFF run continued until every electron has crossed.
+
+Against SCID-TDSE's infinite-time (iSURFV) spectrum for 3D hydrogen
+(:math:`\omega = 0.4`, :math:`E_0 = 0.05`, 6-cycle :math:`\sin^2` vector
+potential along :math:`z`, Coulomb tail switched off between :math:`r = 5`
+and 10, surface at :math:`R = 11.04`; TDSE-Z with 132 651 DOFs, 4 ranks), the
+photoelectron yields relative to SCID-TDSE are:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 17 17 18 18
+
+   * - TDSE-Z
+     - two-photon order
+     - three-photon region
+     - :math:`E > 0.9`
+     - total
+   * - flux only, :math:`T = 374`
+     - 1.026
+     - 1.61
+     - 85
+     - 1.054
+   * - with end term, :math:`T = 174`
+     - 1.018
+     - 1.007
+     - 0.98
+     - 1.032
+
+The flux-only spectra of both codes fill the minima between the ATI orders with
+a truncation floor (SCID-TDSE's flux-only spectrum deviates from its own
+infinite-time result in the same way); with the end term the minima, the
+three-photon peak and the tail of the two codes agree. End term: 282 energies,
+3 poles, 228 s, no memory beyond the propagation.
+
 Input Keys
 ----------
 
@@ -158,6 +282,16 @@ Input Keys
        the part still inside the box at ``FinalTime``. Exact for a free carrier
        at any ``FinalTime``; for bound systems it adds the plane-wave content
        of the bound states, so keep 0 there and propagate long enough instead.
+   * - SurffEndTerm
+     - bool
+     - 0
+     - 1 = add the flux after ``FinalTime`` (:ref:`tsurff-end-term`), giving
+       the infinite-time spectrum for any ``FinalTime`` after the pulse.
+       Requires ``EnableCAP = 1``; not with ``SurffInterior``.
+   * - SurffEndTermDk
+     - real
+     - 0
+     - Uniform momentum spacing of the end-term energy nodes (0 = automatic).
    * - SurffMassTolerance
      - real
      - 1e-6
@@ -185,13 +319,14 @@ Written by rank 0 at the end of the run.
    * - ``amplitude``
      - (Nk, 2)
      - Re, Im of :math:`b(\mathbf k)` (including the interior term with
-       ``SurffInterior = 1``)
+       ``SurffInterior = 1`` or the end term with ``SurffEndTerm = 1``)
    * - ``pes``
      - (Nk,)
      - :math:`|b(\mathbf k)|^2 = dP/d^dk`
    * - ``amplitude_flux``
      - (Nk, 2)
-     - flux part only (written only with ``SurffInterior = 1``)
+     - flux part up to ``FinalTime`` only (written with ``SurffInterior = 1``
+       or ``SurffEndTerm = 1``)
    * - ``k_x``, ``k_y``, ``k_z``
      - (n_d,)
      - grid axes (grid mode only)
@@ -202,7 +337,8 @@ Written by rank 0 at the end of the run.
 Attributes: ``final_time``, ``radius``, ``exterior_mass``,
 ``exterior_potential`` (:math:`V_0`, including the carrier sign), ``charge``,
 ``A_final`` (:math:`d` components), ``stride``, ``n_surface_points``,
-``n_samples``, ``interior``.
+``n_samples``, ``interior``, ``end_term``, ``end_term_nodes``,
+``end_term_dp`` (largest node spacing).
 
 Post-processing script
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -391,8 +527,9 @@ Choosing the Parameters
 - **Final time**: long enough after the pulse for the slowest electron of
   interest to reach the surface,
   :math:`T - T_{\rm pulse} \gtrsim (R-r_{\rm core})/k_{\min}`; check by
-  comparing two final times. For free-particle tests use
-  ``SurffInterior = 1``.
+  comparing two final times, or use ``SurffEndTerm = 1``, which removes the
+  dependence on the final time. For free-particle tests ``SurffInterior = 1``
+  is exact as well.
 - **Momentum grid**: :math:`k_{\max}\gtrsim\sqrt{2m\cdot 10U_p}` covers the
   classical rescattering plateau; resolve the ATI spacing
   :math:`\Delta k \approx m\omega/k`.

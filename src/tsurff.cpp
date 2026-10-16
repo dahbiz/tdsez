@@ -579,12 +579,346 @@ PetscErrorCode TDSEZTSurff::Interior(Vec psi, std::vector<PetscScalar> &out)
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi)
+PetscReal TDSEZCapWidth();   // absorber layer width (assembly)
+
+// End term: the flux that crosses the surface after T (see the class comment).
+// For node p_j (uniform in p = |k + A(T)|) solve (E_j M - H) x_j = i M psi(T),
+// E_j = p_j^2/2m + V0, evaluate the flux functional at T on x_j for every
+// momentum (the same separable evaluation as a sample) and add it to b(k) with
+// the 4-point Lagrange weight of p_j at p_k. Each solve starts from the previous
+// node's solution; the ASM/ILU preconditioner of E M - H is reused across nodes
+// and rebuilt when the iteration count doubles.
+PetscErrorCode TDSEZTSurff::EndTerm(Vec psi, Mat H, Mat M)
+{
+    PetscFunctionBeginUser;
+    PetscCheck(H && M, comm_, PETSC_ERR_ARG_NULL, "t-SURFF end term: H and M are required");
+    PetscLogDouble t0;
+    PetscCall(PetscTime(&t0));
+    const PetscReal T = volkovT_;
+    // the evolution after T must be field-free
+    PetscReal Emax = 0, Eafter = 0;
+    for (int d = 0; d < dim_; ++d) {
+        for (PetscInt j = 0; j <= 200; ++j) Emax = PetscMax(Emax, PetscAbsReal(TDSEZParser::Coupling(d, T * j / 200.0)));
+        for (PetscInt j = 0; j <= 200; ++j)
+            Eafter = PetscMax(Eafter, PetscAbsReal(TDSEZParser::Coupling(d, T + j * 0.5 * TDSEZParser::TimeStep)));
+    }
+    PetscCheck(Eafter <= 1e-8 * PetscMax(Emax, (PetscReal)1e-300), comm_, PETSC_ERR_USER_INPUT,
+               "t-SURFF end term: the field is not over at FinalTime (|E| = %g after T, %g during the run); "
+               "end the run after the pulse", (double)Eafter, (double)Emax);
+
+    // kinetic momenta |k + A(T)| and the node grid
+    std::vector<PetscReal> pk(nk_);
+    PetscReal dkGrid = PETSC_MAX_REAL;
+    if (grid_) {
+        for (int d = 0; d < dim_; ++d)
+            if (n_[d] > 1) dkGrid = PetscMin(dkGrid, (k_[d][n_[d] - 1] - k_[d][0]) / (n_[d] - 1));
+        PetscInt idx = 0;
+        for (PetscInt i = 0; i < n_[0]; ++i)
+            for (PetscInt j = 0; j < n_[1]; ++j)
+                for (PetscInt l = 0; l < n_[2]; ++l, ++idx) {
+                    const PetscReal kv[3] = {k_[0][i] + A_[0], k_[1][j] + A_[1], k_[2][l] + A_[2]};
+                    pk[idx] = PetscSqrtReal(kv[0] * kv[0] + kv[1] * kv[1] + kv[2] * kv[2]);
+                }
+    } else {
+        for (PetscInt q = 0; q < nk_; ++q) {
+            PetscReal p2 = 0;
+            for (int d = 0; d < 3; ++d) p2 += (list_[q][d] + A_[d]) * (list_[q][d] + A_[d]);
+            pk[q] = PetscSqrtReal(p2);
+        }
+    }
+    const PetscReal pmin = *std::min_element(pk.begin(), pk.end()), pmax = *std::max_element(pk.begin(), pk.end());
+    // Node spacing in p. Above the absorber's k_min phi_E at the surface varies
+    // with period ~ 2 pi / (R sqrt(d)); below 2 k_min the absorber reflects and
+    // box quasi-modes give structure on the scale 1 / (L sqrt(d)), L the largest
+    // box half-width, so the nodes are refined there.
+    PetscReal L = 0;
+    {
+        const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
+        const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
+        for (int d = 0; d < dim_; ++d) L = PetscMax(L, PetscMax(PetscAbsReal(lo[d]), PetscAbsReal(hi[d])));
+    }
+    const PetscReal sd = PetscSqrtReal((PetscReal)dim_), kcap = 6.555 / TDSEZCapWidth();
+    const PetscReal dpOut = TDSEZParser::SurffEndTermDk > 0 ? TDSEZParser::SurffEndTermDk : PetscMin(dkGrid, 0.25 / (R_ * sd));
+    const PetscReal dpIn = TDSEZParser::SurffEndTermDk > 0 ? TDSEZParser::SurffEndTermDk : PetscMin(dpOut, 0.25 / (L * sd));
+    std::vector<PetscReal> node;
+    if (pmax > pmin) {
+        const PetscReal split = PetscMin(PetscMax(2 * kcap, pmin), pmax);
+        auto segment = [&](PetscReal a, PetscReal b, PetscReal dp) {
+            if (b <= a) return;
+            const PetscInt n = PetscMax((PetscInt)1, (PetscInt)std::ceil((b - a) / dp - 1e-9));
+            for (PetscInt i = node.empty() ? 0 : 1; i <= n; ++i) node.push_back(a + (b - a) * i / n);
+        };
+        segment(pmin, split, dpIn);
+        segment(node.empty() ? pmin : node.back(), pmax, dpOut);
+        while (node.size() < 4) {            // at least 4 nodes for the cubic weights
+            std::vector<PetscReal> finer;
+            for (size_t i = 0; i + 1 < node.size(); ++i) { finer.push_back(node[i]); finer.push_back(0.5 * (node[i] + node[i + 1])); }
+            finer.push_back(node.back());
+            node.swap(finer);
+        }
+    } else {
+        node.push_back(pmin);
+    }
+    const PetscInt nNodes = (PetscInt)node.size();
+    PetscReal hp = 0;
+    for (PetscInt j = 0; j + 1 < nNodes; ++j) hp = PetscMax(hp, node[j + 1] - node[j]);
+
+    // node -> (momentum, weight): 4-point Lagrange in p on the nodes around p_k
+    // (1 node: weight 1)
+    std::vector<PetscInt> start(nNodes + 1, 0);
+    std::vector<std::pair<PetscInt, PetscReal>> entries;
+    {
+        std::vector<std::array<std::pair<PetscInt, PetscReal>, 4>> per(nk_);
+        const PetscInt m = PetscMin(nNodes, (PetscInt)4);
+        for (PetscInt q = 0; q < nk_; ++q) {
+            if (nNodes == 1) { per[q][0] = {0, 1.0}; for (int e = 1; e < 4; ++e) per[q][e] = {-1, 0.0}; start[1]++; continue; }
+            const PetscInt below = (PetscInt)(std::upper_bound(node.begin(), node.end(), pk[q]) - node.begin()) - 1;
+            const PetscInt j0 = PetscMax((PetscInt)0, PetscMin(nNodes - m, below - 1));
+            for (PetscInt a = 0; a < m; ++a) {
+                PetscReal w = 1;
+                for (PetscInt b = 0; b < m; ++b)
+                    if (b != a) w *= (pk[q] - node[j0 + b]) / (node[j0 + a] - node[j0 + b]);
+                per[q][a] = {j0 + a, w};
+                start[j0 + a + 1]++;
+            }
+            for (PetscInt a = m; a < 4; ++a) per[q][a] = {-1, 0.0};
+        }
+        for (PetscInt j = 0; j < nNodes; ++j) start[j + 1] += start[j];
+        entries.resize(start[nNodes]);
+        std::vector<PetscInt> fill(start.begin(), start.end() - 1);
+        for (PetscInt q = 0; q < nk_; ++q)
+            for (int a = 0; a < 4; ++a)
+                if (per[q][a].first >= 0) entries[fill[per[q][a].first]++] = {q, per[q][a].second};
+    }
+
+    // Multi-shift Krylov solve of (E_j M - H) x_j = i M psi(T) for all nodes.
+    // With the LU of A_b = E_b M - H at a pole E_b, every node in a window is a
+    // shift of the same preconditioned operator,
+    //     A_b^{-1} (E M - H) = I + sigma K,   K = A_b^{-1} M,   sigma = E - E_b,
+    // so one Arnoldi basis V of K started from A_b^{-1} b serves all of them:
+    // K V_m = V_{m+1} Hbar_m and x = V_m y with y the least-squares solution of
+    // (Ibar + sigma Hbar_m) y = beta e_1, kept per node with Givens rotations.
+    // A step costs one LU solve and one product with M for the whole window.
+    // Only the surface traces of the basis vectors are kept: trace(x) = sum y_i
+    // trace(v_i). A converged node is projected on the momenta at once; the
+    // next window takes its pole at the first unconverged node.
+    PetscInt mmax = 60, window = 128;
+    // Poles. 1D/2D: real poles E_b with the exact sparse LU of A_b (cheap).
+    // 3D: complex poles E_b (1 + i eta), eta = 0.5, which damp the Helmholtz-type
+    // pole operator in proportion to its energy (shifted-Laplacian rule), with
+    // an ASM/ILU inner preconditioner: no factorisation, so the memory stays that
+    // of the propagation (a 3D sparse LU needs several times more), and the
+    // shifts sigma = E - E_b (1 + i eta) remain exact for the real energies.
+    const bool iterative = dim_ == 3;
+    PetscReal eta = iterative ? 0.5 : 0.0;
+    PetscCall(PetscOptionsGetReal(NULL, NULL, "-surff_end_eta", &eta, NULL));
+    PetscCall(PetscOptionsGetInt(NULL, NULL, "-surff_end_krylov", &mmax, NULL));
+    PetscCall(PetscOptionsGetInt(NULL, NULL, "-surff_end_window", &window, NULL));
+    PetscCheck(mmax >= 1 && window >= 1, comm_, PETSC_ERR_ARG_OUTOFRANGE, "-surff_end_krylov and -surff_end_window must be >= 1");
+    const PetscReal tol = 1e-10;
+    std::vector<PetscReal> En(nNodes);
+    for (PetscInt j = 0; j < nNodes; ++j) En[j] = node[j] * node[j] / (2 * mass_) + V0_;
+
+    Vec b, w, Mv;
+    Mat A;
+    PetscCall(VecDuplicate(psi, &b));
+    PetscCall(VecDuplicate(psi, &w));
+    PetscCall(VecDuplicate(psi, &Mv));
+    PetscCall(MatMult(M, psi, b));
+    PetscCall(VecScale(b, PetscCMPLX(0.0, 1.0)));
+    PetscCall(MatDuplicate(H, MAT_DO_NOT_COPY_VALUES, &A));
+    PetscMPIInt size;
+    PetscCallMPI(MPI_Comm_size(comm_, &size));
+    // A_b^{-1}: the sparse LU of A_b applied directly (1D/2D), or GMRES to
+    // 1e-12 relative with ASM/ILU (3D, about 15 iterations), so every Arnoldi
+    // step is exact.
+    KSP ksp;
+    PC pc;
+    PetscCall(KSPCreate(comm_, &ksp));
+    PetscCall(KSPSetOptionsPrefix(ksp, "surff_end_"));
+    PetscCall(KSPSetType(ksp, KSPGMRES));
+    PetscCall(KSPGMRESSetRestart(ksp, 100));
+    PetscCall(KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, 2000));
+    PetscCall(KSPGetPC(ksp, &pc));
+    if (iterative) {
+        PetscCall(PCSetType(pc, PCASM));
+        PetscCall(PCASMSetType(pc, PC_ASM_RESTRICT));
+    } else {
+        PetscCall(KSPSetType(ksp, KSPPREONLY));
+        PetscCall(PCSetType(pc, PCLU));
+#if defined(PETSC_HAVE_MUMPS)
+        PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERMUMPS));
+#elif defined(PETSC_HAVE_SUPERLU_DIST)
+        PetscCall(PCFactorSetMatSolverType(pc, MATSOLVERSUPERLU_DIST));
+#else
+        PetscCheck(size == 1, comm_, PETSC_ERR_SUP, "t-SURFF end term on several ranks needs PETSc with MUMPS or SuperLU_dist");
+#endif
+    }
+    PetscCall(KSPSetFromOptions(ksp));
+
+    std::vector<Vec> V(mmax + 1, nullptr);
+    for (auto &v : V) PetscCall(VecDuplicate(psi, &v));
+    PetscInt ns;
+    PetscCall(VecGetLocalSize(surface_, &ns));
+    std::vector<PetscScalar> TV((size_t)(mmax + 1) * ns);          // traces of the basis vectors
+    std::vector<PetscScalar> Hh((size_t)(mmax + 2) * (mmax + 1));   // Hbar, column-major (mmax+2) x (mmax+1)
+    std::vector<PetscScalar> tx(ns), hcol(mmax + 2);
+    std::vector<char> done(nNodes, 0);
+    struct Shift {                                                    // Givens state of one node
+        PetscInt j;
+        std::vector<PetscScalar> R, c, sn, g;                         // R upper triangular, column-major
+    };
+    auto keepTrace = [&](PetscInt i) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        PetscCall(MatMult(trace_, V[i], surface_));
+        const PetscScalar *v;
+        PetscCall(VecGetArrayRead(surface_, &v));
+        std::copy(v, v + ns, TV.begin() + (size_t)i * ns);
+        PetscCall(VecRestoreArrayRead(surface_, &v));
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
+    // flux of a node from the trace combination, added with its Lagrange weights
+    auto project = [&](PetscInt j) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        std::fill(cur_.begin(), cur_.end(), 0.0);
+        if (!points_.empty()) {
+            if (grid_) PetscCall(FluxGrid(tx.data()));
+            else PetscCall(FluxList(tx.data()));
+        }
+        for (PetscInt e = start[j]; e < start[j + 1]; ++e) amp_[entries[e].first] += entries[e].second * cur_[entries[e].first];
+        done[j] = 1;
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
+
+    PetscInt totalSteps = 0, innerIts = 0;
+    auto inverse = [&](Vec rhs, Vec out) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        PetscCall(KSPSolve(ksp, rhs, out));
+        KSPConvergedReason why;
+        PetscInt its;
+        PetscCall(KSPGetConvergedReason(ksp, &why));
+        PetscCall(KSPGetIterationNumber(ksp, &its));
+        PetscCheck(why > 0, comm_, PETSC_ERR_NOT_CONVERGED, "t-SURFF end term: inner solve did not converge (%s)",
+                   KSPConvergedReasons[why]);
+        innerIts += its;
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
+    for (PetscInt j0 = 0; j0 < nNodes;) {
+        const PetscScalar Eb = PetscCMPLX(En[j0], eta * PetscMax(En[j0], (PetscReal)1e-3));
+        PetscCall(MatCopy(H, A, SAME_NONZERO_PATTERN));
+        PetscCall(MatScale(A, -1.0));
+        PetscCall(MatAXPY(A, Eb, M, SUBSET_NONZERO_PATTERN));
+        PetscCall(KSPSetOperators(ksp, A, A));
+        PetscCall(KSPSetUp(ksp));
+        ++endBuilds_;
+        PetscCall(inverse(b, V[0]));
+        PetscReal beta;
+        PetscCall(VecNorm(V[0], NORM_2, &beta));
+        PetscCall(VecScale(V[0], 1.0 / beta));
+        PetscCall(keepTrace(0));
+        std::vector<Shift> act;
+        for (PetscInt j = j0; j < nNodes && (PetscInt)act.size() < window; ++j)
+            if (!done[j]) act.push_back({j, {}, {}, {}, {beta}});
+        for (PetscInt m = 0; m < mmax && !act.empty(); ++m) {
+            // Arnoldi step: v_{m+1} = A_b^{-1} M v_m, orthogonalised twice
+            PetscCall(MatMult(M, V[m], Mv));
+            PetscCall(inverse(Mv, w));
+            ++totalSteps;
+            std::fill(hcol.begin(), hcol.end(), 0.0);
+            for (int pass = 0; pass < 2; ++pass) {
+                std::vector<PetscScalar> dots(m + 1);
+                PetscCall(VecMDot(w, m + 1, V.data(), dots.data()));
+                for (PetscInt i = 0; i <= m; ++i) { hcol[i] += dots[i]; dots[i] = -dots[i]; }
+                PetscCall(VecMAXPY(w, m + 1, dots.data(), V.data()));
+            }
+            PetscReal hn;
+            PetscCall(VecNorm(w, NORM_2, &hn));
+            hcol[m + 1] = hn;
+            for (PetscInt i = 0; i <= m + 1; ++i) Hh[(size_t)i + (size_t)(mmax + 2) * m] = hcol[i];
+            const bool breakdown = hn <= 1e-14 * beta;
+            if (!breakdown) {
+                PetscCall(VecCopy(w, V[m + 1]));
+                PetscCall(VecScale(V[m + 1], 1.0 / hn));
+                PetscCall(keepTrace(m + 1));
+            }
+            // update every active node: column m of (Ibar + sigma Hbar)
+            std::vector<Shift> keep;
+            for (auto &st : act) {
+                const PetscScalar sigma = En[st.j] - Eb;
+                std::vector<PetscScalar> col(m + 2);
+                for (PetscInt i = 0; i <= m + 1; ++i) col[i] = sigma * Hh[(size_t)i + (size_t)(mmax + 2) * m];
+                col[m] += 1.0;
+                // rotations Q_i = [c s; -conj(s) conj(c)], c = conj(a)/r, s = conj(b)/r,
+                // map (a, b) to (r, 0)
+                for (PetscInt i = 0; i < m; ++i) {
+                    const PetscScalar t = st.c[i] * col[i] + st.sn[i] * col[i + 1];
+                    col[i + 1] = -PetscConj(st.sn[i]) * col[i] + PetscConj(st.c[i]) * col[i + 1];
+                    col[i] = t;
+                }
+                const PetscReal r = PetscSqrtReal(PetscRealPart(col[m] * PetscConj(col[m]) + col[m + 1] * PetscConj(col[m + 1])));
+                const PetscScalar cr = r > 0 ? PetscConj(col[m]) / r : 1.0, sm = r > 0 ? PetscConj(col[m + 1]) / r : 0.0;
+                st.c.push_back(cr);
+                st.sn.push_back(sm);
+                col[m] = cr * col[m] + sm * col[m + 1];
+                col[m + 1] = 0;
+                st.R.insert(st.R.end(), col.begin(), col.begin() + m + 1);
+                st.g.push_back(-PetscConj(sm) * st.g[m]);
+                st.g[m] = cr * st.g[m];
+                if (PetscAbsScalar(st.g[m + 1]) <= tol * beta || breakdown) {
+                    // y = R^{-1} g, trace(x) = sum y_i trace(v_i)
+                    std::vector<PetscScalar> y(m + 1);
+                    for (PetscInt i = m; i >= 0; --i) {
+                        PetscScalar t = st.g[i];
+                        for (PetscInt l = i + 1; l <= m; ++l) {
+                            size_t off = (size_t)l * (l + 1) / 2;            // column l starts here (packed)
+                            t -= st.R[off + i] * y[l];
+                        }
+                        y[i] = t / st.R[(size_t)i * (i + 1) / 2 + i];
+                    }
+                    std::fill(tx.begin(), tx.end(), 0.0);
+                    for (PetscInt i = 0; i <= m; ++i) {
+                        const PetscScalar *tv = TV.data() + (size_t)i * ns;
+                        for (PetscInt q = 0; q < ns; ++q) tx[q] += y[i] * tv[q];
+                    }
+                    PetscCall(project(st.j));
+                } else {
+                    keep.push_back(std::move(st));
+                }
+            }
+            act.swap(keep);
+            if (breakdown) break;
+        }
+        while (j0 < nNodes && done[j0]) ++j0;
+    }
+    endIts_ = totalSteps;
+    PetscCall(PetscInfo(NULL, "t-SURFF end term: %" PetscInt_FMT " inner GMRES iterations\n", innerIts));
+    for (auto &v : V) PetscCall(VecDestroy(&v));
+    PetscCall(KSPDestroy(&ksp));
+    PetscCall(MatDestroy(&A));
+    PetscCall(VecDestroy(&b));
+    PetscCall(VecDestroy(&w));
+    PetscCall(VecDestroy(&Mv));
+    endNodes_ = nNodes;
+    endDp_ = hp;
+    PetscLogDouble t1;
+    PetscCall(PetscTime(&t1));
+    endSeconds_ = t1 - t0;
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi, Mat H, Mat M)
 {
     PetscFunctionBeginUser;
     if (finished_) PetscFunctionReturn(PETSC_SUCCESS);
     PetscCall(AddFlux(t, psi));
     finished_ = true;
+    const bool endTerm = TDSEZParser::SurffEndTerm;
+    std::vector<PetscScalar> plain, plainTotal(rank_ ? 0 : nk_);
+    if (endTerm) {
+        plain = amp_;
+        PetscCall(EndTerm(psi, H, M));
+        PetscCallMPI(MPI_Reduce(plain.data(), rank_ ? nullptr : plainTotal.data(), (int)nk_, MPIU_SCALAR, MPIU_SUM, 0, comm_));
+    }
     std::vector<PetscScalar> total(rank_ ? 0 : nk_), inner, innerTotal(rank_ ? 0 : nk_);
     PetscCallMPI(MPI_Reduce(amp_.data(), rank_ ? nullptr : total.data(), (int)nk_, MPIU_SCALAR, MPIU_SUM, 0, comm_));
     const bool interior = TDSEZParser::SurffInterior;
@@ -598,7 +932,7 @@ PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi
     int status = 0;
     if (!rank_) {
         const hsize_t nk = (hsize_t)nk_, d = (hsize_t)dim_;
-        std::vector<PetscReal> momenta(nk * d), amplitude(2 * nk), flux(interior ? 2 * nk : 0), pes(nk);
+        std::vector<PetscReal> momenta(nk * d), amplitude(2 * nk), flux(interior || endTerm ? 2 * nk : 0), pes(nk);
         for (hsize_t k = 0; k < nk; ++k) {
             if (grid_) {
                 const PetscInt i = (PetscInt)k / (n_[1] * n_[2]), j = ((PetscInt)k / n_[2]) % n_[1], l = (PetscInt)k % n_[2];
@@ -611,6 +945,10 @@ PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi
                 flux[2 * k] = PetscRealPart(total[k]);
                 flux[2 * k + 1] = PetscImaginaryPart(total[k]);
                 total[k] += innerTotal[k];
+            }
+            if (endTerm) {
+                flux[2 * k] = PetscRealPart(plainTotal[k]);
+                flux[2 * k + 1] = PetscImaginaryPart(plainTotal[k]);
             }
             amplitude[2 * k] = PetscRealPart(total[k]);
             amplitude[2 * k + 1] = PetscImaginaryPart(total[k]);
@@ -625,7 +963,7 @@ PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi
             status |= WriteReal(file, "momenta", 2, dm, momenta.data());
             status |= WriteReal(file, "amplitude", 2, da, amplitude.data());
             status |= WriteReal(file, "pes", 1, &nk, pes.data());
-            if (interior) status |= WriteReal(file, "amplitude_flux", 2, da, flux.data());
+            if (interior || endTerm) status |= WriteReal(file, "amplitude_flux", 2, da, flux.data());
             if (grid_) {
                 const char *axes[3] = {"k_x", "k_y", "k_z"};
                 hsize_t shape[3];
@@ -637,10 +975,12 @@ PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi
             }
             const PetscReal scalars[][1] = {{prevT_}, {R_}, {mass_}, {V0_}, {TDSEZParser::Q},
                                             {(PetscReal)TDSEZParser::OutputStrideSurff}, {(PetscReal)nGlobalPoints_},
-                                            {(PetscReal)nSamples_}, {interior ? 1.0 : 0.0}};
+                                            {(PetscReal)nSamples_}, {interior ? 1.0 : 0.0}, {endTerm ? 1.0 : 0.0},
+                                            {(PetscReal)endNodes_}, {endDp_}};
             const char *names[] = {"final_time", "radius", "exterior_mass", "exterior_potential", "charge",
-                                   "stride", "n_surface_points", "n_samples", "interior"};
-            for (int e = 0; e < 9; ++e) status |= WriteAttribute(file, names[e], 1, scalars[e]);
+                                   "stride", "n_surface_points", "n_samples", "interior", "end_term",
+                                   "end_term_nodes", "end_term_dp"};
+            for (int e = 0; e < 12; ++e) status |= WriteAttribute(file, names[e], 1, scalars[e]);
             status |= WriteAttribute(file, "A_final", d, A_);
             if (H5Fclose(file) < 0) status = -1;
         }
@@ -649,5 +989,9 @@ PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi
     PetscCheck(status == 0, comm_, PETSC_ERR_FILE_WRITE, "t-SURFF: cannot write %s", path.c_str());
     TDSEZInfo(comm_).kv("t-SURFF", "%" PetscInt_FMT " samples, %.3f s (%.3g ms per sample) -> %s",
                           nSamples_, (double)maxSeconds, 1e3 * maxSeconds / PetscMax((PetscInt)1, nSamples_), path.c_str());
+    if (endTerm)
+        TDSEZInfo(comm_).kv("t-SURFF end term", "%" PetscInt_FMT " energies (dp <= %.4g), %" PetscInt_FMT
+                            " LU factorisations, %" PetscInt_FMT " Krylov steps, %.2f s",
+                            endNodes_, (double)endDp_, endBuilds_, endIts_, (double)endSeconds_);
     PetscFunctionReturn(PETSC_SUCCESS);
 }

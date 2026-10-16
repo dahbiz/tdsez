@@ -72,6 +72,13 @@ Strong-field physics
 .. [Mosert2016] V. Mosert and D. Bauer, Photoelectron spectra with Qprop and
    t-SURFF, *Comput. Phys. Commun.* **207**, 452 (2016).
 
+.. [Morales2016] F. Morales, T. Bredtmann and S. Patchkovskii, iSURF: a family
+   of infinite-time surface flux methods, *J. Phys. B* **49**, 245001 (2016).
+
+.. [Erlangga2006] Y. A. Erlangga, C. W. Oosterlee and C. Vuik, A novel
+   multigrid based preconditioner for heterogeneous Helmholtz problems,
+   *SIAM J. Sci. Comput.* **27**, 1471 (2006).
+
 .. [Krause1992] J. L. Krause, K. J. Schafer and K. C. Kulander, High-order
    harmonic generation from atoms and ions in the high intensity regime,
    *Phys. Rev. Lett.* **68**, 3535 (1992).

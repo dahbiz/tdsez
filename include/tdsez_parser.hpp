@@ -339,6 +339,12 @@ class TDSEZParser
         /// states (exact for a free carrier at any FinalTime; it contains the
         /// bound states' plane-wave content, so keep 0 for bound systems).
         inline static PetscBool             SurffInterior      = PETSC_FALSE;
+        /// Add the flux that would still cross the surface after FinalTime
+        /// (field-free evolution, resolvent of H with the CAP as outgoing
+        /// condition), so the spectrum is that of infinite time.
+        inline static PetscBool             SurffEndTerm       = PETSC_FALSE;
+        /// Momentum spacing of the end-term energy nodes (0 = automatic).
+        inline static PetscReal             SurffEndTermDk     = 0.0;
 
         /// Parsed initial-state mode: 0=ground, 1=single, 2=superposition, 3=Quesne, 4=mass step, 5=wave packet.
         inline static PetscInt              InitialStateMode   = 0;

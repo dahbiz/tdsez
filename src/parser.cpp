@@ -214,6 +214,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"SurffMassTolerance",      R(SurffMassTolerance)},
                 {"SurffPotentialTolerance", R(SurffPotentialTolerance)},
                 {"SurffInterior",     B(SurffInterior)},
+                {"SurffEndTerm",      B(SurffEndTerm)},
+                {"SurffEndTermDk",    R(SurffEndTermDk)},
                 {"WavepacketCenter",   H{[](const std::string &v){ ParseAxisList(v, WavepacketCenter); }}},
                 {"WavepacketMomentum", H{[](const std::string &v){ ParseAxisList(v, WavepacketMomentum); }}},
                 {"WavepacketWidth",    H{[](const std::string &v){ ParseAxisList(v, WavepacketWidth); }}},

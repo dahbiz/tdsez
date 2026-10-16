@@ -22,6 +22,16 @@
  * interval). |b(k)|^2 = dP/d^d k for the canonical momentum k; the final
  * kinetic momentum is k + A(T).
  *
+ * End term (SurffEndTerm = 1): after FinalTime T the field is off, the Volkov
+ * state only gains the phase exp(i E_k (t - T)), E_k = |k + A(T)|^2/2m + V0, and
+ * psi evolves with the field-free H (CAP included). The flux still to come,
+ * int_T^inf dt, is therefore the flux functional at T applied to
+ *     phi_E = int_0^inf e^{i E s} psi(T + s) ds,   (E M - H) phi_E = i M psi(T),
+ * the CAP being the outgoing-wave condition (+i0). phi_E is solved on energy
+ * nodes uniform in |k + A| and its flux projections are combined with 4-point
+ * Lagrange weights in |k + A| for every momentum, so the cost is one linear
+ * solve and one flux evaluation per node, not per momentum.
+ *
  * Efficiency: psi and (1/m) d_n psi at the surface Gauss points come from one
  * sparse product with a precomputed trace matrix. On a momentum grid the
  * Volkov factors separate by axis, so each face costs two small dense
@@ -37,9 +47,10 @@ public:
     /// Add the flux of psi at time t on every OutputStrideSurff-th step and at
     /// FinalTime (sample times must increase).
     PetscErrorCode Sample(PetscInt step, PetscReal t, Vec psi);
-    /// Sample (t, psi) if it was not the last sample, reduce the amplitudes and
-    /// write the separate HDF5 file (rank 0).
-    PetscErrorCode Finish(const std::string &path, PetscReal t, Vec psi);
+    /// Sample (t, psi) if it was not the last sample, add the end term (with
+    /// SurffEndTerm; H is the field-free Hamiltonian with the CAP, M the
+    /// overlap), reduce the amplitudes and write the separate HDF5 file (rank 0).
+    PetscErrorCode Finish(const std::string &path, PetscReal t, Vec psi, Mat H = nullptr, Mat M = nullptr);
 
 private:
     struct Point {
@@ -54,6 +65,7 @@ private:
     PetscErrorCode AuditTraces(IGA iga, Vec psi);
     void AdvanceVolkov(PetscReal t);
     PetscErrorCode Interior(Vec psi, std::vector<PetscScalar> &out);
+    PetscErrorCode EndTerm(Vec psi, Mat H, Mat M);
     PetscErrorCode Project(const PetscScalar *c, const PetscInt n[3], const std::vector<PetscReal> k[3], PetscScalar *out);
 
     MPI_Comm comm_ = MPI_COMM_NULL;
@@ -84,6 +96,10 @@ private:
     PetscInt nSamples_ = 0;
     PetscLogDouble seconds_ = 0;
     PetscInt nGlobalPoints_ = 0;
+    // end term statistics
+    PetscInt endNodes_ = 0, endBuilds_ = 0, endIts_ = 0;
+    PetscReal endDp_ = 0;
+    PetscLogDouble endSeconds_ = 0;
     // interior projection (SurffInterior): spline knots and owned coefficient box
     std::vector<PetscReal> knots_[3];
     PetscInt p_[3] = {0, 0, 0}, nnp_[3] = {1, 1, 1}, lstart_[3] = {0, 0, 0}, lwidth_[3] = {1, 1, 1};

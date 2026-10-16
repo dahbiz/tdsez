@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
             // purely time-stepping work.
             PetscCall(PetscLogStagePush(profile.stagePropagation));
             manager.outputFilename = "td/TimeEvolutionData_" + dipPrefix + ".h5";
-            TDSEZPropagator propagator(manager);
+            auto propagator = std::make_unique<TDSEZPropagator>(manager);
             // t-SURFF (TSurff = 1): passive surface-flux observer, separate output file.
             std::unique_ptr<TDSEZTSurff> tsurff;
             if (TDSEZParser::TSurff) {
@@ -259,10 +259,18 @@ int main(int argc, char *argv[])
                 PetscCall(tsurff->Setup(TDSEZ.iga, TDSEZ.initialPsi));
                 manager.tsurff = tsurff.get();
             }
-            PetscCallAbort(PETSC_COMM_WORLD, propagator.Evolve());
+            PetscCallAbort(PETSC_COMM_WORLD, propagator->Evolve());
+            // the stage matrices and their preconditioners are not needed any
+            // more: free them before the t-SURFF end term factorises E M - H
+            propagator.reset();
             if (tsurff) {
                 // Both propagators evolve TDSEZ.initialPsi in place up to FinalTime.
-                PetscCall(tsurff->Finish("td/surff_" + dipPrefix + ".h5", TDSEZParser::FinalTime, TDSEZ.initialPsi));
+                PetscLogDouble a, b;
+                PetscTime(&a);
+                PetscCall(tsurff->Finish("td/surff_" + dipPrefix + ".h5", TDSEZParser::FinalTime, TDSEZ.initialPsi,
+                                         manager.H(), manager.M()));
+                PetscTime(&b);
+                if (TDSEZParser::SurffEndTerm) profile.Sub(TDSEZProfile::Propagation, "t-SURFF end term", b - a);
                 manager.tsurff = PETSC_NULLPTR;
             }
             PetscCall(PetscLogStagePop());

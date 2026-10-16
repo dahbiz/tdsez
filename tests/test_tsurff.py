@@ -182,3 +182,79 @@ def test_tsurff_guards():
     _expect_fatal(FREE1D + "InitialState = ground\n", "nbound0_needs_analytic")
     text = "\n".join(l for l in FREE1D.split("\n") if not l.startswith("PotentialDerivativeX"))
     _expect_fatal(text, "empty_potential_derivative")
+
+
+# End term (SurffEndTerm = 1): the flux after FinalTime from the field-free
+# resolvent, so a run that stops while most of the packet is still inside the
+# box gives the infinite-time spectrum.
+END1D = FREE1D.replace("SurffInterior     = 1", "SurffEndTerm      = 1") + """
+WavepacketMomentum = 0.8
+LaserX = t<15 ? 0.2*sin(pi*t/15)^2*sin(1.3*t) : 0
+FinalTime = 16
+SurffKmax = 3
+SurffKmin = -1.5
+SurffNk = 181
+"""
+
+
+def test_tsurff_end_term_1d():
+    """Slow packet stopped at T = 16 (plain t-SURFF misses a third of it): the
+    end term restores the analytic spectrum; the flux part is kept separately."""
+    with _run_spectrum("tsurff_end1d.inp", END1D, 2) as f:
+        k, pes = f["momenta"][:, 0], f["pes"][:]
+        ex = _exact(f["momenta"][:], 1.0, [0.8])
+        a = f["amplitude_flux"][:]
+        plain = a[:, 0] ** 2 + a[:, 1] ** 2
+        fast = np.abs(k) > 0.3          # below the CAP's k_min the absorber reflects
+        err = abs(pes - ex)[fast].max() / ex.max()
+        _step("end term matches the analytic spectrum (|k| > 0.3)", err < 2e-4, f"max rel err {err:.3e}")
+        y = np.trapezoid(pes, k)
+        _step("end term yield", abs(y - 1) < 1e-3, f"{y:.6f}")
+        _step("flux part alone is far off", abs(np.trapezoid(plain, k) - 1) > 0.2)
+        _step("attributes", f.attrs["end_term"][0] == 1.0 and f.attrs["end_term_nodes"][0] > 50)
+
+
+def test_tsurff_end_term_2d_mpi():
+    """2D packet still inside the box at T = 2: end term close to the analytic
+    spectrum and independent of the rank count."""
+    text = END1D.replace("Dimension         = 1", "Dimension         = 2") + """
+Domain = -20.0, 20.0
+SplineDegree = 4
+NQuadratures = 6
+NSplines = 60
+PotentialDerivativeY = 0
+WavepacketCenter = 0, 0
+WavepacketMomentum = 2.0, 1.0
+WavepacketWidth = 1.0, 1.0
+Polarization = xy
+LaserX = 0
+LaserY = 0
+Propagator = cn
+TimeStep = 0.02
+FinalTime = 2
+CAPKmin = 1.0
+SurffRadius = 6
+SurffKmax = 5, 4
+SurffKmin = -1, -2
+SurffNk = 31, 31
+"""
+    amps = []
+    for n in (1, 3):
+        with _run_spectrum(f"tsurff_end2d_np{n}.inp", text, n) as f:
+            amps.append(f["amplitude"][:])
+            if n == 1:
+                err = _maxrel(f, 1.0, [2.0, 1.0])
+                _step("2D end-term spectrum", err < 1e-2, f"max rel err {err:.3e}")
+    d = abs(amps[0] - amps[1]).max() / abs(amps[0]).max()
+    _step("np1 == np3", d < 1e-10, f"{d:.3e}")
+
+
+def test_tsurff_end_term_guards():
+    _expect_fatal(END1D + "EnableCAP = 0\n", "tsurff_end_needs_cap")
+    _expect_fatal(END1D + "SurffInterior = 1\n", "tsurff_end_and_interior")
+    _expect_fatal(END1D + "SurffEndTermDk = -1\n", "tsurff_end_dk")
+    # the field must be over at FinalTime
+    path = _write_tmp("tsurff_end_field_on.inp", END1D + "LaserX = 0.05*sin(1.3*t)\nFinalTime = 2\n")
+    r, _, _ = _run(path, zkit.find_binary(), 1)
+    out = " ".join((r.stdout.decode() + r.stderr.decode()).split())
+    _step("field still on at T stops the run", r.returncode != 0 and "field is not over at FinalTime" in out, out[-800:])

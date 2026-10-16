@@ -649,6 +649,16 @@ Used only with ``TSurff = 1``; see :doc:`TSurff`.
      - 0
      - Add the projection of :math:`\psi(T)` inside the surface onto the
        Volkov states (free-carrier benchmarks; keep 0 for bound systems).
+   * - ``SurffEndTerm``
+     - bool
+     - 0
+     - Add the flux after ``FinalTime`` from the field-free resolvent (CAP as
+       outgoing condition): the infinite-time spectrum for any ``FinalTime``
+       after the pulse. Needs ``EnableCAP = 1``; see :doc:`TSurff`.
+   * - ``SurffEndTermDk``
+     - real
+     - 0
+     - Momentum spacing of the end-term energy nodes (0 = automatic).
 
 Example
 -------
