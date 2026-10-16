@@ -26,6 +26,9 @@
   <a href="#citation">Citation</a>
 </p>
 
+<p align="center"><sub><em>Z is not the author’s initial. Z is not the third axis.<br>
+Z is ⵣ (yaz), the Amazigh sign of the free man and the free people.</em></sub></p>
+
 ---
 
 TDSE-Z solves the single-particle time-dependent Schrödinger equation in one, two

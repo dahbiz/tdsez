@@ -19,6 +19,7 @@ numfig_format = {"figure": "Fig. %s", "table": "Table %s", "code-block": "Listin
 math_numfig = True
 math_eqref_format = "Eq. ({number})"
 
+templates_path = ["_templates"]
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "collapse_navigation": False,

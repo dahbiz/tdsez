@@ -24,3 +24,22 @@
 .wy-nav-top i {
   color: #ffffff !important;
 }
+
+/* The meaning of the Z (footer of every page) */
+.yaz-note {
+  margin: 1.2em 0 0.4em;
+  padding-left: 0.9em;
+  border-left: 2px solid #ff1f3d;
+  font-family: "JetBrains Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78em;
+  line-height: 1.6;
+  color: #6b6b6b;
+}
+.yaz-note p {
+  margin: 0;
+}
+.yaz-glyph {
+  color: #ff1f3d;
+  font-weight: 700;
+  font-size: 1.15em;
+}
