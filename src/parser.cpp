@@ -261,6 +261,19 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 // structured (separable) field: FieldTerm = w(x,y,z) ; f(t),
                 // one line per term (the lines accumulate)
                 {"FieldTerm",       H{AddFieldTerm}},
+                // Mode = td (lab frame, default) | kh (static Kramers-Henneberger
+                // problem: eigenstates of the cycle-averaged potential)
+                {"Mode", H{[](const std::string &v){
+                    std::string m = v; for (auto &c : m) c = (char)std::tolower((unsigned char)c);
+                    if (m == "td" || m == "lab") KHFrame = PETSC_FALSE;
+                    else if (m == "kh") KHFrame = PETSC_TRUE;
+                    else throw std::runtime_error("Mode must be td or kh"); }}},
+                {"KHWindow",  H{[](const std::string &v){
+                    std::string s = v; s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
+                    const size_t c = s.find(',');
+                    if (c == std::string::npos) throw std::runtime_error("KHWindow must be 't0, t1'");
+                    KHWindow[0] = std::stod(s.substr(0, c)); KHWindow[1] = std::stod(s.substr(c + 1)); }}},
+                {"KHSamples",          I(KHSamples)},
                 {"StructuredField", H{AddFieldTerm}},   // intuitive alias
                 {"Driver", S(Laser)},
                 {"Laser",  S(Laser)},

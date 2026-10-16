@@ -208,6 +208,9 @@ std::vector<std::string> splitSuperpositionTerms(const std::string &body)
 void TDSEZParser::ValidateOrThrow()
 {
     using std::to_string;
+    // Mode = kh is a static eigenproblem: no propagation at all (before any
+    // propagation-dependent check below)
+    if (KHFrame) EnablePropagation = PETSC_FALSE;
     // --- dimension ---
     if (Dimension < 1 || Dimension > 3)
         throw std::runtime_error("ValidateOrThrow: Dimension must be 1, 2 or 3 (got "
@@ -552,6 +555,43 @@ void TDSEZParser::ValidateOrThrow()
                     "Set e.g. Laser" + (char)std::toupper("xyz"[d]) + " = Ampx*sin(Omegax*t)*sin(pi*t/T)^2.");
     }
 
+
+    // PetIGA tabulates the Gauss rules up to 10 points; larger rules (computed
+    // at run time) give a singular mass matrix in this build, and the
+    // eigensolver then fails without saying why.
+    if (NQuadratures < 1 || NQuadratures > 10)
+        throw std::runtime_error("ValidateOrThrow: NQuadratures must be in [1, 10] (got " + to_string((long long)NQuadratures) +
+                                 "); p + 1 points integrate the degree-p mass matrix exactly, so 10 suffices for p <= 9");
+
+    // Static Kramers-Henneberger frame: an eigenproblem with the cycle-averaged
+    // potential; the quiver comes from the laser of a constant-mass carrier.
+    if (KHFrame) {
+        std::string p = Polarization;
+        if (p.empty() || p == "none")
+            throw std::runtime_error("ValidateOrThrow: Mode = kh needs the laser (Polarization and LaserX/Y/Z) "
+                                     "whose quiver is averaged");
+        const std::string *expr[3] = {&LaserX, &LaserY, &LaserZ};
+        for (int d = 0; d < 3; ++d)
+            if (p.find("xyz"[d]) != std::string::npos && expr[d]->empty())
+                throw std::runtime_error(std::string("ValidateOrThrow: Mode = kh: Polarization includes ") + "xyz"[d] +
+                                         " but Laser" + (char)std::toupper("xyz"[d]) + " (and Laser) is empty");
+        if (NFieldTerms() > 0)
+            throw std::runtime_error("ValidateOrThrow: Mode = kh takes the quiver of a uniform field; "
+                                     "FieldTerm is not supported");
+        bool massConst = MassIsConstant;
+        try { if (MassExpr.GetUsedVar().empty()) massConst = true; } catch (const mu::Parser::exception_type &) {}
+        if (!massConst)
+            throw std::runtime_error("ValidateOrThrow: Mode = kh needs a constant mass (the quiver "
+                                     "m alpha'' = q E(t) of a free carrier)");
+        const bool window = KHWindow[0] != 0.0 || KHWindow[1] != 0.0;
+        if (window && !(KHWindow[1] > KHWindow[0]))
+            throw std::runtime_error("ValidateOrThrow: KHWindow = t0, t1 needs t1 > t0");
+        if (!window && !(FinalTime > 0.0))
+            throw std::runtime_error("ValidateOrThrow: Mode = kh locates the cycle at the field peak in "
+                                     "[0, FinalTime]: set FinalTime (the pulse length) or KHWindow = t0, t1");
+        if (KHSamples < 0 || KHSamples == 1)
+            throw std::runtime_error("ValidateOrThrow: KHSamples must be 0 (automatic) or >= 2");
+    }
 
     // PhysicsOutput: a misspelt quantity would silently not be recorded.
     if (!PhysicsOutputBad.empty() && StrictInput)

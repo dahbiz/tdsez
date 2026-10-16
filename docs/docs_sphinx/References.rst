@@ -93,3 +93,10 @@ Strong-field physics
 .. [Burnett1992] K. Burnett, V. C. Reed, J. Cooper and P. L. Knight,
    Calculation of the background emitted during high-harmonic generation,
    *Phys. Rev. A* **45**, 3347 (1992).
+
+.. [Henneberger1968] W. C. Henneberger, Perturbation method for atoms in
+   intense light beams, Phys. Rev. Lett. 21, 838 (1968).
+
+.. [Gavrila2002] M. Gavrila, Atomic stabilization in superintense laser
+   fields, J. Phys. B 35, R147 (2002).
+

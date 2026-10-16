@@ -89,6 +89,7 @@ Documentation
    :caption: Solvers
 
    Eigensolver
+   KH-Frame
    Initial-State
    Time-Propagation
 

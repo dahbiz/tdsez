@@ -533,6 +533,7 @@ set(TDSEZ_SOURCES
     src/manager.cpp
     src/monitor.cpp
     src/tsurff.cpp
+    src/kh.cpp
     src/tensorops.cpp
     src/quadobs.cpp
     src/multigrid.cpp

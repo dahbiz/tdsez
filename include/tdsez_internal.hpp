@@ -469,6 +469,13 @@ struct TDSEZFieldScales {
 };
 const TDSEZFieldScales &TDSEZEstimateFieldScales();
 
+/// Static Kramers-Henneberger frame (Mode = kh, src/kh.cpp): integrate the
+/// quiver of the laser and fill TDSEZParser::KHAlpha_; throws on bad input.
+void TDSEZSetupKH();
+/// Window, frequency, quiver amplitudes and samples of the KH average (for the output metadata).
+struct TDSEZKHInfo { PetscReal t0 = 0, t1 = 0, omega = 0, ax = 0, ay = 0, az = 0; PetscInt samples = 0; };
+TDSEZKHInfo &TDSEZKHSummary();
+
 /// @brief Precompute the velocity (momentum) matrix elements between bound states.
 /// @param TDSEZ Pointer to the TDSEZManager.
 /// @return PetscErrorCode (0 on success).

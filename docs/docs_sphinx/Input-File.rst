@@ -164,11 +164,17 @@ General
      - --
      - User constants for all expressions, ``Name=value`` pairs (see
        `Expressions`_).
+   * - ``Mode``
+     - ``td`` | ``kh``
+     - ``td``
+     - ``td``: laboratory frame (eigensolve, then propagation if enabled).
+       ``kh``: eigenstates of the static Kramers-Henneberger potential, no
+       propagation (:doc:`KH-Frame`; keys ``KHWindow``, ``KHSamples``).
    * - ``EnablePropagation``
      - bool
      - 1
      - Run the time propagation after the eigensolve; 0 computes the bound
-       states only.
+       states only. Ignored with ``Mode = kh``.
    * - ``EnableGPU``
      - bool
      - 0
@@ -220,8 +226,8 @@ See :doc:`Grid-Domain` and :doc:`Knot-Sequences`.
    * - ``NQuadratures``
      - int
      - 8
-     - Quadrature points per element and axis (PetIGA provides rules up
-       to 10).
+     - Quadrature points per element and axis, 1 to 10 (PetIGA provides
+       rules up to 10; larger values are rejected).
    * - ``QuadratureRule`` (``QuadratureType``)
      - string
      - ``legendre``

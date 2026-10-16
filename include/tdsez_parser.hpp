@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <array>
 
 // ============================================================================
 //  TDSEZParser  — input / parameter parser (declaration region verbatim)
@@ -81,7 +82,36 @@ class TDSEZParser
          * @return s V(x[,y[,z]]) in atomic units.
          */
         template<typename... Args>
-        inline static PetscReal V(Args... args)     { setVars(args...) ; return CarrierSign() * VPot.Eval(); }
+        inline static PetscReal V(Args... args)
+        {
+            setVars(args...);
+            return CarrierSign() * (KHAlpha_.empty() ? VPot.Eval() : KHAverage());
+        }
+        /// @name Static Kramers-Henneberger frame (Mode = kh)
+        /// @details The potential is replaced by its cycle average over the
+        ///          free-carrier quiver alpha(t) (m alpha'' = q E(t)):
+        ///          V_KH(r) = sum_k w_k V(r + alpha(t_k)) (composite Gauss-Legendre
+        ///          over one optical cycle; see src/kh.cpp).
+        /// @{
+        inline static PetscBool KHFrame = PETSC_FALSE;      ///< Mode = kh: solve the static KH problem
+        inline static PetscReal KHWindow[2] = {0.0, 0.0};   ///< averaging window [t0, t1] (0, 0: one cycle at the peak)
+        inline static PetscInt  KHSamples = 0;              ///< samples of alpha per window (0: automatic)
+        inline static std::vector<std::array<PetscReal, 3>> KHAlpha_;   ///< alpha(t_k); empty = lab frame
+        inline static std::vector<PetscReal> KHWeight_;                 ///< averaging weights (sum 1)
+        /// V_KH at the coordinates set by setVars (without the carrier sign).
+        inline static PetscReal KHAverage()
+        {
+            const PetscReal x = varX_, y = varY_, z = varZ_;
+            PetscReal sum = 0.0;
+            for (size_t k = 0; k < KHAlpha_.size(); ++k) {
+                const auto &a = KHAlpha_[k];
+                varX_ = x + a[0]; varY_ = y + a[1]; varZ_ = z + a[2];
+                sum += KHWeight_[k] * VPot.Eval();
+            }
+            varX_ = x; varY_ = y; varZ_ = z;
+            return sum;
+        }
+        /// @}
         /**
          * @brief Evaluate dV/dx at the given coordinates.
          * @tparam Args Coordinate values.

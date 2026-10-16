@@ -1401,6 +1401,15 @@ PetscErrorCode TDSEZCore::Output()
                 write_int ("NBoundStatesSave", (PetscInt)TDSEZParser::NBoundStatesSave);
                 write_int ("NBoundStates", TDSEZParser::NBoundStates);
                 write_attr("state_format", TDSEZParser::BoundStateFormat);
+                write_attr("Mode", TDSEZParser::KHFrame ? "kh" : "td");
+                if (TDSEZParser::KHFrame) {           // static Kramers-Henneberger problem
+                    const TDSEZKHInfo &kh = TDSEZKHSummary();
+                    write_real("KH_window_start", kh.t0);
+                    write_real("KH_window_end",   kh.t1);
+                    write_real("KH_omega",        kh.omega);
+                    write_real("KH_alpha_x", kh.ax); write_real("KH_alpha_y", kh.ay); write_real("KH_alpha_z", kh.az);
+                    write_int ("KH_samples", kh.samples);
+                }
                 // Backward error ||H v - E M v|| / ((||H|| + |E| ||M||) ||v||)
                 // per kept state (infinity norms); written by rank 0.
                 if (nres > 0) {
@@ -1621,6 +1630,7 @@ PetscErrorCode TDSEZCore::Output()
             // with a clear message.
             try {
                 TDSEZParser::ValidateOrThrow();
+                TDSEZSetupKH();                       // Mode = kh: cycle-averaged potential
             } catch (const std::exception &e) {
                 TDSEZInfo().fatal("input validation failed: %s", e.what());
                 MPI_Abort(PETSC_COMM_WORLD, 3);
