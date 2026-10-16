@@ -5,14 +5,24 @@
 <h1 align="center">TDSE-Z</h1>
 
 <p align="center">
-  A parallel B-spline solver for the time-dependent Schrödinger equation in strong
-  laser fields, from atoms and molecules to semiconductor heterostructures.
+  <strong>Strong-field quantum dynamics, from atoms to heterostructures</strong><br>
+  A parallel B-spline solver for the time-dependent Schrödinger equation in 1D, 2D and 3D
+</p>
+
+<p align="center">
+  <a href="https://github.com/dahbiz/tdsez/actions/workflows/docs.yml"><img src="https://github.com/dahbiz/tdsez/actions/workflows/docs.yml/badge.svg" alt="Documentation build"></a>
+  <a href="https://dahbiz.github.io/tdsez/docs/index.html"><img src="https://img.shields.io/badge/docs-dahbiz.github.io%2Ftdsez-3b6ea5" alt="Docs"></a>
+  <a href="https://arxiv.org/abs/2608.18472"><img src="https://img.shields.io/badge/arXiv-2608.18472-b31b1b" alt="arXiv"></a>
+  <img src="https://img.shields.io/badge/C%2B%2B-17-3b6ea5" alt="C++17">
+  <img src="https://img.shields.io/badge/built%20on-PETSc%20%C2%B7%20SLEPc%20%C2%B7%20PetIGA-3b6ea5" alt="PETSc, SLEPc, PetIGA">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-3b6ea5" alt="License"></a>
 </p>
 
 <p align="center">
   <a href="https://dahbiz.github.io/tdsez/docs/index.html">Documentation</a> &middot;
   <a href="https://arxiv.org/abs/2608.18472">Paper</a> &middot;
   <a href="PERFORMANCE.md">Performance notes</a> &middot;
+  <a href="https://github.com/dahbiz/zkit">zkit (analysis)</a> &middot;
   <a href="#citation">Citation</a>
 </p>
 
