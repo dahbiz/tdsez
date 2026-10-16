@@ -147,8 +147,9 @@ between two rules: GRID AND BASIS, STATIONARY PROBLEM, TIME-DEPENDENT
 OPERATORS, PROPAGATION and TIMING SUMMARY. Inside a stage, centred
 ``──── LABEL ────`` lines open its parts (for example EIGENSOLVER,
 EIGENVALUES, COMPLEX ABSORBING POTENTIAL, PROGRESS). Settings and results are
-``Label = value`` rows, notes start with ``ⵣ`` and warnings with
-``ⵣ WARNING:``; long text is wrapped. The body is a column centred under the
+``Label = value`` rows and notes start with ``ⵣ``; warnings
+(``ⵣ WARNING:``) and fatal errors are centred with a blank line around them;
+long text is wrapped. The body is a column centred under the
 rules, which span the terminal (70 to 94 columns) or 80 columns when the
 output is redirected to a file. Errors that stop the run start with
 ``✖ TDSEZ FATAL:``.

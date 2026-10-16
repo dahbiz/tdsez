@@ -701,9 +701,10 @@ PetscErrorCode TDSEZManager::SetupTensorOps(Vec psi)
         PetscCall(tensorOps_->Validate(o.op, o.A, psi, &err));
         if (tensorOps_->Usable(o.op)) { used += std::string(used.empty() ? "" : ", ") + o.name; worst = PetscMax(worst, err); }
     }
-    if (!used.empty())
+    if (!used.empty()) {
         TDSEZInfo().kv("Factorised operators", "%s", used.c_str());
         TDSEZInfo().kv("  max relative difference", "%.1e", (double)worst);
+    }
     Mat *vel[3] = {&assembler_->VelX, &assembler_->VelY, &assembler_->VelZ};
     Mat *dip[3] = {&assembler_->Dx, &assembler_->Dy, &assembler_->Dz};
     Mat *mv[3] = {&m_VelX, &m_VelY, &m_VelZ}, *md[3] = {&m_Dx, &m_Dy, &m_Dz};
@@ -798,9 +799,10 @@ PetscErrorCode TDSEZManager::SetupQuadObs(Vec psi)
     }
     PetscCall(VecDestroy(&tmp));
     qv_ = v;                                   // this call's values (the monitor body reads them)
-    if (!used.empty())
+    if (!used.empty()) {
         TDSEZInfo().kv("Quadrature-point expectations", "%s", used.c_str());
         TDSEZInfo().kv("  max relative difference", "%.1e", (double)worst);
+    }
     // free what nothing else reads
     if (qPot_) { PetscCall(MatDestroy(&assembler_->V)); m_V = PETSC_NULLPTR; }
     Mat *dVa[3] = {&assembler_->dVdx, &assembler_->dVdy, &assembler_->dVdz}, *mdV[3] = {&m_dVdx, &m_dVdy, &m_dVdz};

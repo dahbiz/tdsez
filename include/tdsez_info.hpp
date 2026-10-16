@@ -63,7 +63,8 @@ static inline std::string TDSEZ_fmtZ(PetscScalar z) {
 //        ─────────── LABEL ───────────        section()   part of a stage
 //        Key                    = value       kv()
 //        text, word-wrapped                   line()
-//        ⵣ message                            status(), warn()
+//        ⵣ message                            status()
+//           ⵣ WARNING: centred message        warn(), fatal()
 //
 //  The body is a column of at most BODY characters centred under the rules;
 //  the rules span the terminal (70 to 94 columns; 80 when not a terminal).
@@ -181,7 +182,7 @@ public:
         vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
         gap();
-        emit("ⵣ WARNING: ", msg, 2);
+        center((std::string("ⵣ WARNING: ") + msg).c_str());
         gap();
     }
 
@@ -194,7 +195,8 @@ public:
         vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
         gap();
-        emit("✖ TDSEZ FATAL: ", msg, 2);
+        center((std::string("✖ TDSEZ FATAL: ") + msg).c_str());
+        gap();
     }
 
     /// Empty line.
