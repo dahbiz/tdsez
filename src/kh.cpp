@@ -62,7 +62,9 @@ void window(PetscReal &t0, PetscReal &P, PetscReal &tPeak, PetscReal &omega)
         return;
     }
     const PetscReal T = TDSEZParser::FinalTime;
-    const PetscInt n = 40000;
+    // sampling for the peak and the zero crossings: fine enough not to step over
+    // a half period (0.005 a.u.: omega up to ~600 a.u.), at least 40000 points
+    const PetscInt n = (PetscInt)PetscMin((PetscReal)2e7, PetscMax((PetscReal)40000, std::ceil(T / 0.005)));
     PetscReal emax = 0.0;
     int dom = -1;
     PetscReal dmax = 0.0;
@@ -104,6 +106,10 @@ void window(PetscReal &t0, PetscReal &P, PetscReal &tPeak, PetscReal &omega)
             return 0.5 * (a + b);
         };
         if (cross >= 3) { c0 = root(b0[0], b0[1]); c1 = root(b1[0], b1[1]); }
+        // consistency: the half periods must be resolved by the sampling
+        if (cross >= 3 && (c1 - c0) / (cross - 1) < 4.0 * T / n)
+            throw std::runtime_error("Mode = kh: the field oscillates faster than the sampling resolves; set "
+                                     "Omegax/y/z or KHWindow = t0, t1");
         if (cross < 3)
             throw std::runtime_error("Mode = kh: cannot find the laser period (fewer than 3 zero crossings in "
                                      "[0, FinalTime]); set Omegax/y/z or KHWindow = t0, t1");
@@ -207,6 +213,8 @@ void TDSEZSetupKH()
         nodes(P, nseg, s, w);
         TDSEZParser::KHAlpha_ = quiver(t0, P, s, qm);
         TDSEZParser::KHWeight_ = w;
+        TDSEZParser::KHTime_.assign(s.size(), 0.0);
+        for (size_t k = 0; k < s.size(); ++k) TDSEZParser::KHTime_[k] = t0 + s[k];
     };
     build();
     if (!converged) {

@@ -66,9 +66,28 @@ expressions ``LaserX/Y/Z`` (or ``Laser``) of the polarised axes:
    test lattice; ``KHSamples`` fixes it.
 
 The log reports the window, the period, the quiver amplitude and rms per axis
-and the number of nodes; the attributes ``Mode``, ``KH_window_start``,
-``KH_window_end``, ``KH_omega``, ``KH_alpha_x/y/z`` and ``KH_samples`` of
-``run_metadata`` in ``static/<name>_eigen.h5`` record them.
+and the number of nodes. ``run_metadata`` in ``static/<name>_eigen.h5``
+records them (attributes ``Mode``, ``KH_window_start``, ``KH_window_end``,
+``KH_omega``, ``KH_alpha_x/y/z``, ``KH_samples``) together with the quiver
+itself: the datasets ``kh_times`` (:math:`t_k`), ``kh_weights``
+(:math:`w_k`, summing to 1) and ``kh_alpha`` (:math:`N\times 3`,
+:math:`\boldsymbol\alpha(t_k)`), so that
+:math:`V_{\text{KH}}(\mathbf r) = \sum_k w_k V(\mathbf r + \boldsymbol\alpha(t_k))`
+can be evaluated outside TDSE-Z:
+
+.. code-block:: python
+
+   import h5py, numpy as np
+   with h5py.File("static/run_eigen.h5") as f:
+       g = f["run_metadata"]
+       t, w, alpha = g["kh_times"][:], g["kh_weights"][:], g["kh_alpha"][:]
+   V = lambda x: -1 / np.sqrt(x * x + 1)                 # the Potential of the input
+   V_kh = lambda x: sum(wk * V(x + ak[0]) for wk, ak in zip(w, alpha))
+
+The period search samples :math:`[0, \texttt{FinalTime}]` with steps of at
+most 0.005 a.u. (at least 40 000 points), so frequencies up to about
+600 a.u. are resolved; a field that oscillates faster stops the run with a
+request for ``Omegax/y/z`` or ``KHWindow``.
 
 Input
 -----
@@ -119,7 +138,41 @@ along :math:`z`:
 Validation
 ----------
 
-``tests/test_kh.py`` compares ``Mode = kh`` with exact results. For an
+``tests/test_kh.py`` compares ``Mode = kh`` with exact results.
+
+**The quiver.** For a field that is a sum of sines,
+:math:`E_a = \sum_j c_j \sin(k_j t + \varphi_j)` (a :math:`\sin^2` pulse is
+:math:`\tfrac{E_0}{2}\sin\omega t - \tfrac{E_0}{4}[\sin(\omega+\Omega)t +
+\sin(\omega-\Omega)t]`, :math:`\Omega = 2\pi/T`), the double integral is
+:math:`-\sum_j c_j\sin(k_j t + \varphi_j)/k_j^2` plus a line fixed by the
+removal of the mean velocity and position; ``kh_alpha`` is compared with it at
+every node:
+
+.. list-table:: Quiver against the closed form (largest relative error)
+   :widths: 60 40
+   :header-rows: 1
+
+   * - Field
+     - :math:`\boldsymbol\alpha(t_k)`
+   * - CW, phase 0.4, :math:`m = 2` (1D)
+     - :math:`4\times10^{-15}`
+   * - circular (2D)
+     - :math:`4\times10^{-15}`
+   * - elliptical in :math:`xy` + second harmonic on :math:`z`, hole (3D)
+     - :math:`1.4\times10^{-14}`
+   * - :math:`\sin^2` pulse, automatic window
+     - :math:`4\times10^{-15}`
+   * - :math:`\sin^2` pulse, ``KHWindow`` not a whole cycle
+     - :math:`4\times10^{-15}`
+   * - CW :math:`\omega = 20`, ``FinalTime = 2000``
+     - :math:`1.4\times10^{-12}` (rounding of :math:`\sin(\omega t)` at
+       :math:`\omega t \approx 2\times10^4`)
+
+The weights sum to 1, :math:`\langle\boldsymbol\alpha\rangle = 0`, axes
+outside ``Polarization`` have :math:`\alpha = 0`, and the automatic window is
+one period to :math:`10^{-12}`.
+
+**The dressed levels.** For an
 oscillator :math:`V = \tfrac12 m\omega_0^2 r^2`,
 :math:`V_{\text{KH}} = V + \tfrac12 m\omega_0^2\langle|\boldsymbol\alpha|^2\rangle`,
 so every level shifts by :math:`\tfrac14 m\omega_0^2\alpha_0^2` for a linear

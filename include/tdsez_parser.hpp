@@ -98,6 +98,7 @@ class TDSEZParser
         inline static PetscInt  KHSamples = 0;              ///< samples of alpha per window (0: automatic)
         inline static std::vector<std::array<PetscReal, 3>> KHAlpha_;   ///< alpha(t_k); empty = lab frame
         inline static std::vector<PetscReal> KHWeight_;                 ///< averaging weights (sum 1)
+        inline static std::vector<PetscReal> KHTime_;                   ///< times t_k of the nodes
         /// V_KH at the coordinates set by setVars (without the carrier sign).
         inline static PetscReal KHAverage()
         {

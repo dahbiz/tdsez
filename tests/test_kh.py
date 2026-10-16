@@ -118,3 +118,112 @@ LaserX = 0.1*sin(t)
 FinalTime = 20
 """
     _expect_fatal(deck + extra, label)
+
+
+# ---------------------------------------------------------------------------
+# The quiver itself against closed forms. A field that is a sum of sines,
+# E_a = sum_j c_j sin(k_j t + phi_j), has the particular double integral
+# a_p = -sum_j c_j sin(k_j t + phi_j) / k_j^2; TDSE-Z removes the mean velocity
+# and the mean position over the window [t0, t1], which fixes the added line:
+#   alpha = (q/m) (a_p + b t + c),  b = -(a_p(t1) - a_p(t0)) / P,
+#   c = -(<a_p> + b (t0 + t1) / 2),  <a_p> = sum_j c_j (cos(k_j t1+phi_j) - cos(k_j t0+phi_j)) / (k_j^3 P).
+# sin^2 pulse: E0 sin^2(pi t/T) sin(w t) = E0/2 sin(w t) - E0/4 [sin((w+W) t) + sin((w-W) t)], W = 2 pi / T.
+# ---------------------------------------------------------------------------
+import h5py  # noqa: E402
+
+
+def _exact_quiver(t, terms, t0, t1, qm):
+    P = t1 - t0
+    ap = lambda tt: -sum(c * np.sin(k * tt + p) / k**2 for c, k, p in terms)  # noqa: E731
+    mean_ap = sum(c * (np.cos(k * t1 + p) - np.cos(k * t0 + p)) / k**3 for c, k, p in terms) / P
+    b = -(ap(t1) - ap(t0)) / P
+    c = -(mean_ap + b * 0.5 * (t0 + t1))
+    return qm * (ap(t) + b * t + c)
+
+
+def _pulse(E0, w, T, phase=0.0):
+    W = 2 * np.pi / T
+    return [(E0 / 2, w, phase), (-E0 / 4, w + W, phase), (-E0 / 4, w - W, phase)]
+
+
+QUIVER_CASES = {
+    # name: (deck, {axis: terms}, q/m)
+    "CW 1D, m = 2, phase": ("""Dimension = 1
+Domain = -10, 10
+NSplines = 24
+Mass = 2.0
+Polarization = x
+LaserX = 0.3*sin(1.5*t + 0.4)
+FinalTime = 20
+""", {0: [(0.3, 1.5, 0.4)]}, -1.0 / 2.0),
+    "circular 2D": ("""Dimension = 2
+Domain = -10, 10, -10, 10
+NSplines = 12
+Polarization = xy
+LaserX = 0.4*sin(1.3*t)
+LaserY = 0.4*cos(1.3*t)
+FinalTime = 30
+""", {0: [(0.4, 1.3, 0.0)], 1: [(0.4, 1.3, np.pi / 2)]}, -1.0),
+    "3D elliptical + second harmonic, hole": ("""Dimension = 3
+Domain = -10, 10, -10, 10, -10, 10
+NSplines = 8
+Charge = 1.0
+Polarization = xyz
+Omegax = 1.1
+LaserX = 0.5*sin(1.1*t)
+LaserY = 0.2*cos(1.1*t)
+LaserZ = 0.1*sin(2.2*t + 0.3)
+FinalTime = 30
+""", {0: [(0.5, 1.1, 0.0)], 1: [(0.2, 1.1, np.pi / 2)], 2: [(0.1, 2.2, 0.3)]}, 1.0),
+    "CW high frequency, long run": ("""Dimension = 1
+Domain = -10, 10
+NSplines = 24
+Polarization = x
+LaserX = 2.0*sin(20.0*t)
+FinalTime = 2000
+""", {0: [(2.0, 20.0, 0.0)]}, -1.0),
+    "sin^2 pulse 1D, automatic window": ("""Dimension = 1
+Domain = -10, 10
+NSplines = 24
+Polarization = x
+LaserX = 0.8*sin(pi*t/40)^2*sin(1.2*t)
+FinalTime = 40
+""", {0: _pulse(0.8, 1.2, 40)}, -1.0),
+    "sin^2 pulse 1D, KHWindow not a cycle": ("""Dimension = 1
+Domain = -10, 10
+NSplines = 24
+Polarization = x
+LaserX = 0.8*sin(pi*t/40)^2*sin(1.2*t)
+FinalTime = 40
+KHWindow = 13.0, 21.7
+""", {0: _pulse(0.8, 1.2, 40)}, -1.0),
+}
+
+
+@pytest.mark.parametrize("case", list(QUIVER_CASES))
+def test_kh_quiver_against_closed_form(case):
+    deck, terms, qm = QUIVER_CASES[case]
+    head = "Verbose = 0\nMode = kh\nSplineDegree = 3\nNQuadratures = 4\nPotential = 0.5*(x*x+y*y+z*z)\nNBoundStates = 1\n"
+    tag = "".join(ch for ch in case if ch.isalnum())[:24]
+    path = _write_tmp(f"khq_{tag}.inp", head + deck)
+    r, _, _ = _run(path, zkit.find_binary(), 1)
+    _step(f"{case}: runs", r.returncode == 0, r.stdout.decode()[-1500:])
+    with h5py.File(zkit.Run(REPO, path).path("eigen")) as f:
+        g = f["run_metadata"]
+        t, w, alpha = g["kh_times"][:], g["kh_weights"][:], g["kh_alpha"][:]
+        t0, t1 = float(g.attrs["KH_window_start"]), float(g.attrs["KH_window_end"])
+    _step(f"{case}: weights sum to 1", abs(w.sum() - 1) < 1e-14)
+    _step(f"{case}: nodes inside the window", t.min() > t0 and t.max() < t1)
+    for a in range(3):
+        if a in terms:
+            ex = _exact_quiver(t, terms[a], t0, t1, qm)
+            err = np.max(np.abs(alpha[:, a] - ex)) / np.max(np.abs(ex))
+            # rounding of the field itself: sin(k t) at large k t carries ~eps k t
+            tol = max(1e-12, 20 * np.finfo(float).eps * max(k for _, k, _ in terms[a]) * t1)
+            _step(f"{case}: alpha_{'xyz'[a]} = closed form ({err:.1e} <= {tol:.0e})", err < tol)
+            _step(f"{case}: <alpha_{'xyz'[a]}> = 0", abs(w @ alpha[:, a]) < 1e-13 * np.max(np.abs(ex)))
+        else:
+            _step(f"{case}: alpha_{'xyz'[a]} = 0 (not polarised)", not np.any(alpha[:, a]))
+    if "KHWindow" not in deck and "pulse" not in case:
+        k = terms[0][0][1]                       # one full period of the fundamental
+        _step(f"{case}: window = one period", abs((t1 - t0) - 2 * np.pi / k) < 1e-12 * (t1 - t0))

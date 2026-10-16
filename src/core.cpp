@@ -1420,6 +1420,28 @@ PetscErrorCode TDSEZCore::Output()
                     if (ds >= 0) { H5Dwrite(ds, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, errs.data()); H5Dclose(ds); }
                     H5Sclose(sp);
                 }
+                // Mode = kh: the quiver at the averaging nodes (times, weights,
+                // alpha_x/y/z), so it can be checked or reused
+                if (TDSEZParser::KHFrame && !TDSEZParser::KHAlpha_.empty()) {
+                    const hsize_t n = TDSEZParser::KHAlpha_.size();
+                    auto write1 = [&](const char *name, const std::vector<PetscReal> &v) {
+                        hsize_t d1[1] = {n};
+                        hid_t sp = H5Screate_simple(1, d1, NULL);
+                        hid_t ds = H5Dcreate2(g, name, H5T_NATIVE_DOUBLE, sp, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                        if (ds >= 0) { H5Dwrite(ds, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, v.data()); H5Dclose(ds); }
+                        H5Sclose(sp);
+                    };
+                    write1("kh_times", TDSEZParser::KHTime_);
+                    write1("kh_weights", TDSEZParser::KHWeight_);
+                    std::vector<double> a(3 * n);
+                    for (hsize_t k = 0; k < n; ++k)
+                        for (int c = 0; c < 3; ++c) a[3 * k + c] = TDSEZParser::KHAlpha_[k][(size_t)c];
+                    hsize_t d2[2] = {n, 3};
+                    hid_t sp = H5Screate_simple(2, d2, NULL);
+                    hid_t ds = H5Dcreate2(g, "kh_alpha", H5T_NATIVE_DOUBLE, sp, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                    if (ds >= 0) { H5Dwrite(ds, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, a.data()); H5Dclose(ds); }
+                    H5Sclose(sp);
+                }
                 H5Gclose(g);
             }
         }
