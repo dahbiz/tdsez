@@ -74,38 +74,19 @@ static void TDSEZEventInStage(PetscLogStage stage, PetscLogEvent ev, PetscLogDou
     *count = info.count;
 }
 
-/// Left-justify a UTF-8 label to a display width (box-drawing glyphs are
-/// multi-byte, so printf's byte-based %-*s would misalign the columns).
-static std::string TDSEZPadLabel(const char *label, int width)
+void TDSEZProfile::Sub(Phase p, const std::string &label, PetscLogDouble seconds)
 {
-    std::string out(label);
-    int cols = 0;
-    for (const unsigned char *c = (const unsigned char *)label; *c; ++c)
-        if ((*c & 0xC0) != 0x80) ++cols;
-    if (cols < width) out.append((size_t)(width - cols), ' ');
-    return out;
+    for (auto &q : parts)
+        if (q.phase == p && q.label == label) { q.seconds += seconds; return; }
+    parts.push_back({p, label, seconds});
 }
 
-/// Print one table row: label, wall time, share of the total, rank imbalance.
-static void TDSEZTimingRow(const char *label, PetscLogDouble tmax, PetscLogDouble tmin,
-                           PetscLogDouble total, const char *note = "")
-{
-    const double share = total > 0.0 ? 100.0 * tmax / total : 0.0;
-    char imb[16];
-    if (tmin > 1e-9) snprintf(imb, sizeof(imb), "%6.2f", tmax / tmin);
-    else             snprintf(imb, sizeof(imb), "%6s", "-");
-    PetscPrintf(PETSC_COMM_WORLD, "      %s %11.3f  %6.1f%%  %s  %s\n",
-                TDSEZPadLabel(label, 34).c_str(), (double)tmax, share, imb, note);
-}
+namespace {
+/// One row of the timing table: tree depth, label, rank-max and rank-min time
+/// (tmin < 0: no imbalance column).
+struct TimingRow { int depth; std::string label; PetscLogDouble tmax, tmin; };
 
-static void TDSEZTimingSubRow(const char *label, PetscLogDouble t, PetscLogDouble total, const char *note)
-{
-    const double share = total > 0.0 ? 100.0 * t / total : 0.0;
-    PetscPrintf(PETSC_COMM_WORLD, "      %s %11.3f  %6.1f%%  %6s  %s\n",
-                TDSEZPadLabel(label, 34).c_str(), (double)t, share, "", note);
-}
-
-static std::string TDSEZFormatSeconds(double s)
+std::string FormatSeconds(double s)
 {
     char b[64];
     if (s >= 3600.0)   snprintf(b, sizeof(b), "%.0f h %02.0f min %04.1f s", std::floor(s / 3600.0), std::floor(std::fmod(s, 3600.0) / 60.0), std::fmod(s, 60.0));
@@ -113,6 +94,38 @@ static std::string TDSEZFormatSeconds(double s)
     else               snprintf(b, sizeof(b), "%.3f s", s);
     return std::string(b);
 }
+
+constexpr int kLabel = 36;
+
+/// Label, wall time, share and imbalance in fixed columns.
+void PrintRow(const TDSEZInfo &info, const std::string &label, double t, double tmin, double total)
+{
+    std::string l = label;
+    const int w = TDSEZInfo::displayWidth(l);
+    if (w < kLabel) l.append((size_t)(kLabel - w), ' ');
+    char imb[16] = "";
+    if (tmin > 1e-9) snprintf(imb, sizeof(imb), "%8.2f", t / tmin);
+    else if (tmin >= 0) snprintf(imb, sizeof(imb), "%8s", "-");
+    info.row("%s%9.3f%8.1f%%%s", l.c_str(), t, total > 0 ? 100.0 * t / total : 0.0, imb);
+}
+
+/// Rows with tree glyphs: a row at depth d gets "├ " or "└ " depending on
+/// whether a later sibling follows, and "│ " for each open ancestor.
+void PrintTree(const TDSEZInfo &info, const std::vector<TimingRow> &rows, double total)
+{
+    for (size_t i = 0; i < rows.size(); ++i) {
+        std::string prefix;
+        for (int d = 1; d <= rows[i].depth; ++d) {
+            bool more = false;                       // another row at depth d before the branch closes
+            for (size_t j = i + 1; j < rows.size() && rows[j].depth >= d; ++j)
+                if (rows[j].depth == d) { more = true; break; }
+            if (d < rows[i].depth) prefix += more ? "│ " : "  ";
+            else prefix += more ? "├ " : "└ ";
+        }
+        PrintRow(info, prefix + rows[i].label, rows[i].tmax, rows[i].tmin, total);
+    }
+}
+} // namespace
 
 PetscErrorCode TDSEZProfile::Report(PetscInt dofs, PetscBool propagated)
 {
@@ -125,96 +138,89 @@ PetscErrorCode TDSEZProfile::Report(PetscInt dofs, PetscBool propagated)
     PetscMPIInt size = 1;
     PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &size));
 
-    TDSEZInfo info(PETSC_COMM_WORLD);
-    info.rule();
-    info.center("TIMING SUMMARY");
-    info.rule();
-    PetscPrintf(PETSC_COMM_WORLD, "      %-34s %11s  %7s  %6s\n", "Phase", "Wall (s)", "Share", "Max/min");
-    PetscPrintf(PETSC_COMM_WORLD, "      %-34s %11s  %7s  %6s\n", "", "(max rank)", "", "rank");
-    info.raw("      ──────────────────────────────────────────────────────────────\n");
-
     static const char *names[NPHASES] = {
-        "Input and IGA setup",
-        "TISE assembly (H, M)",
+        "Input, grid and IGA setup",
+        "Stationary assembly (H, M)",
         "Eigensolve (SLEPc)",
-        "Static output",
-        "Dipole/TD operator assembly",
+        "Static output (HDF5)",
+        "Time-dependent operators",
         "Time-dependent setup",
         "Propagation",
         "Final output (HDF5)"};
+
+    // Propagation breakdown from the PETSc log (collective reductions).
+    PetscBool logging = PETSC_FALSE;
+    PetscCall(PetscLogIsActive(&logging));
+    const bool breakdown = propagated && logging && stagePropagation >= 0;
+    PetscLogDouble stepT = 0, obsT = 0, tKSP = 0, tPC = 0, tJac = 0, tStage = 0, tFun = 0, tH5 = 0, tPCApply = 0, tMult = 0;
+    PetscInt nKSP = 0, nPC = 0, nJac = 0, nStage = 0, nFun = 0, nH5 = 0, nPCApply = 0, nMult = 0, nObs = 0;
+    if (breakdown) {
+        PetscEventPerfInfo sp{}, so{};
+        PetscCall(PetscLogStageGetPerfInfo(stagePropagation, &sp));
+        PetscCall(PetscLogStageGetPerfInfo(stageObservables, &so));
+        // Stage times are exclusive: pushing the observables stage pauses the
+        // propagation stage, so the two add up to the propagation phase.
+        PetscLogDouble mn;
+        TDSEZReduceMaxMin(sp.time, &stepT, &mn);
+        TDSEZReduceMaxMin(so.time, &obsT, &mn);
+        nObs = so.count;
+        TDSEZEventInStage(stagePropagation, "KSPSolve",       &tKSP,     &nKSP);
+        TDSEZEventInStage(stagePropagation, "PCSetUp",        &tPC,      &nPC);
+        TDSEZEventInStage(stagePropagation, "PCApply",        &tPCApply, &nPCApply);
+        TDSEZEventInStage(stagePropagation, "MatMult",        &tMult,    &nMult);
+        TDSEZEventInStage(stagePropagation, "TSJacobianEval", &tJac,     &nJac);
+        TDSEZEventInStage(stagePropagation, "TSFunctionEval", &tFun,     &nFun);
+        TDSEZEventInStage(stagePropagation, eventStageUpdate, &tStage,   &nStage);
+        TDSEZEventInStage(stageObservables, eventHDF5Write,   &tH5,      &nH5);
+    }
+
+    std::vector<TimingRow> rows;
     PetscLogDouble accounted = 0.0;
     for (int p = 0; p < NPHASES; ++p) {
         PetscLogDouble mx, mn;
         TDSEZReduceMaxMin(phase[p], &mx, &mn);
-        if (!propagated && p >= TDSetup) {
-            PetscPrintf(PETSC_COMM_WORLD, "      %-34s %11s\n", names[p], "skipped");
-            continue;
-        }
+        if (!propagated && p >= TDSetup) continue;
         if (p == OperatorAssembly && mx <= 0.0) continue;
-        TDSEZTimingRow(names[p], mx, mn, totalMax);
+        rows.push_back({0, names[p], mx, mn});
         accounted += mx;
-
-        if (p == Propagation && propagated) {
-            PetscBool logging = PETSC_FALSE;
-            PetscCall(PetscLogIsActive(&logging));
-            if (!logging || stagePropagation < 0) {
-                PetscPrintf(PETSC_COMM_WORLD, "        (breakdown unavailable: PETSc built without logging)\n");
-                continue;
-            }
-            PetscEventPerfInfo sp{}, so{};
-            PetscCall(PetscLogStageGetPerfInfo(stagePropagation, &sp));
-            PetscCall(PetscLogStageGetPerfInfo(stageObservables, &so));
-            // Stage times are exclusive: pushing the observables stage pauses the
-            // propagation stage, so the two add up to the propagation phase.
-            PetscLogDouble stepT, stepMin, obsT, obsMin;
-            TDSEZReduceMaxMin(sp.time, &stepT, &stepMin);
-            TDSEZReduceMaxMin(so.time, &obsT, &obsMin);
-
-            PetscLogDouble tKSP, tPC, tPCApply, tMult, tJac, tStage, tFun, tH5;
-            PetscInt       nKSP, nPC, nPCApply, nMult, nJac, nStage, nFun, nH5;
-            TDSEZEventInStage(stagePropagation, "KSPSolve",       &tKSP,     &nKSP);
-            TDSEZEventInStage(stagePropagation, "PCSetUp",        &tPC,      &nPC);
-            TDSEZEventInStage(stagePropagation, "PCApply",        &tPCApply, &nPCApply);
-            TDSEZEventInStage(stagePropagation, "MatMult",        &tMult,    &nMult);
-            TDSEZEventInStage(stagePropagation, "TSJacobianEval", &tJac,     &nJac);
-            TDSEZEventInStage(stagePropagation, "TSFunctionEval", &tFun,     &nFun);
-            TDSEZEventInStage(stagePropagation, eventStageUpdate, &tStage,   &nStage);
-            TDSEZEventInStage(stageObservables, eventHDF5Write,   &tH5,      &nH5);
-
-            char note[96];
-            snprintf(note, sizeof(note), "%" PetscInt_FMT " steps", steps);
-            TDSEZTimingSubRow("  ├ Time stepping", stepT, totalMax, note);
-            snprintf(note, sizeof(note), "%" PetscInt_FMT " solves, %.1f PC apps/solve, %" PetscInt_FMT " mat-vecs",
-                     nKSP, nKSP ? (double)nPCApply / (double)nKSP : 0.0, nMult);
-            TDSEZTimingSubRow("  │   ├ Linear solves (KSPSolve)", tKSP, totalMax, note);
-            snprintf(note, sizeof(note), "%" PetscInt_FMT " calls (factorizations reused)", nPC);
-            TDSEZTimingSubRow("  │   ├ Preconditioner setup", tPC, totalMax, note);
-            snprintf(note, sizeof(note), "%" PetscInt_FMT " updates", nJac + nStage);
-            if (nFun > 0) {
-                TDSEZTimingSubRow("  │   ├ Operator updates", tJac + tStage, totalMax, note);
-                snprintf(note, sizeof(note), "%" PetscInt_FMT " evaluations", nFun);
-                TDSEZTimingSubRow("  │   └ Residual evaluations", tFun, totalMax, note);
-            } else {
-                TDSEZTimingSubRow("  │   └ Operator updates", tJac + tStage, totalMax, note);
-            }
-            snprintf(note, sizeof(note), "%d calls", so.count);
-            TDSEZTimingSubRow("  └ Observables and monitoring", obsT, totalMax, note);
-            snprintf(note, sizeof(note), "%" PetscInt_FMT " flushes (rank 0)", nH5);
-            TDSEZTimingSubRow("      └ HDF5 time-series writes", tH5, totalMax, note);
+        for (const auto &q : parts) {
+            if (q.phase != p) continue;
+            PetscLogDouble qmx, qmn;
+            TDSEZReduceMaxMin(q.seconds, &qmx, &qmn);
+            rows.push_back({1, q.label, qmx, qmn});
+        }
+        if (p == Propagation && breakdown) {
+            rows.push_back({1, "Time stepping", stepT, -1});
+            rows.push_back({2, "Linear solves (KSPSolve)", tKSP, -1});
+            rows.push_back({2, "Preconditioner setup", tPC, -1});
+            rows.push_back({2, "Operator updates", tJac + tStage, -1});
+            if (nFun > 0) rows.push_back({2, "Residual evaluations", tFun, -1});
+            rows.push_back({1, "Observables and monitoring", obsT, -1});
+            rows.push_back({2, "HDF5 time-series writes", tH5, -1});
         }
     }
-    info.raw("      ──────────────────────────────────────────────────────────────\n");
-    if (propagated)
-        PetscPrintf(PETSC_COMM_WORLD, "      Sub-rows are inclusive PETSc event times and may overlap.\n");
-    TDSEZTimingRow("Other (outside listed phases)", PetscMax(0.0, totalMax - accounted), 0.0, totalMax);
-    TDSEZTimingRow("Total wall time", totalMax, totalMin, totalMax,
-                   ("(" + TDSEZFormatSeconds((double)totalMax) + ")").c_str());
 
+    TDSEZInfo info(PETSC_COMM_WORLD);
+    info.header("TIMING SUMMARY");
     info.blank();
+    {
+        std::string h = "Component";
+        h.append((size_t)(kLabel - (int)h.size()), ' ');
+        info.row("%s%9s%9s%8s", h.c_str(), "Wall (s)", "Share", "Imbal.");
+    }
+    info.thin();
+    PrintTree(info, rows, totalMax);
+    info.thin();
+    PrintRow(info, "Other (outside the listed phases)", PetscMax(0.0, totalMax - accounted), -1, totalMax);
+    PrintRow(info, "Total wall time", totalMax, totalMin, totalMax);
+    info.blank();
+    info.line("Wall: slowest rank. Imbal.: slowest / fastest rank. Indented rows are parts of the row above%s",
+              breakdown ? "; the propagation parts are PETSc event times and may overlap." : ".");
+
     info.section("PERFORMANCE");
+    info.kv("Total wall time", "%s", FormatSeconds((double)totalMax).c_str());
     info.kv("Degrees of freedom", "%" PetscInt_FMT, dofs);
-    info.kv("MPI ranks", "%d", (int)size);
-    info.kv("DOFs per rank", "%.3e", size > 0 ? (double)dofs / (double)size : 0.0);
+    info.kv("MPI ranks", "%d (%.3e DOFs per rank)", (int)size, size > 0 ? (double)dofs / (double)size : 0.0);
     if (propagated) {
         PetscLogDouble pmax, pmin;
         TDSEZReduceMaxMin(phase[Propagation], &pmax, &pmin);
@@ -224,15 +230,25 @@ PetscErrorCode TDSEZProfile::Report(PetscInt dofs, PetscBool propagated)
         if (steps > 0) {
             info.kv("Wall time per step", "%.3e s", (double)pmax / (double)steps);
             info.kv("Steps per second", "%.2f", pmax > 0.0 ? (double)steps / (double)pmax : 0.0);
-            info.kv("Simulated time per wall s", "%.3e a.u.", pmax > 0.0 ? (double)TDSEZParser::FinalTime / (double)pmax : 0.0);
+            info.kv("Simulated time per wall second", "%.3e a.u.", pmax > 0.0 ? (double)TDSEZParser::FinalTime / (double)pmax : 0.0);
+        }
+        if (breakdown) {
+            info.kv("Linear solves", "%" PetscInt_FMT "; %.1f PC applies, %.1f mat-vecs each",
+                    nKSP, nKSP ? (double)nPCApply / (double)nKSP : 0.0, nKSP ? (double)nMult / (double)nKSP : 0.0);
+            info.kv("Preconditioner setups", "%" PetscInt_FMT, nPC);
+            info.kv("Operator updates", "%" PetscInt_FMT, nJac + nStage);
+            if (nFun > 0) info.kv("Residual evaluations", "%" PetscInt_FMT, nFun);
+            info.kv("Observable evaluations", "%" PetscInt_FMT, nObs);
+            info.kv("HDF5 flushes (rank 0)", "%" PetscInt_FMT, nH5);
         }
     }
     PetscLogDouble mem = 0.0, memMax = 0.0, memMin = 0.0;
     if (PetscMemoryGetMaximumUsage(&mem) == PETSC_SUCCESS && mem > 0.0) {
         TDSEZReduceMaxMin(mem, &memMax, &memMin);
         info.kv("Peak memory per rank", "%.1f MB (max), %.1f MB (min)", (double)memMax / 1048576.0, (double)memMin / 1048576.0);
-        info.kv("Peak memory, all ranks", "~%.1f MB", (double)memMax * size / 1048576.0);
+        info.kv("Peak memory, all ranks", "about %.1f MB", (double)memMax * size / 1048576.0);
     }
-    info.rule();
+    info.blank();
+    info.footer();
     PetscFunctionReturn(PETSC_SUCCESS);
 }

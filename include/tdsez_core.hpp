@@ -125,10 +125,11 @@ class TDSEZCore
          * @param r1 Near-origin knot spacing (a.u.).
          * @param n_exp Number of exponential-graded knots from r_cross to Lmax.
          * @param p Spline degree.
+         * @param axis Axis letter for the log.
          * @return Vector of knot coordinates.
          */
         static std::vector<PetscReal> TDSEZHydrogenicKnots(PetscReal Lmax, PetscInt n_lin, PetscReal r1, PetscInt n_exp, PetscInt p,
-                                                           PetscReal hmax = 0.0);
+                                                           PetscReal hmax = 0.0, char axis = 'x');
         // Auto interface-aligned knots: extract breakpoints from a piecewise
         // (?:) Potential/Mass expression and pin a knot line there, grading the
         // rest by a CDF that clusters resolution at the material boundaries.

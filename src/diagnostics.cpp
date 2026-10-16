@@ -247,9 +247,7 @@ PetscErrorCode TDSEZSaveOperatorMatrix(Mat mat, const std::string& filename)
     PetscCall(MatView(mat, viewer));
     PetscCall(PetscViewerDestroy(&viewer));
 
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-        "      [SaveDipoleMatrix] wrote operator matrix to %s\n",
-        filename.c_str()));
+    TDSEZInfo().kv("Operator matrix written", "%s", filename.c_str());
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -353,13 +351,9 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
                                       TDSEZ->VelZ() && !TDSEZ->vMat_z.empty());
 
     if (!doX && !doY && !doZ) {
-        if (TDSEZ->rank == 0) {
-            PetscPrintf(PETSC_COMM_SELF, "  ══════════════════════════════════════════════════════════════════════\n");
-            PetscPrintf(PETSC_COMM_SELF, "    ▸ GAUGE INVARIANCE CONSISTENCY CHECK\n");
-            PetscPrintf(PETSC_COMM_SELF, "  ══════════════════════════════════════════════════════════════════════\n");
-            PetscPrintf(PETSC_COMM_SELF, "      Status: SKIPPED (No Dx/Dy/Dz or VelX/VelY/VelZ available)\n");
-            PetscPrintf(PETSC_COMM_SELF, "  ══════════════════════════════════════════════════════════════════════\n");
-        }
+        TDSEZInfo info;
+        info.section("LENGTH-VELOCITY GAUGE CHECK");
+        info.kv("Status", "skipped (no dipole or velocity operator)");
         PetscFunctionReturn(PETSC_SUCCESS);
     }
 
@@ -424,11 +418,9 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
     PetscCall(VecDestroy(&tmp));
 
     if (TDSEZ->rank == 0) {
-        PetscPrintf(PETSC_COMM_SELF, "  ══════════════════════════════════════════════════════════════════════\n");
-        PetscPrintf(PETSC_COMM_SELF, "    ▸ LENGTH-VELOCITY GAUGE CONSISTENCY CHECK [%s%s%s%s%s]\n",
-            doX ? "X" : "", (doX && (doY||doZ)) ? "," : "", doY ? "Y" : "",
-            (doX||doY) && doZ ? "," : "", doZ ? "Z" : "");
-        PetscPrintf(PETSC_COMM_SELF, "  ══════════════════════════════════════════════════════════════════════\n\n");
+        TDSEZInfo info(PETSC_COMM_SELF);
+        info.section("LENGTH-VELOCITY GAUGE CHECK");
+        info.kv("Axes", "%s%s%s", doX ? "x" : "", doY ? "y" : "", doZ ? "z" : "");
 
         PetscBool lv_ok = PETSC_TRUE;
         PetscReal max_lv = 0.0;
@@ -506,38 +498,20 @@ PetscErrorCode TDSEZCheckLengthVelocity(TDSEZManager *TDSEZ)
                 ++checked;
 
                 if (warn) {
-                    PetscPrintf(PETSC_COMM_SELF,
-                        "      |%" PetscInt_FMT "> <- |%" PetscInt_FMT ">  omega = %+.6e",
-                        n, m, (double)omega_mn);
-
-                    if (doX) {
-                        PetscPrintf(PETSC_COMM_SELF,
-                            "  Dx = %.3e (tol=%.3e)", (double)ex, (double)tx);
-                    }
-
-                    if (doY) {
-                        PetscPrintf(PETSC_COMM_SELF,
-                            "  Dy = %.3e (tol=%.3e)", (double)ey, (double)ty);
-                    }
-
-                    if (doZ) {
-                        PetscPrintf(PETSC_COMM_SELF,
-                            "  Dz = %.3e (tol=%.3e)", (double)ez, (double)tz);
-                    }
-
-                    PetscPrintf(PETSC_COMM_SELF, " <-- WARNING\n");
+                    std::string parts;
+                    char b[64];
+                    if (doX) { snprintf(b, sizeof(b), ", x %.3e (tol %.3e)", (double)ex, (double)tx); parts += b; }
+                    if (doY) { snprintf(b, sizeof(b), ", y %.3e (tol %.3e)", (double)ey, (double)ty); parts += b; }
+                    if (doZ) { snprintf(b, sizeof(b), ", z %.3e (tol %.3e)", (double)ez, (double)tz); parts += b; }
+                    info.warn("length-velocity residual for |%" PetscInt_FMT "> <- |%" PetscInt_FMT ">, omega = %+.6e%s",
+                              n, m, (double)omega_mn, parts.c_str());
                     lv_ok = PETSC_FALSE;
                 }
             }
         }
 
-        PetscPrintf(PETSC_COMM_SELF,
-            "      Checked pairs            = %" PetscInt_FMT "\n"
-            "      Skipped near-degenerate  = %" PetscInt_FMT "\n",
-            checked, skipped);
-        PetscPrintf(PETSC_COMM_SELF, "      Max length-vel residual  = %.2e\n", (double)max_lv);
-        PetscPrintf(PETSC_COMM_SELF, "\n      Status: %s\n", lv_ok ? "PASSED" : "FAILED");
-        PetscPrintf(PETSC_COMM_SELF, "  ══════════════════════════════════════════════════════════════════════\n");
+        info.kv("Pairs checked, skipped", "%" PetscInt_FMT ", %" PetscInt_FMT " (near-degenerate)", checked, skipped);
+        info.kv("Max length-vel residual", "%.2e  %s", (double)max_lv, lv_ok ? "passed" : "FAILED");
     }
 
     PetscFunctionReturn(PETSC_SUCCESS);
@@ -597,98 +571,55 @@ PetscErrorCode TDSEZPrecomputeMomentumMatrix(TDSEZManager *TDSEZ)
 
     PetscCall(VecDestroy(&tmp));
 
-    /* ----------------------------------------------------------------
-       Check 1: Diagonal Purely Real (Hermitian)
-       ---------------------------------------------------------------- */
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
-    PetscPrintf(PETSC_COMM_WORLD, "    ▸ MOMENTUM MATRIX DIAGONAL CHECK (Expect < 1e-10) \n");
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n\n");
-    
-    PetscBool diag_ok = PETSC_TRUE;
-    for (PetscInt n = 0; n < N; n++)
-    {
-        PetscReal dx = TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR
-                     ? PetscAbsReal(PetscImaginaryPart(TDSEZ->vMat_x[n*N+n])) : 0.0;
-        PetscReal dy = TDSEZ->hasY && TDSEZ->VelY() != PETSC_NULLPTR
-                     ? PetscAbsReal(PetscImaginaryPart(TDSEZ->vMat_y[n*N+n])) : 0.0;
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      n=%-2d  |Im(v_nn^x)| = %-11.2e  |Im(v_nn^y)| = %-11.2e %s\n",
-            (int)n, dx, dy,
-            (dx > 1e-10 || dy > 1e-10) ? " <-- WARNING" : "");
-        if (dx > 1e-10 || dy > 1e-10) diag_ok = PETSC_FALSE;
-    }
-    PetscPrintf(PETSC_COMM_WORLD, "\n      Status: %s\n", diag_ok ? "PASSED" : "FAILED");
+    // Checks of the bound-state momentum matrix and of the velocity operators.
+    TDSEZInfo info;
+    info.section("MOMENTUM MATRIX CHECKS");
+    const bool on[3] = {TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR, TDSEZ->hasY && TDSEZ->VelY() != PETSC_NULLPTR,
+                        TDSEZ->hasZ && TDSEZ->VelZ() != PETSC_NULLPTR};
+    const std::vector<PetscScalar> *vm[3] = {&TDSEZ->vMat_x, &TDSEZ->vMat_y, &TDSEZ->vMat_z};
+    const PetscReal tol = 1e-10;
 
-    /* ----------------------------------------------------------------
-       Check 2: Hermiticity |v_mn - conj(v_nm)|
-       ---------------------------------------------------------------- */
-    PetscPrintf(PETSC_COMM_WORLD, "\n  ══════════════════════════════════════════════════════════════════════\n");
-    PetscPrintf(PETSC_COMM_WORLD, "    ▸ STATE HERMITICITY ELEMENT CHECK (Expect < 1e-10) \n");
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n\n");
-    
-    PetscBool herm_ok  = PETSC_TRUE;
-    PetscReal max_herr = 0.0;
-    for (PetscInt m = 0; m < N; m++)
-    for (PetscInt n = m+1; n < N; n++)
-    {
-        PetscReal ex = 0.0, ey = 0.0;
-        if (TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR) {
-            PetscScalar hx = TDSEZ->vMat_x[m*N+n] - PetscConj(TDSEZ->vMat_x[n*N+m]);
-            ex = PetscAbsScalar(hx);
-            if (ex > max_herr) max_herr = ex;
-        }
-        if (TDSEZ->hasY && TDSEZ->VelY() != PETSC_NULLPTR) {
-            PetscScalar hy = TDSEZ->vMat_y[m*N+n] - PetscConj(TDSEZ->vMat_y[n*N+m]);
-            ey = PetscAbsScalar(hy);
-            if (ey > max_herr) max_herr = ey;
-        }
-        if (ex > 1e-10 || ey > 1e-10) {
-            PetscPrintf(PETSC_COMM_WORLD,
-                "      [%d,%d]  x = %11.2e  y = %11.2e  <-- WARNING\n",
-                (int)m, (int)n, ex, ey);
-            herm_ok = PETSC_FALSE;
+    // 1. Real diagonal: v_nn = <n|Vel|n> of a real bound state.
+    PetscReal maxDiag = 0.0;
+    for (int a = 0; a < 3; ++a) {
+        if (!on[a]) continue;
+        for (PetscInt n = 0; n < N; n++) {
+            const PetscReal e = PetscAbsReal(PetscImaginaryPart((*vm[a])[n * N + n]));
+            maxDiag = PetscMax(maxDiag, e);
+            if (e > tol) info.warn("|Im v_nn| = %.2e on the %c axis for n = %" PetscInt_FMT, (double)e, "xyz"[a], n);
         }
     }
-    PetscPrintf(PETSC_COMM_WORLD, "      Max hermitian error = %.2e\n", max_herr);
-    PetscPrintf(PETSC_COMM_WORLD, "      Status: %s\n", herm_ok ? "PASSED" : "FAILED");
+    info.kv("max |Im v_nn|", "%.2e  %s", (double)maxDiag, maxDiag <= tol ? "passed" : "FAILED");
 
-    /* ----------------------------------------------------------------
-       Check 3: Full Operator Identity Norms ||Vel - Vel^H||
-       ---------------------------------------------------------------- */
-    PetscPrintf(PETSC_COMM_WORLD, "\n  ══════════════════════════════════════════════════════════════════════\n");
-    PetscPrintf(PETSC_COMM_WORLD, "    ▸ GLOBAL OPERATOR ASSEMBLY NORM CHECK ||Vel - Vel^H|| \n");
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n\n");
-
-    if (TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR) {
-        Mat PxH;
-        PetscCall(MatHermitianTranspose(TDSEZ->VelX(), MAT_INITIAL_MATRIX, &PxH));
-        PetscCall(MatAXPY(PxH, -1.0, TDSEZ->VelX(), DIFFERENT_NONZERO_PATTERN));
-        PetscReal norm_x;
-        PetscCall(MatNorm(PxH, NORM_FROBENIUS, &norm_x));
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      ||VelX - VelX^H|| = %-11.2e  Status: %s\n",
-            norm_x, norm_x < 1e-8 ? "PASSED" : "FAILED");
-        PetscCall(MatDestroy(&PxH));
-    } else {
-        PetscPrintf(PETSC_COMM_WORLD, "      ⵣ VelX Operator : SKIPPED (not available)\n");
+    // 2. Hermiticity of the matrix elements.
+    PetscReal maxHerm = 0.0;
+    for (int a = 0; a < 3; ++a) {
+        if (!on[a]) continue;
+        for (PetscInt m = 0; m < N; m++)
+            for (PetscInt n = m + 1; n < N; n++) {
+                const PetscReal e = PetscAbsScalar((*vm[a])[m * N + n] - PetscConj((*vm[a])[n * N + m]));
+                maxHerm = PetscMax(maxHerm, e);
+                if (e > tol)
+                    info.warn("|v_mn - conj(v_nm)| = %.2e on the %c axis for (m, n) = (%" PetscInt_FMT ", %" PetscInt_FMT ")",
+                              (double)e, "xyz"[a], m, n);
+            }
     }
+    info.kv("max |v_mn - conj(v_nm)|", "%.2e  %s", (double)maxHerm, maxHerm <= tol ? "passed" : "FAILED");
 
-    if (TDSEZ->hasY && TDSEZ->VelY() != PETSC_NULLPTR) 
-    {
-        Mat PyH;
-        PetscCall(MatHermitianTranspose(TDSEZ->VelY(), MAT_INITIAL_MATRIX, &PyH));
-        PetscCall(MatAXPY(PyH, -1.0, TDSEZ->VelY(), DIFFERENT_NONZERO_PATTERN));
-        PetscReal norm_y;
-        PetscCall(MatNorm(PyH, NORM_FROBENIUS, &norm_y));
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      ||VelY - VelY^H|| = %-11.2e  Status: %s\n",
-            norm_y, norm_y < 1e-8 ? "PASSED" : "FAILED");
-        PetscCall(MatDestroy(&PyH));
-    } else {
-        PetscPrintf(PETSC_COMM_WORLD, "      ⵣ VelY Operator : SKIPPED (not available)\n");
+    // 3. The assembled velocity operators are Hermitian.
+    Mat vel[3] = {TDSEZ->VelX(), TDSEZ->VelY(), TDSEZ->VelZ()};
+    for (int a = 0; a < 3; ++a) {
+        if (!on[a]) continue;
+        Mat VH;
+        PetscCall(MatHermitianTranspose(vel[a], MAT_INITIAL_MATRIX, &VH));
+        PetscCall(MatAXPY(VH, -1.0, vel[a], DIFFERENT_NONZERO_PATTERN));
+        PetscReal nrm;
+        PetscCall(MatNorm(VH, NORM_FROBENIUS, &nrm));
+        PetscCall(MatDestroy(&VH));
+        char lab[40];
+        snprintf(lab, sizeof(lab), "||Vel%c - Vel%c^H||_F", "XYZ"[a], "XYZ"[a]);
+        info.kv(lab, "%.2e  %s", (double)nrm, nrm < 1e-8 ? "passed" : "FAILED");
     }
-    
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }

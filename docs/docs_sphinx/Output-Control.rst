@@ -138,3 +138,30 @@ Compression and Console Output
      - 1
      - With 1 the propagation prints a progress line every step; with 0
        about twenty lines over the run (:doc:`Time-Propagation`).
+
+Terminal log
+------------
+
+Rank 0 prints the run as a sequence of stages, each under a centred title
+between two rules: GRID AND BASIS, STATIONARY PROBLEM, TIME-DEPENDENT
+OPERATORS, PROPAGATION and TIMING SUMMARY. Inside a stage, centred
+``──── LABEL ────`` lines open its parts (for example EIGENSOLVER,
+EIGENVALUES, COMPLEX ABSORBING POTENTIAL, PROGRESS). Settings and results are
+``Label = value`` rows, notes start with ``ⵣ`` and warnings with
+``ⵣ WARNING:``; long text is wrapped. The body is a column centred under the
+rules, which span the terminal (70 to 94 columns) or 80 columns when the
+output is redirected to a file. Errors that stop the run start with
+``✖ TDSEZ FATAL:``.
+
+The EIGENVALUES table lists each state with its energy in atomic units
+(``%+.5e``), in eV with two decimals, and its backward error
+(:doc:`Eigensolver`).
+
+The TIMING SUMMARY lists the wall time of every phase (slowest rank), its
+share of the run and the ratio of the slowest to the fastest rank, with the
+parts of a phase indented below it: the eigensolver setup, the Krylov-Schur
+iterations and the degenerate-shell step; each time-dependent operator; the
+bound-state dipole and momentum matrices and the gauge check; the time
+stepping (linear solves, preconditioner setup, operator updates) and the
+observables. The PERFORMANCE part that follows gives the time per step, the
+solver counts and the peak memory (:doc:`Performance`).

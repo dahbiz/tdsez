@@ -14,45 +14,24 @@
 #include <unistd.h>
 #endif
 
-// ── TDSE-Z output-formatting helpers (quality bar) ────────────────────────
-// fmtSci2 : 2-significant-digit scientific notation, used ONLY for eV.
-// fmtAu   : fixed %+02.5e a.u. (NEVER fmtSci2) per quality bar.
-// fmtEv   : eV NUMBER via fmtSci2 (2 sig digits); caller appends " eV".
-/**
- * @brief Format a double in 2-significant-digit scientific notation.
- * @param x Value to format.
- * @return std::string in "%.2e" form (used only for eV values).
- */
-static inline std::string TDSEZ_fmtSci2(double x) {
-    char b[32];
-    snprintf(b, sizeof(b), "%.2e", x);
-    return std::string(b);
-}
-/**
- * @brief Format a double in fixed %+02.5e atomic-unit notation.
- * @param x Value to format.
- * @return std::string in "%+02.5e" form (a.u. values, never scientific-2).
- */
+// ── TDSE-Z number formats ─────────────────────────────────────────────────
+/// Atomic units: "%+.5e".
 static inline std::string TDSEZ_fmtAu(double x) {
     char b[48];
-    snprintf(b, sizeof(b), "%+02.5e", x);
+    snprintf(b, sizeof(b), "%+.5e", x);
     return std::string(b);
 }
-/**
- * @brief Convert an atomic-unit value to eV (2-significant-digit form).
- * @param au Value in atomic units.
- * @return std::string with the eV number (caller appends " eV").
- */
+/// eV number of an atomic-unit energy, fixed with two decimals ("-13.60");
+/// the caller appends " eV".
 static inline std::string TDSEZ_fmtEv(double au) {
-    return TDSEZ_fmtSci2(au * 27.211386245988);
+    char b[48];
+    snprintf(b, sizeof(b), "%+.2f", au * 27.211386245988);
+    return std::string(b);
 }
 /**
  * @brief Format a PetscScalar for terminal display (complex-aware).
- * @param z Scalar to format.
- * @return Real builds: "%.3f". Complex builds: "a+bi" decimal parts only
- *         (imaginary part omitted when zero), at most 1 char wider than the
- *         real format so KV rows stay within their fixed-width box.
- * @throws never
+ * @return Real builds: "%.3f". Complex builds: "a+bi" (imaginary part omitted
+ *         when zero).
  */
 static inline std::string TDSEZ_fmtZ(PetscScalar z) {
     char b[64];
@@ -72,67 +51,46 @@ static inline std::string TDSEZ_fmtZ(PetscScalar z) {
 
 
 // ============================================================================
-//  TDSEZInfo  —  centralised terminal-log printer
+//  TDSEZInfo  —  the terminal log
 //  ----------------------------------------------------------------------------
-//  Every ═══ rule, ▸ section, KV row, banner, and footer goes through this
-//  class so that bar width, indentation, and centering are defined in exactly
-//  one place.  To change the box width, edit W below; every call site updates
-//  automatically.
+//  Every line of the run log goes through this class, so the layout is
+//  defined once:
 //
-//  Layout constants
-//    INDENT  = 2 spaces before every line
-//    W       = 70  (inner content width; rule = INDENT + W ═ chars)
-//    Rule    = "  " + 70×═
+//    ══════════════════════════════════════   rule()      full width
+//                   TITLE                     header()    stage of the run
+//    ══════════════════════════════════════
 //
-//  Usage
-//    TDSEZInfo info;          // default: PETSC_COMM_WORLD
-//    info.banner(logoLines);  // print logo + title + credit
-//    info.header("EIGENSOLVER SETUP");
-//    info.section("PROBLEM");
-//    info.kv("DOFs", "%d", n);
-//    info.blank();
-//    info.footer();
+//        ─────────── LABEL ───────────        section()   part of a stage
+//        Key                    = value       kv()
+//        text, word-wrapped                   line()
+//        ⵣ message                            status(), warn()
+//
+//  The body is a column of at most BODY characters centred under the rules;
+//  the rules span the terminal (70 to 94 columns; 80 when not a terminal).
 // ============================================================================
-/**
- * @brief Centralised terminal-log printer for TDSE-Z.
- * @details All printed rules, section headers, key-value rows, banners, and
- * footers are routed through this class so that box width, indentation, and
- * centering are defined in exactly one place. Adjusting W updates every
- * call site automatically.
- */
 class TDSEZInfo
 {
 public:
-    /// Left indentation (spaces) applied to every printed line.
+    /// Left indentation (spaces) of the rules.
     static constexpr int INDENT = 2;
-    /// Default inner content width used when stdout is redirected or the
-    /// terminal size cannot be queried.
-    static constexpr int W      = 70;
+    /// Rule width when stdout is not a terminal (batch logs).
+    static constexpr int W      = 80;
+    /// Widest body column.
+    static constexpr int BODY   = 78;
+    /// Label width of kv() rows.
+    static constexpr int LABEL  = 30;
 
-    /**
-     * @brief Construct the printer bound to an MPI communicator.
-     * @param comm MPI communicator for PetscPrintf (default PETSC_COMM_WORLD).
-     */
-    explicit TDSEZInfo(MPI_Comm comm = PETSC_COMM_WORLD)
-        : m_comm(comm) {}
+    explicit TDSEZInfo(MPI_Comm comm = PETSC_COMM_WORLD) : m_comm(comm) {}
 
-    /**
-     * @brief Print a heavy horizontal rule (INDENT spaces + W box chars).
-     */
-    // ── heavy rule: "  " + W×═ + "\n" ──────────────────────────────────
+    /// Heavy rule across the full width.
     void rule() const
     {
-        const int w = width();
-        PetscPrintf(m_comm, "%*s", INDENT, "");
-        for (int i = 0; i < w; ++i) PetscPrintf(m_comm, "═");
-        PetscPrintf(m_comm, "\n");
+        std::string r((size_t)INDENT, ' ');
+        for (int i = 0; i < width(); ++i) r += "═";
+        PetscPrintf(m_comm, "%s\n", r.c_str());
     }
 
-    /**
-     * @brief Print a centered title between two heavy rules.
-     * @param title Header text to center.
-     */
-    // ── centered header between two rules ──────────────────────────────
+    /// Stage of the run: centred title between two rules.
     void header(const char* title) const
     {
         PetscPrintf(m_comm, "\n");
@@ -141,151 +99,146 @@ public:
         rule();
     }
 
-    /**
-     * @brief Print a "▸ label" section line followed by a trailing rule.
-     * @param label Section label text.
-     */
-    // ── ▸ section label + trailing rule (no leading rule) ──────────────
+    /// Part of a stage: "──── LABEL ────" across the body, centred.
     void section(const char* label) const
     {
-        PetscPrintf(m_comm, "%*s  ▸ %s\n", INDENT, "", label);
-        rule();
+        const int lw = displayWidth(label) + 2, bw = body();
+        const int left = PetscMax(3, (bw - lw) / 2), right = PetscMax(3, bw - lw - left);
+        std::string s;
+        for (int i = 0; i < left; ++i) s += "─";
+        s += " "; s += label; s += " ";
+        for (int i = 0; i < right; ++i) s += "─";
+        PetscPrintf(m_comm, "\n%*s%s\n", col(), "", s.c_str());
     }
 
-    /**
-     * @brief Print a key-value row: left-aligned label, right-aligned value.
-     * @param label Left-aligned label text.
-     * @param fmt   printf-style format string for the value.
-     * @param ...   Arguments matching @p fmt.
-     */
-    // ── KV row: compact PETSc-style "key = value" ────────────────────
+    /// Thin rule across the body.
+    void thin() const
+    {
+        std::string s;
+        for (int i = 0; i < body(); ++i) s += "─";
+        PetscPrintf(m_comm, "%*s%s\n", col(), "", s.c_str());
+    }
+
+    /// "Label = value" row; a long value wraps under itself.
     void kv(const char* label, const char* fmt, ...) const
     {
-        const int w = width();
-        char val[256];
+        char val[1024];
         va_list args;
         va_start(args, fmt);
         vsnprintf(val, sizeof(val), fmt, args);
         va_end(args);
-
-        const int labelWidth = 28;
-        const int maxValue = PetscMax(8, w - 4 - labelWidth - 3);
-        std::string shown(val);
-        if ((int)shown.size() > maxValue) {
-            shown.resize((size_t)PetscMax(0, maxValue - 3));
-            shown += "...";
-        }
-        PetscPrintf(m_comm, "%*s    %-*s = %s\n",
-                    INDENT, "", labelWidth, label, shown.c_str());
+        std::string lab(label);
+        const int lw = displayWidth(lab);
+        if (lw < LABEL) lab.append((size_t)(LABEL - lw), ' ');
+        emit(lab + " = ", val, LABEL + 3);
     }
 
-    /**
-     * @brief Print a blank line padded to the full box width.
-     */
-    // ── blank line matching box width ─────────────────────────────────
-    void blank() const
+    /// Body text, word-wrapped to the body width.
+    void line(const char* fmt, ...) const
     {
-        PetscPrintf(m_comm, "\n");
-    }
-
-    /**
-     * @brief Print a footer: single heavy rule followed by a blank line.
-     */
-    // ── footer: single rule + blank line ────────────────────────────────
-    void footer() const
-    {
-        rule();
-        PetscPrintf(m_comm, "\n");
-    }
-
-    /**
-     * @brief Print a status row: icon + message, padded to the box width.
-     * @param icon Status icon string (e.g. "✔", "✘").
-     * @param fmt  printf-style format string for the message.
-     * @param ...  Arguments matching @p fmt.
-     */
-    // ── status row: icon + message, padded to box width ────────────────
-    void status(const char* icon, const char* fmt, ...) const
-    {
-        char msg[256];
+        char msg[2048];
         va_list args;
         va_start(args, fmt);
         vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
-
-        PetscPrintf(m_comm, "%*s    %s %s\n", INDENT, "", icon, msg);
+        emit("", msg, 2);
     }
 
-    /**
-     * @brief Print a key-value row showing current and peak PETSc memory usage.
-     * @param label Left-aligned label for the memory row.
-     */
-    // ── memory KV row ──────────────────────────────────────────────────
-    void memKV(const char* label) const
+    /// One preformatted body line, never wrapped (tables, progress).
+    void row(const char* fmt, ...) const
     {
-        PetscLogDouble mem_curr, mem_max;
-        PetscMemoryGetCurrentUsage(&mem_curr);
-        PetscMemoryGetMaximumUsage(&mem_max);
-        char val[128];
-        snprintf(val, sizeof(val), "%.3e MB  (peak %.3e MB)",
-                 mem_curr / 1e6, mem_max / 1e6);
-        kv(label, "%s", val);
-    }
-
-    /**
-     * @brief Print a banner: centered logo lines followed by centered text lines.
-     * @param logoLines Vector of pre-stripped logo lines (no trailing newline).
-     * @param textLines Vector of title/credit lines, each centered in turn.
-     */
-    // ── banner: logo lines (centered) + text lines (each centered) ──────
-    //  logoLines: vector of pre-stripped lines (no trailing \n)
-    //  textLines: title + credit lines, each centered one under the other
-    void banner(const std::vector<std::string>& logoLines,
-                const std::vector<std::string>& textLines) const
-    {
-        rule();
-        for (const auto& line : logoLines)
-            centerStr(line.c_str(), displayWidth(line));
-        PetscPrintf(m_comm, "\n");
-        for (const auto& line : textLines)
-            centerStr(line.c_str(), (int)line.size());
-        PetscPrintf(m_comm, "\n");
-    }
-
-    /**
-     * @brief Print a plain printf line (for content that does not fit the box model).
-     * @param fmt printf-style format string.
-     * @param ... Arguments matching @p fmt.
-     */
-    // ── plain printf (for lines that don't fit the box model) ──────────
-    void raw(const char* fmt, ...) const
-    {
+        char msg[1024];
         va_list args;
         va_start(args, fmt);
+        vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
-        // PetscVPrintf doesn't exist; format into a buffer and use PetscPrintf
-        char buf[1024];
-        va_list args2;
-        va_start(args2, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args2);
-        va_end(args2);
-        PetscPrintf(m_comm, "%s", buf);
+        PetscPrintf(m_comm, "%*s%s\n", col(), "", msg);
     }
 
-    /**
-     * @brief Center a string within the W-wide field (public for custom blocks).
-     * @param s String to center.
-     */
-    // ── center a string in the W-wide field (public for custom blocks) ─
-    void center(const char* s) const { centerStr(s, (int)strlen(s)); }
+    /// Icon and message; continuation lines align after the icon.
+    void status(const char* icon, const char* fmt, ...) const
+    {
+        char msg[2048];
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(msg, sizeof(msg), fmt, args);
+        va_end(args);
+        const std::string head = std::string(icon) + " ";
+        emit(head, msg, displayWidth(head));
+    }
 
-private:
-    /// MPI communicator used for all PetscPrintf output.
-    MPI_Comm m_comm;
+    /// "ⵣ WARNING: message".
+    void warn(const char* fmt, ...) const
+    {
+        char msg[2048];
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(msg, sizeof(msg), fmt, args);
+        va_end(args);
+        emit("ⵣ WARNING: ", msg, 2);
+    }
 
-    /// Return the usable inner width of the current terminal.  PETSc output
-    /// is often redirected under batch systems, so ioctl is deliberately
-    /// optional and the fixed width remains the deterministic fallback.
+    /// "✖ TDSEZ FATAL: message" (the caller aborts).
+    void fatal(const char* fmt, ...) const
+    {
+        char msg[2048];
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(msg, sizeof(msg), fmt, args);
+        va_end(args);
+        PetscPrintf(m_comm, "\n");
+        emit("✖ TDSEZ FATAL: ", msg, 2);
+    }
+
+    /// Empty line.
+    void blank() const { PetscPrintf(m_comm, "\n"); }
+
+    /// Closing rule of a stage.
+    void footer() const
+    {
+        rule();
+    }
+
+    /// Resident memory of this process.
+    void memKV(const char* label) const
+    {
+        PetscLogDouble mem_curr;
+        PetscMemoryGetCurrentUsage(&mem_curr);
+        kv(label, "%.1f MB", mem_curr / 1048576.0);
+    }
+
+    /// Opening banner: the logo as a centred block, then each group of text
+    /// lines centred (groups separated by an empty line).
+    void banner(const std::vector<std::string>& logoLines,
+                const std::vector<std::vector<std::string>>& groups) const
+    {
+        std::vector<std::string> logo;
+        for (std::string l : logoLines) {
+            while (!l.empty() && (l.back() == ' ' || l.back() == '\t')) l.pop_back();
+            logo.push_back(l);
+        }
+        while (!logo.empty() && logo.back().empty()) logo.pop_back();
+        int lw = 0;
+        for (const auto& l : logo) lw = PetscMax(lw, displayWidth(l));
+        const int pad = PetscMax(0, (width() - lw) / 2);
+        rule();
+        PetscPrintf(m_comm, "\n");
+        for (const auto& l : logo) PetscPrintf(m_comm, "%*s%s\n", INDENT + pad, "", l.c_str());
+        for (const auto& g : groups) {
+            PetscPrintf(m_comm, "\n");
+            for (const auto& t : g) center(t.c_str(), width());
+        }
+    }
+
+    /// Centre a string under the rules; a string wider than the body is
+    /// word-wrapped and every line centred.
+    void center(const char* s, int w = 0) const
+    {
+        for (const auto& l : wrap(s, w > 0 ? w : body()))
+            PetscPrintf(m_comm, "%*s%s\n", INDENT + PetscMax(0, (width() - displayWidth(l)) / 2), "", l.c_str());
+    }
+
+    /// Width of the rules.
     static int width()
     {
         static const int cached = [] {
@@ -300,47 +253,66 @@ private:
                 if (env) columns = std::atoi(env);
             }
             if (columns <= 0) return W;
-            // Keep a small readable margin and avoid pathological scheduler
-            // values making the report wider than the display.
-            const int inner = columns - INDENT;
+            const int inner = columns - 2 * INDENT;
             return inner < 70 ? 70 : (inner > 94 ? 94 : inner);
         }();
         return cached;
     }
+    /// Width of the body column.
+    static int body() { return PetscMin(BODY, width() - 8); }
+    /// First column of the body.
+    static int col() { return INDENT + (width() - body()) / 2; }
 
-    /**
-     * @brief Print @p s centered within the W-wide field using a display width.
-     * @param s  String to print.
-     * @param dw Display width to use for centering (may differ from byte length).
-     */
-    void centerStr(const char* s, int dw) const
-    {
-        int pad = (dw > 0) ? (width() - dw) / 2 : 0;
-        if (pad < 0) pad = 0;
-        PetscPrintf(m_comm, "%*s%*s%s\n", INDENT, "", pad, "", s);
-    }
-
-    /**
-     * @brief Compute the UTF-8 display width (code-point count) of a string.
-     * @details Assumes every glyph occupies one column; counts code points
-     * by stepping over UTF-8 lead/continuation bytes.
-     * @param s Input string.
-     * @return Number of code points (display columns).
-     */
-    // ── UTF-8 display width (code-point count; assumes every glyph = 1 col)
+    /// Display width: code points (every glyph used here is one column).
     static int displayWidth(const std::string& s)
     {
         int dw = 0;
-        for (size_t i = 0; i < s.size(); ) {
-            unsigned char c = (unsigned char)s[i];
-            if      (c < 0x80) i += 1;
-            else if (c < 0xC0) i += 1;     // continuation byte
-            else if (c < 0xE0) i += 2;
-            else if (c < 0xF0) i += 3;
-            else               i += 4;
-            ++dw;
-        }
+        for (unsigned char c : s) if ((c & 0xC0) != 0x80) ++dw;
         return dw;
+    }
+
+private:
+    MPI_Comm m_comm;
+
+    /// Greedy word wrap of @p s to @p w columns (explicit '\n' kept).
+    static std::vector<std::string> wrap(const std::string& s, int w)
+    {
+        std::vector<std::string> out;
+        size_t i = 0;
+        std::string cur;
+        int cw = 0;
+        auto flush = [&]() { out.push_back(cur); cur.clear(); cw = 0; };
+        while (i <= s.size()) {
+            if (i == s.size() || s[i] == '\n') {
+                flush();
+                ++i;
+                if (i > s.size()) break;
+                continue;
+            }
+            if (s[i] == ' ') { ++i; continue; }
+            size_t j = i;
+            while (j < s.size() && s[j] != ' ' && s[j] != '\n') ++j;
+            const std::string word = s.substr(i, j - i);
+            const int ww = displayWidth(word);
+            if (cw > 0 && cw + 1 + ww > w) flush();
+            if (cw > 0) { cur += ' '; ++cw; }
+            cur += word; cw += ww;
+            i = j;
+        }
+        while (!out.empty() && out.back().empty()) out.pop_back();
+        if (out.empty()) out.push_back("");
+        return out;
+    }
+
+    /// Print @p head + @p text wrapped to the body; continuation lines are
+    /// indented by @p hang columns.
+    void emit(const std::string& head, const std::string& text, int hang) const
+    {
+        const auto lines = wrap(text, PetscMax(20, body() - PetscMax(displayWidth(head), hang)));
+        for (size_t k = 0; k < lines.size(); ++k) {
+            if (k == 0) PetscPrintf(m_comm, "%*s%s%s\n", col(), "", head.c_str(), lines[k].c_str());
+            else PetscPrintf(m_comm, "%*s%s\n", col() + hang, "", lines[k].c_str());
+        }
     }
 };
 

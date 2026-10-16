@@ -169,6 +169,7 @@ def test_tsurff_rejects_varying_exterior():
     path = _write_tmp("tsurff_coulomb.inp", text)
     r, _, _ = _run(path, zkit.find_binary(), 1)
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("non-zero exit", r.returncode != 0)
     _step("explains the free-exterior requirement", "free carrier outside the surface" in out, out[-800:])
 

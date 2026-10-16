@@ -509,8 +509,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
                 if (wf >= 0) {
                     if (TDSEZWriteKnotsToH5(wf, core_->iga, TDSEZParser::Dimension,
                                              TDSEZParser::SplineDegree) < 0) {
-                        PetscPrintf(PETSC_COMM_SELF,
-                            "WARNING: HDF5 failed to embed knots into %s\n", absPath.c_str());
+                        TDSEZInfo(PETSC_COMM_SELF).warn("HDF5 failed to embed knots into %s", absPath.c_str());
                     }
                     H5Fclose(wf);
                 }
@@ -703,8 +702,8 @@ PetscErrorCode TDSEZManager::SetupTensorOps(Vec psi)
         if (tensorOps_->Usable(o.op)) { used += std::string(used.empty() ? "" : ", ") + o.name; worst = PetscMax(worst, err); }
     }
     if (!used.empty())
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Monitor operators applied in factorised form: %s (max relative difference %.1e)\n",
-                              used.c_str(), (double)worst));
+        TDSEZInfo().kv("Factorised operators", "%s", used.c_str());
+        TDSEZInfo().kv("  max relative difference", "%.1e", (double)worst);
     Mat *vel[3] = {&assembler_->VelX, &assembler_->VelY, &assembler_->VelZ};
     Mat *dip[3] = {&assembler_->Dx, &assembler_->Dy, &assembler_->Dz};
     Mat *mv[3] = {&m_VelX, &m_VelY, &m_VelZ}, *md[3] = {&m_Dx, &m_Dy, &m_Dz};
@@ -800,8 +799,8 @@ PetscErrorCode TDSEZManager::SetupQuadObs(Vec psi)
     PetscCall(VecDestroy(&tmp));
     qv_ = v;                                   // this call's values (the monitor body reads them)
     if (!used.empty())
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Monitor expectation values from the quadrature points: %s (max relative difference %.1e)\n",
-                              used.c_str(), (double)worst));
+        TDSEZInfo().kv("Quadrature-point expectations", "%s", used.c_str());
+        TDSEZInfo().kv("  max relative difference", "%.1e", (double)worst);
     // free what nothing else reads
     if (qPot_) { PetscCall(MatDestroy(&assembler_->V)); m_V = PETSC_NULLPTR; }
     Mat *dVa[3] = {&assembler_->dVdx, &assembler_->dVdy, &assembler_->dVdz}, *mdV[3] = {&m_dVdx, &m_dVdy, &m_dVdz};

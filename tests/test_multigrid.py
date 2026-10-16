@@ -45,6 +45,7 @@ def _dipoles(name, text, nproc):
     path = _write_tmp(name, text)
     r, _, td = _run(path, zkit.find_binary(), nproc)
     out = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
+    out = " ".join(out.split())  # wrapped log lines
     _step(f"{name} runs", r.returncode == 0, out[-1500:])
     with h5py.File(td) as f:
         return np.asarray(f["dipoles"]), out
@@ -89,6 +90,7 @@ def test_multigrid_strong_field_warning():
     path = _write_tmp("mg_warning.inp", text)
     r, _, _ = _run(path, zkit.find_binary(), 1)
     out = r.stdout.decode(errors="replace")
+    out = " ".join(out.split())  # wrapped log lines
     _step("warns when tau*max|E.r| is large", "tau*max|E.r|" in out, out[-800:])
 
 

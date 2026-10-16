@@ -226,6 +226,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#static-output">Static Output</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#compression-and-console-output">Compression and Console Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#terminal-log">Terminal log</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -473,14 +474,16 @@ crossings of the field), <span class="math notranslate nohighlight">\(U_p = E_0^
 <span class="math notranslate nohighlight">\(I_p = -E_{\rm target}\)</span> (<code class="docutils literal notranslate"><span class="pre">TargetEigenvalue</span></code>; 0.5 if the target is not
 negative), <span class="math notranslate nohighlight">\(k_{\max} = \sqrt{2(3.17\,U_p + I_p)}\)</span> and
 <span class="math notranslate nohighlight">\(\alpha = E_0/\omega^2\)</span> (<a class="reference internal" href="HHG.html"><span class="doc">Simulating HHG Correctly</span></a>).</p>
-<p><strong>Field resolution.</strong> <code class="docutils literal notranslate"><span class="pre">TDSEZ</span> <span class="pre">field</span> <span class="pre">resolution:</span> <span class="pre">...</span> <span class="pre">elements</span> <span class="pre">&lt;=</span> <span class="pre">pi/(2</span> <span class="pre">k_max)</span>
-<span class="pre">=</span> <span class="pre">...</span> <span class="pre">au</span></code> is followed, per axis, by <code class="docutils literal notranslate"><span class="pre">widest</span> <span class="pre">element</span> <span class="pre">...:</span> <span class="pre">resolved</span></code> or by
-<code class="docutils literal notranslate"><span class="pre">TDSEZ</span> <span class="pre">WARNING:</span> <span class="pre">x</span> <span class="pre">axis:</span> <span class="pre">widest</span> <span class="pre">element</span> <span class="pre">...</span> <span class="pre">the</span> <span class="pre">returning</span> <span class="pre">electron</span> <span class="pre">and</span> <span class="pre">the</span>
-<span class="pre">harmonic</span> <span class="pre">cutoff</span> <span class="pre">are</span> <span class="pre">under-resolved</span> <span class="pre">there</span></code>. The grid is not changed. Increase
-<code class="docutils literal notranslate"><span class="pre">NSplines</span></code>, reduce the grading, or use <code class="docutils literal notranslate"><span class="pre">KnotSequence</span> <span class="pre">=</span> <span class="pre">hydrogenic</span></code>, whose
-outer element width is capped by <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code>: a positive value sets the
-cap, 0 (default) takes <span class="math notranslate nohighlight">\(\pi/(2k_{\max})\)</span> from the field (printed as
-<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">...</span> <span class="pre">au</span> <span class="pre">from</span> <span class="pre">the</span> <span class="pre">field</span></code>), a negative value removes the cap.</p>
+<p><strong>Field resolution.</strong> The FIELD RESOLUTION part of the log gives the widest
+element allowed (<span class="math notranslate nohighlight">\(\pi/(2k_{\max})\)</span> on the polarised axes,
+<code class="docutils literal notranslate"><span class="pre">TransverseElementFactor</span></code> times that on the others) and, per axis, either
+<code class="docutils literal notranslate"><span class="pre">widest</span> <span class="pre">element</span> <span class="pre">...</span> <span class="pre">:</span> <span class="pre">resolved</span></code> or <code class="docutils literal notranslate"><span class="pre">ⵣ</span> <span class="pre">WARNING:</span> <span class="pre">x</span> <span class="pre">axis</span> <span class="pre">(polarised):</span> <span class="pre">widest</span>
+<span class="pre">element</span> <span class="pre">...</span> <span class="pre">the</span> <span class="pre">returning</span> <span class="pre">electron</span> <span class="pre">and</span> <span class="pre">the</span> <span class="pre">harmonic</span> <span class="pre">cutoff</span> <span class="pre">are</span> <span class="pre">under-resolved</span>
+<span class="pre">there</span></code>. The grid is not changed. Increase <code class="docutils literal notranslate"><span class="pre">NSplines</span></code>, reduce the grading, or
+use <code class="docutils literal notranslate"><span class="pre">KnotSequence</span> <span class="pre">=</span> <span class="pre">hydrogenic</span></code>, whose outer element width is capped by
+<code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span></code>: a positive value sets the cap, 0 (default) takes the widths
+above from the field (printed as <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">from</span> <span class="pre">the</span> <span class="pre">field</span></code>), a
+negative value removes the cap.</p>
 <p><strong>CAP report.</strong> With <code class="docutils literal notranslate"><span class="pre">EnableCAP</span> <span class="pre">=</span> <span class="pre">1</span></code> the block <code class="docutils literal notranslate"><span class="pre">COMPLEX</span> <span class="pre">ABSORBING</span> <span class="pre">POTENTIAL</span>
 <span class="pre">(CAP)</span></code> gives the layer width per wall, the slowest momentum absorbed with
 little reflection, and the free core of every axis. On a driven axis whose
@@ -522,7 +525,7 @@ is needed, and check <code class="docutils literal notranslate"><span class="pre
 dipoles, the velocities and the kinetic energy are applied in factorised
 (Kronecker) form, each checked against the assembled matrix on the first
 state and used only if they agree to <span class="math notranslate nohighlight">\(10^{-10}\)</span> relative
-(<code class="docutils literal notranslate"><span class="pre">Monitor</span> <span class="pre">operators</span> <span class="pre">applied</span> <span class="pre">in</span> <span class="pre">factorised</span> <span class="pre">form:</span> <span class="pre">...</span></code>;
+(<code class="docutils literal notranslate"><span class="pre">Factorised</span> <span class="pre">operators</span> <span class="pre">=</span> <span class="pre">...</span></code> in the PROPAGATION stage;
 <code class="docutils literal notranslate"><span class="pre">-tdsez_tensor_ops</span> <span class="pre">0</span></code> keeps the matrix products). <span class="math notranslate nohighlight">\(\langle V\rangle\)</span>,
 the forces, the CAP and, for a varying mass, <span class="math notranslate nohighlight">\(\langle 1/m\rangle\)</span>,
 <span class="math notranslate nohighlight">\(\langle K\rangle\)</span> and the velocities are evaluated from <span class="math notranslate nohighlight">\(\psi\)</span>

@@ -93,15 +93,15 @@ int main(int argc, char *argv[])
             if (!line.empty()) logoLines.push_back(line);
             TDSEZInfo infoSelf(PETSC_COMM_SELF);
             infoSelf.banner(logoLines, {
-                "TDSE-Z - Time-Dependent Schrodinger Equation solver (B-spline / IGA)",
-                "Dr. Zakaria Dahbi  |  zdahbi@outlook.es",
-                "Attosecond Quantum Physics Lab, King's College London, UK"
+                {"Z is not the author's initial. Z is not the third axis.",
+                 "Z is ⵣ (yaz): the free man, the free people, in Moroccan Amazigh."},
+                {"TDSE-Z  |  Time-Dependent Schrödinger Equation solver (B-spline / IGA)",
+                 "Dr. Zakaria Dahbi  |  zdahbi@outlook.es",
+                 "Attosecond Quantum Physics Lab, King's College London, UK"}
             });
         }
     }
 
-    // Output-formatting helpers live in tdsez_internal.hpp (TDSEZ_fmtSci2 /
-    // TDSEZ_fmtAu / TDSEZ_fmtEv) so all translation units share one impl.
 
     /// Re-inject -mat_type / -vec_type as PetIGA -iga_mat_type / -iga_vec_type.
     /// This routes them into iga->mattype / iga->vectype — the only types
@@ -195,10 +195,9 @@ int main(int argc, char *argv[])
         if (!TDSEZParser::EnablePropagation)
         {
             TDSEZInfo infoWorld;
-            infoWorld.rule();
-            infoWorld.center("Time propagation disabled");
-            infoWorld.center("Set EnablePropagation = 1 to propagate");
-            infoWorld.rule();
+            infoWorld.header("PROPAGATION");
+            infoWorld.blank();
+            infoWorld.center("disabled (EnablePropagation = 0)");
         }
         else
         {
@@ -215,9 +214,16 @@ int main(int argc, char *argv[])
 
             // The bound states are real with a fixed phase (TDSEZCanonicalEigenpairs).
             std::string dipPrefix = std::filesystem::path(manager.inputFile).filename().string();
-            PetscCall(TDSEZCompUnifiedDipoleMatrix(manager.boundstates, manager.energies, manager.Dx(), manager.Dy(), manager.Dz(), "DipoleMatrix_" + dipPrefix));
-            PetscCall(TDSEZPrecomputeMomentumMatrix(&manager));
-            PetscCall(TDSEZCheckLengthVelocity(&manager));
+            {
+                PetscLogDouble a, b;
+                PetscTime(&a);
+                PetscCall(TDSEZCompUnifiedDipoleMatrix(manager.boundstates, manager.energies, manager.Dx(), manager.Dy(), manager.Dz(), "DipoleMatrix_" + dipPrefix));
+                PetscTime(&b); profile.Sub(TDSEZProfile::TDSetup, "Bound-state dipole matrix", b - a); a = b;
+                PetscCall(TDSEZPrecomputeMomentumMatrix(&manager));
+                PetscTime(&b); profile.Sub(TDSEZProfile::TDSetup, "Bound-state momentum matrix", b - a); a = b;
+                PetscCall(TDSEZCheckLengthVelocity(&manager));
+                PetscTime(&b); profile.Sub(TDSEZProfile::TDSetup, "Length-velocity gauge check", b - a);
+            }
 
             Vec psi0Local = PETSC_NULLPTR;
             PetscCallAbort(PETSC_COMM_WORLD,
@@ -234,7 +240,8 @@ int main(int argc, char *argv[])
             manager.setPsi0(psi0Local);
 
             TDSEZInfo propagationInfo(PETSC_COMM_WORLD);
-            propagationInfo.section("PROPAGATION");
+            propagationInfo.header("PROPAGATION");
+            propagationInfo.section("SOLVER");
             markPhase(TDSEZProfile::TDSetup);
 
             // Propagation runs in its own log stage; the monitors push the nested
@@ -270,7 +277,7 @@ int main(int argc, char *argv[])
         delete pDipole;
     }
     catch (const std::exception& e) {
-        PetscPrintf(PETSC_COMM_WORLD, "\n  ERROR: %s\n\n", e.what());
+        TDSEZInfo().fatal("%s", e.what());
         SlepcFinalize();
         return 1;
     }

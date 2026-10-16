@@ -96,7 +96,7 @@ Exterior check
 
 Before the propagation starts, the mass and the potential are evaluated at five
 equally spaced points on the outward ray from every surface point to the end of
-the axis. The maximum deviations are printed (``t-SURFF exterior: ...``). A
+the axis. The maximum deviations are printed (``t-SURFF exterior = ...``). A
 relative mass deviation above ``SurffMassTolerance`` or a potential deviation
 above ``SurffPotentialTolerance`` (Ha) stops the run with an error that names
 both values. A Coulomb tail must therefore be switched off smoothly before

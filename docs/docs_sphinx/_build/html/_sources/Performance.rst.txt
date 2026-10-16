@@ -297,9 +297,10 @@ Effect on accuracy
 Reproducing the measurements
 ----------------------------
 
-Each run prints a TIMING SUMMARY (phase wall times, KSP and preconditioner
-statistics, operator updates, HDF5 writes) and a PERFORMANCE block (DOFs,
-ranks, time per step). Compare configurations with the same number of ranks on
+Each run prints a TIMING SUMMARY (phase wall times with their parts: eigensolver
+setup and iterations, each operator, linear solves, preconditioner setup,
+operator updates, observables, HDF5 writes) and a PERFORMANCE block (DOFs,
+ranks, time per step, solver counts, peak memory; see :doc:`Output-Control`). Compare configurations with the same number of ranks on
 an otherwise idle machine; run-to-run variation on a workstation is about
 10-20 %. The propagator comparison is reproduced with
 

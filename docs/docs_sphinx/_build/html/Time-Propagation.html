@@ -226,6 +226,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#static-output">Static Output</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#compression-and-console-output">Compression and Console Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#terminal-log">Terminal log</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -834,7 +835,8 @@ state selected by <code class="docutils literal notranslate"><span class="pre">I
 <p>The monitor prints a progress line with the step, the elapsed fraction, the
 time, the squared norm <span class="math notranslate nohighlight">\(\langle\psi|\mathbf M|\psi\rangle\)</span> and the total
 energy (<a class="reference internal" href="Observables.html"><span class="doc">Observables</span></a>):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>    <span class="mi">10</span><span class="o">/</span>  <span class="mi">2000</span><span class="p">]</span>    <span class="mf">0.5</span><span class="o">%</span>  <span class="n">t</span><span class="o">=</span>    <span class="mf">0.1000</span>   <span class="o">&lt;</span><span class="n">Psi</span><span class="o">|</span><span class="n">Psi</span><span class="o">&gt;=</span>   <span class="mf">1.000e+00</span>   <span class="o">&lt;</span><span class="n">H</span><span class="o">&gt;=</span> <span class="o">-</span><span class="mf">5.0000e-01</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>   <span class="n">step</span>       <span class="o">%</span>    <span class="n">t</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="p">)</span>    <span class="o">&lt;</span><span class="n">psi</span><span class="o">|</span><span class="n">psi</span><span class="o">&gt;</span>      <span class="o">&lt;</span><span class="n">H</span><span class="o">&gt;</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="p">)</span>
+<span class="mi">55</span><span class="o">/</span><span class="mi">1103</span>     <span class="mf">5.0</span>      <span class="mf">27.500</span>   <span class="mf">0.99999989</span>   <span class="o">-</span><span class="mf">4.989291e-01</span>
 </pre></div>
 </div>
 <p>With <code class="docutils literal notranslate"><span class="pre">Verbose</span> <span class="pre">=</span> <span class="pre">1</span></code> (default) a line is printed every step; with

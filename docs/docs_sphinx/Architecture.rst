@@ -67,7 +67,8 @@ Modules
      - Phase wall times, PETSc log stages and the final timing summary.
    * - ``TDSEZInfo``
      - ``include/tdsez_info.hpp``
-     - Terminal formatting: headings, key-value rows, memory reports.
+     - Terminal log: centred stage titles and sections, key-value rows,
+       wrapped notes and warnings, tables.
 
 Free functions complete the pipeline: ``TDSEZSetupMultigrid``
 (``src/multigrid.cpp``, ``Preconditioner = mg``) and the diagnostics in

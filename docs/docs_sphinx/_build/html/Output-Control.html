@@ -226,6 +226,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#output-strides">Output Strides</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#static-output">Static Output</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#compression-and-console-output">Compression and Console Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#terminal-log">Terminal log</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -536,6 +537,30 @@ about twenty lines over the run (<a class="reference internal" href="Time-Propag
 </tr>
 </tbody>
 </table>
+</section>
+<section id="terminal-log">
+<h2>Terminal log<a class="headerlink" href="#terminal-log" title="Link to this heading"></a></h2>
+<p>Rank 0 prints the run as a sequence of stages, each under a centred title
+between two rules: GRID AND BASIS, STATIONARY PROBLEM, TIME-DEPENDENT
+OPERATORS, PROPAGATION and TIMING SUMMARY. Inside a stage, centred
+<code class="docutils literal notranslate"><span class="pre">────</span> <span class="pre">LABEL</span> <span class="pre">────</span></code> lines open its parts (for example EIGENSOLVER,
+EIGENVALUES, COMPLEX ABSORBING POTENTIAL, PROGRESS). Settings and results are
+<code class="docutils literal notranslate"><span class="pre">Label</span> <span class="pre">=</span> <span class="pre">value</span></code> rows, notes start with <code class="docutils literal notranslate"><span class="pre">ⵣ</span></code> and warnings with
+<code class="docutils literal notranslate"><span class="pre">ⵣ</span> <span class="pre">WARNING:</span></code>; long text is wrapped. The body is a column centred under the
+rules, which span the terminal (70 to 94 columns) or 80 columns when the
+output is redirected to a file. Errors that stop the run start with
+<code class="docutils literal notranslate"><span class="pre">✖</span> <span class="pre">TDSEZ</span> <span class="pre">FATAL:</span></code>.</p>
+<p>The EIGENVALUES table lists each state with its energy in atomic units
+(<code class="docutils literal notranslate"><span class="pre">%+.5e</span></code>), in eV with two decimals, and its backward error
+(<a class="reference internal" href="Eigensolver.html"><span class="doc">Eigensolver</span></a>).</p>
+<p>The TIMING SUMMARY lists the wall time of every phase (slowest rank), its
+share of the run and the ratio of the slowest to the fastest rank, with the
+parts of a phase indented below it: the eigensolver setup, the Krylov-Schur
+iterations and the degenerate-shell step; each time-dependent operator; the
+bound-state dipole and momentum matrices and the gauge check; the time
+stepping (linear solves, preconditioner setup, operator updates) and the
+observables. The PERFORMANCE part that follows gives the time per step, the
+solver counts and the peak memory (<a class="reference internal" href="Performance.html"><span class="doc">Performance</span></a>).</p>
 </section>
 </section>
 

@@ -1,4 +1,5 @@
 #include "tdsez_multigrid.hpp"
+#include "tdsez_info.hpp"
 #include "tdsez_parser.hpp"
 #include <algorithm>
 #include <array>
@@ -230,9 +231,9 @@ PetscErrorCode TDSEZSetupMultigrid(IGA iga, PC pc, PetscInt *levels)
             worst = std::max(worst, v);
         }
         if (tau * worst > 1.5)
-            PetscCall(PetscPrintf(comm, "      WARNING: tau*max|E.r| = %.2g > 1.5: the field term dominates the propagator "
-                                  "operator and multigrid may not converge. Use Preconditioner = asm or a smaller TimeStep.\n",
-                                  (double)(tau * worst)));
+            TDSEZInfo(comm).warn("tau*max|E.r| = %.2g > 1.5: the field term dominates the propagator "
+                                  "operator and multigrid may not converge. Use Preconditioner = asm or a smaller TimeStep.",
+                                  (double)(tau * worst));
     }
 
     // ---- knot hierarchy: finest first

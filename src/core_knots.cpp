@@ -56,9 +56,8 @@ std::vector<PetscReal> TDSEZCore::TDSEZLogTanKnots(
     }
 
     if (ninterior % 2 == 0)
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZLogTanKnots: WARNING ninterior=%d even — "
-            "no knot at x=0.\n", (int)ninterior);
+        TDSEZInfo().warn("TDSEZLogTanKnots: ninterior=%d even — "
+            "no knot at x=0.", (int)ninterior);
 
     // NO push_back
     return knots;
@@ -114,10 +113,8 @@ std::vector<PetscReal> TDSEZCore::TDSEZExpSymKnots(
 
     // Warn if origin is not represented exactly (even ninterior)
     if (ninterior % 2 == 0)
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZExpSymKnots: WARNING ninterior=%d is even — "
-            "no knot at x=0. Coulomb cusp under-resolved.\n",
-            (int)ninterior);
+        TDSEZInfo().warn("TDSEZExpSymKnots: ninterior=%d is even — "
+            "no knot at x=0. Coulomb cusp under-resolved.", (int)ninterior);
 
     return knots;   // NO push_back
 }
@@ -168,9 +165,8 @@ std::vector<PetscReal> TDSEZCore::TDSEZTanNSymKnots(
 
     // Warn if no knot at origin
     if (ninterior % 2 == 0)
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZTanNSymKnots: WARNING ninterior=%d is even — "
-            "no knot at x=0.\n", (int)ninterior);
+        TDSEZInfo().warn("TDSEZTanNSymKnots: ninterior=%d is even — "
+            "no knot at x=0.", (int)ninterior);
 
     // NO push_back
     return knots;
@@ -223,9 +219,8 @@ std::vector<PetscReal> TDSEZCore::TDSEZTanUSymKnots(
 
     // Warn if no knot at origin
     if (ninterior % 2 == 0)
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZTanUSymKnots: WARNING ninterior=%d is even — "
-            "no knot at x=0.\n", (int)ninterior);
+        TDSEZInfo().warn("TDSEZTanUSymKnots: ninterior=%d is even — "
+            "no knot at x=0.", (int)ninterior);
 
     // NO push_back
     return knots;
@@ -340,9 +335,7 @@ std::vector<PetscReal> TDSEZCore::TDSEZInterfaceKnots(
     const PetscInt nseg = (PetscInt)brk.size() - 1;
 
     if (nseg == 1)
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZInterfaceKnots: no breakpoints found in expression; "
-            "using uniform interior knots.\n");
+        TDSEZInfo().line("interface knots: no breakpoints found in the expression; uniform interior knots");
     if (nelements < nseg)
         throw std::runtime_error("TDSEZInterfaceKnots: fewer elements than material segments");
 
@@ -381,11 +374,13 @@ std::vector<PetscReal> TDSEZCore::TDSEZInterfaceKnots(
     }
     for (PetscInt i = 0; i < nbnd; ++i) knots.push_back(Lmax);
 
-    PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZInterfaceKnots: %d C0 interface(s) (multiplicity p=%d) at",
-        (int)(nseg - 1), (int)p);
-    for (PetscInt s = 1; s < nseg; ++s) PetscPrintf(PETSC_COMM_WORLD, " %.6g", (double)brk[s]);
-    PetscPrintf(PETSC_COMM_WORLD, " | %d elements\n", (int)nelements);
+    {
+        std::string at;
+        char b[32];
+        for (PetscInt s = 1; s < nseg; ++s) { snprintf(b, sizeof(b), " %.6g", (double)brk[s]); at += b; }
+        TDSEZInfo().line("interface knots: %d C0 interface(s) (multiplicity p=%d) at%s, %d elements",
+                         (int)(nseg - 1), (int)p, at.c_str(), (int)nelements);
+    }
     return knots;
 }
 
@@ -405,6 +400,7 @@ std::vector<PetscReal> TDSEZCore::TDSEZInterfaceKnots(
 /// @param hmax   Largest element width (0: no cap). Where the exponential
 ///               elements would grow wider, the rest of the half-axis is
 ///               filled with uniform elements of width <= hmax.
+/// @param axis   Axis letter for the log.
 /// @return Vector of knot values.
 std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     PetscReal Lmax,
@@ -412,7 +408,8 @@ std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     PetscReal r1,
     PetscInt  n_exp,
     PetscInt  p,
-    PetscReal hmax)
+    PetscReal hmax,
+    char      axis)
 {
     // ── safety checks ───────────────────────────────────────────────
     if (n_lin <= 0 || n_exp <= 0 || p <= 0)
@@ -534,17 +531,10 @@ std::vector<PetscReal> TDSEZCore::TDSEZHydrogenicKnots(
     PetscReal hlargest = 0;
     for (PetscInt i = 1; i < n_half; ++i) hlargest = std::max(hlargest, half[i] - half[i - 1]);
     hlargest = std::max(hlargest, Lmax - half[n_half - 1]);
-    PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZHydrogenicKnots: %d elems | %d interior | p=%d | "
-        "h_min=%.4f au | h_max=%.3f au%s | r_cross=%.2f au | Lmax=%.1f au\n",
-        (int)(ninterior + 1),
-        (int)ninterior,
-        (int)p,
-        (double)r1,
-        (double)hlargest,
-        n_capped ? " (capped)" : "",
-        (double)r_cross,
-        (double)Lmax);
+    (void)p;
+    (void)ninterior;
+    TDSEZInfo().line("%c: hydrogenic, h_max=%.3f au%s, h_min=%.4f au, r_cross=%.2f au",
+        axis, (double)hlargest, n_capped ? " (capped)" : "", (double)r1, (double)r_cross);
 
     return knots;
 }

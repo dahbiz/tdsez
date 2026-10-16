@@ -36,6 +36,7 @@ def run(tmp_path, name, text, nproc=2, args=()):
            "-inp", inp.name, *args]
     proc = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
     log = proc.stdout + proc.stderr
+    log = " ".join(log.split())  # wrapped log lines
     assert proc.returncode == 0, f"tdsez failed (rc={proc.returncode}):\n{log[-2000:]}"
     return (log, tmp_path / "static" / f"EigenData_{inp.name}.h5",
             tmp_path / "td" / f"TimeEvolutionData_{inp.name}.h5")
@@ -425,7 +426,7 @@ OutputStrideTS = 1
 OutputStrideWFS = 1000000
 """
     log, h5, _ = run(tmp_path, f"sf_{dim}{pol}", text, args=("-tdsez_sumfact_check",))
-    diffs = [float(v) for v in re.findall(r"max relative difference ([0-9.eE+-]+)", log)]
+    diffs = [float(v) for v in re.findall(r"max relative difference\s*=?\s*([0-9.eE+-]+)", log)]
     assert diffs, "sum-factorisation check did not run"
     assert max(diffs) < 1e-12, diffs
     # Deliberately coarse mesh (h = 1.5-2): only a sanity check of the energy.

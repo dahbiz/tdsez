@@ -36,6 +36,7 @@ def _solve(name, extra):
     r = subprocess.run(["mpirun", "--bind-to", "none", "-np", "2", zkit.find_binary(), "-inp", path] + extra,
                        capture_output=True, cwd=d)
     out = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
+    out = " ".join(out.split())  # wrapped log lines
     _step(f"{name} runs", r.returncode == 0, out[-1500:])
     with h5py.File(os.path.join(d, "static", f"EigenData_{name}.inp.h5")) as f:
         return np.asarray(f["spectrum"])[:, 0], np.asarray(f["run_metadata/eig_residual"]), out

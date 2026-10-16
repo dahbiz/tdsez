@@ -662,8 +662,10 @@ inner solver) now dominates the run.
 
 ## Reproducing the measurements
 
-Each run prints a TIMING SUMMARY (phase wall times, KSP/PC statistics, operator
-updates, HDF5 writes) and a PERFORMANCE block (DoFs, ranks, time per step). To
+Each run prints a TIMING SUMMARY (phase wall times with their parts: eigensolver
+setup and iterations, each operator, linear solves, preconditioner setup,
+operator updates, observables, HDF5 writes) and a PERFORMANCE block (DoFs,
+ranks, time per step, solver counts, peak memory). To
 compare propagators on the same problem, run with the same number of ranks and
 change only
 

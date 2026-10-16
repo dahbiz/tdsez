@@ -42,18 +42,10 @@ PetscErrorCode TDSEZCore::Assemble()
     PetscInt nm; PetscCall(MatGetSize(H, &nm, NULL));
 
     TDSEZInfo info;
-    // ── ASSEMBLY SETUP header + FILENAME|DOFs ──
-    PetscPrintf(PETSC_COMM_WORLD, "\n");
-    info.rule();
-    info.center("ASSEMBLY SETUP");
-    info.rule();
-    {
-        char buf[256];
-        snprintf(buf, sizeof(buf), "FILENAME: %s  |  DOFs: %" PetscInt_FMT,
-                 inputFile.c_str(), nm);
-        info.center(buf);
-    }
-    info.rule();
+    info.header("STATIONARY PROBLEM");
+    info.section("ASSEMBLY");
+    info.kv("Input file", "%s", inputFile.c_str());
+    info.kv("Degrees of freedom", "%" PetscInt_FMT, nm);
 
     // Single-pass assembly: H and M in one quadrature loop
     PetscLogDouble t0, t1;
@@ -72,9 +64,7 @@ PetscErrorCode TDSEZCore::Assemble()
     } else if (btype == "neumann" || btype == "natural" || btype.empty()) {
         PetscCall(TDSEZCompOperators(iga, 2, mats, TDSEZFormHam, NULL));
     } else {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "\nTDSEZ FATAL: unknown BoundaryType '%s' (use Neumann or Dirichlet)\n",
-            TDSEZParser::BoundaryType.c_str());
+        info.fatal("unknown BoundaryType '%s' (use Neumann or Dirichlet)", TDSEZParser::BoundaryType.c_str());
         MPI_Abort(PETSC_COMM_WORLD, 1);
     }
 
@@ -83,7 +73,7 @@ PetscErrorCode TDSEZCore::Assemble()
     PetscReal normH, normM;
     PetscCall(MatNorm(H, NORM_INFINITY, &normH));
     PetscCall(MatNorm(M, NORM_INFINITY, &normM));
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "                ||H||_inf = %.3e - ||M||_inf = %.3e\n", normH, normM));
+    info.kv("||H||_inf, ||M||_inf", "%.3e, %.3e", (double)normH, (double)normM);
     {
         // A potential that is infinite or NaN at a quadrature point (a Coulomb
         // singularity on a Gauss-Lobatto point, which includes the element
@@ -91,14 +81,13 @@ PetscErrorCode TDSEZCore::Assemble()
         PetscReal fro;
         PetscCall(MatNorm(H, NORM_FROBENIUS, &fro));
         if (PetscIsInfOrNanReal(fro)) {
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                "\nTDSEZ FATAL: the Hamiltonian has infinite or NaN entries: the potential is singular at a "
-                "quadrature point.\n  QuadratureRule = lobatto puts points on the knots; with a Coulomb potential "
-                "centred on a knot use legendre (default) or reduced, or move the centre off the knots.\n"));
+            info.fatal("the Hamiltonian has infinite or NaN entries: the potential is singular at a "
+                "quadrature point. QuadratureRule = lobatto puts points on the knots; with a Coulomb potential "
+                "centred on a knot use legendre (default) or reduced, or move the centre off the knots.");
             MPI_Abort(PETSC_COMM_WORLD, 1);
         }
     }
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "                          TISE Assembly time: %.3gs\n", t1 - t0));
+    info.kv("Assembly time", "%.3f s", (double)(t1 - t0));
 
 #ifndef NDEBUG
     {
@@ -106,8 +95,7 @@ PetscErrorCode TDSEZCore::Assemble()
         PetscCall(MatHermitianTranspose(H, MAT_INITIAL_MATRIX, &Ht));
         PetscCall(MatAXPY(Ht, -1.0, H, SAME_NONZERO_PATTERN));
         PetscReal err; PetscCall(MatNorm(Ht, NORM_FROBENIUS, &err));
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-            "  ||H - H†||_F = %.2e  [%s]\n", err, err < 1e-10 ? "OK" : "WARN"));
+        info.kv("||H - H^H||_F", "%.2e [%s]", (double)err, err < 1e-10 ? "OK" : "WARN");
         PetscCall(MatDestroy(&Ht));
     }
 #endif
@@ -223,9 +211,8 @@ static PetscErrorCode TDSEZFixEigenvectorGauge(Vec c, Mat M, Vec g, Vec g2, Pets
         PetscCall(VecTDot(c, g2, &ov));                   // \int w2 psi
         PetscCall(VecNorm(g2, NORM_2, &ng));
         if (PetscAbsReal(PetscRealPart(ov)) < 1e-8 * nc * ng)
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                "TDSEZ: WARNING state %" PetscInt_FMT " has a near-zero gauge overlap; "
-                "its sign may not be reproducible.\n", k));
+            TDSEZInfo().warn("state %" PetscInt_FMT " has a near-zero gauge overlap; "
+                "its sign may not be reproducible.", k);
     }
     if (PetscRealPart(ov) < 0.0) PetscCall(VecScale(c, -1.0));
     PetscFunctionReturn(PETSC_SUCCESS);
@@ -363,12 +350,9 @@ static PetscReal TDSEZHydrogenicAutoHMax(int d)
     static bool printed = false;
     if (!printed) {
         printed = true;
-        PetscPrintf(PETSC_COMM_WORLD,
-            "TDSEZHydrogenicKnots: HydrogenicHMax from the field (E0 = %.4g, omega = %.4g, Up = %.4g, Ip = %.3g, "
-            "k_max = %.3g): %.3f au on the polarised axes, %.3f au on the others (TransverseElementFactor = %g); "
-            "set HydrogenicHMax > 0 to choose, < 0 for no cap\n",
-            (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax, (double)f.h,
-            (double)(TDSEZParser::TransverseElementFactor * f.h), (double)TDSEZParser::TransverseElementFactor);
+        TDSEZInfo().line("HydrogenicHMax from the field (k_max = %.3g): %.3f au on the polarised axes, %.3f au on the "
+            "others; set HydrogenicHMax > 0 to choose, < 0 for no cap",
+            (double)f.kmax, (double)f.h, (double)(TDSEZParser::TransverseElementFactor * f.h));
     }
     return TDSEZAxisResolution(f, d);
 }
@@ -381,11 +365,14 @@ static void TDSEZCheckFieldResolution(IGA iga)
 {
     const TDSEZFieldScales &f = TDSEZEstimateFieldScales();
     if (!f.valid) return;
-    PetscPrintf(PETSC_COMM_WORLD,
-        "TDSEZ field resolution: E0 = %.4g, omega = %.4g, Up = %.4g, Ip = %.3g -> k_max = %.3g au; elements <= "
-        "pi/(2 k_max) = %.3f au on the polarised axes, %.3f au on the others (TransverseElementFactor = %g)\n",
-        (double)f.E0, (double)f.omega, (double)f.Up, (double)f.Ip, (double)f.kmax, (double)f.h,
-        (double)(TDSEZParser::TransverseElementFactor * f.h), (double)TDSEZParser::TransverseElementFactor);
+    TDSEZInfo info;
+    info.section("FIELD RESOLUTION");
+    info.kv("E0, omega", "%.4g, %.4g a.u.", (double)f.E0, (double)f.omega);
+    info.kv("Up, Ip", "%.4g, %.3g a.u.", (double)f.Up, (double)f.Ip);
+    info.kv("k_max", "%.3g a.u.", (double)f.kmax);
+    info.kv("Widest element allowed", "%.3f polarised, %.3f transverse (a.u.)", (double)f.h,
+            (double)(TDSEZParser::TransverseElementFactor * f.h));
+    info.kv("TransverseElementFactor", "%g", (double)TDSEZParser::TransverseElementFactor);
     for (PetscInt d = 0; d < iga->dim; ++d) {
         PetscInt m;
         PetscReal *U, hmax = 0, xmax = 0;
@@ -395,14 +382,15 @@ static void TDSEZCheckFieldResolution(IGA iga)
         const PetscReal need = TDSEZAxisResolution(f, (int)d);
         const char *role = TDSEZParser::Coupled((int)d) ? "polarised" : "transverse";
         if (hmax > need * (1 + 1e-9))
-            PetscPrintf(PETSC_COMM_WORLD,
-                "TDSEZ WARNING: %c axis (%s): widest element %.3f au (at %c = %.3g) > %.3f au; the returning "
+            info.warn("%c axis (%s): widest element %.3f au (at %c = %.3g) > %.3f au; the returning "
                 "electron and the harmonic cutoff are under-resolved there (refine NSplines/the grading, or use "
-                "KnotSequence = hydrogenic, which caps the width)\n",
+                "KnotSequence = hydrogenic, which caps the width)",
                 "xyz"[d], role, (double)hmax, "xyz"[d], (double)xmax, (double)need);
-        else
-            PetscPrintf(PETSC_COMM_WORLD, "      %c axis (%s): widest element %.3f au <= %.3f au: resolved\n",
-                        "xyz"[d], role, (double)hmax, (double)need);
+        else {
+            char lab[48];
+            snprintf(lab, sizeof(lab), "%c axis (%s)", "xyz"[d], role);
+            info.kv(lab, "widest element %.3f <= %.3f au: resolved", (double)hmax, (double)need);
+        }
     }
 }
 
@@ -467,9 +455,9 @@ PetscErrorCode EpsMonitor(EPS, PetscInt its, PetscInt nconv, PetscScalar *, Pets
 {
     PetscFunctionBeginUser;
     EpsMonitorCtx *c = static_cast<EpsMonitorCtx *>(ctx);
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      EPS  it=%-4d  nconv=%4d/%-7d  (%5.1f%%)  Δconv=%+4d\n", (int)its,
-                          (int)nconv, (int)c->nev, 100.0 * nconv / PetscMax(c->nev, (PetscInt)1),
-                          (int)(nconv - c->prev)));
+    TDSEZInfo().row("EPS  it = %-5d converged %4d / %-4d (%5.1f%%)   new %+d", (int)its,
+                    (int)nconv, (int)c->nev, 100.0 * nconv / PetscMax(c->nev, (PetscInt)1),
+                    (int)(nconv - c->prev));
     c->prev = nconv;
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -560,8 +548,7 @@ static PetscErrorCode TDSEZCanonicalEigenpairs(EPS eps, IGA iga, Mat M, PetscInt
             PetscInt nc = 0;
             if (!err) PetscCall(EPSGetConverged(eps, &nc));
             if (err || nc == 0) {
-                PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                    "      ⵣ WARNING: degenerate-shell check did not converge; the kept states may miss copies of a degenerate level\n"));
+                TDSEZInfo().warn("degenerate-shell check did not converge; the kept states may miss copies of a degenerate level");
                 break;
             }
             PetscScalar e;
@@ -595,8 +582,7 @@ static PetscErrorCode TDSEZCanonicalEigenpairs(EPS eps, IGA iga, Mat M, PetscInt
         }
         PetscCall(EPSSetTolerances(eps, tolFull, itFull));
         if (added)
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                "      ⵣ Degenerate-shell check: added %" PetscInt_FMT " pair(s) missed by the solver\n", added));
+            TDSEZInfo().status("ⵣ", "Degenerate-shell check: added %" PetscInt_FMT " pair(s) missed by the solver", added);
     }
     const PetscInt nkeep = keepCount();
     for (PetscInt i = 0; i < (PetscInt)L.size(); ++i) {
@@ -605,9 +591,8 @@ static PetscErrorCode TDSEZCanonicalEigenpairs(EPS eps, IGA iga, Mat M, PetscInt
     }
     std::vector<PetscReal> E(vals);
     if (nkeep > nev)
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-            "      ⵣ NBoundStates = %" PetscInt_FMT " ends inside a degenerate shell; keeping %"
-            PetscInt_FMT " states (whole shell)\n", nev, nkeep));
+        TDSEZInfo().status("ⵣ", "NBoundStates = %" PetscInt_FMT " ends inside a degenerate shell; keeping %"
+            PetscInt_FMT " states (whole shell)", nev, nkeep);
 
     // 2. Canonical basis inside each degenerate shell.
     Vec w, Wv;
@@ -662,9 +647,8 @@ static PetscErrorCode TDSEZCanonicalEigenpairs(EPS eps, IGA iga, Mat M, PetscInt
             PetscCheck(info == 0, PETSC_COMM_SELF, PETSC_ERR_LIB, "LAPACK syev/heev failed: %d", (int)info);
             for (PetscInt k = 1; k < g; ++k)
                 if (ev[k] - ev[k - 1] <= 1e-8 * PetscMax((PetscReal)1.0, PetscAbsReal(ev[k])))
-                    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                        "      ⵣ WARNING: shell at E = %.8g is not resolved by the canonical weight; "
-                        "its basis may not be reproducible\n", (double)E[s]));
+                    TDSEZInfo().warn("shell at E = %.8g is not resolved by the canonical weight; "
+                        "its basis may not be reproducible", (double)E[s]);
             // u_k = sum_a v_a U_ak (columns of O hold U), sorted by <W> ascending.
             std::vector<Vec> u(g);
             for (PetscInt k = 0; k < g; ++k) {
@@ -756,39 +740,25 @@ PetscErrorCode TDSEZCore::Solve()
     const PetscReal epsTol = 1e-12, acceptRes = 1e-8;
     const PetscInt  epsMaxIt = 2000;
 
-    // Problem  info
+    // Problem info
     info.section("PROBLEM");
-    info.blank();
-    info.kv("Problem DOFs",    "%" PetscInt_FMT,  mat_rows);
-    info.kv("Boundary",        "%s",              TDSEZParser::BoundaryType.c_str());
-    // Knot sequence + active domain — print only the line matching the dimension
-    auto fmtDom = [](double lo, double hi) -> std::string {
-        char b[32];
-        snprintf(b, sizeof(b), "[%+.1f, %+.1f]", lo, hi);
-        return std::string(b);
-    };
-    if (TDSEZParser::Dimension >= 3) {
-        std::string ks3 = std::string(TDSEZParser::KnotSeq[0]) + ", " + TDSEZParser::KnotSeq[1] + ", " + TDSEZParser::KnotSeq[2];
-        info.kv("Knot sequence",  "%s", ks3.c_str());
-        std::string dom3 = fmtDom(TDSEZParser::LMinX, TDSEZParser::LMaxX) + "x"
-                         + fmtDom(TDSEZParser::LMinY, TDSEZParser::LMaxY) + "x"
-                         + fmtDom(TDSEZParser::LMinZ, TDSEZParser::LMaxZ);
-        info.kv("ActiveDomain:", "%s", dom3.c_str());
-    } else if (TDSEZParser::Dimension >= 2) {
-        std::string ks2 = std::string(TDSEZParser::KnotSeq[0]) + ", " + TDSEZParser::KnotSeq[1];
-        info.kv("Knot sequence",  "%s", ks2.c_str());
-        std::string dom2 = fmtDom(TDSEZParser::LMinX, TDSEZParser::LMaxX) + "x"
-                         + fmtDom(TDSEZParser::LMinY, TDSEZParser::LMaxY);
-        info.kv("ActiveDomain:", "%s", dom2.c_str());
-    } else {
-        info.kv("Knot sequence",  "%s", TDSEZParser::KnotSeq[0].c_str());
-        info.kv("ActiveDomain:", "%s", fmtDom(TDSEZParser::LMinX, TDSEZParser::LMaxX).c_str());
+    {
+        auto fmtDom = [](double lo, double hi) -> std::string {
+            char b[48];
+            snprintf(b, sizeof(b), "[%+.1f, %+.1f]", lo, hi);
+            return std::string(b);
+        };
+        const double lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
+        const double hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
+        std::string dom;
+        for (PetscInt d = 0; d < TDSEZParser::Dimension; ++d) dom += (d ? " x " : "") + fmtDom(lo[d], hi[d]);
+        info.kv("Dimension", "%dD", (int)TDSEZParser::Dimension);
+        info.kv("Domain", "%s a.u.", dom.c_str());
     }
-    info.blank();
-    info.kv("MPI ranks",                  "%" PetscInt_FMT,  (PetscInt)nprocs);
-    info.kv("DOFs per rank",              "%.3e",            (double)mat_rows / nprocs);
-    info.kv("Basis vector footprint",     "%.3e MB",         (double)mat_rows * 16.0 / 1e6);
-    info.blank();
+    info.kv("Boundary",           "%s", TDSEZParser::BoundaryType.c_str());
+    info.kv("Degrees of freedom", "%" PetscInt_FMT " (%.3e per rank, %" PetscInt_FMT " ranks)",
+            mat_rows, (double)mat_rows / nprocs, (PetscInt)nprocs);
+    info.kv("Vector size",        "%.1f MB", (double)mat_rows * sizeof(PetscScalar) / 1048576.0);
     // Initial state info
     if (TDSEZParser::InitialStateMode == 2) {
         std::string desc;
@@ -797,55 +767,35 @@ PetscErrorCode TDSEZCore::Solve()
             desc += TDSEZ_fmtZ(term.second) + "*state:" +
                      std::to_string(term.first);
         }
-        info.kv("Initial state",  "%s", desc.c_str());
-        info.kv("Normalization",  "%s", TDSEZParser::NormalizeInitialState ? "yes" : "no");
+        info.kv("Initial state", "%s (%s)", desc.c_str(), TDSEZParser::NormalizeInitialState ? "normalised" : "not normalised");
     } else if (TDSEZParser::InitialStateMode == 3) {
-        info.kv("Initial state", "analytic Quesne n=0,1 (M-projected)");
-        info.kv("Normalization", "yes");
+        info.kv("Initial state", "analytic Quesne n=0,1 (M-projected, normalised)");
     } else if (TDSEZParser::InitialStateMode == 4) {
-        info.kv("Initial state", "analytic mass-step n=0,1 (M-projected)");
-        info.kv("Normalization", "yes");
+        info.kv("Initial state", "analytic mass-step n=0,1 (M-projected, normalised)");
     } else if (TDSEZParser::InitialStateMode == 5) {
-        info.kv("Initial state", "Gaussian wave packet (M-projected)");
-        info.kv("Normalization", "yes");
+        info.kv("Initial state", "Gaussian wave packet (M-projected, normalised)");
     } else {
         info.kv("Initial state",  "state:%" PetscInt_FMT, TDSEZParser::InitialStateIndex);
     }
-    info.blank();
 
     // NBoundStates = 0 (analytic initial states only): no eigenproblem.
     if (nev == 0) {
         nconv = 0;
         info.section("EIGENSOLVER");
-        info.blank();
         info.status("ⵣ", "NBoundStates = 0: eigensolver skipped (analytic initial state)");
-        info.blank();
     } else {
-        // Solver infp
-        info.section("SOLVER CONFIGURATION");
-        info.blank();
-        info.kv("Eigensolver",        "%s", "Krylov-Schur  (EPSKRYLOVSCHUR)");
-        info.kv("Spectral transform", "%s", "Shift-invert  (STSINVERT)");
+        info.section("EIGENSOLVER");
+        info.kv("Method", "Krylov-Schur, shift-invert");
         info.kv("Inner linear solver","%s%s", EpsInnerName(plan[0]),
                 plan[0] == EpsInner::Direct ? (std::string(" (") + directPackage + ")").c_str() : "");
-        info.blank();
-        info.kv("Target eigenvalue (sigma)",       "%s a.u.", TDSEZ_fmtAu((double)PetscRealPart(targetEV)).c_str());
-        info.kv("Eigenpairs requested (nev)", "%" PetscInt_FMT, nev);
-        info.kv("Search subspace dim  (ncv)", "%" PetscInt_FMT, ncv);
-        info.kv("Max projected dim    (mpd)", "%" PetscInt_FMT, mpd);
-        info.kv("Convergence tolerance",      "%.0e",      (double)epsTol);
-        info.kv("Max iterations",             "%" PetscInt_FMT, epsMaxIt);
-        info.kv("Accepted backward error",    "%.0e",      (double)acceptRes);
-        info.kv("Krylov restart ratio",       "%.2e",      isHuge ? 0.3 : 0.5);
-        info.blank();
-        info.kv("Subspace RAM estimate", "%.3e GB",
-           (double)ncv * mat_rows * 16.0 / 1e9);
-        info.blank();
-
-        // Memory estimate before factorization / setup
-        info.section("MEMORY  (process 0)");
-        info.blank();
-        info.memKV("Baseline");
+        info.kv("Target eigenvalue", "%s a.u.", TDSEZ_fmtAu((double)PetscRealPart(targetEV)).c_str());
+        info.kv("Pairs requested (nev)", "%" PetscInt_FMT, nev);
+        info.kv("Subspace (ncv, mpd)", "%" PetscInt_FMT ", %" PetscInt_FMT, ncv, mpd);
+        info.kv("Tolerance, max iterations", "%.0e, %" PetscInt_FMT, (double)epsTol, epsMaxIt);
+        info.kv("Accepted backward error", "%.0e", (double)acceptRes);
+        info.kv("Krylov restart ratio", "%.2f", isHuge ? 0.3 : 0.5);
+        info.kv("Subspace memory", "%.1f MB", (double)ncv * mat_rows * sizeof(PetscScalar) / 1048576.0);
+        info.memKV("Memory, rank 0");
 
         // ── Attempts ─────────────────────────────────────────────────────
         PetscReal normH, normM;
@@ -942,7 +892,6 @@ PetscErrorCode TDSEZCore::Solve()
         };
 
         info.section("SOLVE");
-        info.blank();
         EPSConvergedReason reason = EPS_CONVERGED_ITERATING;
         PetscInt its = 0;
         PetscReal worst = 0;
@@ -958,25 +907,30 @@ PetscErrorCode TDSEZCore::Solve()
                 PetscCall(createEps(plan[k], scale));
                 info.status("◆", "EPSSolve, inner solver %s%s", EpsInnerName(plan[k]), scale > 1 ? ", larger subspace" : "");
                 PetscErrorCode err = PETSC_SUCCESS;
+                PetscLogDouble ta, tb;
+                PetscCall(PetscTime(&ta));
                 PetscCall(EpsTry(EPSSetUp, eps, &err));
+                PetscCall(PetscTime(&tb));
+                TDSEZProfile::Get().Sub(TDSEZProfile::Eigensolve, "Solver setup (EPSSetUp)", tb - ta);
                 if (!err) {
-                    if (k == 0 && scale == 1) info.memKV("After factorization / setup");
+                    if (k == 0 && scale == 1) info.memKV("Memory after setup, rank 0");
                     PetscCall(configureBlocks(plan[k]));
+                    PetscCall(PetscTime(&ta));
                     PetscCall(EpsTry(EPSSolve, eps, &err));
+                    PetscCall(PetscTime(&tb));
+                    TDSEZProfile::Get().Sub(TDSEZProfile::Eigensolve, "Krylov-Schur iterations (EPSSolve)", tb - ta);
                 }
                 if (err) {
-                    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                        "      ⵣ WARNING: inner solve failed (%s, PETSc error %d); trying the next inner solver\n",
-                        EpsInnerName(plan[k]), (int)err));
+                    info.warn("inner solve failed (%s, PETSc error %d); trying the next inner solver",
+                        EpsInnerName(plan[k]), (int)err);
                     break;
                 }
                 PetscCall(EPSGetConverged(eps, &nconv));
                 PetscCall(EPSGetConvergedReason(eps, &reason));
                 PetscCall(EPSGetIterationNumber(eps, &its));
                 if (nconv < nev) {
-                    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                        "      ⵣ WARNING: %" PetscInt_FMT " of %" PetscInt_FMT " pairs converged (%s)%s\n", nconv, nev,
-                        EPSConvergedReasons[reason], scale == 1 ? "; retrying with a larger subspace" : ""));
+                    info.warn("%" PetscInt_FMT " of %" PetscInt_FMT " pairs converged (%s)%s", nconv, nev,
+                        EPSConvergedReasons[reason], scale == 1 ? "; retrying with a larger subspace" : "");
                     continue;
                 }
                 worst = 0;
@@ -988,9 +942,8 @@ PetscErrorCode TDSEZCore::Solve()
                     worst = PetscMax(worst, r);
                 }
                 if (worst > acceptRes) {
-                    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                        "      ⵣ WARNING: backward error %.1e > %.0e with %s; trying the next inner solver\n",
-                        (double)worst, (double)acceptRes, EpsInnerName(plan[k])));
+                    info.warn("backward error %.1e > %.0e with %s; trying the next inner solver",
+                        (double)worst, (double)acceptRes, EpsInnerName(plan[k]));
                     break;
                 }
                 accepted = true;
@@ -998,62 +951,57 @@ PetscErrorCode TDSEZCore::Solve()
         }
         PetscCall(VecDestroy(&vtmp));
 
-        info.blank();
-        info.memKV("After solve");
-        info.blank();
+        info.memKV("Memory after solve, rank 0");
 
         // ── Results ──────────────────────────────────────────────────────
         if (eps && !nconv) PetscCall(EPSGetConverged(eps, &nconv));
         info.section("RESULTS");
-        info.blank();
         info.kv("Inner solver used",   "%s", EpsInnerName(used));
         info.kv("Outer iterations",    "%" PetscInt_FMT, its);
         info.kv("Converged pairs",     "%" PetscInt_FMT " / %" PetscInt_FMT, nconv, nev);
         info.kv("Stop reason",         "%s",             EPSConvergedReasons[reason]);
         if (accepted) info.kv("Max backward error", "%.1e", (double)worst);
-        info.blank();
 
         if (nconv == 0) {
             info.status("ⵀ", "No eigenpairs converged with any inner solver (%zu tried).", plan.size());
             info.status("ⵀ", "Check TargetEigenvalue, the box and the grid; -tdsez_eps_inner direct forces an exact solve.");
-            info.blank();
             info.footer();
             MPI_Abort(PETSC_COMM_WORLD, 1);
         }
         if (!accepted)
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-                "      ⵣ WARNING: no inner solver met every check; using the %" PetscInt_FMT " converged pair(s) of the last attempt\n",
-                nconv));
+            info.warn("no inner solver met every check; using the %" PetscInt_FMT " converged pair(s) of the last attempt",
+                nconv);
 
         // Reproducible eigenpairs: whole degenerate shells, canonical basis inside
         // each shell, fixed phases. Every later use reads eigVecs / eigVals.
-        PetscCall(TDSEZCanonicalEigenpairs(eps, iga, M, nev, eigVecs, eigVals));
+        {
+            PetscLogDouble ta, tb;
+            PetscCall(PetscTime(&ta));
+            PetscCall(EPSMonitorCancel(eps));   // the shell check below solves again
+            PetscCall(TDSEZCanonicalEigenpairs(eps, iga, M, nev, eigVecs, eigVals));
+            PetscCall(PetscTime(&tb));
+            TDSEZProfile::Get().Sub(TDSEZProfile::Eigensolve, "Degenerate shells and phases", tb - ta);
+        }
         nconv = (PetscInt)eigVecs.size();
         eigRes_.clear();
 
-        // Print converged eigenvalues
-        info.status("ⵣ", "Eigenvalues (converged):");
-        info.blank();
+        // Converged eigenvalues
+        info.section("EIGENVALUES");
+        info.row("%5s %18s %12s %16s", "n", "E (a.u.)", "E (eV)", "backward error");
         for (PetscInt i = 0; i < nconv; i++) {
-            PetscScalar eigr = eigVals[i];
-            PetscReal   errest;
+            PetscReal errest;
             PetscCall(TDSEZBackwardError(H, M, normH, normM, eigVecs[i], eigVals[i], &errest));
             eigRes_.push_back(errest);
-            char lbl[48], val[80];
-            snprintf(lbl, sizeof(lbl), "  E[%" PetscInt_FMT "]", i);
-            snprintf(val, sizeof(val), "%s a.u. | %s eV  (res: %.1e)",
-                     TDSEZ_fmtAu((double)PetscRealPart(eigr)).c_str(),
-                     TDSEZ_fmtEv((double)PetscRealPart(eigr)).c_str(), (double)errest);
-            info.kv(lbl, "%s", val);
+            info.row("%5" PetscInt_FMT " %18s %12s %16.1e", i, TDSEZ_fmtAu((double)eigVals[i]).c_str(),
+                     TDSEZ_fmtEv((double)eigVals[i]).c_str(), (double)errest);
         }
-        info.blank();
-
     }
 
     // Extract initial state
     //   mode 0/1 -> single converged eigenstate (ground or state:N)
     //   mode 2   -> coherent superposition of up to 3 bound states
     //   mode 3/4 -> exact analytic state, L2-projected into this IGA basis
+    info.section("INITIAL STATE");
     PetscInt initIdx = TDSEZParser::InitialStateIndex;
     auto buildFromIndex = [&](PetscInt k, Vec *out) -> PetscErrorCode {
         if (k >= nconv)
@@ -1119,7 +1067,6 @@ PetscErrorCode TDSEZCore::Solve()
             info.status("ⵣ", "Superposition assembled (%s, unnormalized)", desc.c_str());
             info.kv("  ||psi||_M", "%.6f", (double)nrm);
         }
-        info.blank();
     } else if (TDSEZParser::InitialStateMode == 3 ||
                TDSEZParser::InitialStateMode == 4 ||
                TDSEZParser::InitialStateMode == 5) {
@@ -1228,7 +1175,6 @@ PetscErrorCode TDSEZCore::Solve()
         info.kv("  projection residual", "%.3e", (double)projectionResidual);
         info.kv("  ||psi||_M (before)", "%.12f", (double)nrm);
         info.kv("  ||psi||_M (after)", "%.12f", (double)PetscSqrtReal(PetscRealPart(nrm2)));
-        info.blank();
     } else {
         if (initIdx >= nconv)
             SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE,
@@ -1243,11 +1189,10 @@ PetscErrorCode TDSEZCore::Solve()
         PetscCall(VecDestroy(&epsPsi));
 
         if (initIdx == 0)
-            info.status("ⵣ", "Ground-state wavefunction extracted  ");
+            info.status("ⵣ", "Ground state extracted (InitialState = ground)");
         else
-            info.status("ⵣ", "Bound state #%" PetscInt_FMT " extracted   (InitialState=state:%" PetscInt_FMT ")",
+            info.status("ⵣ", "Bound state #%" PetscInt_FMT " extracted (InitialState = state:%" PetscInt_FMT ")",
                    initIdx, initIdx);
-        info.blank();
     }
 
     // Sanity check: the overlap matrix M must give each computed eigenstate a
@@ -1275,11 +1220,8 @@ PetscErrorCode TDSEZCore::Solve()
         PetscCall(VecDestroy(&psi_i));
 
         info.status(conserved ? "✔" : "✖",
-               conserved ? "Overlap-matrix norms: POSITIVE" : "Overlap-matrix norms: NOT POSITIVE");
-        info.blank();
+               conserved ? "Overlap-matrix norms of the eigenstates: positive" : "Overlap-matrix norms of the eigenstates: NOT positive");
     }
-
-    info.footer();
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1310,7 +1252,7 @@ PetscErrorCode TDSEZCore::Output()
     IGACreateVec(iga, &psi);
 
     if (nconv == 0) {
-        PetscPrintf(PETSC_COMM_WORLD, "No eigenvalues converged! Exiting...\n");
+        TDSEZInfo().fatal("no eigenvalues converged");
         VecDestroy(&psi);
         MPI_Abort(PETSC_COMM_WORLD, 1);
     }
@@ -1680,14 +1622,15 @@ PetscErrorCode TDSEZCore::Output()
             try {
                 TDSEZParser::ValidateOrThrow();
             } catch (const std::exception &e) {
-                PetscPrintf(PETSC_COMM_WORLD,
-                    "\nTDSEZ FATAL: input validation failed:\n  %s\n", e.what());
+                TDSEZInfo().fatal("input validation failed: %s", e.what());
                 MPI_Abort(PETSC_COMM_WORLD, 3);
             }
+            TDSEZInfo info;
+            info.header("GRID AND BASIS");
+            info.section("AXES");
             if (TDSEZParser::Q > 0.0)
-                PetscPrintf(PETSC_COMM_WORLD,
-                    "\n  NOTE: Charge = %+g (hole-like carrier): the Potential and the field term enter\n"
-                    "        H = K - q (V + r.E), i.e. with inverted sign. Charge = -1 is the electron.\n\n",
+                info.status("ⵣ", "NOTE: Charge = %+g (hole-like carrier): the Potential and the field term enter "
+                    "H = K - q (V + r.E), i.e. with inverted sign. Charge = -1 is the electron.",
                     (double)TDSEZParser::Q);
 
             // EnableGPU is a complete device request. Configure PetIGA before
@@ -1710,8 +1653,7 @@ PetscErrorCode TDSEZCore::Output()
                     PetscCallAbort(PETSC_COMM_WORLD,
                         PetscOptionsSetValue(PETSC_NULLPTR, "-iga_vec_type", "cuda"));
 #else
-                PetscPrintf(PETSC_COMM_WORLD,
-                    "TDSEZ FATAL: EnableGPU=1 but PETSc was built without CUDA support.\n");
+                info.fatal("EnableGPU=1 but PETSc was built without CUDA support.");
                 MPI_Abort(PETSC_COMM_WORLD, 4);
 #endif
             }
@@ -1770,10 +1712,9 @@ PetscErrorCode TDSEZCore::Output()
                     const PetscInt nint = TDSEZParser::Nelements - 1;
                     const PetscInt min_n = 2 * TDSEZParser::SplineDegree + 1;
                     if (nint < min_n && rank == 0)
-                        PetscPrintf(PETSC_COMM_WORLD,
-                            "TDSEZ: WARNING X axis has only %" PetscInt_FMT
+                        info.warn("x axis has only %" PetscInt_FMT
                             " interior knots (< %" PetscInt_FMT " recommended for p=%"
-                            PetscInt_FMT "); result may be unreliable.\n",
+                            PetscInt_FMT "); result may be unreliable.",
                             nint, min_n, TDSEZParser::SplineDegree);
                 }
                 if (seq != "uniform")
@@ -1795,12 +1736,10 @@ PetscErrorCode TDSEZCore::Output()
                             TDSEZParser::HydrogenicNLin[0] > 0 ? TDSEZParser::HydrogenicNLin[0] : TDSEZParser::Nelements - 1,
                             TDSEZParser::HydrogenicR1[0] > 0.0 ? TDSEZParser::HydrogenicR1[0] : 0.1,
                             TDSEZParser::HydrogenicNExp[0] > 0 ? TDSEZParser::HydrogenicNExp[0] : 10,
-                            TDSEZParser::SplineDegree, hydHMax(0));
+                            TDSEZParser::SplineDegree, hydHMax(0), 'x');
                     else
                     {
-                        PetscPrintf(PETSC_COMM_WORLD,
-                            "TDSEZ: WARNING unknown KnotSequence '%s' on X axis — "
-                            "falling back to uniform.\n", seq.c_str());
+                        info.warn("unknown KnotSequence '%s' on the x axis; falling back to uniform.", seq.c_str());
                         PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisx, TDSEZParser::Nelements, LminX, LmaxX, TDSEZParser::SplineDegree - 1));
                     }
                 }
@@ -1866,12 +1805,10 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicNLin[1] > 0 ? TDSEZParser::HydrogenicNLin[1] : TDSEZParser::Nelements - 1,
                                 TDSEZParser::HydrogenicR1[1] > 0.0 ? TDSEZParser::HydrogenicR1[1] : 0.1,
                                 TDSEZParser::HydrogenicNExp[1] > 0 ? TDSEZParser::HydrogenicNExp[1] : 10,
-                                TDSEZParser::SplineDegree, hydHMax(1));
+                                TDSEZParser::SplineDegree, hydHMax(1), 'y');
                         else
                         {
-                            PetscPrintf(PETSC_COMM_WORLD,
-                                "TDSEZ: WARNING unknown KnotSequence '%s' on Y axis — "
-                                "falling back to uniform.\n", seq.c_str());
+                            info.warn("unknown KnotSequence '%s' on the y axis; falling back to uniform.", seq.c_str());
                             PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisy, TDSEZParser::Nelements, LminY, LmaxY, TDSEZParser::SplineDegree - 1));
                         }
                     }
@@ -1924,12 +1861,10 @@ PetscErrorCode TDSEZCore::Output()
                                 TDSEZParser::HydrogenicNLin[2] > 0 ? TDSEZParser::HydrogenicNLin[2] : TDSEZParser::Nelements - 1,
                                 TDSEZParser::HydrogenicR1[2] > 0.0 ? TDSEZParser::HydrogenicR1[2] : 0.1,
                                 TDSEZParser::HydrogenicNExp[2] > 0 ? TDSEZParser::HydrogenicNExp[2] : 10,
-                                TDSEZParser::SplineDegree, hydHMax(2));
+                                TDSEZParser::SplineDegree, hydHMax(2), 'z');
                         else
                         {
-                            PetscPrintf(PETSC_COMM_WORLD,
-                                "TDSEZ: WARNING unknown KnotSequence '%s' on Z axis — "
-                                "falling back to uniform.\n", seq.c_str());
+                            info.warn("unknown KnotSequence '%s' on the z axis; falling back to uniform.", seq.c_str());
                             PetscCallAbort(PETSC_COMM_WORLD, IGAAxisInitUniform(axisz, TDSEZParser::Nelements, LminZ, LmaxZ, TDSEZParser::SplineDegree - 1));
                         }
                     }
@@ -1953,8 +1888,7 @@ PetscErrorCode TDSEZCore::Output()
             }
 
             } catch (const std::exception &e) {
-                PetscPrintf(PETSC_COMM_WORLD,
-                    "\nTDSEZ FATAL: knot-sequence setup failed:\n  %s\n", e.what());
+                info.fatal("knot-sequence setup failed: %s", e.what());
                 MPI_Abort(PETSC_COMM_WORLD, 3);
             }
 
@@ -1994,6 +1928,29 @@ PetscErrorCode TDSEZCore::Output()
 
             // Final Setup
             IGASetUp(iga);
+            {
+                const char *rule = TDSEZParser::QuadratureRule.empty() ? "legendre" : TDSEZParser::QuadratureRule.c_str();
+                info.kv("Basis", "%s, degree %" PetscInt_FMT, TDSEZParser::Basis.empty() ? "bspline" : TDSEZParser::Basis.c_str(),
+                        TDSEZParser::SplineDegree);
+                info.kv("Quadrature", "%s, %" PetscInt_FMT " points per element and axis", rule, TDSEZParser::NQuadratures);
+                PetscInt ndof = 1;
+                for (PetscInt d = 0; d < TDSEZParser::Dimension; ++d) {
+                    IGAAxis ax;
+                    PetscInt m, nel = 0, nb = 0;
+                    PetscReal *U, hmin = PETSC_MAX_REAL, hmaxAxis = 0;
+                    PetscCallAbort(PETSC_COMM_WORLD, IGAGetAxis(iga, d, &ax));
+                    PetscCallAbort(PETSC_COMM_WORLD, IGAAxisGetKnots(ax, &m, &U));
+                    PetscCallAbort(PETSC_COMM_WORLD, IGAAxisGetSizes(ax, &nel, &nb));
+                    for (PetscInt k = 0; k < m; ++k)
+                        if (U[k + 1] > U[k]) { hmin = PetscMin(hmin, U[k + 1] - U[k]); hmaxAxis = PetscMax(hmaxAxis, U[k + 1] - U[k]); }
+                    ndof *= nb;
+                    char lab[16];
+                    snprintf(lab, sizeof(lab), "%c axis", "xyz"[d]);
+                    info.kv(lab, "%s, %" PetscInt_FMT " elements, h %.3g-%.3g",
+                            TDSEZParser::KnotSeq[d].c_str(), nel, (double)hmin, (double)hmaxAxis);
+                }
+                info.kv("Degrees of freedom", "%" PetscInt_FMT, ndof);
+            }
             TDSEZCheckFieldResolution(iga);
         }
 

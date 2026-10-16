@@ -171,17 +171,17 @@ PetscErrorCode TDSEZPropagator::Evolve()
         PetscCall(KSPGMRESSetRestart(ksp, restart));
         if (TDSEZParser::Preconditioner == "mg") {
             PetscCall(TDSEZSetupMultigrid(tdse_.iga, pc, &levels));
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner: geometric B-spline multigrid, %d levels\n", (int)levels));
+            TDSEZInfo().kv("Preconditioner", "geometric B-spline multigrid, %d levels", (int)levels);
         } else {
             PetscCall(PCSetType(pc, PCGAMG));
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner: PETSc algebraic multigrid (GAMG)\n"));
+            TDSEZInfo().kv("Preconditioner", "PETSc algebraic multigrid (GAMG)");
         }
         PetscCall(TSSetFromOptions(ts_));
         PetscCall(TSSetUp(ts_));
         PetscCall(TSSetPostStep(ts_, TDSEZCNPostStep));
         PetscCall(TSSolve(ts_, tdse_.initialPsi));
         if (cnRefresh.rebuilds)
-            PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner rebuilt %d times (operator changed with the field)\n", (int)cnRefresh.rebuilds));
+            TDSEZInfo().kv("Preconditioner rebuilt", "%d times (operator changed with the field)", (int)cnRefresh.rebuilds);
         PetscFunctionReturn(PETSC_SUCCESS);
     }
 
@@ -234,7 +234,7 @@ PetscErrorCode TDSEZPropagator::Evolve()
     // ---------------- Solve ----------------
     ierr = TSSolve(ts_, tdse_.initialPsi); CHKERRQ(ierr);
     if (cnRefresh.rebuilds)
-        PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      Preconditioner rebuilt %d times (operator changed with the field)\n", (int)cnRefresh.rebuilds));
+        TDSEZInfo().kv("Preconditioner rebuilt", "%d times (operator changed with the field)", (int)cnRefresh.rebuilds);
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -589,10 +589,8 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
             PetscCall(TDSEZConfigureStageKSP(kspStage_[k], Astage_[k], prefix[k], tdse_.iga));
         }
     }
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-        "      Propagator: %s (Pade(2,2) exponential%s, %d sparse solves per step)\n",
-        TDSEZParser::Propagator.c_str(),
-        m4 ? "s, commutator-free 4th-order Magnus" : ", exponential midpoint", m4 ? 4 : 2));
+    TDSEZInfo().kv("Propagator", "%s: %s, %d solves/step", TDSEZParser::Propagator.c_str(),
+        m4 ? "CF Magnus 4, Pade(2,2)" : "Pade(2,2) midpoint", m4 ? 4 : 2);
 
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-pade_extrapolate_guess", &extrapolateGuess_, NULL));
     PetscCall(PetscOptionsGetInt(NULL, NULL, "-pade_guess_order", &guessOrder_, NULL));
@@ -634,10 +632,9 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         ++step;
         PetscCall(monitor(NULL, step, t, psi, &manager_));
     }
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-        "      Propagator %s: %" PetscInt_FMT " steps, %" PetscInt_FMT " stage solves, %.2f GMRES iterations per solve\n",
-        TDSEZParser::Propagator.c_str(), step, nStageSolves_,
-        nStageSolves_ ? (double)nStageIts_ / (double)nStageSolves_ : 0.0));
+    TDSEZInfo().blank();
+    TDSEZInfo().kv("Steps, stage solves", "%" PetscInt_FMT ", %" PetscInt_FMT " (%.2f GMRES its/solve)",
+        step, nStageSolves_, nStageSolves_ ? (double)nStageIts_ / (double)nStageSolves_ : 0.0);
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -893,8 +890,27 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
     //  Both — stdout + logfile
     //  Log  — logfile only
     // -------------------------------------------------------------------------
-    const char *HR =
-        "  ══════════════════════════════════════════════════════════════════════\n";
+    std::string hrule((size_t)TDSEZInfo::INDENT, ' ');
+    for (int i = 0; i < TDSEZInfo::width(); ++i) hrule += "═";
+    hrule += "\n";
+    const char *HR = hrule.c_str();
+    // stdout copy shifted to the centred body column (rules stay full width)
+    auto Shifted = [](const char *text) {
+        const int pad = TDSEZInfo::col() - TDSEZInfo::INDENT;
+        std::string out;
+        bool start = true;
+        for (const char *c = text; *c; ++c) {
+            if (start && *c != '\n' && !strstr(text, "═")) out.append((size_t)pad, ' ');
+            start = (*c == '\n');
+            out += *c;
+        }
+        fputs(out.c_str(), stdout);
+    };
+    auto Std = [&](const char *fmt, ...) {
+        char buf[2048];
+        va_list ap; va_start(ap, fmt); vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap);
+        Shifted(buf);
+    };
 
     auto Log = [&](const char *fmt, ...) {
         if (rank != 0 || !logfp) return;
@@ -902,12 +918,13 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
     };
     auto Both = [&](const char *fmt, ...) {
         if (rank != 0) return;
-        va_list ap, ap2;
+        char buf[4096];
+        va_list ap;
         va_start(ap, fmt);
-        va_copy(ap2, ap);
-        vprintf(fmt, ap);   va_end(ap);
-        if (logfp) { vfprintf(logfp, fmt, ap2); }
-        va_end(ap2);
+        vsnprintf(buf, sizeof(buf), fmt, ap);
+        va_end(ap);
+        Shifted(buf);
+        if (logfp) fputs(buf, logfp);
     };
     // Section banner: ══ header ══
     auto Section = [&](const char *label) {
@@ -948,8 +965,7 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
     // no-op instead of crashing if called without Lz (the caller in tdsez.cpp
     // already gates on Lz, but this guards every other call site).
     if (!TDSEZ->Lz()) {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "  (skipping degenerate Lz-orthogonalisation: Lz not assembled in this dimension/polarization)\n");
+        TDSEZInfo().status("ⵣ", "Degenerate Lz orthogonalisation skipped: Lz is not assembled in this dimension/polarisation");
         PetscFunctionReturn(PETSC_SUCCESS);
     }
     if (!TDSEZ->H())
@@ -1269,10 +1285,10 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
         PetscReal max_ortho_err = 0.0, max_disp = 0.0;
 
         if (rank == 0) {
-            printf("  │\n");
-            printf("  │   %-6s  %-14s  %7s  %6s  %14s  %10s  %s\n",
+            Std("  │\n");
+            Std("  │   %-6s  %-14s  %7s  %6s  %14s  %10s  %s\n",
                    "state", "<Lz>", "<Lz^2>", "|m|", "E", "E_diff", "purity");
-            printf("  │   %s\n",
+            Std("  │   %s\n",
                    "────────────────────────────────────────────────────────────────────");
         }
 
@@ -1288,7 +1304,7 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
                 if (err > 1e-10) {
                     ortho_ok = PETSC_FALSE; n_ortho_warn++;
                     if (rank == 0)
-                        printf("  │   !! ORTHO  <ψ_%d|M|ψ_%d> = (%+.3e,%+.3e)  err=%.2e\n",
+                        Std("  │   !! ORTHO  <ψ_%d|M|ψ_%d> = (%+.3e,%+.3e)  err=%.2e\n",
                                (int)mi, (int)n,
                                (double)PetscRealPart(val),
                                (double)PetscImaginaryPart(val), (double)err);
@@ -1332,7 +1348,7 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
             if (disp > max_disp) max_disp = disp;
 
             if (rank == 0)
-                printf("  │   psi_%-2d  (%+5.2f,%+5.2f)  %7.3f  %6.3f"
+                Std("  │   psi_%-2d  (%+5.2f,%+5.2f)  %7.3f  %6.3f"
                        "  %+.10f  %.2e  %s\n",
                        (int)n,
                        (double)PetscRealPart(lz_exp),
@@ -1343,20 +1359,20 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
         }
 
         if (rank == 0) {
-            printf("  │\n");
-            printf("  │   M-orthonormality : %s  (max err=%.1e, warnings=%d)\n",
+            Std("  │\n");
+            Std("  │   M-orthonormality : %s  (max err=%.1e, warnings=%d)\n",
                    ortho_ok ? "✔ PASSED" : "✘ FAILED",
                    (double)max_ortho_err, (int)n_ortho_warn);
-            printf("  │   Lz^2 purity       : %s  (tol=%.0e, max disp=%.1e,"
+            Std("  │   Lz^2 purity       : %s  (tol=%.0e, max disp=%.1e,"
                    " marginal=%d, mixed=%d / %d)\n",
                    lz_ok ? "✔ PASSED" : "✘ FAILED",
                    LZ2_PURE_TOL, (double)max_disp,
                    (int)n_marginal, (int)n_mixed, (int)N);
             if (!lz_ok)
-                printf("  │\n"
+                Std("  │\n"
                        "  │   ⚠  Lz^2 impurity is a discretisation artefact.\n"
                        "  │      Use odd ninterior to place a B-spline knot at x=0.\n");
-            printf("  │\n");
+            Std("  │\n");
         }
 
         PetscCall(VecDestroy(&Mphi2));   PetscCall(VecDestroy(&Lzphi2));
@@ -1439,18 +1455,18 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
         }
 
         if (rank == 0) {
-            printf("  │   %4s  %4s  %4s  %4s  %16s\n",
+            Std("  │   %4s  %4s  %4s  %4s  %16s\n",
                    "idx", "n_r", "m", "|m|", "energy");
-            printf("  │   %s\n",
+            Std("  │   %s\n",
                    "──────────────────────────────────────────────");
             for (PetscInt k = 0; k < N; k++) {
                 PetscInt orig = order[k];
-                printf("  │   %4d  %4d  %+4d  %4d  %+16.10f\n",
+                Std("  │   %4d  %4d  %+4d  %4d  %+16.10f\n",
                        (int)k, (int)qns[orig].nr, (int)qns[orig].m,
                        (int)std::abs((int)qns[orig].m),
                        (double)TDSEZ->energies[k]);
             }
-            printf("  │\n");
+            Std("  │\n");
         }
     }
 

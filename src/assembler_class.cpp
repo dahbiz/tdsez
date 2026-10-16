@@ -33,7 +33,8 @@ PetscErrorCode TDSEZAssembleMatrixTimed(IGA iga, Mat *M, IGAFormMatrix form, con
     PetscCall(IGASetFormMatrix(iga, form, PETSC_NULLPTR));
     PetscCall(IGAComputeMatrix(iga, *M));
     PetscCall(PetscTime(&t1));
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "      %-20s : %7.4f sec\n", name, t1 - t0));
+    TDSEZInfo().kv(name, "%.3f s", (double)(t1 - t0));
+    TDSEZProfile::Get().Sub(TDSEZProfile::OperatorAssembly, name, t1 - t0);
     PetscFunctionReturn(0);
 }
 
@@ -82,8 +83,8 @@ PetscErrorCode TDSEZAssembleMatBatchTimed(
     PetscCall(TDSEZCompOperators(iga, n, flat, form, PETSC_NULLPTR));
 
     PetscCall(PetscTime(&t1));
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-              "      %-20s : %7.4f sec\n", name, t1 - t0));
+    TDSEZInfo().kv(name, "%.3f s", (double)(t1 - t0));
+    TDSEZProfile::Get().Sub(TDSEZProfile::OperatorAssembly, name, t1 - t0);
 
     PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -104,9 +105,10 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
     const PetscInt     dim = TDSEZParser::Dimension;
 
     // assemble core TDSE operators first and time them
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
-    PetscPrintf(PETSC_COMM_WORLD, "      TD Operator Assembly Timing (%dD): %s \n", (int)dim, pol.c_str());
-    PetscPrintf(PETSC_COMM_WORLD, "  ══════════════════════════════════════════════════════════════════════\n");
+    TDSEZInfo info;
+    info.header("TIME-DEPENDENT OPERATORS");
+    info.section("ASSEMBLY");
+    info.kv("Dimension, polarisation", "%dD, %s", (int)dim, pol.c_str());
 
 
     if (TDSEZParser::EnableCAP)
@@ -116,7 +118,8 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
             PetscTime(&t0);
             TDSEZAssembleSeparableCAP(iga, &CAP);
             PetscTime(&t1);
-            PetscPrintf(PETSC_COMM_WORLD, "      %-20s : %7.4f sec\n", "Absorbing CAP", t1 - t0);
+            info.kv("Absorbing CAP", "%.3f s", (double)(t1 - t0));
+            TDSEZProfile::Get().Sub(TDSEZProfile::OperatorAssembly, "Absorbing CAP", t1 - t0);
             // -tdsez_cap_check: compare with the element-kernel assembly
             PetscBool check = PETSC_FALSE;
             PetscOptionsGetBool(NULL, NULL, "-tdsez_cap_check", &check, NULL);
@@ -127,56 +130,18 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
                 MatNorm(ref, NORM_INFINITY, &scale);
                 MatAXPY(ref, -1.0, CAP, SAME_NONZERO_PATTERN);
                 MatNorm(ref, NORM_INFINITY, &diff);
-                PetscPrintf(PETSC_COMM_WORLD, "      CAP check: max row-sum difference %.3e (relative %.3e)\n",
-                            (double)diff, (double)(diff / PetscMax(scale, (PetscReal)1e-300)));
+                info.kv("CAP check", "max row-sum difference %.3e (relative %.3e)",
+                        (double)diff, (double)(diff / PetscMax(scale, (PetscReal)1e-300)));
                 MatDestroy(&ref);
             }
         }
 
-        // ── CAP absorption-region diagnostic (printed before propagation) ──
-        // Mirrors TDSEZformCap: a Manolopoulos layer of width w = c/(2 delta kmin)
-        // at both walls of every active axis (separable, W = sum_d W_d).
-        const PetscReal cap_width = TDSEZCapWidth();
-        const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
-        const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
-        PetscPrintf(PETSC_COMM_WORLD,
-            "  ══════════════════════════════════════════════════════════════════════\n"
-            "    ▸ COMPLEX ABSORBING POTENTIAL (CAP)\n"
-            "  ══════════════════════════════════════════════════════════════════════\n");
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      Manolopoulos layer w = %.4g a.u. per wall (%s)\n"
-            "      absorbs momenta k >= kmin = %.4g a.u. (energies >= %.4g a.u.) with little reflection;\n"
-            "      slower electrons are partly reflected. Wider layer (CAPWidth) = smaller kmin.\n",
-            (double)cap_width, TDSEZParser::CAPWidth > 0 ? "CAPWidth" : "6.555/CAPKmin",
-            (double)TDSEZParser::CAPKmin, (double)(0.5 * TDSEZParser::CAPKmin * TDSEZParser::CAPKmin));
-        const TDSEZFieldScales &fs = TDSEZEstimateFieldScales();
-        for (PetscInt d = 0; d < dim; ++d) {
-            const PetscReal core = hi[d] - lo[d] - 2.0 * cap_width;
-            PetscPrintf(PETSC_COMM_WORLD,
-                "      %c: absorbing for %c < %.4g and %c > %.4g  (free core %.4g a.u.)\n",
-                "xyz"[d], "xyz"[d], (double)(lo[d] + cap_width), "xyz"[d], (double)(hi[d] - cap_width), (double)core);
-            // returning electrons must stay in the free core: half width >= 2 alpha + 10
-            if (fs.valid && TDSEZParser::Coupled((int)d)) {
-                const PetscReal need = 2 * fs.alpha + 10;
-                if (0.5 * core < need)
-                    PetscPrintf(PETSC_COMM_WORLD,
-                        "      WARNING: %c free core half width %.4g a.u. < 2 alpha + 10 = %.4g a.u. (quiver amplitude "
-                        "alpha = E0/omega^2 = %.3g): returning electrons enter the absorber; enlarge the domain or "
-                        "reduce CAPWidth\n", "xyz"[d], (double)(0.5 * core), (double)need, (double)fs.alpha);
-                else
-                    PetscPrintf(PETSC_COMM_WORLD,
-                        "      %c free core half width %.4g a.u. >= 2 alpha + 10 = %.4g a.u. (alpha = %.3g)\n",
-                        "xyz"[d], (double)(0.5 * core), (double)need, (double)fs.alpha);
-            }
-        }
-        PetscPrintf(PETSC_COMM_WORLD,
-            "  ══════════════════════════════════════════════════════════════════════\n");
     }
 
 
     if (dim == 2 && TDSEZParser::EnableLzDiag)
     {
-        TDSEZAssembleMatrixTimed(iga, &Lz, TDSEZFormLz, "Angular Momentum Lz");
+        TDSEZAssembleMatrixTimed(iga, &Lz, TDSEZFormLz, "Angular momentum Lz");
     }
 
     // Dipole, velocity and force operators on every spatial axis by default
@@ -190,7 +155,7 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
     if (dim == 1)
     {
         Mat *mats[6] = {&K, &V, &Md, &Dx, &VelX, &dVdx};
-        TDSEZAssembleMatBatchTimed(iga, 6, mats, TDSEZFormPhyX, "Axis Ops (x)");
+        TDSEZAssembleMatBatchTimed(iga, 6, mats, TDSEZFormPhyX, "Axis operators (x)");
     }
     else if (dim == 2 || dim == 3)
     {
@@ -202,11 +167,46 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         std::string axes;
         for (int d = 0; d < dim; ++d)
             if (TDSEZPhyAxesOn[d]) { mats[n++] = Dm[d]; mats[n++] = Vm[d]; mats[n++] = Gm[d]; axes += "xyz"[d]; }
-        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormPhyAxes, ("Axis Ops (" + axes + ")").c_str());
+        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormPhyAxes, ("Axis operators (" + axes + ")").c_str());
     }
     else
     {
         throw std::runtime_error("Dimension must be 1, 2 or 3.");
+    }
+
+    if (TDSEZParser::EnableCAP)
+    {
+        // ── CAP absorption-region diagnostic (printed before propagation) ──
+        // Mirrors TDSEZformCap: a Manolopoulos layer of width w = c/(2 delta kmin)
+        // at both walls of every active axis (separable, W = sum_d W_d).
+        const PetscReal cap_width = TDSEZCapWidth();
+        const PetscReal lo[3] = {TDSEZParser::LMinX, TDSEZParser::LMinY, TDSEZParser::LMinZ};
+        const PetscReal hi[3] = {TDSEZParser::LMaxX, TDSEZParser::LMaxY, TDSEZParser::LMaxZ};
+        info.section("COMPLEX ABSORBING POTENTIAL");
+        info.line("Manolopoulos layer w = %.4g a.u. per wall (%s); absorbs momenta k >= kmin = %.4g a.u. "
+            "(energies >= %.4g a.u.) with little reflection, slower electrons are partly reflected. "
+            "A wider layer (CAPWidth) gives a smaller kmin.",
+            (double)cap_width, TDSEZParser::CAPWidth > 0 ? "CAPWidth" : "6.555/CAPKmin",
+            (double)TDSEZParser::CAPKmin, (double)(0.5 * TDSEZParser::CAPKmin * TDSEZParser::CAPKmin));
+        const TDSEZFieldScales &fs = TDSEZEstimateFieldScales();
+        for (PetscInt d = 0; d < dim; ++d) {
+            const PetscReal core = hi[d] - lo[d] - 2.0 * cap_width;
+            char lab[16];
+            snprintf(lab, sizeof(lab), "%c axis", "xyz"[d]);
+            info.kv(lab, "%c < %.4g and %c > %.4g; free core %.4g a.u.",
+                "xyz"[d], (double)(lo[d] + cap_width), "xyz"[d], (double)(hi[d] - cap_width), (double)core);
+            // returning electrons must stay in the free core: half width >= 2 alpha + 10
+            if (fs.valid && TDSEZParser::Coupled((int)d)) {
+                const PetscReal need = 2 * fs.alpha + 10;
+                if (0.5 * core < need)
+                    info.warn("%c free core half width %.4g a.u. < 2 alpha + 10 = %.4g a.u. (quiver amplitude "
+                        "alpha = E0/omega^2 = %.3g): returning electrons enter the absorber; enlarge the domain or "
+                        "reduce CAPWidth", "xyz"[d], (double)(0.5 * core), (double)need, (double)fs.alpha);
+                else
+                    info.kv("", "half core %.4g >= 2 alpha + 10 = %.4g a.u. (alpha %.3g)",
+                        (double)(0.5 * core), (double)need, (double)fs.alpha);
+            }
+        }
     }
 
     // Dirichlet walls: the wall DoFs are pinned in H and M (core assembly), so

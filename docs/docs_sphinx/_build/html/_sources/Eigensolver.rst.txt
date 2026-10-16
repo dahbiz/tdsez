@@ -155,7 +155,8 @@ complete sequence:
    with the subspace retry, and the construction of the canonical
    eigenstates.
 
-The printed residual of each state (``res``) and the dataset
+The backward error printed for each state in the EIGENVALUES table (next to
+the energy in a.u. and in eV) and the dataset
 ``run_metadata/eig_residual`` in ``EigenData_<input>.h5`` contain
 :math:`\eta` of :eq:`eq-eigensolver-backward-error` for the final states.
 

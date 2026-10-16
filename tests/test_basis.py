@@ -36,6 +36,7 @@ def _run(name, text):
     r = subprocess.run(["mpirun", "--bind-to", "none", "-np", "2", zkit.find_binary(), "-inp", path],
                        capture_output=True, cwd=d)
     out = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
+    out = " ".join(out.split())  # wrapped log lines
     spec = None
     f = os.path.join(d, "static", f"EigenData_{name}.inp.h5")
     if r.returncode == 0 and os.path.exists(f):

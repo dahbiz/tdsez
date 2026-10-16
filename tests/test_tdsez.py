@@ -449,6 +449,7 @@ def _expect_fatal(text, label):
     _step(f"'{label}' -> non-zero exit", r.returncode != 0,
           f"binary succeeded (rc=0) but expected FATAL")
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     has_fatal = "FATAL" in out
     _step(f"'{label}' -> FATAL in output", has_fatal,
           f"no FATAL message; rc={r.returncode}\n{out[-800:]}")
@@ -512,6 +513,7 @@ def test_removed_keys_with_no_effect_only_warn():
     path = _write_tmp("removed_harmless.inp", BOX1D + "\nPlanck = 1.0\nEnvelopeType = custom\n")
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("zero exit", r.returncode == 0, f"rc={r.returncode}\n{out[-800:]}")
     _step("warning printed", "has been removed" in out and "WARNING" in out, out[-800:])
 
@@ -526,6 +528,7 @@ def test_multiple_variables_lines_accumulate():
     path = _write_tmp("variables_twice.inp", text, raw=True)
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("zero exit", r.returncode == 0, f"rc={r.returncode}\n{out[-800:]}")
 
 
@@ -535,6 +538,7 @@ def test_guard_duplicate_key():
     path = _write_tmp("bad_duplicate_key.inp", BOX1D + "\nNBoundStates = 2\nNBoundStates = 3\n", raw=True)
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("non-zero exit", r.returncode != 0, out[-800:])
     _step("duplicate reported", "given more than once" in out and "NBoundStates" in out, out[-800:])
 
@@ -580,6 +584,7 @@ def test_initial_state_excited():
     _step("binary exit code == 0", r.returncode == 0,
           f"rc={r.returncode}\n{r.stdout.decode()[-800:]}{r.stderr.decode()[-800:]}")
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("'Bound state #1' printed", "Bound state #1" in out, f"got:\n{out[-800:]}")
     with h5py.File(out_h5, "r") as h:
         spec = np.array(h["spectrum"])[:, 0]
@@ -595,6 +600,7 @@ def test_guard_initial_state_out_of_range():
     path = os.path.join(INP, "ho1d_statebad.inp")
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("non-zero exit (FATAL)", r.returncode != 0, "binary succeeded")
     _step("'InitialState' in error", "InitialState" in out, f"\n{out[-800:]}")
     _step("'NBoundStates' in error", "NBoundStates" in out, f"\n{out[-800:]}")
@@ -610,6 +616,7 @@ def test_initial_state_superposition():
     _step("binary exit code == 0", r.returncode == 0,
           f"rc={r.returncode}\n{r.stdout.decode()[-800:]}{r.stderr.decode()[-800:]}")
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("'Superposition assembled/normalized' printed",
           "Superposition assembled" in out or "Superposition normalized" in out,
           f"got:\n{out[-800:]}")
@@ -684,6 +691,7 @@ def test_guard_superposition_out_of_range():
     path = os.path.join(INP, "ho1d_supbad.inp")
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("non-zero exit (FATAL)", r.returncode != 0, "binary succeeded")
     _step("'InitialState' in error", "InitialState" in out, f"\n{out[-800:]}")
     _step("'NBoundStates' in error", "NBoundStates" in out, f"\n{out[-800:]}")
@@ -700,6 +708,7 @@ def test_guard_superposition_too_many_terms():
     path = _write_tmp("ho1d_sup4.inp", text)
     r = _run_guard(path, binary)
     out = r.stdout.decode() + r.stderr.decode()
+    out = " ".join(out.split())  # wrapped log lines
     _step("non-zero exit (FATAL)", r.returncode != 0, "binary succeeded")
     _step("'must have 1..3' in error", "must have 1..3" in out, f"\n{out[-800:]}")
 

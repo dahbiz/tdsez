@@ -125,14 +125,16 @@ crossings of the field), :math:`U_p = E_0^2/4\omega^2`,
 negative), :math:`k_{\max} = \sqrt{2(3.17\,U_p + I_p)}` and
 :math:`\alpha = E_0/\omega^2` (:doc:`HHG`).
 
-**Field resolution.** ``TDSEZ field resolution: ... elements <= pi/(2 k_max)
-= ... au`` is followed, per axis, by ``widest element ...: resolved`` or by
-``TDSEZ WARNING: x axis: widest element ... the returning electron and the
-harmonic cutoff are under-resolved there``. The grid is not changed. Increase
-``NSplines``, reduce the grading, or use ``KnotSequence = hydrogenic``, whose
-outer element width is capped by ``HydrogenicHMax``: a positive value sets the
-cap, 0 (default) takes :math:`\pi/(2k_{\max})` from the field (printed as
-``HydrogenicHMax = ... au from the field``), a negative value removes the cap.
+**Field resolution.** The FIELD RESOLUTION part of the log gives the widest
+element allowed (:math:`\pi/(2k_{\max})` on the polarised axes,
+``TransverseElementFactor`` times that on the others) and, per axis, either
+``widest element ... : resolved`` or ``ⵣ WARNING: x axis (polarised): widest
+element ... the returning electron and the harmonic cutoff are under-resolved
+there``. The grid is not changed. Increase ``NSplines``, reduce the grading, or
+use ``KnotSequence = hydrogenic``, whose outer element width is capped by
+``HydrogenicHMax``: a positive value sets the cap, 0 (default) takes the widths
+above from the field (printed as ``HydrogenicHMax from the field``), a
+negative value removes the cap.
 
 **CAP report.** With ``EnableCAP = 1`` the block ``COMPLEX ABSORBING POTENTIAL
 (CAP)`` gives the layer width per wall, the slowest momentum absorbed with
@@ -176,7 +178,7 @@ Performance in 3D
   dipoles, the velocities and the kinetic energy are applied in factorised
   (Kronecker) form, each checked against the assembled matrix on the first
   state and used only if they agree to :math:`10^{-10}` relative
-  (``Monitor operators applied in factorised form: ...``;
+  (``Factorised operators = ...`` in the PROPAGATION stage;
   ``-tdsez_tensor_ops 0`` keeps the matrix products). :math:`\langle V\rangle`,
   the forces, the CAP and, for a varying mass, :math:`\langle 1/m\rangle`,
   :math:`\langle K\rangle` and the velocities are evaluated from :math:`\psi`

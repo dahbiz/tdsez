@@ -460,7 +460,8 @@ The monitor prints a progress line with the step, the elapsed fraction, the
 time, the squared norm :math:`\langle\psi|\mathbf M|\psi\rangle` and the total
 energy (:doc:`Observables`)::
 
-    [    10/  2000]    0.5%  t=    0.1000   <Psi|Psi>=   1.000e+00   <H>= -5.0000e-01
+             step       %    t (a.u.)    <psi|psi>      <H> (a.u.)
+          55/1103     5.0      27.500   0.99999989   -4.989291e-01
 
 With ``Verbose = 1`` (default) a line is printed every step; with
 ``Verbose = 0`` about twenty lines are printed over the run.

@@ -131,12 +131,17 @@ struct TDSEZProfile
     PetscLogEvent  eventHDF5Write = -1, eventStageUpdate = -1;
     PetscInt       steps = 0;               ///< time steps taken
     PetscBool      initialised = PETSC_FALSE;
+    /// Named parts of a phase, in first-call order (same order on every rank).
+    struct Part { Phase phase; std::string label; PetscLogDouble seconds; };
+    std::vector<Part> parts;
 
     static TDSEZProfile& Get();
     /// Enable PETSc logging if needed, register stages/events, start the clock.
     PetscErrorCode Init();
     /// Accumulate wall time into a phase.
     void Add(Phase p, PetscLogDouble seconds);
+    /// Accumulate wall time into a named part of a phase (collective order).
+    void Sub(Phase p, const std::string &label, PetscLogDouble seconds);
     /// Print the timing table and performance summary (collective).
     PetscErrorCode Report(PetscInt dofs, PetscBool propagated);
 };

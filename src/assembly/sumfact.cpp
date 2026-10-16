@@ -466,9 +466,8 @@ PetscErrorCode TDSEZElementWork(IGA iga, IGAElement element, TDSEZPhysicsKernel 
             }
             ++nEl;
             if ((nEl & (nEl - 1)) == 0 || nEl == element->count)   // powers of two and last
-                PetscCall(PetscPrintf(PETSC_COMM_SELF,
-                    "  [sumfact check] %s: %" PetscInt_FMT " elements, max relative difference %.3e\n",
-                    kernel == TDSEZFormHam ? "H,M" : "TD ops", nEl, (double)maxRel));
+                TDSEZInfo(PETSC_COMM_SELF).kv("Sum-factorisation check", "%s: %" PetscInt_FMT " elements, max relative difference %.3e",
+                    kernel == TDSEZFormHam ? "H,M" : "TD ops", nEl, (double)maxRel);
         }
     }
     PetscFunctionReturn(PETSC_SUCCESS);

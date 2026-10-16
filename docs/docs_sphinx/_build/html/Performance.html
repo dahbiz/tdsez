@@ -226,6 +226,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#static-output">Static Output</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#compression-and-console-output">Compression and Console Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#terminal-log">Terminal log</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -667,9 +668,10 @@ written observables agree to <span class="math notranslate nohighlight">\(\le 8\
 </section>
 <section id="reproducing-the-measurements">
 <h2>Reproducing the measurements<a class="headerlink" href="#reproducing-the-measurements" title="Link to this heading"></a></h2>
-<p>Each run prints a TIMING SUMMARY (phase wall times, KSP and preconditioner
-statistics, operator updates, HDF5 writes) and a PERFORMANCE block (DOFs,
-ranks, time per step). Compare configurations with the same number of ranks on
+<p>Each run prints a TIMING SUMMARY (phase wall times with their parts: eigensolver
+setup and iterations, each operator, linear solves, preconditioner setup,
+operator updates, observables, HDF5 writes) and a PERFORMANCE block (DOFs,
+ranks, time per step, solver counts, peak memory; see <a class="reference internal" href="Output-Control.html"><span class="doc">Output Control</span></a>). Compare configurations with the same number of ranks on
 an otherwise idle machine; run-to-run variation on a workstation is about
 10-20 %. The propagator comparison is reproduced with</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs/perf

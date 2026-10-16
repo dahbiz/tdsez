@@ -1,4 +1,5 @@
 #include "tdsez_parser.hpp"
+#include "tdsez_info.hpp"
 
 #include <slepc.h>
 #include <petiga.h>
@@ -374,34 +375,31 @@ void TDSEZParser::PrmReader(const std::string &prm)
         else if (rm != removed.end()) {
             const bool harmless = rm->second.harmless(val);
             const bool fatal = !harmless && TDSEZParser::StrictInput;
-            PetscPrintf(PETSC_COMM_WORLD,
-                "\nTDSEZParser %s: input key '%s' has been removed: %s.%s\n",
-                fatal ? "FATAL" : "WARNING", key.c_str(), rm->second.why,
-                harmless ? " This line has no effect; delete it." : "");
+            if (fatal) TDSEZInfo().fatal("input key '%s' has been removed: %s.", key.c_str(), rm->second.why);
+            else TDSEZInfo().warn("input key '%s' has been removed: %s.%s", key.c_str(), rm->second.why,
+                                  harmless ? " This line has no effect; delete it." : "");
             if (fatal) MPI_Abort(PETSC_COMM_WORLD, 2);
         }
         else if (TDSEZParser::StrictInput) {
             // A typo'd key silently changing nothing is a real hazard in a
             // physics code (wrong potential, wrong mass, etc.). With StrictInput
             // (default true) we abort hard so the user sees the mistake.
-            PetscPrintf(PETSC_COMM_WORLD,
-                "\nTDSEZParser FATAL: unknown input key '%s'.\n"
-                "  Set 'StrictInput = 0' in the input file to tolerate unknown keys.\n",
-                key.c_str());
+            TDSEZInfo().fatal("unknown input key '%s'. Set 'StrictInput = 0' in the input file to tolerate "
+                              "unknown keys.", key.c_str());
             MPI_Abort(PETSC_COMM_WORLD, 2);
         }
         else {
-            PetscPrintf(PETSC_COMM_WORLD,
-                "TDSEZParser: WARNING unknown key '%s' ignored\n", key.c_str());
+            TDSEZInfo().warn("unknown key '%s' ignored", key.c_str());
         }
     }
 
     if (!dupKeys.empty()) {
         std::string list;
         for (const auto &k : dupKeys) list += (list.empty() ? "" : ", ") + k;
-        PetscPrintf(PETSC_COMM_WORLD,
-            "\nTDSEZParser %s: input key(s) given more than once: %s (the last value is used).\n",
-            TDSEZParser::StrictInput ? "FATAL" : "WARNING", list.c_str());
+        if (TDSEZParser::StrictInput)
+            TDSEZInfo().fatal("input key(s) given more than once: %s.", list.c_str());
+        else
+            TDSEZInfo().warn("input key(s) given more than once: %s (the last value is used).", list.c_str());
         if (TDSEZParser::StrictInput) MPI_Abort(PETSC_COMM_WORLD, 2);
     }
 

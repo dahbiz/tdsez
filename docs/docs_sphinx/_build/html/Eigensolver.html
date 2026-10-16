@@ -226,6 +226,7 @@
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#output-strides">Output Strides</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#static-output">Static Output</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Output-Control.html#compression-and-console-output">Compression and Console Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Output-Control.html#terminal-log">Terminal log</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="HDF5-Output.html">HDF5 Output Schema</a><ul>
@@ -509,7 +510,8 @@ with the subspace retry, and the construction of the canonical
 eigenstates.</span><a class="headerlink" href="#fig-eigensolver-flow" title="Link to this image"></a></p>
 </figcaption>
 </figure>
-<p>The printed residual of each state (<code class="docutils literal notranslate"><span class="pre">res</span></code>) and the dataset
+<p>The backward error printed for each state in the EIGENVALUES table (next to
+the energy in a.u. and in eV) and the dataset
 <code class="docutils literal notranslate"><span class="pre">run_metadata/eig_residual</span></code> in <code class="docutils literal notranslate"><span class="pre">EigenData_&lt;input&gt;.h5</span></code> contain
 <span class="math notranslate nohighlight">\(\eta\)</span> of <a class="reference internal" href="#equation-eq-eigensolver-backward-error">Eq. (35)</a> for the final states.</p>
 </section>

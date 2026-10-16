@@ -11,9 +11,9 @@
 
 static PetscInt TDSEZProgressTotal()
 {
+    // the last step is shortened to land on FinalTime
     return PetscMax((PetscInt)1,
-        (PetscInt)(TDSEZParser::FinalTime /
-                   PetscMax(TDSEZParser::TimeStep, 1e-30) + 0.5));
+        (PetscInt)std::ceil(TDSEZParser::FinalTime / PetscMax(TDSEZParser::TimeStep, 1e-30) - 1e-9));
 }
 
 static bool TDSEZShouldLogProgress(PetscInt step)
@@ -25,6 +25,22 @@ static bool TDSEZShouldLogProgress(PetscInt step)
     const PetscInt total = TDSEZProgressTotal();
     const PetscInt stride = PetscMax((PetscInt)1, total / 20);
     return step == 0 || step >= total || (step % stride) == 0;
+}
+
+/// One progress row (the column header before the first one).
+static void TDSEZProgressRow(PetscInt step, PetscReal t, PetscScalar normSq, PetscScalar energy)
+{
+    static bool header = false;
+    TDSEZInfo info;
+    if (!header) {
+        header = true;
+        info.section("PROGRESS");
+        info.row("%13s %7s %11s %12s %15s", "step", "%", "t (a.u.)", "<psi|psi>", "<H> (a.u.)");
+    }
+    char st[32];
+    snprintf(st, sizeof(st), "%" PetscInt_FMT "/%" PetscInt_FMT, step, TDSEZProgressTotal());
+    info.row("%13s %7.1f %11.3f %12.8f %15.6e", st, 100.0 * (double)step / TDSEZProgressTotal(), (double)t,
+             (double)PetscRealPart(normSq), (double)PetscRealPart(energy));
 }
 
 /// IFunction for x-polarized propagation: F = i M psidot - H psi - Ex Dx psi.
@@ -626,11 +642,7 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     if (TDSEZShouldLogProgress(step))
     {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      [%6" PetscInt_FMT "/%" PetscInt_FMT "] %6.1f%%  t=%10.4f   <Psi|Psi>=%12.3e   <H>=%12.4e\n",
-            step, TDSEZProgressTotal(), 100.0 * (double)step / TDSEZProgressTotal(), t,
-            (PetscReal)PetscRealPart(normSq),
-            (PetscReal)PetscRealPart(totalEnergy));
+        TDSEZProgressRow(step, t, normSq, totalEnergy);
     }
 
     if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
@@ -934,11 +946,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     if (TDSEZShouldLogProgress(step))
     {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      [%6" PetscInt_FMT "/%" PetscInt_FMT "] %6.1f%%  t=%10.4f   ⟨Ψ|Ψ⟩=%12.3e   ⟨H⟩=%12.4e\n",
-            step, TDSEZProgressTotal(), 100.0 * (double)step / TDSEZProgressTotal(), t,
-            (PetscReal)PetscRealPart(normSq),
-            (PetscReal)PetscRealPart(totalEnergy));
+        TDSEZProgressRow(step, t, normSq, totalEnergy);
     }
 
 
@@ -1259,11 +1267,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // -------------------------
     if (TDSEZShouldLogProgress(step))
     {
-        PetscPrintf(PETSC_COMM_WORLD,
-            "      [%6" PetscInt_FMT "/%" PetscInt_FMT "] %6.1f%%  t=%10.4f   ⟨Ψ|Ψ⟩=%12.3e   ⟨H⟩=%12.4e\n",
-            step, TDSEZProgressTotal(), 100.0 * (double)step / TDSEZProgressTotal(), t,
-            (PetscReal)PetscRealPart(normSq),
-            (PetscReal)PetscRealPart(totalEnergy));
+        TDSEZProgressRow(step, t, normSq, totalEnergy);
     }
     
     if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());

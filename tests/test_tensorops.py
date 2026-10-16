@@ -84,6 +84,7 @@ def _run(name, text, extra):
     r = subprocess.run(["mpirun", "--bind-to", "none", "-np", "3", zkit.find_binary(), "-inp", path] + extra,
                        capture_output=True, cwd=d)
     out = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
+    out = " ".join(out.split())  # wrapped log lines
     _step(f"{name} {' '.join(extra) or 'factorised'} runs", r.returncode == 0, out[-1500:])
     with h5py.File(td) as f:
         return {k: np.asarray(f[k]) for k in ("dipoles", "energies", "currents")}, out
@@ -93,7 +94,7 @@ def test_factorised_observables_match_assembled():
     for name, text in CASES.items():
         ref, _ = _run(name + "_asm", text, ["-tdsez_tensor_ops", "0"])
         new, out = _run(name + "_fac", text, [])
-        _step(f"{name}: factorised operators in use", "factorised form" in out, out[-800:])
+        _step(f"{name}: factorised operators in use", "Factorised operators" in out, out[-800:])
         for k in ref:
             err = np.max(np.abs(ref[k] - new[k])) / max(np.max(np.abs(ref[k])), 1e-300)
             _step(f"{name}: {k} equal", err < 1e-11, f"{err:.2e}")
@@ -136,7 +137,7 @@ def test_quadrature_expectations_match_matrices():
     for name, text in cases.items():
         ref, _ = _run(name + "_mat", text, ["-tdsez_quad_obs", "0"])
         new, out = _run(name + "_quad", text, [])
-        _step(f"{name}: quadrature expectations in use", "quadrature points" in out, out[-800:])
+        _step(f"{name}: quadrature expectations in use", "Quadrature-point expectations" in out, out[-800:])
         runs = {"": new}
         if name == "qo_vm_op":
             # per-point assembly: the force coefficients are tabulated by the monitor itself

@@ -1,4 +1,5 @@
 #include "tdsez_tsurff.hpp"
+#include "tdsez_info.hpp"
 #include "tdsez_parser.hpp"
 #include <petscblaslapack.h>
 #include <hdf5.h>
@@ -204,9 +205,9 @@ PetscErrorCode TDSEZTSurff::Setup(IGA iga, Vec psi)
     PetscReal local[3] = {massErr, potErr, valid ? 0.0 : 1.0}, global[3];
     PetscCallMPI(MPI_Allreduce(local, global, 3, MPIU_REAL, MPIU_MAX, comm_));
     PetscCheck(global[2] == 0, comm_, PETSC_ERR_USER_INPUT, "t-SURFF: invalid mass or potential outside the surface");
-    PetscCall(PetscPrintf(comm_, "      t-SURFF exterior: mass %g, potential %g Ha; max deviation outside |x| = %g: "
-                          "mass %.2e (relative), potential %.2e Ha\n",
-                          (double)mass_, (double)V0_, (double)R_, (double)global[0], (double)global[1]));
+    TDSEZInfo(comm_).kv("t-SURFF exterior", "mass %g, potential %g Ha; max deviation outside |x| = %g: "
+                          "mass %.2e (relative), potential %.2e Ha",
+                          (double)mass_, (double)V0_, (double)R_, (double)global[0], (double)global[1]);
     PetscCheck(global[0] <= TDSEZParser::SurffMassTolerance && global[1] <= TDSEZParser::SurffPotentialTolerance,
                comm_, PETSC_ERR_USER_INPUT,
                "t-SURFF needs a free carrier outside the surface: the mass deviates by %g (SurffMassTolerance %g) and the "
@@ -295,9 +296,9 @@ PetscErrorCode TDSEZTSurff::Setup(IGA iga, Vec psi)
     }
     amp_.assign(nk_, 0); prev_.assign(nk_, 0); cur_.assign(nk_, 0);
 
-    PetscCall(PetscPrintf(comm_, "      t-SURFF: |x_d| = %g, %" PetscInt_FMT " surface points (%" PetscInt_FMT
-                          " per span), %" PetscInt_FMT " momenta (%s), stride %" PetscInt_FMT "\n",
-                          (double)R_, nGlobalPoints_, nq, nk_, grid_ ? "grid" : "list", TDSEZParser::OutputStrideSurff));
+    TDSEZInfo(comm_).kv("t-SURFF surface", "|x_d| = %g, %" PetscInt_FMT " points (%" PetscInt_FMT
+                          " per span), %" PetscInt_FMT " momenta (%s), stride %" PetscInt_FMT,
+                          (double)R_, nGlobalPoints_, nq, nk_, grid_ ? "grid" : "list", TDSEZParser::OutputStrideSurff);
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -646,7 +647,7 @@ PetscErrorCode TDSEZTSurff::Finish(const std::string &path, PetscReal t, Vec psi
     }
     PetscCallMPI(MPI_Bcast(&status, 1, MPI_INT, 0, comm_));
     PetscCheck(status == 0, comm_, PETSC_ERR_FILE_WRITE, "t-SURFF: cannot write %s", path.c_str());
-    PetscCall(PetscPrintf(comm_, "      t-SURFF: %" PetscInt_FMT " samples, %.3f s (%.3g ms per sample) -> %s\n",
-                          nSamples_, (double)maxSeconds, 1e3 * maxSeconds / PetscMax((PetscInt)1, nSamples_), path.c_str()));
+    TDSEZInfo(comm_).kv("t-SURFF", "%" PetscInt_FMT " samples, %.3f s (%.3g ms per sample) -> %s",
+                          nSamples_, (double)maxSeconds, 1e3 * maxSeconds / PetscMax((PetscInt)1, nSamples_), path.c_str());
     PetscFunctionReturn(PETSC_SUCCESS);
 }
