@@ -41,8 +41,9 @@ Polarization
 
 Each listed axis must exist in the problem (``Polarization = xy`` needs
 ``Dimension >= 2``). Propagation (``EnablePropagation = 1``) needs at least one
-polarised axis; a field-free propagation is written as, for example,
-``Polarization = x`` with ``LaserX = 0``.
+polarised axis or a ``FieldTerm`` (:ref:`structured-fields`); a field-free
+propagation is written as, for example, ``Polarization = x`` with
+``LaserX = 0``.
 
 Only the polarised axes are coupled to the field. The response (dipole,
 current, acceleration) is recorded on every spatial axis by default;
@@ -171,6 +172,69 @@ unless an expression refers to them.
 In the list forms a single value is used for all three axes, and missing
 entries take the first value. Further constants (pulse duration, centre,
 ramp times) are defined with ``Variables``, as in the example above.
+
+.. _structured-fields:
+
+Structured Fields
+-----------------
+
+A field that varies in space as well as in time is given as a sum of
+separable terms, one ``FieldTerm`` line each (the lines accumulate):
+
+.. code-block:: text
+
+   FieldTerm = w(x, y, z) ; f(t)
+
+Each term adds :math:`s\,f_k(t)\,w_k(\mathbf r)` to the Hamiltonian,
+
+.. math::
+   :label: eq-structured-field
+
+   H(t) = H_0 + s\,\mathbf E(t)\cdot\mathbf r
+        + s \sum_k f_k(t)\,w_k(\mathbf r),
+   \qquad
+   \mathbf E_{\text{local}}(\mathbf r, t) = \mathbf E(t)
+        + \sum_k f_k(t)\,\nabla w_k(\mathbf r),
+
+the length-gauge coupling to a quasi-static (curl-free) field with scalar
+potential :math:`-\sum_k f_k w_k`. ``FieldTerm = z ; Ez(t)`` is exactly the
+uniform field ``Polarization = z``, ``LaserZ = Ez(t)``. Plasmonic and
+nanotip near fields, field gradients (``FieldTerm = x^2 ; f(t)``) and
+localised gate pulses in heterostructures are written this way. The profile
+may use ``x``, ``y`` and ``z`` (only the axes of the problem), the time
+factor only ``t``; both may use every input constant and ``Variables``.
+Structured terms combine with ``LaserX/Y/Z``, and ``Polarization`` may then
+be ``none``.
+
+.. code-block:: text
+
+   # dipole pulse plus a Gaussian near field of the same carrier, decaying radially
+   Variables    = E0=0.05, w=0.057, T=331, s0=8
+   Polarization = z
+   LaserZ       = E0*sin(pi*t/T)^2*sin(w*t)
+   FieldTerm    = 2*z*exp(-(x*x+y*y+z*z)/(s0*s0)) ; E0*sin(pi*t/T)^2*sin(w*t)
+
+**Cost.** Each term is one matrix :math:`(G_k)_{ij} = \int B_i\,w_k\,B_j\,d\mathbf r`
+with the sparsity of :math:`H`, assembled once with the dipoles (sum
+factorised in 2D and 3D, up to 12 terms per element pass). In every step it
+enters the stage matrices in the same single pass over the stored values as
+the dipoles: one multiply-add per stored entry and term, small next to the
+linear solve. The monitors use one product :math:`G_k\psi` per term, shared
+by the interaction energy and the acceleration. On a 2D atom (27 225 DOFs,
+``pade22``) one extra term costs 11 % per step.
+
+**Observables.** The interaction energy includes
+:math:`s\sum_k f_k(t)\langle w_k\rangle`. The dipole acceleration is taken
+from the discrete equation of motion (``AccelerationMethod = auto`` selects it;
+``operator`` is rejected, since it would need :math:`\nabla w_k`), which
+includes the terms exactly (:doc:`Observables`). The field columns of the
+time series hold :math:`\mathbf E(t)` (``LaserX/Y/Z``) only.
+
+**Photoelectron spectra.** The Volkov states of t-SURFF assume that outside
+the surface only the uniform field acts. With ``TSurff = 1`` every
+:math:`\nabla w_k` is therefore sampled outside the surface at start-up and
+must be below :math:`10^{-6}` of its maximum, and with ``SurffEndTerm = 1``
+every :math:`f_k` must vanish after ``FinalTime``.
 
 Field Scales
 ------------

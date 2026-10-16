@@ -605,6 +605,16 @@ PetscErrorCode TDSEZTSurff::EndTerm(Vec psi, Mat H, Mat M)
     PetscCheck(Eafter <= 1e-8 * PetscMax(Emax, (PetscReal)1e-300), comm_, PETSC_ERR_USER_INPUT,
                "t-SURFF end term: the field is not over at FinalTime (|E| = %g after T, %g during the run); "
                "end the run after the pulse", (double)Eafter, (double)Emax);
+    for (PetscInt k = 0; k < TDSEZParser::NFieldTerms(); ++k) {
+        PetscReal fmax = 0, fafter = 0;
+        for (PetscInt j = 0; j <= 200; ++j) {
+            fmax   = PetscMax(fmax, PetscAbsReal(TDSEZParser::FieldTime(k, T * j / 200.0)));
+            fafter = PetscMax(fafter, PetscAbsReal(TDSEZParser::FieldTime(k, T + j * 0.5 * TDSEZParser::TimeStep)));
+        }
+        PetscCheck(fafter <= 1e-8 * PetscMax(fmax, (PetscReal)1e-300), comm_, PETSC_ERR_USER_INPUT,
+                   "t-SURFF end term: FieldTerm %d is not over at FinalTime (|f| = %g after T, %g during the run)",
+                   (int)k + 1, (double)fafter, (double)fmax);
+    }
 
     // kinetic momenta |k + A(T)| and the node grid
     std::vector<PetscReal> pk(nk_);

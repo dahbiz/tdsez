@@ -78,6 +78,8 @@ PetscErrorCode TDSEZIJacobianPolXY  (TS, PetscReal, Vec, Vec, PetscReal, Mat, Ma
 PetscErrorCode TDSEZIJacobianPolXZ  (TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void*);
 PetscErrorCode TDSEZIJacobianPolYZ  (TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void*);
 PetscErrorCode TDSEZIJacobianPolXYZ (TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void*);
+PetscErrorCode TDSEZIFunctionTerms (TS, PetscReal, Vec, Vec, Vec, void*);                       ///< with FieldTerms
+PetscErrorCode TDSEZIJacobianTerms (TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void*);       ///< with FieldTerms
 ///@}
 
 #include "tdsez_parser.hpp"
@@ -381,6 +383,8 @@ PetscErrorCode VelocityZ(IGAPoint p, PetscScalar *P, void *ctx);                
 PetscErrorCode TDSEZformPotentialGradX(IGAPoint p, PetscScalar *dVdr, void *ctx);         ///< -dV/dx
 PetscErrorCode TDSEZformPotentialGradY(IGAPoint p, PetscScalar *dVdr, void *ctx);         ///< -dV/dy
 PetscErrorCode TDSEZformPotentialGradZ(IGAPoint p, PetscScalar *dVdr, void *ctx);         ///< -dV/dz
+PetscErrorCode TDSEZFormFieldTerms(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx); ///< FieldTerms <B| w_k |B>
+extern PetscInt TDSEZFieldTermIndex;                                                    ///< first term of the batch
 PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx);                     ///< CAP form kernel
 /// @}
 

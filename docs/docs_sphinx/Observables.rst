@@ -133,9 +133,11 @@ not reach a reflecting wall.
 
    A_a(t) = -2q\,\mathrm{Im}\big(\mathbf w^\dagger\,\mathbf V_a\,\mathbf c\big),
    \qquad
-   \mathbf w = \mathbf M^{-1}\big(\mathbf H_h + s\,\mathbf E(t)\cdot\mathbf D\big)\mathbf c ,
+   \mathbf w = \mathbf M^{-1}\big(\mathbf H_h + s\,\mathbf E(t)\cdot\mathbf D
+              + s\textstyle\sum_k f_k(t)\,\mathbf G_k\big)\mathbf c ,
 
-with the velocity matrix :math:`\mathbf V_a` and
+with the velocity matrix :math:`\mathbf V_a`, the structured field terms
+:math:`\mathbf G_k` (:ref:`structured-fields`) and
 :math:`\mathbf H_h = (\mathbf H + \mathbf H^\dagger)/2`, the Hermitian part of
 :math:`\mathbf H`. Without a CAP this is the exact time derivative of
 :math:`q\langle v_a\rangle` for the discrete dynamics, including sharp
@@ -147,8 +149,8 @@ preconditioner to :math:`10^{-14}` relative (about 16 iterations; options prefix
 solve). A solve that does not converge stops the run.
 
 ``auto`` (default) uses the discrete form when the ``Mass`` expression depends
-on :math:`x`, :math:`y` or :math:`z` (and ``MassIsConstant`` is not set), the
-operator form otherwise. For smooth problems the two forms agree up to the
+on :math:`x`, :math:`y` or :math:`z` (and ``MassIsConstant`` is not set) or a
+``FieldTerm`` is given, the operator form otherwise. For smooth problems the two forms agree up to the
 spatial discretisation error and converge to each other with the grid (3D,
 position-dependent mass, degree 4: relative difference
 :math:`2.4\times10^{-4}` at :math:`h_x = 1.1`, :math:`1.5\times10^{-5}` at

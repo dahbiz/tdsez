@@ -64,6 +64,7 @@ class TDSEZManager
     Mat m_CAP = PETSC_NULLPTR; ///< complex absorbing potential (consumed by propagator)
     Mat m_Lz  = PETSC_NULLPTR; ///< angular-momentum operator (2D degeneracy split; NULL in 3D)
     Vec m_psi0 = PETSC_NULLPTR; ///< initial state |ψ(0)⟩ (for autocorrelation)
+    std::vector<Mat> m_G;       ///< FieldTerm matrices <B| w_k |B> (aliased from the assembler)
     /// @}
 
     /// @name Read-only getters for operator/state objects
@@ -85,7 +86,26 @@ class TDSEZManager
     Mat       CAP()   const { return m_CAP; }   ///< complex absorbing potential
     Mat       Lz()    const { return m_Lz; }    ///< angular momentum (2D only)
     Vec       psi0()  const { return m_psi0; }  ///< initial state |ψ(0)⟩
+    const std::vector<Mat> &G() const { return m_G; }   ///< FieldTerm matrices
     /// @}
+
+    /// @brief Field terms of H(t) = H + sum_i c_i(t) T_i: the dipoles of the
+    ///        coupled axes (c = s E_a(t)) followed by the FieldTerm matrices
+    ///        (c = s f_k(t)). TermMatrices() is fixed; TermCoefficients() fills c.
+    /// @{
+    std::vector<Mat> TermMatrices() const;
+    void TermCoefficients(PetscReal t, std::vector<PetscScalar> &c) const;
+    /// @}
+    /// @brief y_k = G_k psi and e_k = psi^H y_k for every FieldTerm, cached
+    ///        for this psi (state id) so the energy and the acceleration of one
+    ///        monitor call share the products.
+    PetscErrorCode FieldTermProducts(Vec psi);
+    /// Sum_k s f_k(t) <psi|G_k|psi> (the FieldTerm part of the interaction energy).
+    PetscErrorCode FieldTermEnergy(PetscReal t, Vec psi, PetscScalar *e);
+    std::vector<Vec>         termPsi_;          ///< G_k psi
+    std::vector<PetscScalar> termExp_;          ///< psi^H G_k psi
+    PetscObjectId            termPsiId_ = 0;    ///< psi of the cached products
+    PetscObjectState         termPsiState_ = -1;
 
     /// @name Setters (used only during setup / CAP consumption)
     /// @{

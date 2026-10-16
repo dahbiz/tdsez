@@ -140,6 +140,26 @@ class TDSEZParser
         }
         /// Field term as it enters H, s E_a(t) (s = CarrierSign()).
         inline static PetscReal Coupling(int a, PetscReal t) { return CarrierSign() * Field(a, t); }
+        /// @name Structured (separable) field terms: FieldTerm = w(x,y,z) ; f(t)
+        /// @details Each term adds s f_k(t) w_k(r) to H (s = CarrierSign()), the
+        ///          length-gauge coupling to the quasi-static field
+        ///          E(r,t) = sum_k f_k(t) grad w_k(r). w = z, f = E_z(t) is the
+        ///          uniform field along z.
+        /// @{
+        inline static std::vector<std::string> FieldTermProfile, FieldTermTime;  ///< w_k, f_k expressions
+        inline static std::vector<mu::Parser>  FieldProfileExpr, FieldTimeExpr;   ///< their parsers
+        inline static PetscInt NFieldTerms() { return (PetscInt)FieldTermProfile.size(); }
+        /// Profile w_k(x, y, z).
+        inline static PetscReal FieldProfile(PetscInt k, PetscReal x, PetscReal y, PetscReal z)
+        {
+            varX_ = x; varY_ = y; varZ_ = z;
+            return FieldProfileExpr[k].Eval();
+        }
+        /// Time factor f_k(t).
+        inline static PetscReal FieldTime(PetscInt k, PetscReal t) { varT_ = t; return FieldTimeExpr[k].Eval(); }
+        /// Coefficient of the term matrix in H, s f_k(t).
+        inline static PetscReal FieldTermCoupling(PetscInt k, PetscReal t) { return CarrierSign() * FieldTime(k, t); }
+        /// @}
         /**
          * @brief Evaluate the position-dependent mass distribution M(x,y,z).
          * @param x Cartesian x coordinate.

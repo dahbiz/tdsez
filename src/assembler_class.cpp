@@ -205,6 +205,24 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         throw std::runtime_error("Dimension must be 1, 2 or 3.");
     }
 
+    // Structured field terms: G_k = <B_i| w_k |B_j>, assembled once; the
+    // propagator adds s f_k(t) G_k to the stage matrices with the dipoles.
+    // Batches of up to 12 terms share one element loop (sum-factorised in 2D/3D).
+    G.assign((size_t)TDSEZParser::NFieldTerms(), PETSC_NULLPTR);
+    for (PetscInt k0 = 0; k0 < TDSEZParser::NFieldTerms(); k0 += 12)
+    {
+        const PetscInt n = PetscMin((PetscInt)12, TDSEZParser::NFieldTerms() - k0);
+        Mat *mats[12];
+        for (PetscInt i = 0; i < n; ++i) mats[i] = &G[(size_t)(k0 + i)];
+        TDSEZFieldTermIndex = k0;
+        const std::string name = n == 1 ? "Field term " + std::to_string((int)k0 + 1)
+                                        : "Field terms " + std::to_string((int)k0 + 1) + "-" + std::to_string((int)(k0 + n));
+        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormFieldTerms, name.c_str());
+    }
+    for (PetscInt k = 0; k < TDSEZParser::NFieldTerms(); ++k)
+        info.kv(k == 0 ? "Structured field" : "", "%d: w = %s ; f(t) = %s", (int)k + 1,
+                TDSEZParser::FieldTermProfile[k].c_str(), TDSEZParser::FieldTermTime[k].c_str());
+
     if (TDSEZParser::EnableCAP)
     {
         // ── CAP absorption-region diagnostic (printed before propagation) ──
@@ -245,4 +263,5 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
     // or diagnostic operators either. No-op for Neumann boundaries.
     for (Mat A : {CAP, Lz, K, V, Md, Dx, Dy, Dz, VelX, VelY, VelZ, dVdx, dVdy, dVdz})
         PetscCallAbort(PETSC_COMM_WORLD, TDSEZZeroDirichletRows(A, 0.0));
+    for (Mat A : G) PetscCallAbort(PETSC_COMM_WORLD, TDSEZZeroDirichletRows(A, 0.0));
 }

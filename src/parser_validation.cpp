@@ -538,10 +538,11 @@ void TDSEZParser::ValidateOrThrow()
     // been copied into the empty LaserX/Y/Z by initParsers().
     if (EnablePropagation)
     {
-        if (Polarization.empty() || Polarization == "none")
+        if ((Polarization.empty() || Polarization == "none") && NFieldTerms() == 0)
             throw std::runtime_error(
                 "ValidateOrThrow: EnablePropagation=1 needs a Polarization (x, y, z, xy, xz, yz "
-                "or xyz). For field-free propagation use e.g. Polarization = x, LaserX = 0.");
+                "or xyz) or a FieldTerm. For field-free propagation use e.g. Polarization = x, LaserX = 0.");
+        if (Polarization.empty()) Polarization = "none";
         const std::string *expr[3] = {&LaserX, &LaserY, &LaserZ};
         for (int d = 0; d < 3; ++d)
             if (Polarization.find("xyz"[d]) != std::string::npos && expr[d]->empty())
@@ -551,6 +552,34 @@ void TDSEZParser::ValidateOrThrow()
                     "Set e.g. Laser" + (char)std::toupper("xyz"[d]) + " = Ampx*sin(Omegax*t)*sin(pi*t/T)^2.");
     }
 
+
+    // Structured field terms: the profile may use x, y, z only and the time
+    // factor t only (muParser reports anything else at the first evaluation,
+    // which would be deep inside the assembly or the time stepper).
+    for (PetscInt k = 0; k < NFieldTerms(); ++k) {
+        const std::string id = "FieldTerm " + std::to_string((int)k + 1);
+        try {
+            for (const auto &v : FieldProfileExpr[k].GetUsedVar())
+                if (v.first != "x" && v.first != "y" && v.first != "z")
+                    throw std::runtime_error("ValidateOrThrow: " + id + ": the profile '" + FieldTermProfile[k] +
+                        "' uses '" + v.first + "'; it may depend on x, y and z only");
+            for (const auto &v : FieldTimeExpr[k].GetUsedVar())
+                if (v.first != "t")
+                    throw std::runtime_error("ValidateOrThrow: " + id + ": the time function '" + FieldTermTime[k] +
+                        "' uses '" + v.first + "'; it may depend on t only");
+            (void)FieldProfile(k, 0.0, 0.0, 0.0);
+            (void)FieldTime(k, 0.0);
+        } catch (const mu::Parser::exception_type &e) {
+            throw std::runtime_error("ValidateOrThrow: " + id + ": " + e.GetMsg());
+        }
+        for (int d = (int)Dimension; d < 3; ++d)
+            if (FieldProfileExpr[k].GetUsedVar().count(std::string(1, "xyz"[d])))
+                throw std::runtime_error("ValidateOrThrow: " + id + ": the profile uses " + std::string(1, "xyz"[d]) +
+                    ", which does not exist in a " + std::to_string((int)Dimension) + "D problem");
+    }
+    if (NFieldTerms() > 0 && AccelerationMethod == "operator")
+        throw std::runtime_error("ValidateOrThrow: AccelerationMethod = operator needs grad w of every FieldTerm; "
+            "use auto or discrete (the discrete equation of motion includes the field terms exactly)");
 
     // The propagation assembles s dV/dx_d on every axis (acceleration output);
     // an empty expression used to abort inside muParser.
@@ -600,6 +629,44 @@ void TDSEZParser::ValidateOrThrow()
             throw std::runtime_error("ValidateOrThrow: SurffEndTermDk must be >= 0 (0 = automatic)");
         if (SurffQuadrature < 0 || SurffQuadrature > 64)
             throw std::runtime_error("ValidateOrThrow: SurffQuadrature must be in [0, 64] (0 = NQuadratures)");
+        // Volkov states outside the surface: a FieldTerm must not act there,
+        // i.e. grad w_k must vanish wherever max_d |x_d| >= SurffRadius.
+        // Sampled on a lattice (central differences) against max |grad w_k|.
+        for (PetscInt k = 0; k < NFieldTerms(); ++k) {
+            const int n = Dimension == 3 ? 33 : (Dimension == 2 ? 121 : 2001);
+            const int ny = Dimension >= 2 ? n : 1, nz = Dimension == 3 ? n : 1;
+            const PetscReal lo3[3] = {LMinX, LMinY, LMinZ}, hi3[3] = {LMaxX, LMaxY, LMaxZ};
+            PetscReal gIn = 0.0, gOut = 0.0, xOut[3] = {0, 0, 0};
+            for (int i = 0; i < n; ++i) for (int j = 0; j < ny; ++j) for (int l = 0; l < nz; ++l) {
+                const int idx[3] = {i, j, l};
+                PetscReal r[3] = {0, 0, 0}, g2 = 0.0, rmax = 0.0;
+                for (int d = 0; d < (int)Dimension; ++d) {
+                    r[d] = lo3[d] + (hi3[d] - lo3[d]) * idx[d] / (n - 1);
+                    rmax = PetscMax(rmax, PetscAbsReal(r[d]));
+                }
+                for (int d = 0; d < (int)Dimension; ++d) {
+                    const PetscReal h = 1e-4 * (hi3[d] - lo3[d]);
+                    PetscReal rp[3] = {r[0], r[1], r[2]}, rm[3] = {r[0], r[1], r[2]};
+                    rp[d] += h; rm[d] -= h;
+                    const PetscReal g = (FieldProfile(k, rp[0], rp[1], rp[2]) - FieldProfile(k, rm[0], rm[1], rm[2])) / (2 * h);
+                    g2 += g * g;
+                }
+                const PetscReal g = PetscSqrtReal(g2);
+                if (!std::isfinite(g))
+                    throw std::runtime_error("ValidateOrThrow: FieldTerm " + std::to_string((int)k + 1) +
+                        ": the profile is not finite at (" + std::to_string(r[0]) + ", " + std::to_string(r[1]) +
+                        ", " + std::to_string(r[2]) + ")");
+                gIn = PetscMax(gIn, g);
+                if (rmax >= SurffRadius && g > gOut) { gOut = g; for (int d = 0; d < 3; ++d) xOut[d] = r[d]; }
+            }
+            if (gOut > 1e-6 * gIn)
+                throw std::runtime_error("ValidateOrThrow: TSurff = 1 needs every FieldTerm to vanish outside the "
+                    "t-SURFF surface (Volkov states there feel only the uniform LaserX/Y/Z field). FieldTerm " +
+                    std::to_string((int)k + 1) + " has |grad w| = " + std::to_string(gOut) + " (" +
+                    std::to_string(gOut / PetscMax(gIn, (PetscReal)1e-300)) + " of its maximum) at (" +
+                    std::to_string(xOut[0]) + ", " + std::to_string(xOut[1]) + ", " + std::to_string(xOut[2]) +
+                    "); make the profile decay inside SurffRadius or enlarge SurffRadius");
+        }
     }
 
     // KnotSequence: every axis must name an implemented sequence (an unknown

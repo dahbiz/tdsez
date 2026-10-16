@@ -118,10 +118,10 @@ int main()
         TDSEZParser::EnablePropagation = PETSC_FALSE;
 
         TDSEZParser::BoundaryType = "wall";
-        TDSEZParser::Polarization = "XY";
+        TDSEZParser::Polarization = "X";            // a 1D problem: x only
         TDSEZParser::ValidateOrThrow();
         require(TDSEZParser::BoundaryType == "dirichlet" &&
-                TDSEZParser::Polarization == "xy", "enum normalization");
+                TDSEZParser::Polarization == "x", "enum normalization");
 
         std::cout << "parser validation unit tests passed\n";
         return 0;

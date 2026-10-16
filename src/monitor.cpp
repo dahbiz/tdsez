@@ -216,6 +216,45 @@ PetscErrorCode TDSEZIFunctionPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec
     PetscCall(VecMAXPY(F, 4, coeffs, TDSEZ->IFuncVec));
     PetscFunctionReturn(PETSC_SUCCESS);
 }
+/// IFunction with structured field terms: F = i M psidot - H psi - sum_i c_i(t) T_i psi
+/// over TDSEZManager::TermMatrices() (coupled dipoles, then FieldTerm matrices).
+PetscErrorCode TDSEZIFunctionTerms(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+    (void)ts;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscFunctionBeginUser;
+    static thread_local std::vector<PetscScalar> c;
+    const std::vector<Mat> T = TDSEZ->TermMatrices();
+    TDSEZ->TermCoefficients(t, c);
+    Vec Hpsi = TDSEZ->IFuncVec[0], Tpsi = TDSEZ->IFuncVec[1];
+    PetscCall(MatMult(TDSEZ->H(), psi, Hpsi));
+    for (size_t i = 0; i < T.size(); ++i) {
+        if (c[i] == 0.0) continue;
+        PetscCall(MatMult(T[i], psi, Tpsi));
+        PetscCall(VecAXPY(Hpsi, c[i], Tpsi));
+    }
+    PetscCall(MatMult(TDSEZ->M(), psidot, F));
+    PetscCall(VecAXPBY(F, -1.0, PETSC_i, Hpsi));      // F = i M psidot - H_E psi
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/// IJacobian with structured field terms: J = i a M - H - sum_i c_i(t) T_i.
+PetscErrorCode TDSEZIJacobianTerms(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscFunctionBeginUser;
+    static thread_local std::vector<PetscScalar> c;
+    const std::vector<Mat> T = TDSEZ->TermMatrices();
+    TDSEZ->TermCoefficients(t, c);
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0));
+    PetscCall(MatAXPY(J, a * PETSC_i, TDSEZ->M(), SAME_NONZERO_PATTERN));
+    for (size_t i = 0; i < T.size(); ++i)
+        if (c[i] != 0.0) PetscCall(MatAXPY(J, -c[i], T[i], SAME_NONZERO_PATTERN));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /// IJacobian for x-polarized propagation: J = i a M - H - Ex Dx.
 /** @param[in] ts Time-stepper (unused). @param[in] t Current time.
  *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
@@ -481,7 +520,9 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         accelX = acc[0];
     }
 
-    const PetscScalar interactionE = TDSEZParser::CarrierSign() * laserEx*projDx;
+    PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
+    if (TDSEZParser::out_energy) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * laserEx*projDx + fieldTermE;
     const PetscScalar totalEnergy  = expectationH + interactionE;
 
     // ------------------------
@@ -754,7 +795,9 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         accelX = acc[0]; accelY = acc[1];
     }
 
-    const PetscScalar interactionE = TDSEZParser::CarrierSign() * (laserEx*projDx + laserEy*projDy);
+    PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
+    if (TDSEZParser::out_energy) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * (laserEx*projDx + laserEy*projDy) + fieldTermE;
     const PetscScalar totalEnergy  = expectH + interactionE;
 
     /* ----------------------------------------------------------------
@@ -1063,7 +1106,9 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         accelX = acc[0]; accelY = acc[1]; accelZ = acc[2];
     }
 
-    const PetscScalar interactionE = TDSEZParser::CarrierSign() * ((laserEx*projDx) + (laserEy*projDy) + (laserEz*projDz));
+    PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
+    if (TDSEZParser::out_energy) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * ((laserEx*projDx) + (laserEy*projDy) + (laserEz*projDz)) + fieldTermE;
     const PetscScalar totalEnergy  = expectationH + interactionE;
 
 

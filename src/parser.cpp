@@ -83,6 +83,21 @@ axisListHandler(PetscReal &x, PetscReal &y, PetscReal &z)
 /// @brief Read and parse a key=value parameter file, stripping comments.
 ///        Populates the static TDSEZParser member fields from the .prm input.
 /// @param prm  Path to the input parameter file.
+/// FieldTerm = w(x,y,z) ; f(t): append one separable field term.
+static void AddFieldTerm(const std::string &val)
+{
+    const size_t semi = val.find(';');
+    if (semi == std::string::npos || val.find(';', semi + 1) != std::string::npos)
+        throw std::runtime_error("FieldTerm must be 'profile w(x,y,z) ; time function f(t)' (one ';'), got '" + val + "'");
+    std::string w = val.substr(0, semi), f = val.substr(semi + 1);
+    TDSEZParser::trim(w);
+    TDSEZParser::trim(f);
+    if (w.empty() || f.empty())
+        throw std::runtime_error("FieldTerm needs both a profile w(x,y,z) and a time function f(t), got '" + val + "'");
+    TDSEZParser::FieldTermProfile.push_back(w);
+    TDSEZParser::FieldTermTime.push_back(f);
+}
+
 void TDSEZParser::PrmReader(const std::string &prm)
 {
     std::ifstream in(prm);
@@ -90,6 +105,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
     std::string line;
     std::set<std::string> seenKeys;      // a key given twice: the last value would win silently
     std::vector<std::string> dupKeys;
+    FieldTermProfile.clear();            // FieldTerm lines accumulate within one file only
+    FieldTermTime.clear();
     while (std::getline(in, line))
     {
         /* To remove comments */
@@ -103,8 +120,9 @@ void TDSEZParser::PrmReader(const std::string &prm)
         std::string val = line.substr(delimPos + 1);
         trim(key); 
         trim(val);
-        // Variables lines accumulate (documented); every other key may appear once.
-        if (key != "Variables" && !seenKeys.insert(key).second) dupKeys.push_back(key);
+        // Variables and FieldTerm lines accumulate (documented); every other key may appear once.
+        if (key != "Variables" && key != "FieldTerm" && key != "StructuredField" && !seenKeys.insert(key).second)
+            dupKeys.push_back(key);
 
         /* ---- Modular O(1) key dispatch ------------------------------------ */
         /* Keys are resolved through a single unordered_map (hash lookup) instead */
@@ -240,6 +258,10 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"Omegax",R(Omegax)},{"Omegay",R(Omegay)},{"Omegaz",R(Omegaz)},
                 {"LaserX",S(LaserX)},{"LaserY",S(LaserY)},{"LaserZ",S(LaserZ)},
                 {"DriverX",S(LaserX)},{"DriverY",S(LaserY)},{"DriverZ",S(LaserZ)}, // driver alias
+                // structured (separable) field: FieldTerm = w(x,y,z) ; f(t),
+                // one line per term (the lines accumulate)
+                {"FieldTerm",       H{AddFieldTerm}},
+                {"StructuredField", H{AddFieldTerm}},   // intuitive alias
                 {"Driver", S(Laser)},
                 {"Laser",  S(Laser)},
 
@@ -373,7 +395,14 @@ void TDSEZParser::PrmReader(const std::string &prm)
         };
         auto it = table().find(key);
         auto rm = removed.find(key);
-        if (it != table().end()) it->second(val);
+        if (it != table().end()) {
+            try {
+                it->second(val);
+            } catch (const std::exception &e) {   // unreadable value (number, FieldTerm, ...)
+                TDSEZInfo().fatal("input validation failed: key '%s' = '%s': %s", key.c_str(), val.c_str(), e.what());
+                MPI_Abort(PETSC_COMM_WORLD, 3);
+            }
+        }
         else if (rm != removed.end()) {
             const bool harmless = rm->second.harmless(val);
             const bool fatal = !harmless && TDSEZParser::StrictInput;
@@ -488,6 +517,7 @@ void TDSEZParser::initParsers()
     dVPotZ.DefineVar("z", &varZ_);
     dVPotZ.SetExpr(norm_fabs(PotentialDerivativeZ));
 
+    std::vector<std::pair<std::string, PetscReal>> scalarConsts;   // also bound on the FieldTerm parsers
     // Bind EVERY scalar input parameter as a muParser constant so users may
     // reference them by name inside expressions, e.g.
     //   Potential = V0*(x<0) : V0 ...  ;  Mass = mbarrier
@@ -528,6 +558,7 @@ void TDSEZParser::initParsers()
                 p->DefineConst(kv.name, kv.v);
             }
         }
+        for (auto &kv : scalars) scalarConsts.emplace_back(kv.name, kv.v);
         // Bind user-defined constants (Variables key) on every parser instance
         // so they are referenceable inside any expression.
         for (auto *p : parsers) {
@@ -553,6 +584,25 @@ void TDSEZParser::initParsers()
     /* laser Ez(t) */
     LaserZexpr.DefineVar("t", &varT_);
     LaserZexpr.SetExpr(LaserZ);
+
+    /* structured field terms: profiles w_k(x, y, z) and time factors f_k(t),
+       with the same constants as every other expression */
+    const size_t nTerms = FieldTermProfile.size();
+    FieldProfileExpr.assign(nTerms, mu::Parser());
+    FieldTimeExpr.assign(nTerms, mu::Parser());
+    for (size_t k = 0; k < nTerms; ++k) {
+        for (mu::Parser *p : {&FieldProfileExpr[k], &FieldTimeExpr[k]}) {
+            p->DefineConst("pi", PI);
+            for (const auto &kv : scalarConsts) p->DefineConst(kv.first, kv.second);
+            for (const auto &uc : userConsts_) p->DefineConst(uc.first, uc.second);
+        }
+        FieldProfileExpr[k].DefineVar("x", &varX_);
+        FieldProfileExpr[k].DefineVar("y", &varY_);
+        FieldProfileExpr[k].DefineVar("z", &varZ_);
+        FieldProfileExpr[k].SetExpr(norm_fabs(FieldTermProfile[k]));
+        FieldTimeExpr[k].DefineVar("t", &varT_);
+        FieldTimeExpr[k].SetExpr(norm_fabs(FieldTermTime[k]));
+    }
 }
 
 /// @brief Trim leading and trailing whitespace from a string in place.

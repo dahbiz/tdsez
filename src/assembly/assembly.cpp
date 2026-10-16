@@ -1894,6 +1894,30 @@ PetscReal TDSEZCapWidth()
     return 2.62206 / (2.0 * 0.2 * TDSEZParser::CAPKmin);
 }
 
+/// First FieldTerm of the batch assembled by TDSEZFormFieldTerms.
+PetscInt TDSEZFieldTermIndex = 0;
+
+/// Per-point kernel of the structured field terms: M[k] += w_{i0+k}(r) B_a B_b
+/// (i0 = TDSEZFieldTermIndex). 2D/3D elements are sum-factorised (sumfact.cpp).
+PetscErrorCode TDSEZFormFieldTerms(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx)
+{
+    (void)ctx;
+    const PetscInt nen = p->nen;
+    const PetscReal *B;
+    IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
+    PetscReal xyz[3] = {0.0, 0.0, 0.0};
+    IGAPointFormGeomMap(p, xyz);
+    const PetscReal w = p->weight[0] * p->detJac[0];
+    for (PetscInt k = 0; k < nmat; ++k) {
+        const PetscReal c = TDSEZParser::FieldProfile(TDSEZFieldTermIndex + k, xyz[0], xyz[1], xyz[2]) * w;
+        for (PetscInt a = 0; a < nen; a++) {
+            const PetscReal ca = c * B[a];
+            for (PetscInt b = 0; b < nen; b++) M[k][a * nen + b] += ca * B[b];
+        }
+    }
+    return 0;
+}
+
 PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx)
 {
     (void)ctx;

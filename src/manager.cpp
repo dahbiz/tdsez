@@ -19,6 +19,11 @@ PetscErrorCode TDSEZManager::PolarizationSelector()
 {
     PetscFunctionBegin;
     std::string polType = TDSEZParser::Polarization;
+    if (TDSEZParser::NFieldTerms() > 0) {
+        // structured field terms: one residual/Jacobian over the term list
+        TDSEZIFunctionPtr = TDSEZIFunctionTerms; TDSEZIJacobianPtr = TDSEZIJacobianTerms;
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
     if      (polType == "x")    {TDSEZIFunctionPtr = TDSEZIFunctionPolX,  TDSEZIJacobianPtr = TDSEZIJacobianPolX;}
     else if (polType == "y")    {TDSEZIFunctionPtr = TDSEZIFunctionPolY,  TDSEZIJacobianPtr = TDSEZIJacobianPolY;}
     else if (polType == "z")    {TDSEZIFunctionPtr = TDSEZIFunctionPolZ,  TDSEZIJacobianPtr = TDSEZIJacobianPolZ;}
@@ -332,7 +337,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
         m_Dz(assembler_->Dz), m_VelX(assembler_->VelX), m_VelY(assembler_->VelY),
         m_VelZ(assembler_->VelZ), m_dVdx(assembler_->dVdx), m_dVdy(assembler_->dVdy),
         m_dVdz(assembler_->dVdz), m_Md(assembler_->Md), m_CAP(assembler_->CAP), m_Lz(assembler_->Lz),
-        charge(TDSEZParser::Q)
+        m_G(assembler_->G), charge(TDSEZParser::Q)
         {
             // Time stepping folder data
             int mpi_rank;
@@ -484,6 +489,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             delete quadObs_;
             TDSEZForceCoeffStore().Release();
             for (Vec &v : accelWork) if (v) VecDestroy(&v);
+            for (Vec &v : termPsi_) if (v) VecDestroy(&v);
 
             // Free the buffers
             if (dipBuffer)    PetscFree(dipBuffer);
@@ -550,6 +556,7 @@ PetscBool TDSEZDiscreteAccelerationActive()
     const std::string &m = TDSEZParser::AccelerationMethod;
     if (m == "discrete") return PETSC_TRUE;
     if (m == "operator") return PETSC_FALSE;
+    if (TDSEZParser::NFieldTerms() > 0) return PETSC_TRUE;             // "auto": the force of w_k is not assembled
     if (TDSEZParser::MassIsConstant) return PETSC_FALSE;               // "auto"
     // GetUsedVar() re-parses the expression and this is queried from the
     // assembly kernels at every quadrature point, so cache the answer per
@@ -961,6 +968,11 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
         PetscCall(ApplyOp(dop[a], D[a], psi, s));
         PetscCall(VecAXPY(r, E[a], s));
     }
+    if (!m_G.empty()) {                                // structured field terms, s f_k(t) G_k psi
+        PetscCall(FieldTermProducts(psi));
+        for (size_t k = 0; k < m_G.size(); ++k)
+            PetscCall(VecAXPY(r, TDSEZParser::FieldTermCoupling((PetscInt)k, t), termPsi_[k]));
+    }
     PetscCall(KSPSolve(kspMass, r, w));
     {
         KSPConvergedReason why;
@@ -983,5 +995,55 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
         } else continue;
         acc[a] = -2.0 * charge * PetscImaginaryPart(z);
     }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// Dipoles of the coupled axes, then the FieldTerm matrices.
+std::vector<Mat> TDSEZManager::TermMatrices() const
+{
+    std::vector<Mat> T;
+    const Mat D[3] = {m_Dx, m_Dy, m_Dz};
+    for (int a = 0; a < 3; ++a) if (TDSEZParser::Coupled(a) && D[a]) T.push_back(D[a]);
+    for (Mat g : m_G) T.push_back(g);
+    return T;
+}
+
+/// Coefficients of TermMatrices() at time t: s E_a(t), then s f_k(t).
+void TDSEZManager::TermCoefficients(PetscReal t, std::vector<PetscScalar> &c) const
+{
+    c.clear();
+    const Mat D[3] = {m_Dx, m_Dy, m_Dz};
+    for (int a = 0; a < 3; ++a) if (TDSEZParser::Coupled(a) && D[a]) c.push_back(TDSEZParser::Coupling(a, t));
+    for (size_t k = 0; k < m_G.size(); ++k) c.push_back(TDSEZParser::FieldTermCoupling((PetscInt)k, t));
+}
+
+PetscErrorCode TDSEZManager::FieldTermProducts(Vec psi)
+{
+    PetscFunctionBeginUser;
+    PetscObjectId id;
+    PetscObjectState st;
+    PetscCall(PetscObjectGetId((PetscObject)psi, &id));
+    PetscCall(PetscObjectStateGet((PetscObject)psi, &st));
+    if (id == termPsiId_ && st == termPsiState_) PetscFunctionReturn(PETSC_SUCCESS);
+    if (termPsi_.size() != m_G.size()) {
+        termPsi_.assign(m_G.size(), PETSC_NULLPTR);
+        termExp_.assign(m_G.size(), 0.0);
+        for (Vec &v : termPsi_) PetscCall(VecDuplicate(psi, &v));
+    }
+    for (size_t k = 0; k < m_G.size(); ++k) PetscCall(MatMult(m_G[k], psi, termPsi_[k]));
+    if (!m_G.empty()) PetscCall(VecMDot(psi, (PetscInt)m_G.size(), termPsi_.data(), termExp_.data()));
+    termPsiId_ = id;
+    termPsiState_ = st;
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode TDSEZManager::FieldTermEnergy(PetscReal t, Vec psi, PetscScalar *e)
+{
+    PetscFunctionBeginUser;
+    *e = 0.0;
+    if (m_G.empty()) PetscFunctionReturn(PETSC_SUCCESS);
+    PetscCall(FieldTermProducts(psi));
+    for (size_t k = 0; k < m_G.size(); ++k) *e += TDSEZParser::FieldTermCoupling((PetscInt)k, t) * termExp_[k];
     PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -3,6 +3,7 @@
 
 #include <petscts.h>
 #include <petscmat.h>
+#include <vector>
 
 class TDSEZCore;
 class TDSEZManager;
@@ -74,11 +75,14 @@ private:
     /// @{
     /// Time loop for the rational propagators (Crank-Nicolson uses PETSc TS).
     PetscErrorCode EvolveRational();
-    /// psi <- R22(-i h M^{-1} H_E) psi, H_E = H + sum_a E_a D_a, as two
+    /// psi <- R22(-i h M^{-1} H_E) psi, H_E = H + sum_i c_i T_i, as two
     /// unitary Cayley-type stages with complex shifts.
-    PetscErrorCode Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi, int slot = 0);
-    /// Set A = M + g (H + sum_a E_a D_a).
-    PetscErrorCode BuildStageMatrix(Mat A, PetscScalar g, const PetscScalar E[3]);
+    /// @p c holds the coefficients of terms_ (H_E = H + sum_i c_i terms_[i]).
+    PetscErrorCode Pade22Step(PetscReal h, const std::vector<PetscScalar> &c, Vec psi, int slot = 0);
+    /// Set A = M + g (H + sum_i c_i terms_[i]).
+    PetscErrorCode BuildStageMatrix(Mat A, PetscScalar g, const std::vector<PetscScalar> &c);
+    /// Field terms of H(t): coupled dipoles, then FieldTerm matrices (TDSEZManager::TermMatrices).
+    std::vector<Mat> terms_;
     /// Cache the field-independent parts B_k = M + g_k(h) H for step length h.
     PetscErrorCode UpdateStageBase(PetscReal h);
     Mat Base_[2]     = {PETSC_NULLPTR, PETSC_NULLPTR};  ///< cached M + g_k H (field-free)

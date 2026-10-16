@@ -329,7 +329,8 @@ See :doc:`Laser-Field`.
      - --
      - Field-coupled axes: ``none``, ``x``, ``y``, ``z``, ``xy``, ``xz``,
        ``yz``, ``xyz`` or ``all``; case-insensitive. Only axes of the problem
-       are allowed. Required (not ``none``) when ``EnablePropagation = 1``.
+       are allowed. Required (not ``none``) when ``EnablePropagation = 1``,
+       unless a ``FieldTerm`` is given.
    * - ``LaserX``, ``LaserY``, ``LaserZ`` (``DriverX``, ``DriverY``,
        ``DriverZ``)
      - expression
@@ -340,6 +341,12 @@ See :doc:`Laser-Field`.
      - expression
      - --
      - Field used on every polarised axis without its own ``LaserX/Y/Z``.
+   * - ``FieldTerm`` (``StructuredField``)
+     - ``w(x,y,z) ; f(t)``
+     - --
+     - Separable structured field term: adds :math:`s\,f(t)\,w(\mathbf r)`
+       to :math:`H`. Repeat the line for several terms. See
+       :ref:`structured-fields`.
    * - ``Ampx``, ``Ampy``, ``Ampz``
      - real
      - 0
@@ -497,7 +504,8 @@ See :doc:`Time-Propagation`.
      - Dipole acceleration: ``operator`` (Ehrenfest force operator),
        ``discrete`` (time derivative of :math:`\langle v\rangle` from the
        Galerkin equation of motion) or ``auto`` (``discrete`` for a
-       position-dependent mass, else ``operator``). See :doc:`Observables`.
+       position-dependent mass or a ``FieldTerm``, else ``operator``). See
+       :doc:`Observables`.
 
 Boundaries and absorbing potential
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

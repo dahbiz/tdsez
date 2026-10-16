@@ -1,6 +1,8 @@
 #include "tdsez_internal.hpp"
 #include "tdsez_multigrid.hpp"
 #include "tdsez_quadobs.hpp"
+#include <array>
+#include <vector>
 
 /// ILU fill level of the ASM subdomain solves (-tdsez_ilu_levels overrides).
 /// ILU(0): ILU(1) saved at most one GMRES iteration (none in 3D) while its
@@ -328,19 +330,16 @@ static PetscErrorCode TDSEZConfigureStageKSP(KSP ksp, Mat A, const char *prefix,
 }
 
 
-/// @brief Set A = M + g (H + sum_a E_a D_a) on the active polarization axes.
-PetscErrorCode TDSEZPropagator::BuildStageMatrix(Mat A, PetscScalar g, const PetscScalar E[3])
+/// @brief Set A = M + g (H + sum_i c_i T_i) over the field terms.
+PetscErrorCode TDSEZPropagator::BuildStageMatrix(Mat A, PetscScalar g, const std::vector<PetscScalar> &c)
 {
     PetscFunctionBeginUser;
-    const Mat       D[3]  = {manager_.Dx(), manager_.Dy(), manager_.Dz()};
-    const PetscBool on[3] = {(PetscBool)TDSEZParser::Coupled(0), (PetscBool)TDSEZParser::Coupled(1),
-                             (PetscBool)TDSEZParser::Coupled(2)};   // axes coupled to the field
     PetscCall(MatCopy(manager_.H(), A, SAME_NONZERO_PATTERN));
     PetscCall(MatScale(A, g));
     PetscCall(MatAXPY(A, 1.0, manager_.M(), SAME_NONZERO_PATTERN));
-    for (int a = 0; a < 3; ++a)
-        if (on[a] && D[a] && E[a] != 0.0)
-            PetscCall(MatAXPY(A, g * E[a], D[a], SAME_NONZERO_PATTERN));
+    for (size_t i = 0; i < terms_.size(); ++i)
+        if (c[i] != 0.0)
+            PetscCall(MatAXPY(A, g * c[i], terms_[i], SAME_NONZERO_PATTERN));
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -394,11 +393,12 @@ static PetscErrorCode TDSEZSameStructure(Mat A, Mat B, bool *same)
 static PetscErrorCode TDSEZFusedCombine(Mat A, Mat B, PetscInt n, const Mat D[], const PetscScalar c[])
 {
     PetscFunctionBeginUser;
-    Mat a[2], b[2], d[3][2];
+    Mat a[2], b[2];
+    std::vector<std::array<Mat, 2>> d(n);
     const PetscInt *cm;
     TDSEZAIJBlocks(A, a, &cm);
     TDSEZAIJBlocks(B, b, &cm);
-    for (PetscInt i = 0; i < n; ++i) TDSEZAIJBlocks(D[i], d[i], &cm);
+    for (PetscInt i = 0; i < n; ++i) TDSEZAIJBlocks(D[i], d[i].data(), &cm);
     for (int k = 0; k < 2; ++k) {
         if (!a[k]) continue;
         PetscInt nz;
@@ -409,7 +409,8 @@ static PetscErrorCode TDSEZFusedCombine(Mat A, Mat B, PetscInt n, const Mat D[],
             PetscCall(MatRestoreRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &nr, &ia, &ja, &done));
         }
         PetscScalar *va;
-        const PetscScalar *vb, *vd[3] = {NULL, NULL, NULL};
+        const PetscScalar *vb;
+        std::vector<const PetscScalar *> vd(PetscMax(n, (PetscInt)3), NULL);
         PetscCall(MatSeqAIJGetArrayWrite(a[k], &va));
         PetscCall(MatSeqAIJGetArrayRead(b[k], &vb));
         for (PetscInt i = 0; i < n; ++i) PetscCall(MatSeqAIJGetArrayRead(d[i][k], &vd[i]));
@@ -417,8 +418,15 @@ static PetscErrorCode TDSEZFusedCombine(Mat A, Mat B, PetscInt n, const Mat D[],
         case 0: for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j]; break;
         case 1: for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j] + c[0] * vd[0][j]; break;
         case 2: for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j] + c[0] * vd[0][j] + c[1] * vd[1][j]; break;
-        default:
+        case 3:
             for (PetscInt j = 0; j < nz; ++j) va[j] = vb[j] + c[0] * vd[0][j] + c[1] * vd[1][j] + c[2] * vd[2][j];
+            break;
+        default:                                // FieldTerms: same left-to-right sum
+            for (PetscInt j = 0; j < nz; ++j) {
+                PetscScalar v = vb[j];
+                for (PetscInt i = 0; i < n; ++i) v += c[i] * vd[i][j];
+                va[j] = v;
+            }
         }
         for (PetscInt i = 0; i < n; ++i) PetscCall(MatSeqAIJRestoreArrayRead(d[i][k], &vd[i]));
         PetscCall(MatSeqAIJRestoreArrayRead(b[k], &vb));
@@ -435,12 +443,13 @@ static PetscErrorCode TDSEZFusedCombine(Mat A, Mat B, PetscInt n, const Mat D[],
 static PetscErrorCode TDSEZFusedStage(Mat A, Mat M, Mat H, PetscScalar g, PetscInt n, const Mat D[], const PetscScalar c[])
 {
     PetscFunctionBeginUser;
-    Mat a[2], m[2], h[2], d[3][2];
+    Mat a[2], m[2], h[2];
+    std::vector<std::array<Mat, 2>> d(n);
     const PetscInt *cm;
     TDSEZAIJBlocks(A, a, &cm);
     TDSEZAIJBlocks(M, m, &cm);
     TDSEZAIJBlocks(H, h, &cm);
-    for (PetscInt i = 0; i < n; ++i) TDSEZAIJBlocks(D[i], d[i], &cm);
+    for (PetscInt i = 0; i < n; ++i) TDSEZAIJBlocks(D[i], d[i].data(), &cm);
     for (int k = 0; k < 2; ++k) {
         if (!a[k]) continue;
         PetscInt nz;
@@ -451,7 +460,8 @@ static PetscErrorCode TDSEZFusedStage(Mat A, Mat M, Mat H, PetscScalar g, PetscI
             PetscCall(MatRestoreRowIJ(a[k], 0, PETSC_FALSE, PETSC_FALSE, &nr, &ia, &ja, &done));
         }
         PetscScalar *va;
-        const PetscScalar *vm, *vh, *vd[3] = {NULL, NULL, NULL};
+        const PetscScalar *vm, *vh;
+        std::vector<const PetscScalar *> vd(PetscMax(n, (PetscInt)3), NULL);
         PetscCall(MatSeqAIJGetArrayWrite(a[k], &va));
         PetscCall(MatSeqAIJGetArrayRead(m[k], &vm));
         PetscCall(MatSeqAIJGetArrayRead(h[k], &vh));
@@ -460,9 +470,16 @@ static PetscErrorCode TDSEZFusedStage(Mat A, Mat M, Mat H, PetscScalar g, PetscI
         case 0: for (PetscInt j = 0; j < nz; ++j) va[j] = g * vh[j] + vm[j]; break;
         case 1: for (PetscInt j = 0; j < nz; ++j) va[j] = (g * vh[j] + vm[j]) + c[0] * vd[0][j]; break;
         case 2: for (PetscInt j = 0; j < nz; ++j) va[j] = (g * vh[j] + vm[j]) + c[0] * vd[0][j] + c[1] * vd[1][j]; break;
-        default:
+        case 3:
             for (PetscInt j = 0; j < nz; ++j)
                 va[j] = (g * vh[j] + vm[j]) + c[0] * vd[0][j] + c[1] * vd[1][j] + c[2] * vd[2][j];
+            break;
+        default:                                // FieldTerms: same left-to-right sum
+            for (PetscInt j = 0; j < nz; ++j) {
+                PetscScalar v = g * vh[j] + vm[j];
+                for (PetscInt i = 0; i < n; ++i) v += c[i] * vd[i][j];
+                va[j] = v;
+            }
         }
         for (PetscInt i = 0; i < n; ++i) PetscCall(MatSeqAIJRestoreArrayRead(d[i][k], &vd[i]));
         PetscCall(MatSeqAIJRestoreArrayRead(h[k], &vh));
@@ -504,25 +521,25 @@ PetscErrorCode TDSEZPropagator::UpdateStageBase(PetscReal h)
 /// @param[in]     h    Step length of this exponential.
 /// @param[in]     E    Field components used for H_E.
 /// @param[in,out] psi  State vector.
-PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], Vec psi, int slot)
+PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const std::vector<PetscScalar> &E, Vec psi, int slot)
 {
     PetscFunctionBeginUser;
     const PetscReal   s3   = PetscSqrtReal(3.0);
     const PetscScalar g[2] = {h * (-s3 + 3.0 * PETSC_i) / 12.0,
                               h * ( s3 + 3.0 * PETSC_i) / 12.0};
-    const Mat       D[3]  = {manager_.Dx(), manager_.Dy(), manager_.Dz()};
-    const PetscBool on[3] = {(PetscBool)TDSEZParser::Coupled(0), (PetscBool)TDSEZParser::Coupled(1),
-                             (PetscBool)TDSEZParser::Coupled(2)};   // axes coupled to the field
+    const std::vector<Mat> &D = terms_;     // coupled dipoles, then FieldTerm matrices; E[i] their coefficients
+    const size_t nt = D.size();
     Vec rhs = work_[0], Ax = work_[1];
 
-    // A_k = B_k + g_k E.D for both stages.
+    // A_k = B_k + g_k sum_i E_i T_i for both stages.
     PetscCall(PetscLogEventBegin(TDSEZProfile::Get().eventStageUpdate, 0, 0, 0, 0));
-    Mat      Dn[3];
+    std::vector<Mat> Dn(nt);
+    std::vector<PetscScalar> c(nt);
     PetscInt n = 0;
-    for (int a = 0; a < 3; ++a) if (on[a] && D[a] && E[a] != 0.0) Dn[n++] = D[a];
+    for (size_t a = 0; a < nt; ++a) if (E[a] != 0.0) Dn[n++] = D[a];
     if (leanStage_ < 0) {                   // -tdsez_mat_free: no cached B_k if H, M, D share the structure
         bool same = TDSEZMatrixFree();
-        for (int a = 0; a < 3 && same; ++a) if (D[a]) PetscCall(TDSEZSameStructure(Astage_[0], D[a], &same));
+        for (size_t a = 0; a < nt && same; ++a) PetscCall(TDSEZSameStructure(Astage_[0], D[a], &same));
         if (same) PetscCall(TDSEZSameStructure(Astage_[0], manager_.M(), &same));
         if (same) PetscCall(TDSEZSameStructure(Astage_[0], manager_.H(), &same));
         if (same) PetscCall(TDSEZSameStructure(Astage_[0], Astage_[1], &same));
@@ -530,15 +547,15 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
     }
     if (leanStage_) {
         for (int k = 0; k < 2; ++k) {
-            PetscScalar c[3];
-            for (PetscInt i = 0, a = 0; a < 3; ++a) if (on[a] && D[a] && E[a] != 0.0) c[i++] = g[k] * E[a];
-            PetscCall(TDSEZFusedStage(Astage_[k], manager_.M(), manager_.H(), g[k], n, Dn, c));
+            PetscInt i = 0;
+            for (size_t a = 0; a < nt; ++a) if (E[a] != 0.0) c[i++] = g[k] * E[a];
+            PetscCall(TDSEZFusedStage(Astage_[k], manager_.M(), manager_.H(), g[k], n, Dn.data(), c.data()));
         }
     } else {
     PetscCall(UpdateStageBase(h));
     if (fusedUpdate_ < 0) {                 // once: every matrix in the sum has the stage structure
         bool same = true;
-        for (int a = 0; a < 3 && same; ++a) if (D[a]) PetscCall(TDSEZSameStructure(Astage_[0], D[a], &same));
+        for (size_t a = 0; a < nt && same; ++a) PetscCall(TDSEZSameStructure(Astage_[0], D[a], &same));
         for (int k = 0; k < 2 && same; ++k) {
             PetscCall(TDSEZSameStructure(Astage_[0], Base_[k], &same));
             if (same) PetscCall(TDSEZSameStructure(Astage_[0], Astage_[k], &same));
@@ -547,14 +564,14 @@ PetscErrorCode TDSEZPropagator::Pade22Step(PetscReal h, const PetscScalar E[3], 
     }
     for (int k = 0; k < 2; ++k) {
         if (fusedUpdate_) {
-            PetscScalar c[3];
-            for (PetscInt i = 0, a = 0; a < 3; ++a) if (on[a] && D[a] && E[a] != 0.0) c[i++] = g[k] * E[a];
-            PetscCall(TDSEZFusedCombine(Astage_[k], Base_[k], n, Dn, c));
+            PetscInt i = 0;
+            for (size_t a = 0; a < nt; ++a) if (E[a] != 0.0) c[i++] = g[k] * E[a];
+            PetscCall(TDSEZFusedCombine(Astage_[k], Base_[k], n, Dn.data(), c.data()));
             continue;
         }
         PetscCall(MatCopy(Base_[k], Astage_[k], SAME_NONZERO_PATTERN));
-        for (int a = 0; a < 3; ++a)
-            if (on[a] && D[a] && E[a] != 0.0)
+        for (size_t a = 0; a < nt; ++a)
+            if (E[a] != 0.0)
                 PetscCall(MatAXPY(Astage_[k], g[k] * E[a], D[a], SAME_NONZERO_PATTERN));
     }
     }
@@ -614,8 +631,8 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
     const PetscReal dt   = TDSEZParser::TimeStep;
     const PetscReal endT = TDSEZParser::FinalTime;
     const bool      m4   = (TDSEZParser::Propagator == "magnus4");
-    const PetscBool on[3] = {(PetscBool)TDSEZParser::Coupled(0), (PetscBool)TDSEZParser::Coupled(1),
-                             (PetscBool)TDSEZParser::Coupled(2)};   // axes coupled to the field
+    terms_ = manager_.TermMatrices();   // coupled dipoles, then FieldTerm matrices
+    const size_t nt = terms_.size();
     Vec psi = tdse_.initialPsi;
 
     PetscErrorCode (*monitor)(TS, PetscInt, PetscReal, Vec, void *) = NULL;
@@ -626,9 +643,9 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         case 3: monitor = TDSEZMonitorHDF5_3D; break;
         default: SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Unsupported dimension");
     }
-    auto field = [&](PetscReal t, PetscScalar E[3]) {
-        // field term of H, s E(t) (s = -Charge), on the coupled axes
-        for (int a = 0; a < 3; ++a) E[a] = on[a] ? TDSEZParser::Coupling(a, t) : 0.0;
+    auto field = [&](PetscReal t, std::vector<PetscScalar> &E) {
+        // coefficients of the field terms in H: s E_a(t), then s f_k(t) (s = -Charge)
+        manager_.TermCoefficients(t, E);
     };
 
     // Stage matrices share the Crank-Nicolson Jacobian sparsity (that of H).
@@ -642,7 +659,7 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         const PetscReal   h0 = m4 ? 0.5 * PetscMin(dt, endT) : PetscMin(dt, endT);
         const PetscReal   s3 = PetscSqrtReal(3.0);
         const PetscScalar g[2] = {h0 * (-s3 + 3.0 * PETSC_i) / 12.0, h0 * (s3 + 3.0 * PETSC_i) / 12.0};
-        PetscScalar E0[3];
+        std::vector<PetscScalar> E0;
         field(0.0, E0);
         const char *prefix[2] = {"pade_stage1_", "pade_stage2_"};
         for (int k = 0; k < 2; ++k) {
@@ -670,20 +687,19 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
     PetscReal t = 0.0;
     PetscInt  step = 0;
     PetscCall(monitor(NULL, step, t, psi, &manager_));
+    std::vector<PetscScalar> Em, E1, E2, Ea(nt), Eb(nt);
     while (step < nSteps) {
         const PetscReal t1 = (step + 1 == nSteps) ? endT : (step + 1) * dt;
         PetscReal h = t1 - step * dt;
         if (PetscAbsReal(h - dt) <= 1e-12 * dt) h = dt;   // keep the cached stage matrices
         t = step * dt;
         if (!m4) {
-            PetscScalar Em[3];
             field(t + 0.5 * h, Em);
             PetscCall(Pade22Step(h, Em, psi));
         } else {
-            PetscScalar E1[3], E2[3], Ea[3], Eb[3];
             field(t + c1 * h, E1);
             field(t + c2 * h, E2);
-            for (int a = 0; a < 3; ++a) {
+            for (size_t a = 0; a < nt; ++a) {
                 Ea[a] = 2.0 * (a2 * E1[a] + a1 * E2[a]);   // applied first
                 Eb[a] = 2.0 * (a1 * E1[a] + a2 * E2[a]);
             }

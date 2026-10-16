@@ -3,6 +3,7 @@
 
 #include <petiga.h>
 #include <petscmat.h>
+#include <vector>
 
 // ============================================================================
 //  TDSEZAssembler  — builds the linear operators of the TDSE Hamiltonian
@@ -48,6 +49,7 @@ class TDSEZAssembler
             if (K)      MatDestroy(&K);
             if (V)      MatDestroy(&V);
             if (Lz)     MatDestroy(&Lz);
+            for (Mat &g : G) if (g) MatDestroy(&g);
         }
 
 
@@ -67,6 +69,7 @@ class TDSEZAssembler
         Mat V = PETSC_NULLPTR;   // Potential energy matrix
         /// Angular momentum matrix Lz.
         Mat Lz = PETSC_NULLPTR;  // Angular momentum matrix
+        std::vector<Mat> G;      // FieldTerm matrices <B_i| w_k |B_j>
 };
 
 
