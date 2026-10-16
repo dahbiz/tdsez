@@ -135,6 +135,49 @@ along :math:`z`:
    NBoundStates = 6
    NBoundStatesSave = 1
 
+Example: dichotomy of a 1D soft-core atom
+-----------------------------------------
+
+``examples/kh/kh_soft_core_1d.py`` scans the quiver amplitude of a CW field
+:math:`E_0\sin t` (:math:`\omega = 1`, :math:`\alpha_0 = E_0`) from 0 to 20 in
+steps of 0.25 for :math:`V(x) = -1/\sqrt{x^2 + a^2}`, :math:`a = 1.44`
+(81 runs of ``Mode = kh``, 14 s on four cores):
+
+.. code-block:: bash
+
+   python examples/kh/kh_soft_core_1d.py --binary build/tdsez.x --out kh_out
+
+As :math:`\alpha_0` grows, the averaged potential develops two minima near
+:math:`x = \pm\alpha_0` (where the carrier spends most of each cycle) and
+becomes shallower; the bound states follow it and split into two lobes
+(dichotomy), and the ground and first excited states become a near-degenerate
+pair (:math:`E_0 = -0.14058`, :math:`E_1 = -0.13998` at :math:`\alpha_0 = 20`).
+
+.. figure:: figures/KH-Frame-potential.png
+   :width: 85%
+
+   :math:`V_{\text{KH}}(x)` for :math:`\alpha_0 = 0, 2, 5, 10, 20`, evaluated
+   from the quiver written by TDSE-Z (``kh_alpha``, ``kh_weights``).
+
+.. figure:: figures/KH-Frame-states.png
+   :width: 100%
+
+   Ground and first excited KH states (shaded) with :math:`V_{\text{KH}}`
+   (dashed, right axis); dotted lines mark :math:`x = \pm\alpha_0`.
+
+.. figure:: figures/KH-Frame-density_map.png
+   :width: 85%
+
+   Ground-state density versus :math:`x` and :math:`\alpha_0`: one peak below
+   :math:`\alpha_0 \approx 7`, two lobes that follow :math:`x \approx
+   \pm\alpha_0` beyond.
+
+.. figure:: figures/KH-Frame-energies.png
+   :width: 85%
+
+   The six lowest KH energies versus :math:`\alpha_0`; the ground state rises
+   from :math:`-0.492` (bare atom) and merges with the first excited state.
+
 Validation
 ----------
 
