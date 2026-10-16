@@ -307,9 +307,9 @@ def test_postprocessor_harmonic_oscillator_dipoles():
           r.stdout.decode()[-800:] + r.stderr.decode()[-800:])
     bindir = os.path.dirname(binary)
     for name, args in (
-        ("tdmprocessor", []),
-        ("tdmselect", ["-i", "0", "-Ethr", "0.2"]),
-        ("drecprocessor", ["-i", "0", "-Ethr", "0.2"]),
+        ("dipoles.x", []),
+        ("dipole_spectrum.x", ["-i", "0", "-Ethr", "0.2"]),
+        ("recombination.x", ["-i", "0", "-Ethr", "0.2"]),
     ):
         proc = subprocess.run([os.path.join(bindir, name), stem, *args],
                               cwd=REPO, capture_output=True)
@@ -323,14 +323,14 @@ def test_postprocessor_harmonic_oscillator_dipoles():
           abs(abs(dipoles[0, 1]) - np.sqrt(2.5)) < 0.02, str(dipoles))
     _step("oscillator forbidden ground-to-second dipole vanishes",
           abs(dipoles[0, 2]) < 0.02, str(dipoles))
-    selected = os.path.join(REPO, "static", f"{zkit.run_name(stem)}_dij_i0.csv")
+    selected = os.path.join(REPO, "static", f"{zkit.run_name(stem)}_dij_Dx_i0.csv")
     with open(selected, newline="") as f:
         rows = list(csv.DictReader(f))
     first = next(row for row in rows if int(row["j"]) == 1)
-    _step("tdmselect agrees with full TDM",
+    _step("dipole_spectrum.x agrees with full TDM",
           abs(float(first["abs_d2"]) - abs(dipoles[0, 1]) ** 2) < 1e-5,
           str(first))
-    resolved = os.path.join(REPO, "static", f"{zkit.run_name(stem)}_drec.csv")
+    resolved = os.path.join(REPO, "static", f"{zkit.run_name(stem)}_drec_Dx.csv")
     with open(resolved, newline="") as f:
         rows = list(csv.DictReader(f))
     first = next(row for row in rows if int(row["j"]) == 1)

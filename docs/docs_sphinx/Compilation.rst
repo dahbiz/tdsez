@@ -101,12 +101,13 @@ All executables are written to the build directory.
      - Description
    * - ``tdsez``
      - Solver executable ``tdsez.x``.
-   * - ``tdmprocessor``
-     - Transition dipole matrix between all saved eigenstates.
-   * - ``tdmselect``
-     - Dipole elements from one bra state, written as CSV.
-   * - ``drecprocessor``
-     - Recombination dipole :math:`d_{\mathrm{rec}}(E)` from neighbouring box
+   * - ``dipoles``
+     - ``dipoles.x``: transition-dipole matrices between all saved eigenstates
+       (:doc:`Post-Processing`).
+   * - ``dipole_spectrum``
+     - ``dipole_spectrum.x``: dipoles from one state, with the density of states (CSV).
+   * - ``recombination``
+     - ``recombination.x``: recombination dipole :math:`d_{\mathrm{rec}}(E)` from neighbouring box
        eigenstates.
    * - ``unit-test``
      - Builds and runs the serial parser-validation test.

@@ -73,8 +73,8 @@ Modules
 Free functions complete the pipeline: ``TDSEZSetupMultigrid``
 (``src/multigrid.cpp``, ``Preconditioner = mg``) and the diagnostics in
 ``src/diagnostics.cpp`` (transition dipole matrix, length/velocity check,
-operator export). The post-processors ``src/tdmprocessor.cpp``,
-``src/tdmselect.cpp`` and ``src/drecprocessor.cpp`` are separate executables.
+operator export). The post-processors ``src/dipoles.cpp``,
+``src/dipole_spectrum.cpp`` and ``src/recombination.cpp`` are separate executables.
 
 Ownership rules
 ---------------

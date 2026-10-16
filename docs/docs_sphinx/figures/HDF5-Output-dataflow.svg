@@ -162,8 +162,8 @@
 <g id="node13" class="node">
 <title>post</title>
 <path fill="#e8f5e9" stroke="#3b8a4a" d="M514,-349C514,-349 411.75,-349 411.75,-349 405.75,-349 399.75,-343 399.75,-337 399.75,-337 399.75,-325 399.75,-325 399.75,-319 405.75,-313 411.75,-313 411.75,-313 514,-313 514,-313 520,-313 526,-319 526,-325 526,-325 526,-337 526,-337 526,-343 520,-349 514,-349"/>
-<text xml:space="preserve" text-anchor="middle" x="462.88" y="-332.75" font-family="Helvetica,sans-Serif" font-size="10.00">tdmprocessor, tdmselect,</text>
-<text xml:space="preserve" text-anchor="middle" x="462.88" y="-321.5" font-family="Helvetica,sans-Serif" font-size="10.00">drecprocessor</text>
+<text xml:space="preserve" text-anchor="middle" x="462.88" y="-332.75" font-family="Helvetica,sans-Serif" font-size="10.00">dipoles.x, dipole_spectrum.x,</text>
+<text xml:space="preserve" text-anchor="middle" x="462.88" y="-321.5" font-family="Helvetica,sans-Serif" font-size="10.00">recombination.x</text>
 </g>
 <!-- f_eig&#45;&gt;post -->
 <g id="edge12" class="edge">

@@ -133,7 +133,7 @@ def test_output_file_names():
 
 
 def test_post_processors_read_former_names(tmp_path):
-    """tdmprocessor reads a run stored under the names of earlier versions."""
+    """dipoles.x reads a run stored under the names of earlier versions."""
     import os
     import shutil
     import subprocess
@@ -148,9 +148,9 @@ def test_post_processors_read_former_names(tmp_path):
     shutil.copy(os.path.join(REPO, "static", f"{name}_eigen.h5"), old / f"EigenData_{name}.inp.h5")
     shutil.copy(os.path.join(REPO, "static", f"{name}_Dx.bin"), old / f"Dx_{name}.inp.bin")
     shutil.copy(os.path.join(REPO, "static", f"{name}_Dx.bin.info"), old / f"Dx_{name}.inp.bin.info")
-    tool = os.path.join(os.path.dirname(zkit.find_binary()), "tdmprocessor")
+    tool = os.path.join(os.path.dirname(zkit.find_binary()), "dipoles.x")
     p = subprocess.run([tool, f"{name}.inp"], cwd=tmp_path, capture_output=True)
-    _step("tdmprocessor reads EigenData_*.inp.h5 and Dx_*.inp.bin", p.returncode == 0,
+    _step("dipoles.x reads EigenData_*.inp.h5 and Dx_*.inp.bin", p.returncode == 0,
           p.stdout.decode()[-500:] + p.stderr.decode()[-500:])
     _step("and writes static/<name>_tdm_Dx.npy", (old / f"{name}_tdm_Dx.npy").exists())
     _step("zkit reads the former eigen file", zkit.Run(tmp_path, f"{name}.inp").spectrum.values.size == 3)

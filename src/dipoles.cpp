@@ -1,5 +1,5 @@
 // ============================================================================
-//  tdmprocessor.cpp  —  standalone post-processor
+//  dipoles.cpp  —  standalone post-processor
 // ----------------------------------------------------------------------------
 //  Reads every saved assembled dipole operator (Dx, Dy, Dz; PETSc binary,
 //  written by the SaveDipoleMatrix / -save_dipole path) and the eigenstates from the static
@@ -16,19 +16,19 @@
 //  with <name> the input file name without extension (tdsez_paths.hpp).
 //
 //  Build (separately, against the same PETSc stack):
-//    mpicxx tdmprocessor.cpp -I$PETSC_DIR/include -L$PETSC_DIR/lib
-//          -lpetsc -o tdmprocessor
+//    mpicxx dipoles.cpp -I$PETSC_DIR/include -L$PETSC_DIR/lib
+//          -lpetsc -o dipoles.x
 //
 //  Run:
-//    ./tdmprocessor <input>
+//    ./dipoles.x <input>
 //  e.g. for input file foo.inp:
-//    ./tdmprocessor foo.inp        (or ./tdmprocessor foo)
+//    ./dipoles.x foo.inp        (or ./dipoles.x foo)
 //  (it auto-detects static/foo_Dx|Dy|Dz.bin and reads static/foo_eigen.h5;
 //   files of earlier runs, Dx_foo.inp.bin and foo_eigen.h5, are read too)
 // ============================================================================
 
 /**
- * @file tdmprocessor.cpp
+ * @file dipoles.cpp
  * @brief Standalone post-processor that computes the transition-dipole matrix
  *        d_ij = <psi_i | D_a | psi_j> from every saved Cartesian operator and eigenstates,
  *        streaming the N×N result to a .npy file block-by-block.
@@ -240,7 +240,7 @@ static PetscErrorCode loadSpectrum(const std::string& h5path,
     PetscCall(PetscObjectSetName((PetscObject)spec, "spectrum"));
     PetscErrorCode perr = VecLoad(spec, viewer);
     PetscCheck(perr == PETSC_SUCCESS, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE,
-               "tdmprocessor: 'spectrum' dataset missing in %s", h5path.c_str());
+               "dipoles: 'spectrum' dataset missing in %s", h5path.c_str());
     PetscCall(VecGetSize(spec, &nStates));
     const PetscScalar* arr;
     PetscCall(VecGetArrayRead(spec, &arr));
@@ -336,7 +336,7 @@ static PetscErrorCode processAxis(const std::string& stem, char axis,
     PetscInt nrows, ncols;
     PetscCall(MatGetSize(Dx, &nrows, &ncols));
     PetscCheck(nrows == ncols, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ,
-               "tdmprocessor: %s is not square (%" PetscInt_FMT " x %" PetscInt_FMT ")",
+               "dipoles: %s is not square (%" PetscInt_FMT " x %" PetscInt_FMT ")",
                dipole.c_str(), nrows, ncols);
 
     // --- 2. Get Nstates + energies (no eigenstate vectors held in RAM) ---
@@ -344,7 +344,7 @@ static PetscErrorCode processAxis(const std::string& stem, char axis,
     PetscInt N = 0;
     PetscCall(loadSpectrum(eigPath, N, energies));
     PetscCheck(N > 0, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE,
-               "tdmprocessor: no eigenstates found in %s", eigPath.c_str());
+               "dipoles: no eigenstates found in %s", eigPath.c_str());
 
     // --- 3. Compute d_ij = <psi_i | Dx | psi_j>  (streaming, block by block) ---
     // At most B row-vectors + one column vector + Dx reside in memory at once,
@@ -360,7 +360,7 @@ static PetscErrorCode processAxis(const std::string& stem, char axis,
     std::filesystem::create_directories("static", ec);
     size_t hdrLen = createNpy(npyD, "<c16", shape2);
     PetscCheck(hdrLen > 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: cannot create %s", npyD.c_str());
+               "dipoles: cannot create %s", npyD.c_str());
 
     // Open the eigenstate HDF5 viewer ONCE and reuse it for every state load
     // (reopening per state would be catastrophic at N=7000).
@@ -449,16 +449,16 @@ static PetscErrorCode processAxis(const std::string& stem, char axis,
                 if (!writeNpyRect(npyD, hdrLen, N, i0, nblk, i0, nblk,
                                   blockRows.data(), sizeof(PetscScalar)))
                     PetscCheck(false, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
-                               "tdmprocessor: write failed for %s", npyD.c_str());
+                               "dipoles: write failed for %s", npyD.c_str());
             } else {
                 if (!writeNpyRect(npyD, hdrLen, N, i0, nblk, j0, mblk,
                                   blockRows.data(), sizeof(PetscScalar)))
                     PetscCheck(false, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
-                               "tdmprocessor: write failed for %s", npyD.c_str());
+                               "dipoles: write failed for %s", npyD.c_str());
                 if (!writeNpyRect(npyD, hdrLen, N, j0, mblk, i0, j0 - i0,
                                   symRows.data(), sizeof(PetscScalar)))
                     PetscCheck(false, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
-                               "tdmprocessor: write failed for %s", npyD.c_str());
+                               "dipoles: write failed for %s", npyD.c_str());
             }
             if (rank == 0)
                 PetscCall(PetscPrintf(PETSC_COMM_SELF,
@@ -559,10 +559,10 @@ int main(int argc, char **argv)
     PetscMPIInt commSize = 0;
     PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &commSize));
     PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
-               "tdmprocessor: sequential PETSc files require a single MPI rank");
+               "dipoles: sequential PETSc files require a single MPI rank");
     if (argc < 2) {
         PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-            "Usage: %s <input-stem>\n  e.g. %s foo.prm\n", argv[0], argv[0]));
+            "Usage: %s <input> [-gpu]\n  e.g. %s h2p.inp   (or %s h2p), in the run directory\n", argv[0], argv[0], argv[0]));
         PetscCall(PetscFinalize());
         return 1;
     }
@@ -576,7 +576,7 @@ int main(int argc, char **argv)
     const bool gpu = (gpuB == PETSC_TRUE);
     if (gpu) {
         PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
-                   "tdmprocessor: -gpu uses single-GPU (SEQAIJCUSPARSE); run with np=1");
+                   "dipoles: -gpu uses single-GPU (SEQAIJCUSPARSE); run with np=1");
     }
     PetscMPIInt rank;
     PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
@@ -591,7 +591,7 @@ int main(int argc, char **argv)
         componentFiles.push_back(TDSEZPaths::Static(stem, "tdm_" + D + ".npy"));
     }
     PetscCheck(found, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: no saved dipole operator found for %s (expected static/<name>_Dx.bin, _Dy.bin or _Dz.bin)",
+               "dipoles: no saved dipole operator found for %s (expected static/<name>_Dx.bin, _Dy.bin or _Dz.bin)",
                stem.c_str());
 
     // The total transition-dipole magnitude is an axis-independent scalar:
@@ -604,16 +604,16 @@ int main(int argc, char **argv)
     const std::vector<PetscInt64> magnitudeShape = {(PetscInt64)N, (PetscInt64)N};
     const size_t magnitudeHeader = createNpy(magnitudePath, "<f8", magnitudeShape);
     PetscCheck(magnitudeHeader > 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: cannot create %s", magnitudePath.c_str());
+               "dipoles: cannot create %s", magnitudePath.c_str());
     std::vector<std::ifstream> inputs(componentFiles.size());
     for (size_t a = 0; a < componentFiles.size(); ++a) {
         size_t headerLength = 0;
         PetscCheck(openNpyComplex(componentFiles[a], inputs[a], headerLength), PETSC_COMM_SELF,
-                   PETSC_ERR_FILE_READ, "tdmprocessor: cannot read %s", componentFiles[a].c_str());
+                   PETSC_ERR_FILE_READ, "dipoles: cannot read %s", componentFiles[a].c_str());
     }
     std::fstream output(magnitudePath, std::ios::in | std::ios::out | std::ios::binary);
     PetscCheck((bool)output, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: cannot open %s", magnitudePath.c_str());
+               "dipoles: cannot open %s", magnitudePath.c_str());
     output.seekp((std::streampos)magnitudeHeader, std::ios::beg);
     const size_t chunkSize = 8192;
     std::vector<std::vector<PetscScalar>> values(componentFiles.size(),
@@ -626,14 +626,14 @@ int main(int argc, char **argv)
         for (size_t a = 0; a < inputs.size(); ++a) {
             inputs[a].read(reinterpret_cast<char*>(values[a].data()), count * sizeof(PetscScalar));
             PetscCheck((bool)inputs[a], PETSC_COMM_SELF, PETSC_ERR_FILE_READ,
-                       "tdmprocessor: unexpected end of %s", componentFiles[a].c_str());
+                       "dipoles: unexpected end of %s", componentFiles[a].c_str());
             for (size_t k = 0; k < count; ++k)
                 magnitude[k] += PetscRealPart(values[a][k] * PetscConj(values[a][k]));
         }
         for (size_t k = 0; k < count; ++k) magnitude[k] = PetscSqrtReal(magnitude[k]);
         output.write(reinterpret_cast<const char*>(magnitude.data()), count * sizeof(PetscReal));
         PetscCheck((bool)output, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
-                   "tdmprocessor: cannot write %s", magnitudePath.c_str());
+                   "dipoles: cannot write %s", magnitudePath.c_str());
     }
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "  Wrote %s\n", magnitudePath.c_str()));
 
@@ -643,10 +643,10 @@ int main(int argc, char **argv)
     const std::string frequencyPath = TDSEZPaths::Static(stem, "frequencies.npy");
     const size_t frequencyHeader = createNpy(frequencyPath, "<f8", magnitudeShape);
     PetscCheck(frequencyHeader > 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: cannot create %s", frequencyPath.c_str());
+               "dipoles: cannot create %s", frequencyPath.c_str());
     std::fstream frequenciesOut(frequencyPath, std::ios::in | std::ios::out | std::ios::binary);
     PetscCheck((bool)frequenciesOut, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: cannot open %s", frequencyPath.c_str());
+               "dipoles: cannot open %s", frequencyPath.c_str());
     frequenciesOut.seekp((std::streampos)frequencyHeader, std::ios::beg);
     std::vector<PetscReal> frequencyRow((size_t)N);
     for (PetscInt i = 0; i < N; ++i) {
@@ -654,7 +654,7 @@ int main(int argc, char **argv)
         frequenciesOut.write(reinterpret_cast<const char*>(frequencyRow.data()),
                              (size_t)N * sizeof(PetscReal));
         PetscCheck((bool)frequenciesOut, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
-                   "tdmprocessor: cannot write %s", frequencyPath.c_str());
+                   "dipoles: cannot write %s", frequencyPath.c_str());
     }
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "  Wrote %s\n", frequencyPath.c_str()));
 
@@ -665,7 +665,7 @@ int main(int argc, char **argv)
     const std::string manifestPath = TDSEZPaths::Static(stem, "fewlevel.json");
     std::ofstream manifest(manifestPath);
     PetscCheck((bool)manifest, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: cannot create %s", manifestPath.c_str());
+               "dipoles: cannot create %s", manifestPath.c_str());
     manifest << "{\n"
              << "  \"schema\": \"tdsez-few-level-v1\",\n"
              << "  \"basis\": \"TDSE-Z stationary eigenstates psi_i\",\n"
@@ -683,7 +683,7 @@ int main(int argc, char **argv)
     }
     manifest << "]\n}\n";
     PetscCheck((bool)manifest, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE,
-               "tdmprocessor: cannot write %s", manifestPath.c_str());
+               "dipoles: cannot write %s", manifestPath.c_str());
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "  Wrote %s\n", manifestPath.c_str()));
 
     PetscCall(PetscFinalize());

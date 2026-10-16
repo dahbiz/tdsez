@@ -1,5 +1,5 @@
 // ============================================================================
-//  compute_dij_select.cpp  --  selective transition-dipole vector with DOS
+//  dipole_spectrum.cpp  --  selective transition-dipole vector with DOS
 // ----------------------------------------------------------------------------
 //  Computes, for a CHOSEN bra state psi_i and a user-supplied energy
 //  threshold E_thr, the dipole matrix elements and density of states (DOS)
@@ -7,7 +7,7 @@
 // ============================================================================
 
 /**
- * @file tdmselect.cpp
+ * @file dipole_spectrum.cpp
  * @brief Selective transition-dipole vector computation with density-of-states
  *        weighting for a chosen bra state and energy threshold.
  */
@@ -20,6 +20,7 @@
 #include <cstring>
 #include <cstdint>
 #include <string>
+#include <filesystem>
 #include <vector>
 #include <cmath>
 #include <tuple>
@@ -115,11 +116,11 @@ int main(int argc, char **argv)
     PetscMPIInt commSize = 0;
     PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &commSize));
     PetscCheck(commSize == 1, PETSC_COMM_WORLD, PETSC_ERR_ARG_INCOMP,
-               "tdmselect: sequential dipole files require a single MPI rank");
+               "dipole_spectrum: sequential dipole files require a single MPI rank");
 
     if (argc < 2) {
         PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-            "Usage: %s <stem> -i <state_i> -Ethr <E> [-w0 <omega0>] [-gpu]\n",
+            "Usage: %s <input> -i <state_i> -Ethr <E> [-axis x|y|z] [-w0 <omega0>] [-gpu]\n",
             argv[0]));
         PetscCall(PetscFinalize());
         return 1;
@@ -135,8 +136,16 @@ int main(int argc, char **argv)
     PetscCall(PetscOptionsGetReal(NULL, NULL, "-w0",   &w0,   NULL));
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-gpu",  &gpuB, NULL));
     bool gpu = (gpuB == PETSC_TRUE);
+    char axisOpt[8] = "x";
+    PetscCall(PetscOptionsGetString(NULL, NULL, "-axis", axisOpt, sizeof(axisOpt), NULL));
+    const std::string axis(axisOpt);
+    PetscCheck(axis == "x" || axis == "y" || axis == "z", PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE,
+               "dipole_spectrum: -axis must be x, y or z");
+    const std::string D = "D" + axis;   // dipole operator of this axis
 
-    std::string dxPath  = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "Dx.bin"), "static", "Dx_", stem, ".bin");
+    std::string dxPath  = TDSEZPaths::Existing(TDSEZPaths::Static(stem, D + ".bin"), "static", D + "_", stem, ".bin");
+    PetscCheck(std::filesystem::exists(dxPath), PETSC_COMM_WORLD, PETSC_ERR_FILE_OPEN,
+               "dipole_spectrum: %s not found; save it with SaveDipoleAxes", dxPath.c_str());
     std::string eigPath = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "eigen.h5"), "static", "EigenData_", stem, ".h5");
 
     Mat Dx;
@@ -211,7 +220,7 @@ int main(int argc, char **argv)
     PetscCall(VecDestroy(&tmp));
     PetscCall(PetscViewerDestroy(&ev));
 
-    std::string csv = TDSEZPaths::Static(stem, "dij_i" + std::to_string(bra) + ".csv");
+    std::string csv = TDSEZPaths::Static(stem, "dij_" + D + "_i" + std::to_string(bra) + ".csv");
     std::ofstream out(csv);
     
     // Bind output stream to maximum precision representation
@@ -237,13 +246,13 @@ int main(int argc, char **argv)
     out.close();
 
     PetscCall(PetscPrintf(PETSC_COMM_WORLD,
-        "\n=== compute_dij_select with High-Precision DOS ===\n"
-        "stem        : %s\n"
+        "\n=== dipole_spectrum with High-Precision DOS ===\n"
+        "input, axis : %s, %s\n"
         "bra psi_%" PetscInt_FMT "  E_i = %.15f a.u.\n"
         "Ethr        : %.15f  (kept %" PetscInt_FMT " / %" PetscInt_FMT " states)\n"
         "w0          : %.15f\n"
         "csv         : %s\n",
-        stem.c_str(), bra, (double)Ei, (double)Ethr, kept, nStates,
+        stem.c_str(), axis.c_str(), bra, (double)Ei, (double)Ethr, kept, nStates,
         (double)w0, csv.c_str()));
 
     PetscCall(MatDestroy(&Dx));

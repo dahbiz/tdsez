@@ -561,29 +561,32 @@ add_custom_target(unit-test
     USES_TERMINAL
 )
 
-# --- tdmprocessor: full transition-dipole matrix post-processor ------
+# --- dipoles.x: full transition-dipole matrices d_ij (every saved axis) --
 # Loads every saved Cartesian dipole operator (Dx/Dy/Dz, PETSc binary) and the
 # eigenstates from the static HDF5, computing each d_ij = <psi_i|D_a|psi_j> block-by-block.
 # Standalone; only needs PETSc.
-tdsez_add_target(tdmprocessor
-    src/tdmprocessor.cpp
+tdsez_add_target(dipoles
+    src/dipoles.cpp
 )
 
-# --- tdmselect: selective d_ij for a single bra state -------
+# --- dipole_spectrum.x: d_ij from one state i, with the density of states --
 # CLI: -i <bra> -Ethr <E> [-w0 <omega0>] [-gpu]. Writes CSV.
 # Standalone; PETSc + HDF5.
-tdsez_add_target(tdmselect
-    src/tdmselect.cpp
+tdsez_add_target(dipole_spectrum
+    src/dipole_spectrum.cpp
     LINK_LIBS hdf5
 )
 
-# --- drecprocessor: exact recombination dipole d_rec(E) --------------------
+# --- recombination.x: recombination dipole d_rec(E) ----------------------
 # Projects onto the outgoing channel using d|psi>/dE (finite-difference over
 # neighbouring box eigenstates). Standalone; PETSc + HDF5.
-tdsez_add_target(drecprocessor
-    src/drecprocessor.cpp
+tdsez_add_target(recombination
+    src/recombination.cpp
     LINK_LIBS hdf5
 )
+foreach(_post dipoles dipole_spectrum recombination)
+    set_target_properties(${_post} PROPERTIES OUTPUT_NAME ${_post}.x)
+endforeach()
 
 # ------------------------------------------------------------------------------
 # Testing (`make test`)
@@ -611,7 +614,7 @@ if(_test_deps_rc EQUAL 0)
                 ${Python3_EXECUTABLE} -m pytest
                 ${CMAKE_CURRENT_SOURCE_DIR}/tests -v -s
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        DEPENDS tdsez tdmprocessor tdmselect drecprocessor unit-test
+        DEPENDS tdsez dipoles dipole_spectrum recombination unit-test
         USES_TERMINAL
         COMMENT "Running TDSEZ test suite (pytest, 5 MPI procs) ..."
     )

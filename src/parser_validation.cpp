@@ -588,12 +588,19 @@ void TDSEZParser::ValidateOrThrow()
 
     // The propagation assembles s dV/dx_d on every axis (acceleration output);
     // an empty expression used to abort inside muParser.
-    if (EnablePropagation) {
-        const std::string *dV[3] = {&PotentialDerivativeX, &PotentialDerivativeY, &PotentialDerivativeZ};
-        for (int d = 0; d < (int)Dimension; ++d)
-            if (dV[d]->find_first_not_of(" \t") == std::string::npos)
+    {
+        std::string *dV[3] = {&PotentialDerivativeX, &PotentialDerivativeY, &PotentialDerivativeZ};
+        mu::Parser *dVp[3] = {&dVPotX, &dVPotY, &dVPotZ};
+        for (int d = 0; d < (int)Dimension; ++d) {
+            if (dV[d]->find_first_not_of(" \t") != std::string::npos) continue;
+            if (EnablePropagation)
                 throw std::runtime_error(std::string("ValidateOrThrow: PotentialDerivative") + (char)std::toupper("xyz"[d]) +
                     " is empty; give dV/d" + "xyz"[d] + " of Potential (0 for a constant potential)");
+            // Without propagation dV/dx_d only enters operators nobody reads
+            // (they are still assembled when dipole matrices are saved).
+            *dV[d] = "0";
+            dVp[d]->SetExpr("0");
+        }
     }
 
 

@@ -1,9 +1,9 @@
 // ============================================================================
-//  resolve_drec.cpp  --  exact recombination dipole d_rec(E)
+//  recombination.x.cpp  --  exact recombination dipole d_rec(E)
 // ----------------------------------------------------------------------------
 
 /**
- * @file drecprocessor.cpp
+ * @file recombination.cpp
  * @brief Computes the exact recombination dipole d_rec(E) for a one-open-channel
  *        scattering problem using a central finite-difference approximation of
  *        d|psi>/dE and a Wronskian-scaled complex combination of the regular
@@ -35,7 +35,7 @@
 //  weight of the irregular component; tune with -g (default 0.5*(dE) => the
 //  standard unit-flux combination).
 //
-//  CLI:  resolve_drec <stem> [-i <bra>] [-Ethr <E>] [-w0 <w>] [-g <g>] [-gpu]
+//  CLI:  recombination.x <input> [-i <bra>] [-Ethr <E>] [-axis x|y|z] [-w0 <w>] [-g <g>] [-gpu]
 // ============================================================================
 
 #include "tdsez_paths.hpp"
@@ -45,6 +45,7 @@
 #include <cstring>
 #include <cstdint>
 #include <string>
+#include <filesystem>
 #include <vector>
 #include <cmath>
 #include <tuple>
@@ -138,7 +139,7 @@ static PetscErrorCode loadState(Mat Dx, const std::string& h5path, PetscInt j, V
  * (with DOS and energy-normalised |d_rec|²) to a CSV.
  *
  * @param argc  Number of CLI arguments.
- * @param argv  CLI argument strings (<stem> [-i <bra>] [-Ethr <E>] [-g <g>] [-gpu]).
+ * @param argv  CLI argument strings (<input> [-i <bra>] [-Ethr <E>] [-axis x|y|z] [-g <g>] [-gpu]).
  * @return 0 on success.
  */
 int main(int argc, char** argv)
@@ -150,7 +151,7 @@ int main(int argc, char** argv)
     MPI_Comm_size(comm, &commSize);
     if (commSize != 1) {
         PetscPrintf(comm,
-                    "drecprocessor: sequential dipole files require a single MPI rank\n");
+                    "recombination: sequential dipole files require a single MPI rank\n");
         PetscFinalize();
         return 2;
     }
@@ -159,9 +160,11 @@ int main(int argc, char** argv)
     PetscInt iBra = 0;
     PetscReal Ethr = -5.0, gfac = 0.5;
     PetscBool gpu = PETSC_FALSE;
+    std::string axis = "x";
     for (int a = 1; a < argc; ++a) {
         std::string s = argv[a];
         if (s == "-i" && a + 1 < argc) iBra = (PetscInt)std::strtol(argv[++a], NULL, 10);
+        else if (s == "-axis" && a + 1 < argc) axis = argv[++a];
         else if (s == "-Ethr" && a + 1 < argc) Ethr = (PetscReal)std::strtod(argv[++a], NULL);
         else if (s == "-w0" && a + 1 < argc) g_W0 = (PetscReal)std::strtod(argv[++a], NULL);
         else if (s == "-g" && a + 1 < argc) gfac = (PetscReal)std::strtod(argv[++a], NULL);
@@ -170,7 +173,20 @@ int main(int argc, char** argv)
     }
 
     std::string HERE = "."; // run from the dir containing static/
-    std::string dxpath = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "Dx.bin"), "static", "Dx_", stem, ".bin");
+    // parsed here, not by PETSc: keep them out of the "Option left" report
+    for (const char *o : {"-i", "-Ethr", "-w0", "-g", "-gpu", "-axis"}) PetscOptionsClearValue(NULL, o);
+    if (axis != "x" && axis != "y" && axis != "z") {
+        PetscPrintf(comm, "recombination: -axis must be x, y or z\n");
+        PetscFinalize();
+        return 2;
+    }
+    const std::string D = "D" + axis;   // dipole operator of this axis
+    std::string dxpath = TDSEZPaths::Existing(TDSEZPaths::Static(stem, D + ".bin"), "static", D + "_", stem, ".bin");
+    if (!std::filesystem::exists(dxpath)) {
+        PetscPrintf(comm, "recombination: %s not found; save it with SaveDipoleAxes\n", dxpath.c_str());
+        PetscFinalize();
+        return 2;
+    }
     std::string h5path = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "eigen.h5"), "static", "EigenData_", stem, ".h5");
 
     if (gpu) {
@@ -199,7 +215,7 @@ int main(int argc, char** argv)
     std::vector<PetscReal> E(N);
     for (PetscInt k = 0; k < N; ++k) E[k] = Eall[ord[k]];
     if (iBra < 0 || iBra >= N) {
-        PetscPrintf(comm, "drecprocessor: -i %lld out of range [0, %lld)\n", (long long)iBra, (long long)N);
+        PetscPrintf(comm, "recombination: -i %lld out of range [0, %lld)\n", (long long)iBra, (long long)N);
         PetscFinalize();
         return 2;
     }
@@ -246,7 +262,8 @@ int main(int argc, char** argv)
     ierr = VecCopy(psi0, psi0_conj); CHKERRQ(ierr);
     ierr = VecConjugate(psi0_conj); CHKERRQ(ierr);
 
-    std::ofstream out(TDSEZPaths::Static(stem, "drec.csv"));
+    std::ofstream out(TDSEZPaths::Static(stem, "drec_" + D + ".csv"));
+    out.precision(17);   // full double precision, as dipole_spectrum.x
     out << "j,E_j,x,Re_d,Im_d,abs_d2,log10_abs_d2,Re_dj,Im_dj,Re_dw,Im_dw,dEhalf,rho\n";
 
     PetscReal gscale = gfac; // weight of irregular component (tuned)
@@ -288,7 +305,7 @@ int main(int argc, char** argv)
     }
     out.close();
 
-    PetscPrintf(comm, "csv         : %s\n", TDSEZPaths::Static(stem, "drec.csv").c_str());
+    PetscPrintf(comm, "csv         : %s\n", TDSEZPaths::Static(stem, "drec_" + D + ".csv").c_str());
 
     ierr = VecDestroy(&psi0); CHKERRQ(ierr);
     ierr = VecDestroy(&psi0_conj); CHKERRQ(ierr);

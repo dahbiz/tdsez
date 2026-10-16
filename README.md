@@ -116,8 +116,8 @@ cmake -S . -B build
 cmake --build build -j
 ```
 
-This produces `build/tdsez.x` and the post-processing tools `tdmprocessor`,
-`tdmselect` and `drecprocessor`.
+This produces `build/tdsez.x` and the post-processing tools `dipoles.x`,
+`dipole_spectrum.x` and `recombination.x`.
 
 ## Running
 

@@ -134,5 +134,5 @@ extension (``h2p.inp`` → ``h2p``).
        (``OutputStrideTS > 0``).
 
 Dataset layouts are listed in :doc:`HDF5-Output`. The post-processors
-``tdmprocessor``, ``tdmselect`` and ``drecprocessor`` read the ``static/``
+``dipoles.x``, ``dipole_spectrum.x`` and ``recombination.x`` read the ``static/``
 files (:doc:`Post-Processing`).
