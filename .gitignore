@@ -59,28 +59,19 @@ cmake_check_build_system.cmake
 *.npy
 
 # ---- Static output directory (generated solver output) ---------------------
-static/TDM_*
-static/EigenData_*
-static/Dx_*
-static/Dy_*
-static/Dz_*
-static/drec_resolved_*
-static/dij_select_*
-static/States_*
-static/EigenEnergies_*
-static/psi_*
+# static/<name>_eigen.h5, _tdm.txt, _Dx.bin, _tdm_Dx.npy, _drec.csv, ... and
+# the names of earlier versions (EigenData_*, TDMInfo_*, Dx_*, ...)
+static/*.h5
 static/*.bin
 static/*.npy
-static/*.h5
-
-# ---- Generated CSV reports -------------------------------------------------
-static/drec_resolved_*.csv
-static/dij_select_*.csv
-static/TDMInfo_*.inp.txt
-
-# ---- Generated .txt reports (TDM, drec output) ----------------------------
-static/TDM_*_*.txt
-static/drec_resolved_*.txt
+static/*.csv
+static/*.json
+static/*.log
+static/*_tdm*.txt
+static/TDM_*
+static/TDMInfo_*
+static/drec_resolved_*
+static/psi_*
 
 # ---- Test output / waveform data ------------------------------------------
 static/waveform_*_data.txt

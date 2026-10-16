@@ -48,7 +48,7 @@ tdsez.cpp (main entry)
 - Velocity-gauge currents: intra-band, inter-band, bound-continuum decomposition
 - Berry phase accumulation for circular polarization
 - Transition dipole matrix computation and length-velocity gauge consistency check
-- t-SURFF photoelectron momentum spectra (`TSurff = 1`, written to `td/surff_<input>.h5`; see the t-SURFF page of the documentation)
+- t-SURFF photoelectron momentum spectra (`TSurff = 1`, written to `td/<name>_surff.h5`; see the t-SURFF page of the documentation)
 
 ---
 
@@ -75,18 +75,20 @@ mpirun -np 4 --bind-to none ./tdsez.x -inp ../inps/harmonic_oscillator_1d.prm
 
 ### 2.3 Output Structure
 
-All output goes into two directories:
+All output goes into two directories; every file starts with the run name
+`<name>`, the input file name without extension (`h2p.inp` → `h2p`):
 
 ```
-td/                  — time-evolution output
-  TimeEvolutionData_<input>.h5   — all time-series observables
-  wfs_<input>.h5                 — wavefunction snapshots
-  ac_<input>.h5                  — autocorrelation function
-  ts_<input>.h5                  — time-stepper internal state
-static/                — eigenproblem output
-  EigenData_<input>.h5           — energy spectrum + eigenstates
-  Dx_<input>.bin, Dy/..., Dz_<input>.bin  — saved dipole operators (if requested)
-  GS_<input>.log                 — degenerate-splitting log (2D, when EnableLzDiag=1)
+td/                         — time-dependent output
+  <name>_observables.h5     — all time-series observables (incl. autocorrelation)
+  <name>_wfs.h5             — wavefunction snapshots
+  <name>_surff.h5           — t-SURFF spectrum (TSurff = 1)
+  <name>_ts.h5              — time-stepper snapshots (OutputStrideTS > 0)
+static/                     — stationary output
+  <name>_eigen.h5           — energy spectrum + eigenstates
+  <name>_tdm.txt            — transition dipoles and oscillator strengths
+  <name>_Dx.bin, _Dy, _Dz   — saved dipole operators (if requested)
+  <name>_gs.log             — degenerate-splitting log (2D, when EnableLzDiag=1)
 ```
 
 ---
@@ -146,7 +148,7 @@ Keys that accept multi-axis values follow a standard convention:
 | `NBoundStates` | int | 1 | Number of bound states to compute. Eigenstates 0..NBoundStates-1 are stored |
 | `TargetEigenvalue` | real | 0.0 | Target eigenvalue for SLEPc EPS solver. States near this energy are prioritized |
 | `UseDirectSolve` / `DirectSolve` | bool | false | Use direct factorization instead of iterative eigensolver |
-| `NBoundStatesSave` / `SaveBoundStates` | bool | false | Whether to save eigenstates to `static/EigenData_*.h5` |
+| `NBoundStatesSave` / `SaveBoundStates` | bool | false | Whether to save eigenstates to `static/<name>_eigen.h5` |
 | `BoundStateFormat` / `StateFormat` / `SaveStateFormat` | string | `"complex"` | Save format: `"complex"` (canonical eigenvectors with a fixed phase) or `"real"` (phase-rotated to real canonical form via `TDSEZMakeStateReal2`) |
 
 ### 4.4 Time Propagation
@@ -236,7 +238,7 @@ OuterElements = 47, 47, 152
 | `SaveDipoleMatrix` | bool | 0 | Save assembled dipole operator Dx to PETSc binary file |
 | `SaveDipoleAxes` | string | "" | Which axes to save: `"x"`, `"xy"`, `"xyz"`, `"all"`, `"none"`. CLI override via `-save_dipole` |
 
-Dipole operators are saved to `static/Dx_<input>.bin` (and Dy, Dz for multi-axis runs). Loadable with `MatLoad` in PETSc.
+Dipole operators are saved to `static/<name>_Dx.bin` (and Dy, Dz for multi-axis runs). Loadable with `MatLoad` in PETSc.
 
 ### 4.11 Initial State
 
@@ -265,7 +267,7 @@ When enabled, degenerate states are re-orthogonalized in the Lz² eigenbasis, as
 
 ### 4.13 t-SURFF Photoelectron Spectra
 
-Computed only with `TSurff = 1`; output in `td/surff_<input>.h5`.
+Computed only with `TSurff = 1`; output in `td/<name>_surff.h5`.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
@@ -302,7 +304,7 @@ CLI flags are processed before PETSc/SLEPc initialization and stripped from argv
 
 ## 6. HDF5 Output Schema
 
-### 6.1 Time Evolution Data (`td/TimeEvolutionData_<input>.h5`)
+### 6.1 Time Evolution Data (`td/<name>_observables.h5`)
 
 Every step is recorded in a ring buffer of size `FLUSH_INTERVAL = 5000` steps and written to HDF5 at multiples of `OutputStrideTS` steps (if >0), but at most once every 2 s of wall time, and in any case every 5000 steps and at the end of the run. The written data are the same for any stride; only how often the file on disk is updated during the run changes.
 
@@ -378,19 +380,19 @@ Row widths: 11 (1D), 11 (2D), 15 (3D)
 
 Row width: 3
 
-### 6.2 Wavefunction Snapshots (`td/wfs_<input>.h5`)
+### 6.2 Wavefunction Snapshots (`td/<name>_wfs.h5`)
 
 HDF5 multi-timestep dataset. Each timestep stores a PETSc vector (complex, distributed). Knot vectors are embedded as attributes at destruction time (rank 0, after the collective viewer is closed).
 
-### 6.3 Autocorrelation (`ac_<input>.h5`)
+### 6.3 Autocorrelation
 
-HDF5 multi-timestep dataset storing ⟨ψ(0)\|ψ(t)⟩. Only written at `OutputStrideAC` steps.
+The `autocorrelation` dataset of `td/<name>_observables.h5` stores ⟨ψ(0)\|ψ(t)⟩ at every step.
 
-### 6.4 t-SURFF Spectra (`td/surff_<input>.h5`)
+### 6.4 t-SURFF Spectra (`td/<name>_surff.h5`)
 
 Only with `TSurff = 1`. Datasets `momenta` (Nk x d), `amplitude` (Re, Im of b(k)), `pes` = |b(k)|^2 = dP/d^dk; on a grid also `k_x`/`k_y`/`k_z` and `pes_grid`; `amplitude_flux` with `SurffInterior = 1`. Attributes: `final_time`, `radius`, `exterior_mass`, `exterior_potential`, `charge`, `A_final`, `stride`, `n_surface_points`, `n_samples`, `interior`.
 
-### 6.5 Eigenstate Data (`static/EigenData_<input>.h5`)
+### 6.5 Eigenstate Data (`static/<name>_eigen.h5`)
 
 **Datasets:**
 - `spectrum` — eigenvalues (real, 1D array, size = NBoundStates)
@@ -414,7 +416,7 @@ Only with `TSurff = 1`. Datasets `momenta` (Nk x d), `amplitude` (Re, Im of b(k)
 
 ### 6.6 Dipole Operator Save
 
-PETSc binary files: `static/Dx_<input>.bin`, `static/Dy_<input>.bin`, `static/Dz_<input>.bin`. Load with:
+PETSc binary files: `static/<name>_Dx.bin`, `static/<name>_Dy.bin`, `static/<name>_Dz.bin`. Load with:
 ```cpp
 MatLoad(dx, "-Dx_input.bin");
 ```

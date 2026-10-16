@@ -1,3 +1,4 @@
+#include "tdsez_paths.hpp"
 #include "tdsez_internal.hpp"
 #include "tdsez_forcecoeffs.hpp"
 #include <algorithm>
@@ -337,7 +338,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             rank = mpi_rank;
 
             // Ensure the output directory `td/` exists. Every HDF5 file written
-            // during propagation (TimeEvolutionData, wfs_*, ts_*)
+            // during propagation (<name>_observables, _wfs, _surff, _ts)
             // is created inside `td/`. The previous code relied on `td/` being
             // pre-existing (left over from a prior run), so a FRESH run in a
             // clean directory crashed at H5Fcreate() -> Status -1 (the WFSViewer
@@ -408,7 +409,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
 
             // Setup the Single Unified TIMEViewer (stride=0 = disabled)
             if (TDSEZParser::OutputStrideTS > 0) {
-                std::string TIMEFILE = "ts_" + std::filesystem::path(core_->inputFile).filename().string() + ".h5";
+                std::string TIMEFILE = TDSEZPaths::TD(core_->inputFile, "ts.h5");
                 if (rank == 0) {
                     std::string absPath = std::filesystem::absolute(TIMEFILE).string();
                     hid_t tf = H5Fcreate(absPath.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
@@ -423,7 +424,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
 
             // Setup the WFSViewer for wavefunction snapshots (inside td/)
             std::string wfsBase = std::filesystem::path(core_->inputFile).filename().string();
-            std::string WFSFILE = "td/wfs_" + wfsBase + ".h5";
+            std::string WFSFILE = TDSEZPaths::TD(wfsBase, "wfs.h5");
             // Create the (empty) file on rank 0, then a collective MPI_Barrier,
             // then open it COLLECTIVELY on all ranks. The knot vectors are NOT
             // embedded here: doing a serial H5Fopen/H5Dwrite/H5Fclose on this
@@ -503,7 +504,7 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             // live anymore, so no metadata desync / VecView no-op risk).
             if (rank == 0 && core_) {
                 std::string wfsBase = std::filesystem::path(core_->inputFile).filename().string();
-                std::string WFSFILE = "td/wfs_" + wfsBase + ".h5";
+                std::string WFSFILE = TDSEZPaths::TD(wfsBase, "wfs.h5");
                 std::string absPath = std::filesystem::absolute(WFSFILE).string();
                 hid_t wf = H5Fopen(absPath.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
                 if (wf >= 0) {

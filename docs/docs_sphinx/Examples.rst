@@ -9,9 +9,9 @@ Running a Deck
 --------------
 
 ``tdsez.x`` is built in ``build/`` (:doc:`Compilation`). It writes its output
-relative to the working directory: ``static/EigenData_<input>.h5`` for the
-eigenstates and ``td/TimeEvolutionData_<input>.h5`` for the time series, where
-``<input>`` is the file name of the deck (:doc:`HDF5-Output`). Always launch
+relative to the working directory: ``static/<name>_eigen.h5`` for the
+eigenstates and ``td/<name>_observables.h5`` for the time series, where
+``<name>`` is the deck's file name without extension (:doc:`HDF5-Output`). Always launch
 through ``mpiexec`` with ``--bind-to none`` (:doc:`MPI-Notes`):
 
 ::

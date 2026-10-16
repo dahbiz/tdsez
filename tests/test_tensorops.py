@@ -78,7 +78,7 @@ LaserX = 0.05*sin(t)
 def _run(name, text, extra):
     path = _write_tmp(name + ".inp", text)
     d = os.path.dirname(path)
-    td = os.path.join(d, "td", f"TimeEvolutionData_{name}.inp.h5")
+    td = os.path.join(d, "td", f"{name}_observables.h5")
     if os.path.exists(td):
         os.remove(td)
     r = subprocess.run(["mpirun", "--bind-to", "none", "-np", "3", zkit.find_binary(), "-inp", path] + extra,
@@ -178,7 +178,7 @@ def test_matrix_free_saves_requested_dipoles():
         _run(name, text, extra)
         d = os.path.dirname(_write_tmp(name + ".inp", text))
         for a in "xy":
-            path = os.path.join(d, "static", f"D{a}_{name}.inp.bin")
+            path = os.path.join(d, "static", f"{name}_D{a}.bin")
             _step(f"{tag}: D{a} written", os.path.exists(path), path)
             with open(path, "rb") as fh:
                 b = fh.read()
@@ -228,7 +228,7 @@ EnableLzDiag = 1
         r = subprocess.run(["mpirun", "--bind-to", "none", "-np", str(n), zkit.find_binary(), "-inp", path],
                            capture_output=True, cwd=d)
         _step(f"np={n} runs", r.returncode == 0, r.stdout.decode(errors="replace")[-800:])
-        with h5py.File(os.path.join(d, "td", f"TimeEvolutionData_{name}.inp.h5")) as f:
+        with h5py.File(os.path.join(d, "td", f"{name}_observables.h5")) as f:
             res[n] = np.asarray(f["populations"])
         P = res[n][-1]
         _step(f"np={n}: P(m=-1) = P(m=+1)", abs(P[2] - P[3]) <= 1e-9 * max(P[2], P[3]) and P[2] > 0, f"{P[2]:.6e} {P[3]:.6e}")

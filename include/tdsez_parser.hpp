@@ -285,7 +285,7 @@ class TDSEZParser
         inline static PetscInt              NBoundStates       = 1;
         /// Whether to save bound states to disk (default false).
         inline static PetscBool             NBoundStatesSave   = PETSC_FALSE;
-        // Format of the bound states written to EigenData_*.h5:
+        // Format of the bound states written to static/<name>_eigen.h5:
         //   "complex" -> raw SLEPc eigenvectors (may carry an arbitrary global phase)
         //   "real"    -> each state phase-rotated to a real canonical form
         //                (TDSEZMakeStateReal2) before saving
@@ -336,7 +336,7 @@ class TDSEZParser
         inline static PetscReal             WavepacketWidth[3]    = {1.0, 1.0, 1.0};
 
         // ---- t-SURFF photoelectron spectra (computed only with TSurff = 1) ----
-        /// Enable the t-SURFF observer (output: td/surff_<input>.h5).
+        /// Enable the t-SURFF observer (output: td/<name>_surff.h5).
         inline static PetscBool             TSurff             = PETSC_FALSE;
         /// Half-width R of the extraction box |x_d| = R.
         inline static PetscReal             SurffRadius        = 0.0;

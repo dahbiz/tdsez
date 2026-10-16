@@ -175,7 +175,7 @@ The projected states do not need the eigenstates, and ``NBoundStates = 0``
 skips the eigensolver; it is accepted only with ``wavepacket`` or an
 ``analytic:`` selector. This matters for free or weakly bound systems, where
 a shift-invert solve at the bottom of a continuum is slow, particularly in
-3D. Without bound states no ``EigenData_*.h5`` file is written and the
+3D. Without bound states no ``<name>_eigen.h5`` file is written and the
 populations and the bound-state decomposition of the current are empty.
 The t-SURFF benchmarks use this mode (:doc:`TSurff`).
 

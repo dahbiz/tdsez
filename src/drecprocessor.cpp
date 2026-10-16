@@ -38,6 +38,7 @@
 //  CLI:  resolve_drec <stem> [-i <bra>] [-Ethr <E>] [-w0 <w>] [-g <g>] [-gpu]
 // ============================================================================
 
+#include "tdsez_paths.hpp"
 #include <petsc.h>
 #include <petscviewerhdf5.h>
 #include <hdf5.h>
@@ -169,8 +170,8 @@ int main(int argc, char** argv)
     }
 
     std::string HERE = "."; // run from the dir containing static/
-    std::string dxpath = "static/Dx_" + stem + ".bin";
-    std::string h5path = "static/EigenData_" + stem + ".h5";
+    std::string dxpath = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "Dx.bin"), "static", "Dx_", stem, ".bin");
+    std::string h5path = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "eigen.h5"), "static", "EigenData_", stem, ".h5");
 
     if (gpu) {
         ierr = PetscOptionsSetValue(NULL, "-vec_type", "cuda"); CHKERRQ(ierr);
@@ -245,7 +246,7 @@ int main(int argc, char** argv)
     ierr = VecCopy(psi0, psi0_conj); CHKERRQ(ierr);
     ierr = VecConjugate(psi0_conj); CHKERRQ(ierr);
 
-    std::ofstream out("static/drec_resolved_" + stem + ".csv");
+    std::ofstream out(TDSEZPaths::Static(stem, "drec.csv"));
     out << "j,E_j,x,Re_d,Im_d,abs_d2,log10_abs_d2,Re_dj,Im_dj,Re_dw,Im_dw,dEhalf,rho\n";
 
     PetscReal gscale = gfac; // weight of irregular component (tuned)
@@ -287,7 +288,7 @@ int main(int argc, char** argv)
     }
     out.close();
 
-    PetscPrintf(comm, "csv         : static/drec_resolved_%s.csv\n", stem.c_str());
+    PetscPrintf(comm, "csv         : %s\n", TDSEZPaths::Static(stem, "drec.csv").c_str());
 
     ierr = VecDestroy(&psi0); CHKERRQ(ierr);
     ierr = VecDestroy(&psi0_conj); CHKERRQ(ierr);

@@ -12,6 +12,7 @@
  *        weighting for a chosen bra state and energy threshold.
  */
 
+#include "tdsez_paths.hpp"
 #include <petsc.h>
 #include <algorithm>
 #include <petscviewerhdf5.h>
@@ -135,8 +136,8 @@ int main(int argc, char **argv)
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-gpu",  &gpuB, NULL));
     bool gpu = (gpuB == PETSC_TRUE);
 
-    std::string dxPath  = "static/Dx_"   + stem + ".bin";
-    std::string eigPath = "static/EigenData_" + stem + ".h5";
+    std::string dxPath  = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "Dx.bin"), "static", "Dx_", stem, ".bin");
+    std::string eigPath = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "eigen.h5"), "static", "EigenData_", stem, ".h5");
 
     Mat Dx;
     PetscCall(MatCreate(PETSC_COMM_WORLD, &Dx));
@@ -210,7 +211,7 @@ int main(int argc, char **argv)
     PetscCall(VecDestroy(&tmp));
     PetscCall(PetscViewerDestroy(&ev));
 
-    std::string csv = "static/dij_select_" + stem + "_i" + std::to_string(bra) + ".csv";
+    std::string csv = TDSEZPaths::Static(stem, "dij_i" + std::to_string(bra) + ".csv");
     std::ofstream out(csv);
     
     // Bind output stream to maximum precision representation

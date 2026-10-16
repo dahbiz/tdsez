@@ -56,7 +56,7 @@ PULSE = "t<15 ? 0.2*sin(pi*t/15)^2*sin(1.3*t) : 0"
 
 
 def _surff(path):
-    return os.path.join(REPO, "td", f"surff_{os.path.basename(path)}.h5")
+    return os.path.join(REPO, "td", f"{zkit.run_name(path)}_surff.h5")
 
 
 def _exact(k, w, k0):

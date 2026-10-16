@@ -3,7 +3,7 @@ Observables
 
 During propagation a monitor evaluates the observables at :math:`t = 0` and
 after every time step and writes them, one row per step, to
-``td/TimeEvolutionData_<input>.h5`` (:doc:`HDF5-Output`). All quantities are
+``td/<name>_observables.h5`` (:doc:`HDF5-Output`). All quantities are
 in atomic units. Expectation values are formed with the coefficient vector
 :math:`\mathbf c` of the state and the matrices of the B-spline basis; the
 inner product is the one of the mass (overlap) matrix,

@@ -53,12 +53,12 @@ listing omits the optional dipole export and diagnostics.
    TDSEZCore core(input_file);          // parse, validate, create the IGA
    PetscCall(core.Assemble());          // H and M
    PetscCall(core.Solve());             // eigenstates and core.initialPsi
-   PetscCall(core.Output());            // static/EigenData_<input>.h5
+   PetscCall(core.Output());            // static/<name>_eigen.h5
 
    TDSEZAssembler assembler(core.iga);  // time-dependent operators
    TDSEZManager manager(&core, &assembler);
    manager.setPsi0(psi0);               // copy of core.initialPsi
-   manager.outputFilename = "td/TimeEvolutionData_<input>.h5";
+   manager.outputFilename = "td/<name>_observables.h5";
 
    TDSEZPropagator propagator(manager);
    PetscCall(propagator.Evolve());      // evolves core.initialPsi in place

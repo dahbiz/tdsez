@@ -8,13 +8,13 @@ digraph overview_workflow {
   grid    [label="IGA space\nknot vectors, basis (B-spline degree p)"];
   assemble[label="Assemble H and M\n(sum-factorised, banded insertion)"];
   eig     [label="Bound states  H c = E M c\nshift-invert Krylov-Schur (SLEPc)"];
-  static  [label="static/EigenData_<input>.h5", shape=note, fillcolor="#ffffff"];
+  static  [label="static/<name>_eigen.h5", shape=note, fillcolor="#ffffff"];
   psi0    [label="Initial state\nground, state:N, superposition,\nanalytic or wave packet"];
   ops     [label="Time-dependent operators\ndipole, velocity, force, CAP"];
   prop    [label="Time propagation\ncn | pade22 | magnus4\nGMRES / FGMRES + asm | mg | gamg"];
   mon     [label="Observables at every step\ndipole, energy, populations,\ncurrents, autocorrelation"];
-  td      [label="td/TimeEvolutionData_<input>.h5\ntd/wfs_<input>.h5", shape=note, fillcolor="#ffffff"];
-  surff   [label="t-SURFF (TSurff = 1)\ntd/surff_<input>.h5", shape=note, fillcolor="#ffffff"];
+  td      [label="td/<name>_observables.h5\ntd/<name>_wfs.h5", shape=note, fillcolor="#ffffff"];
+  surff   [label="t-SURFF (TSurff = 1)\ntd/<name>_surff.h5", shape=note, fillcolor="#ffffff"];
 
   input -> grid -> assemble -> eig -> psi0;
   eig -> static [style=dashed];

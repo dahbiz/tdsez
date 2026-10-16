@@ -1,11 +1,14 @@
 HDF5 Output Schema
 ==================
 
-A run with input file ``<input>`` (the file name including its extension,
-for example ``h2p.inp``) writes the files below, relative to the run
-directory. At start-up TDSE-Z removes ``td/TimeEvolutionData_<input>.h5``,
-``td/wfs_<input>.h5``, ``ts_<input>.h5`` and
-``static/EigenData_<input>.h5`` left by a previous run with the same input
+A run with input file ``h2p.inp`` writes the files below, relative to the
+run directory. Every file starts with the run name ``<name>``, the input file
+name without its extension (``h2p``): ``static/`` holds the stationary
+results, ``td/`` the time-dependent ones. Files of earlier versions
+(``static/EigenData_h2p.inp.h5``, ``td/TimeEvolutionData_h2p.inp.h5``, ...)
+are still read by zkit and the post-processing tools. At start-up TDSE-Z removes ``td/<name>_observables.h5``,
+``td/<name>_wfs.h5``, ``td/<name>_ts.h5`` and
+``static/<name>_eigen.h5`` left by a previous run with the same input
 file. :numref:`fig-hdf5-output-dataflow` shows which phase writes each file
 and which tools read it.
 
@@ -24,25 +27,25 @@ and which tools read it.
 
    * - File
      - Written
-   * - ``static/EigenData_<input>.h5``
+   * - ``static/<name>_eigen.h5``
      - by the eigensolver, always
-   * - ``static/Dx_<input>.bin`` (``Dy``, ``Dz``)
+   * - ``static/<name>_Dx.bin`` (``_Dy``, ``_Dz``)
      - with ``SaveDipoleMatrix = 1``, ``SaveDipoleAxes`` or ``-save_dipole``
-   * - ``static/TDMInfo_<input>.txt``
+   * - ``static/<name>_tdm.txt``
      - at the start of the propagation
-   * - ``td/TimeEvolutionData_<input>.h5``
+   * - ``td/<name>_observables.h5``
      - during the propagation
-   * - ``td/wfs_<input>.h5``
+   * - ``td/<name>_wfs.h5``
      - during the propagation (snapshots with ``OutputStrideWFS > 0``)
-   * - ``ts_<input>.h5``
+   * - ``td/<name>_ts.h5``
      - with ``OutputStrideTS > 0``
-   * - ``td/surff_<input>.h5``
+   * - ``td/<name>_surff.h5``
      - at the end of the propagation, with ``TSurff = 1``
 
 Time Evolution Data
 -------------------
 
-File ``td/TimeEvolutionData_<input>.h5``. Five two-dimensional ``float64``
+File ``td/<name>_observables.h5``. Five two-dimensional ``float64``
 datasets with one row per recorded step (:math:`t = 0` and every step after
 it), written by rank 0 as extendable datasets in chunks of 256 rows. Every
 dataset is present in every file; quantities disabled with ``PhysicsOutput``
@@ -163,18 +166,18 @@ datasets.
 Wavefunction Snapshots
 ----------------------
 
-File ``td/wfs_<input>.h5``. The state is written every ``OutputStrideWFS``
+File ``td/<name>_wfs.h5``. The state is written every ``OutputStrideWFS``
 steps (with ``wfs`` in ``PhysicsOutput``) to the dataset ``wavefunction``
 through PETSc's HDF5 viewer with time stepping; the time-step index is
 :math:`\text{step}/\texttt{OutputStrideWFS}`. At the end of the run the knot
 vectors ``knots_x``/``knots_y``/``knots_z`` are added with the same
-attributes as in ``EigenData`` (below), so that the file alone suffices to
+attributes as in ``<name>_eigen.h5`` (below), so that the file alone suffices to
 evaluate the wavefunction on any grid.
 
 PETSc Time-Stepper Snapshots
 ----------------------------
 
-File ``ts_<input>.h5`` in the run directory, written only with
+File ``td/<name>_ts.h5`` in the run directory, written only with
 ``OutputStrideTS > 0`` and ``Propagator = cn`` (1D and 3D runs): the PETSc
 ``TS`` object as written by ``TSView`` every ``OutputStrideTS`` steps,
 dataset ``timestepper``.
@@ -182,7 +185,7 @@ dataset ``timestepper``.
 t-SURFF Spectra
 ---------------
 
-File ``td/surff_<input>.h5``, written at the end of the propagation with
+File ``td/<name>_surff.h5``, written at the end of the propagation with
 ``TSurff = 1``. Datasets ``momenta`` (:math:`n_k \times d`), ``amplitude``
 (:math:`n_k \times 2`, real and imaginary part of :math:`b(\mathbf k)`) and
 ``pes`` :math:`=|b(\mathbf k)|^2`; for a momentum grid also ``k_x``/``k_y``/
@@ -195,7 +198,7 @@ File attributes: ``final_time``, ``radius``, ``exterior_mass``,
 Eigenstate Data
 ---------------
 
-File ``static/EigenData_<input>.h5``.
+File ``static/<name>_eigen.h5``.
 
 .. list-table::
    :widths: 30 70
@@ -242,12 +245,12 @@ standard open knot vector of length ``nfuncs`` :math:`+\,p + 1`
 Other Static Files
 ------------------
 
-``static/Dx_<input>.bin`` (``Dy``, ``Dz``)
+``static/<name>_Dx.bin`` (``Dy``, ``Dz``)
    Assembled position matrices :math:`(\mathbf D_a)_{ij} = \int B_i\,x_a\,B_j`
    in PETSc binary format (``MatLoad``), in PetIGA's natural ordering. Input
    of the post-processing tools.
 
-``static/TDMInfo_<input>.txt``
+``static/<name>_tdm.txt``
    Text summary of the bound-state transition dipoles written at the start of
    the propagation: for each state the dipole moments to the other states,
    transition energies, oscillator strengths
@@ -262,12 +265,12 @@ The Python package ``zkit`` reads all of these files::
     import zkit
 
     run = zkit.load(".", "h2p.inp")          # run directory, input file
-    E   = run.spectrum.values                # static/EigenData_h2p.inp.h5
-    ev  = run.evolution                      # td/TimeEvolutionData_h2p.inp.h5
+    E   = run.spectrum.values                # static/h2p_eigen.h5
+    ev  = run.evolution                      # td/h2p_observables.h5
     t, dip = ev.time, ev.dipoles
 
-    eig = zkit.open_eig("static/EigenData_h2p.inp.h5")
+    eig = zkit.open_eig("static/h2p_eigen.h5")
     eig["spectrum"], eig["meta"], eig["eig_residual"], eig["knots_x"]
 
 Any HDF5 reader works as well, for example ``h5py``:
-``h5py.File("td/TimeEvolutionData_h2p.inp.h5")["dipoles"][:]``.
+``h5py.File("td/h2p_observables.h5")["dipoles"][:]``.

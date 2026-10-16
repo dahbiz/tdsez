@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Dipole <x>(t) of the 1D driven harmonic oscillator for the three propagators.
 
-Reads run_<prop>/td/TimeEvolutionData_*.h5 (dipoles dataset: [t, E_x, q<x>, q a_x])
+Reads run_<prop>/td/<name>_observables.h5 (dipoles dataset: [t, E_x, q<x>, q a_x])
 and the propagation wall time from run_<prop>/run.log, and writes
 propagator_dipoles.png and .svg next to this script.
 """
@@ -17,7 +17,7 @@ def x_exact(t):
 
 def charge(run_dir):
     """Charge q of the run (dipole column = q<x>), from the EigenData metadata."""
-    for path in glob.glob(os.path.join(run_dir, 'static', 'EigenData_*.h5')):
+    for path in glob.glob(os.path.join(run_dir, 'static', '*_eigen.h5')):
         with h5py.File(path, 'r') as g:
             if 'run_metadata' in g and 'Charge' in g['run_metadata'].attrs:
                 return float(g['run_metadata'].attrs['Charge'])
@@ -25,7 +25,7 @@ def charge(run_dir):
 
 def load(prop):
     d = os.path.join(HERE, f'run_{prop}')
-    f = h5py.File(glob.glob(os.path.join(d, 'td', 'TimeEvolutionData_*.h5'))[0], 'r')
+    f = h5py.File(glob.glob(os.path.join(d, 'td', '*_observables.h5'))[0], 'r')
     dip = np.real(f['dipoles'][()]).reshape(-1, 4)
     log = open(os.path.join(d, 'run.log'), errors='ignore').read()
     m = re.search(r'^\s+Propagation\s+([0-9.]+)', log, re.M)

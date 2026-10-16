@@ -74,8 +74,8 @@ def _run(input_file, binary, nproc):
         subprocess.CompletedProcess instance.
     """
     base = os.path.basename(input_file)
-    out_h5 = os.path.join(REPO, "static", f"EigenData_{base}.h5")
-    td_h5 = os.path.join(REPO, "td", f"TimeEvolutionData_{base}.h5")
+    out_h5 = os.path.join(REPO, "static", f"{zkit.run_name(base)}_eigen.h5")
+    td_h5 = os.path.join(REPO, "td", f"{zkit.run_name(base)}_observables.h5")
     for stale in (out_h5, td_h5):
         if os.path.exists(stale):
             os.remove(stale)
@@ -316,21 +316,21 @@ def test_postprocessor_harmonic_oscillator_dipoles():
         _step(f"{name} succeeds", proc.returncode == 0,
               proc.stdout.decode()[-500:] + proc.stderr.decode()[-500:])
 
-    dipoles = np.load(os.path.join(REPO, "static", f"TDM_Dx_{stem}.npy"))
+    dipoles = np.load(os.path.join(REPO, "static", f"{zkit.run_name(stem)}_tdm_Dx.npy"))
     _step("TDM is 3x3 Hermitian", dipoles.shape == (3, 3)
           and np.allclose(dipoles, dipoles.conj().T, atol=1e-8), str(dipoles))
     _step("oscillator ground-to-first dipole matches sqrt(2.5)",
           abs(abs(dipoles[0, 1]) - np.sqrt(2.5)) < 0.02, str(dipoles))
     _step("oscillator forbidden ground-to-second dipole vanishes",
           abs(dipoles[0, 2]) < 0.02, str(dipoles))
-    selected = os.path.join(REPO, "static", f"dij_select_{stem}_i0.csv")
+    selected = os.path.join(REPO, "static", f"{zkit.run_name(stem)}_dij_i0.csv")
     with open(selected, newline="") as f:
         rows = list(csv.DictReader(f))
     first = next(row for row in rows if int(row["j"]) == 1)
     _step("tdmselect agrees with full TDM",
           abs(float(first["abs_d2"]) - abs(dipoles[0, 1]) ** 2) < 1e-5,
           str(first))
-    resolved = os.path.join(REPO, "static", f"drec_resolved_{stem}.csv")
+    resolved = os.path.join(REPO, "static", f"{zkit.run_name(stem)}_drec.csv")
     with open(resolved, newline="") as f:
         rows = list(csv.DictReader(f))
     first = next(row for row in rows if int(row["j"]) == 1)
@@ -647,7 +647,7 @@ def test_initial_state_superposition_population():
     r, _out, td_h5 = _run(path, binary, 5)
     _step("binary exit code == 0", r.returncode == 0,
           f"rc={r.returncode}\n{r.stdout.decode()[-800:]}{r.stderr.decode()[-800:]}")
-    _step("TimeEvolutionData file created", os.path.exists(td_h5),
+    _step("td/<name>_observables.h5 created", os.path.exists(td_h5),
           f"no output at {td_h5}")
     if os.path.exists(td_h5):
         with h5py.File(td_h5, "r") as h:

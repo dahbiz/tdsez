@@ -28,7 +28,7 @@
 <polygon fill="#ffffff" stroke="#3b6ea5" points="338.5,-389.5 159,-389.5 159,-336.5 344.5,-336.5 344.5,-383.5 338.5,-389.5"/>
 <polyline fill="none" stroke="#3b6ea5" points="338.5,-389.5 338.5,-383.5"/>
 <polyline fill="none" stroke="#3b6ea5" points="344.5,-383.5 338.5,-383.5"/>
-<text xml:space="preserve" text-anchor="middle" x="251.75" y="-376" font-family="Helvetica,sans-Serif" font-size="10.00">static/EigenData_&lt;input&gt;.h5</text>
+<text xml:space="preserve" text-anchor="middle" x="251.75" y="-376" font-family="Helvetica,sans-Serif" font-size="10.00">static/&lt;name&gt;_eigen.h5</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-364.75" font-family="Helvetica,sans-Serif" font-size="10.00">spectrum, knots_x/y/z</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-353.5" font-family="Helvetica,sans-Serif" font-size="10.00">run_metadata/ (attributes, eig_residual)</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-342.25" font-family="Helvetica,sans-Serif" font-size="10.00">psi_i, coeff_i (NBoundStatesSave = 1)</text>
@@ -52,7 +52,7 @@
 <polygon fill="#ffffff" stroke="#3b6ea5" points="338.5,-318 159,-318 159,-282 344.5,-282 344.5,-312 338.5,-318"/>
 <polyline fill="none" stroke="#3b6ea5" points="338.5,-318 338.5,-312"/>
 <polyline fill="none" stroke="#3b6ea5" points="344.5,-312 338.5,-312"/>
-<text xml:space="preserve" text-anchor="middle" x="251.75" y="-301.75" font-family="Helvetica,sans-Serif" font-size="10.00">static/Dx|Dy|Dz_&lt;input&gt;.bin</text>
+<text xml:space="preserve" text-anchor="middle" x="251.75" y="-301.75" font-family="Helvetica,sans-Serif" font-size="10.00">static/&lt;name&gt;_Dx|Dy|Dz.bin</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-290.5" font-family="Helvetica,sans-Serif" font-size="10.00">(SaveDipoleMatrix = 1 or &#45;save_dipole)</text>
 </g>
 <!-- asm&#45;&gt;f_bin -->
@@ -75,7 +75,7 @@
 <polygon fill="#ffffff" stroke="#3b6ea5" points="312.62,-264 184.88,-264 184.88,-228 318.62,-228 318.62,-258 312.62,-264"/>
 <polyline fill="none" stroke="#3b6ea5" points="312.62,-264 312.62,-258"/>
 <polyline fill="none" stroke="#3b6ea5" points="318.62,-258 312.62,-258"/>
-<text xml:space="preserve" text-anchor="middle" x="251.75" y="-242.12" font-family="Helvetica,sans-Serif" font-size="10.00">static/TDMInfo_&lt;input&gt;.txt</text>
+<text xml:space="preserve" text-anchor="middle" x="251.75" y="-242.12" font-family="Helvetica,sans-Serif" font-size="10.00">static/&lt;name&gt;_tdm.txt</text>
 </g>
 <!-- setup&#45;&gt;f_tdm -->
 <g id="edge6" class="edge">
@@ -102,7 +102,7 @@
 <polygon fill="#ffffff" stroke="#3b6ea5" points="326.88,-95.88 170.62,-95.88 170.62,-54.12 332.88,-54.12 332.88,-89.88 326.88,-95.88"/>
 <polyline fill="none" stroke="#3b6ea5" points="326.88,-95.88 326.88,-89.88"/>
 <polyline fill="none" stroke="#3b6ea5" points="332.88,-89.88 326.88,-89.88"/>
-<text xml:space="preserve" text-anchor="middle" x="251.75" y="-82.38" font-family="Helvetica,sans-Serif" font-size="10.00">td/TimeEvolutionData_&lt;input&gt;.h5</text>
+<text xml:space="preserve" text-anchor="middle" x="251.75" y="-82.38" font-family="Helvetica,sans-Serif" font-size="10.00">td/&lt;name&gt;_observables.h5</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-71.12" font-family="Helvetica,sans-Serif" font-size="10.00">dipoles, energies, currents,</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-59.88" font-family="Helvetica,sans-Serif" font-size="10.00">populations, autocorrelation</text>
 </g>
@@ -118,7 +118,7 @@
 <polygon fill="#ffffff" stroke="#3b6ea5" points="354.25,-155.88 143.25,-155.88 143.25,-114.12 360.25,-114.12 360.25,-149.88 354.25,-155.88"/>
 <polyline fill="none" stroke="#3b6ea5" points="354.25,-155.88 354.25,-149.88"/>
 <polyline fill="none" stroke="#3b6ea5" points="360.25,-149.88 354.25,-149.88"/>
-<text xml:space="preserve" text-anchor="middle" x="251.75" y="-142.38" font-family="Helvetica,sans-Serif" font-size="10.00">td/wfs_&lt;input&gt;.h5</text>
+<text xml:space="preserve" text-anchor="middle" x="251.75" y="-142.38" font-family="Helvetica,sans-Serif" font-size="10.00">td/&lt;name&gt;_wfs.h5</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-131.12" font-family="Helvetica,sans-Serif" font-size="10.00">wavefunction (every OutputStrideWFS steps),</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-119.88" font-family="Helvetica,sans-Serif" font-size="10.00">knots_x/y/z</text>
 </g>
@@ -134,7 +134,7 @@
 <polygon fill="#ffffff" stroke="#3b6ea5" points="307.38,-210 190.12,-210 190.12,-174 313.38,-174 313.38,-204 307.38,-210"/>
 <polyline fill="none" stroke="#3b6ea5" points="307.38,-210 307.38,-204"/>
 <polyline fill="none" stroke="#3b6ea5" points="313.38,-204 307.38,-204"/>
-<text xml:space="preserve" text-anchor="middle" x="251.75" y="-193.75" font-family="Helvetica,sans-Serif" font-size="10.00">ts_&lt;input&gt;.h5</text>
+<text xml:space="preserve" text-anchor="middle" x="251.75" y="-193.75" font-family="Helvetica,sans-Serif" font-size="10.00">td/&lt;name&gt;_ts.h5</text>
 <text xml:space="preserve" text-anchor="middle" x="251.75" y="-182.5" font-family="Helvetica,sans-Serif" font-size="10.00">(OutputStrideTS &gt; 0, cn)</text>
 </g>
 <!-- prop&#45;&gt;f_ts -->
@@ -149,7 +149,7 @@
 <polygon fill="#ffffff" stroke="#3b6ea5" points="527.5,-36 392.25,-36 392.25,0 533.5,0 533.5,-30 527.5,-36"/>
 <polyline fill="none" stroke="#3b6ea5" points="527.5,-36 527.5,-30"/>
 <polyline fill="none" stroke="#3b6ea5" points="533.5,-30 527.5,-30"/>
-<text xml:space="preserve" text-anchor="middle" x="462.88" y="-19.75" font-family="Helvetica,sans-Serif" font-size="10.00">td/surff_&lt;input&gt;.h5</text>
+<text xml:space="preserve" text-anchor="middle" x="462.88" y="-19.75" font-family="Helvetica,sans-Serif" font-size="10.00">td/&lt;name&gt;_surff.h5</text>
 <text xml:space="preserve" text-anchor="middle" x="462.88" y="-8.5" font-family="Helvetica,sans-Serif" font-size="10.00">momenta, amplitude, pes, ...</text>
 </g>
 <!-- surff&#45;&gt;f_sf -->

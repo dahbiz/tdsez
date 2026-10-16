@@ -34,7 +34,7 @@ Modules
      - Creates the PetIGA context and knot vectors, assembles
        :math:`\mathbf H` and :math:`\mathbf M`, solves the eigenproblem with
        SLEPc, builds the initial state and writes
-       ``static/EigenData_<input>.h5``.
+       ``static/<name>_eigen.h5``.
    * - ``TDSEZAssembler``
      - ``src/assembler_class.cpp``, ``src/assembly/*.cpp``
      - Assembles the kinetic, potential, dipole, velocity, force, CAP and
@@ -53,7 +53,7 @@ Modules
    * - ``TDSEZTSurff``
      - ``src/tsurff.cpp``
      - Accumulates the t-SURFF surface flux during propagation and writes
-       ``td/surff_<input>.h5`` (``TSurff = 1``).
+       ``td/<name>_surff.h5`` (``TSurff = 1``).
    * - ``TDSEZTensorOps``
      - ``src/tensorops.cpp``
      - Applies the separable operators in factorised (Kronecker) form in 2D

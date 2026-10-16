@@ -6,7 +6,7 @@
 # of field-free propagation so slow electrons cross the surface.
 #
 #   tdsez.x -inp ati_1d.inp
-#   python plot_tsurff.py td/surff_ati_1d.inp.h5 --energy --omega 0.057
+#   python plot_tsurff.py td/ati_1d_surff.h5 --energy --omega 0.057
 
 Dimension         = 1
 Domain            = -80.0, 80.0

@@ -49,7 +49,7 @@ Program flags
      - string
      - Overrides ``SaveDipoleAxes``: any combination of ``x``, ``y``, ``z``,
        ``all`` or ``none``. The requested dipole operators are written to
-       ``static/D<a>_<input>.bin``; only assembled operators are written.
+       ``static/<name>_D<a>.bin``; only assembled operators are written.
    * - ``-mat_type <type>``, ``-vec_type <type>``
      - string
      - Matrix and vector types of all PetIGA objects; passed on as

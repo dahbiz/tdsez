@@ -10,9 +10,9 @@ outgoing electrons.
 
 t-SURFF is a passive observer: it reads :math:`\psi` at the sampled time steps
 and does not modify the propagation. It is computed only when the input sets
-``TSurff = 1`` and writes a separate file, ``td/surff_<input>.h5``, where
-``<input>`` is the file name of the input deck (for example
-``td/surff_ati_1d.inp.h5``). With ``TSurff = 0`` (default) no t-SURFF data are
+``TSurff = 1`` and writes a separate file, ``td/<name>_surff.h5``, where
+``<name>`` is the input file name without extension (``ati_1d.inp`` writes
+``td/ati_1d_surff.h5``). With ``TSurff = 0`` (default) no t-SURFF data are
 computed or written.
 
 Method
@@ -301,7 +301,7 @@ Input Keys
      - 1e-6
      - Allowed potential variation (Ha) outside the surface.
 
-Output: ``td/surff_<input>.h5``
+Output: ``td/<name>_surff.h5``
 -------------------------------
 
 Written by rank 0 at the end of the run.
@@ -509,7 +509,7 @@ Run from ``examples/tsurff`` (``tdsez.x`` is built in ``build/``; see
 ::
 
     mpiexec -n 1 --bind-to none ../../build/tdsez.x -inp ati_1d.inp
-    python plot_tsurff.py td/surff_ati_1d.inp.h5 --energy --omega 0.057 --plot ati.png
+    python plot_tsurff.py td/ati_1d_surff.h5 --energy --omega 0.057 --plot ati.png
 
 Measured result (7 s on one core): ATI peaks spaced by :math:`\omega`
 (0.88–1.09 :math:`\omega` between 0.19 and 0.82 Ha) at

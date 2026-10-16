@@ -1,3 +1,4 @@
+#include "tdsez_paths.hpp"
 #include "tdsez_internal.hpp"
 #include <petscblaslapack.h>
 
@@ -1264,7 +1265,7 @@ PetscErrorCode TDSEZCore::Output()
     PetscInt  nsavePop = nconv;
 
     // HDF5 setup — only if enabled
-    std::string h5file = "static/EigenData_" + std::filesystem::path(inputFile).filename().string() + ".h5";
+    std::string h5file = TDSEZPaths::Static(inputFile, "eigen.h5");
     PetscViewer viewerH5 = PETSC_NULLPTR;
     {
         if (rank == 0) {
@@ -1589,11 +1590,10 @@ PetscErrorCode TDSEZCore::Output()
             if (rank == 0) {
                 PetscMkdir("td");
                 PetscMkdir("static");
-                std::string base = std::filesystem::path(inputFile).filename().string();
-                std::filesystem::remove("td/TimeEvolutionData_" + base + ".h5");
-                std::filesystem::remove("td/wfs_" + base + ".h5");
-                std::filesystem::remove("ts_" + base + ".h5");
-                std::filesystem::remove("static/EigenData_" + base + ".h5");
+                std::filesystem::remove(TDSEZPaths::TD(inputFile, "observables.h5"));
+                std::filesystem::remove(TDSEZPaths::TD(inputFile, "wfs.h5"));
+                std::filesystem::remove(TDSEZPaths::TD(inputFile, "ts.h5"));
+                std::filesystem::remove(TDSEZPaths::Static(inputFile, "eigen.h5"));
             }
             MPI_Barrier(PETSC_COMM_WORLD);
 

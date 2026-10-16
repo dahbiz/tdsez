@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Read a TDSE-Z t-SURFF file (td/surff_<input>.h5) and write the spectrum.
+"""Read a TDSE-Z t-SURFF file (td/<name>_surff.h5) and write the spectrum.
 
-    python plot_tsurff.py td/surff_ati_1d.inp.h5 --energy --omega 0.057 --plot ati.png
+    python plot_tsurff.py td/ati_1d_surff.h5 --energy --omega 0.057 --plot ati.png
 
 The file holds the canonical-momentum amplitudes b(k) (``amplitude``, re/im)
 and dP/d^dk = |b(k)|^2 (``pes``) on the momenta in ``momenta``; a tensor grid

@@ -11,13 +11,13 @@ digraph HDF5OutputDataflow {
   prop   [label="Time propagation\n(monitor every step)"];
   surff  [label="t-SURFF observer\n(TSurff = 1)"];
 
-  f_eig  [shape=note, fillcolor="#ffffff", label="static/EigenData_<input>.h5\nspectrum, knots_x/y/z\nrun_metadata/ (attributes, eig_residual)\npsi_i, coeff_i (NBoundStatesSave = 1)"];
-  f_bin  [shape=note, fillcolor="#ffffff", label="static/Dx|Dy|Dz_<input>.bin\n(SaveDipoleMatrix = 1 or -save_dipole)"];
-  f_tdm  [shape=note, fillcolor="#ffffff", label="static/TDMInfo_<input>.txt"];
-  f_td   [shape=note, fillcolor="#ffffff", label="td/TimeEvolutionData_<input>.h5\ndipoles, energies, currents,\npopulations, autocorrelation"];
-  f_wfs  [shape=note, fillcolor="#ffffff", label="td/wfs_<input>.h5\nwavefunction (every OutputStrideWFS steps),\nknots_x/y/z"];
-  f_ts   [shape=note, fillcolor="#ffffff", label="ts_<input>.h5\n(OutputStrideTS > 0, cn)"];
-  f_sf   [shape=note, fillcolor="#ffffff", label="td/surff_<input>.h5\nmomenta, amplitude, pes, ..."];
+  f_eig  [shape=note, fillcolor="#ffffff", label="static/<name>_eigen.h5\nspectrum, knots_x/y/z\nrun_metadata/ (attributes, eig_residual)\npsi_i, coeff_i (NBoundStatesSave = 1)"];
+  f_bin  [shape=note, fillcolor="#ffffff", label="static/<name>_Dx|Dy|Dz.bin\n(SaveDipoleMatrix = 1 or -save_dipole)"];
+  f_tdm  [shape=note, fillcolor="#ffffff", label="static/<name>_tdm.txt"];
+  f_td   [shape=note, fillcolor="#ffffff", label="td/<name>_observables.h5\ndipoles, energies, currents,\npopulations, autocorrelation"];
+  f_wfs  [shape=note, fillcolor="#ffffff", label="td/<name>_wfs.h5\nwavefunction (every OutputStrideWFS steps),\nknots_x/y/z"];
+  f_ts   [shape=note, fillcolor="#ffffff", label="td/<name>_ts.h5\n(OutputStrideTS > 0, cn)"];
+  f_sf   [shape=note, fillcolor="#ffffff", label="td/<name>_surff.h5\nmomenta, amplitude, pes, ..."];
 
   post   [label="tdmprocessor, tdmselect,\ndrecprocessor", fillcolor="#e8f5e9", color="#3b8a4a"];
   zkit   [label="zkit (Python)", fillcolor="#e8f5e9", color="#3b8a4a"];

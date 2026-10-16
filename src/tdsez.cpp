@@ -1,3 +1,4 @@
+#include "tdsez_paths.hpp"
 #include "tdsez_logo.hpp"
 #include "tdsez_internal.hpp"
 #include "tdsez_tsurff.hpp"
@@ -182,13 +183,13 @@ int main(int argc, char *argv[])
             std::filesystem::create_directories("static", ec);
             if (wantX && pDipole->Dx)
                 PetscCall(TDSEZSaveOperatorMatrix(
-                    pDipole->Dx, "static/Dx_" + dipPrefix + ".bin"));
+                    pDipole->Dx, TDSEZPaths::Static(dipPrefix, "Dx.bin")));
             if (wantY && pDipole->Dy)
                 PetscCall(TDSEZSaveOperatorMatrix(
-                    pDipole->Dy, "static/Dy_" + dipPrefix + ".bin"));
+                    pDipole->Dy, TDSEZPaths::Static(dipPrefix, "Dy.bin")));
             if (wantZ && pDipole->Dz)
                 PetscCall(TDSEZSaveOperatorMatrix(
-                    pDipole->Dz, "static/Dz_" + dipPrefix + ".bin"));
+                    pDipole->Dz, TDSEZPaths::Static(dipPrefix, "Dz.bin")));
         }
         markPhase(TDSEZProfile::OperatorAssembly);
 
@@ -250,7 +251,7 @@ int main(int argc, char *argv[])
             // "TDSEZ Observables" stage, so solver events in this stage are
             // purely time-stepping work.
             PetscCall(PetscLogStagePush(profile.stagePropagation));
-            manager.outputFilename = "td/TimeEvolutionData_" + dipPrefix + ".h5";
+            manager.outputFilename = TDSEZPaths::TD(dipPrefix, "observables.h5");
             auto propagator = std::make_unique<TDSEZPropagator>(manager);
             // t-SURFF (TSurff = 1): passive surface-flux observer, separate output file.
             std::unique_ptr<TDSEZTSurff> tsurff;
@@ -267,7 +268,7 @@ int main(int argc, char *argv[])
                 // Both propagators evolve TDSEZ.initialPsi in place up to FinalTime.
                 PetscLogDouble a, b;
                 PetscTime(&a);
-                PetscCall(tsurff->Finish("td/surff_" + dipPrefix + ".h5", TDSEZParser::FinalTime, TDSEZ.initialPsi,
+                PetscCall(tsurff->Finish(TDSEZPaths::TD(dipPrefix, "surff.h5"), TDSEZParser::FinalTime, TDSEZ.initialPsi,
                                          manager.H(), manager.M()));
                 PetscTime(&b);
                 if (TDSEZParser::SurffEndTerm) profile.Sub(TDSEZProfile::Propagation, "t-SURFF end term", b - a);

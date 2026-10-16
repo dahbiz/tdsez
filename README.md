@@ -73,7 +73,7 @@ and MPI parallelism are built on [PETSc](https://petsc.org) and
   autocorrelation, Berry phase, transition-dipole matrices and wavefunction
   snapshots.
 - Photoelectron momentum spectra by t-SURFF (`TSurff = 1`, separate
-  `td/surff_<input>.h5`), validated against the analytic free wave packet in
+  `td/<name>_surff.h5`), validated against the analytic free wave packet in
   1D, 2D and 3D.
 - HDF5 output; the bound-state file records the input file, code version, units
   and eigenpair residuals.
@@ -127,8 +127,8 @@ mpirun -np 4 build/tdsez.x -inp tests/inputs/ho1d.inp
 
 The input file sets the dimension, domain, B-spline space, potential, mass,
 laser field, propagator and outputs. Bound states are written to
-`static/EigenData_<input>.h5`. With `EnablePropagation = 1`, time-dependent
-observables go to `td/TimeEvolutionData_<input>.h5`, alongside wavefunction
+`static/<name>_eigen.h5`. With `EnablePropagation = 1`, time-dependent
+observables go to `td/<name>_observables.h5`, alongside wavefunction
 snapshots and the autocorrelation. PETSc and SLEPc options (`-eps_*`, `-ksp_*`,
 `-log_view`, ...) can be added on the command line. See the
 [input reference](https://dahbiz.github.io/tdsez/docs/Input-File.html) and the

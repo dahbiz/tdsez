@@ -1,6 +1,6 @@
 """PhysicsOutput: computing only the requested quantities keeps the HDF5 layout.
 
-Every dataset of td/TimeEvolutionData_<input>.h5 has the same shape whatever
+Every dataset of td/<name>_observables.h5 has the same shape whatever
 is selected; a quantity that is not computed keeps its time column and is
 zero elsewhere. The quantities that are computed equal those of a full run.
 """
@@ -104,3 +104,53 @@ def test_selection_keeps_layout_and_values(full, sel, kept, method):
 
 def test_unknown_output_token_is_rejected():
     _expect_fatal(DECK + "PhysicsOutput = dipole, popluation\n", "physics_output_typo")
+
+
+def test_output_file_names():
+    """A run writes static/<name>_* and td/<name>_* (name = input without extension)."""
+    import os
+
+    name = "names_check"
+    extra = ("Propagator = cn\nOutputStrideWFS = 50\nOutputStrideTS = 50\nNBoundStatesSave = 1\n"
+             "SaveDipoleAxes = x\nTSurff = 1\nSurffRadius = 8\nSurffKmax = 2, 2\nSurffNk = 5, 5\n")
+    deck = (DECK.replace("CAPKmin           = 1.0", "CAPKmin           = 2.0")
+            .replace("Potential         = -1/sqrt(x*x + y*y + 0.5)",
+                     "Potential         = -1/sqrt(x*x + y*y + 0.5)*(x*x + y*y < 36)"))   # free outside R = 8
+    path = _write_tmp(f"{name}.inp", deck + extra)
+    for f in os.listdir(os.path.join(REPO, "static")) + os.listdir(os.path.join(REPO, "td")):
+        if name in f:
+            os.remove(os.path.join(REPO, "static" if os.path.exists(os.path.join(REPO, "static", f)) else "td", f))
+    r, _, _ = _run(path, zkit.find_binary(), 2)
+    _step("run succeeds", r.returncode == 0, r.stdout.decode()[-1500:] + r.stderr.decode()[-500:])
+    expected = {"static": {f"{name}_eigen.h5", f"{name}_tdm.txt", f"{name}_Dx.bin", f"{name}_Dx.bin.info"},
+                "td": {f"{name}_observables.h5", f"{name}_wfs.h5", f"{name}_ts.h5", f"{name}_surff.h5"}}
+    for d, files in expected.items():
+        got = {f for f in os.listdir(os.path.join(REPO, d)) if name in f}
+        _step(f"{d}/ holds {sorted(files)}", got == files, f"got {sorted(got)}")
+    _step("no ts file in the run directory", not os.path.exists(os.path.join(REPO, f"ts_{name}.inp.h5")))
+    run = zkit.Run(REPO, path)
+    _step("zkit finds every file", all(run.path(k).exists() for k in ("eigen", "tdm", "observables", "wfs", "surff", "ts")))
+
+
+def test_post_processors_read_former_names(tmp_path):
+    """tdmprocessor reads a run stored under the names of earlier versions."""
+    import os
+    import shutil
+    import subprocess
+
+    name = "former_names"
+    text = DECK.replace("EnablePropagation = 1", "EnablePropagation = 0") + "NBoundStatesSave = 1\nSaveDipoleAxes = x\n"
+    path = _write_tmp(f"{name}.inp", text)
+    r, _, _ = _run(path, zkit.find_binary(), 1)
+    _step("solve succeeds", r.returncode == 0, r.stdout.decode()[-800:])
+    old = tmp_path / "static"
+    old.mkdir()
+    shutil.copy(os.path.join(REPO, "static", f"{name}_eigen.h5"), old / f"EigenData_{name}.inp.h5")
+    shutil.copy(os.path.join(REPO, "static", f"{name}_Dx.bin"), old / f"Dx_{name}.inp.bin")
+    shutil.copy(os.path.join(REPO, "static", f"{name}_Dx.bin.info"), old / f"Dx_{name}.inp.bin.info")
+    tool = os.path.join(os.path.dirname(zkit.find_binary()), "tdmprocessor")
+    p = subprocess.run([tool, f"{name}.inp"], cwd=tmp_path, capture_output=True)
+    _step("tdmprocessor reads EigenData_*.inp.h5 and Dx_*.inp.bin", p.returncode == 0,
+          p.stdout.decode()[-500:] + p.stderr.decode()[-500:])
+    _step("and writes static/<name>_tdm_Dx.npy", (old / f"{name}_tdm_Dx.npy").exists())
+    _step("zkit reads the former eigen file", zkit.Run(tmp_path, f"{name}.inp").spectrum.values.size == 3)

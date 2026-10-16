@@ -1,3 +1,4 @@
+#include "tdsez_paths.hpp"
 #include "tdsez_internal.hpp"
 #include "tdsez_multigrid.hpp"
 #include "tdsez_quadobs.hpp"
@@ -883,11 +884,11 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
     const PetscInt rank = TDSEZ->rank;
     if (rank == 0) 
     {   // Use only the input basename (inputFile may be an absolute path, which
-        // would embed slashes and break the "static/GS_..." log path).
+        // would embed slashes and break the static/<name>_gs.log path).
         std::string base = std::filesystem::path(TDSEZ->inputFile).filename().string();
         std::error_code ec;
         std::filesystem::create_directories("static", ec); // best-effort
-        std::string fname = "static/GS_" + base + ".log";
+        std::string fname = TDSEZPaths::Static(base, "gs.log");
         logfp = fopen(fname.c_str(), "w");
         if (!logfp)
             SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_FILE_OPEN,

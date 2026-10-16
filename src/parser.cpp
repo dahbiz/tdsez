@@ -380,7 +380,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
             {"PulseDuration",     {"name constants for the field expression with Variables = PulseDuration=..., PulseCenter=...", never}},
             {"PulseCenter",       {"name constants for the field expression with Variables = PulseDuration=..., PulseCenter=...", never}},
             {"Gamma",             {"it had no effect; the CAP is set by CAPKmin", never}},
-            {"OutputStrideAC",    {"the autocorrelation is the 'autocorrelation' dataset of td/TimeEvolutionData_<input>.h5, "
+            {"OutputStrideAC",    {"the autocorrelation is the 'autocorrelation' dataset of td/<name>_observables.h5, "
                                    "recorded every step", always}},
             {"CapStrength",       {"use CAPKmin (lowest momentum absorbed by the CAP)", never}},
             {"dinvMassX",         {"it had no effect; mass gradients are computed from Mass", never}},

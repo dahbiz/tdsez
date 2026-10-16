@@ -4,7 +4,7 @@
 # conserved). SurffInterior = 1 adds the part still inside the box at FinalTime.
 #
 #   tdsez.x -inp free_packet_1d.inp
-#   python plot_tsurff.py td/surff_free_packet_1d.inp.h5
+#   python plot_tsurff.py td/free_packet_1d_surff.h5
 
 Dimension          = 1
 Domain             = -40.0, 40.0

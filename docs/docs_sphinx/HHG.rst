@@ -67,7 +67,7 @@ Run from ``examples/hhg`` (``tdsez.x`` is built in ``build/``; see
 ::
 
     mpiexec -n 1 --bind-to none ../../build/tdsez.x -inp hhg_1d.inp
-    python hhg_spectrum.py td/TimeEvolutionData_hhg_1d.inp.h5 --omega 0.057 --plot hhg.png
+    python hhg_spectrum.py td/hhg_1d_observables.h5 --omega 0.057 --plot hhg.png
 
 :numref:`fig-hhg-box` shows the layout of the box: the CAP layers of width
 :math:`6.555/0.3 = 21.9` a.u. leave a free core of half width 48.1 a.u., more
@@ -90,7 +90,7 @@ of :eq:`eq-hhg-spectrum` agree to a few per cent up to H39; final norm 0.992
 The Spectrum
 ------------
 
-The dipole table (``td/TimeEvolutionData_<input>.h5``, dataset ``dipoles``)
+The dipole table (``td/<name>_observables.h5``, dataset ``dipoles``)
 holds, per axis, the dipole :math:`D = q\langle x\rangle` and the dipole
 acceleration :math:`A = q\,d\langle v\rangle/dt` (:doc:`Observables`); the
 ``currents`` table holds :math:`J = q\langle v\rangle`. The emitted spectrum is

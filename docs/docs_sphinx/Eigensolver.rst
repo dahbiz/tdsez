@@ -14,7 +14,7 @@ with :math:`M` the overlap matrix (:eq:`eq-potential-mass-matrices`). The
 absorbing potential is not part of :math:`H_0`; it is added only for the
 propagation (:doc:`Physics-Conventions`). The eigenpairs are used as initial
 states (:doc:`Initial-State`), for populations and current decomposition
-(:doc:`Observables`) and are written to ``static/EigenData_<input>.h5``
+(:doc:`Observables`) and are written to ``static/<name>_eigen.h5``
 (:doc:`HDF5-Output`).
 
 Keys
@@ -48,7 +48,7 @@ Keys
    * - NBoundStatesSave / SaveBoundStates
      - bool
      - ``0``
-     - Also write the eigenvectors to ``EigenData_<input>.h5``.
+     - Also write the eigenvectors to ``<name>_eigen.h5``.
    * - BoundStateFormat / StateFormat / SaveStateFormat
      - string
      - ``complex``
@@ -157,7 +157,7 @@ complete sequence:
 
 The backward error printed for each state in the EIGENVALUES table (next to
 the energy in a.u. and in eV) and the dataset
-``run_metadata/eig_residual`` in ``EigenData_<input>.h5`` contain
+``run_metadata/eig_residual`` in ``<name>_eigen.h5`` contain
 :math:`\eta` of :eq:`eq-eigensolver-backward-error` for the final states.
 
 Degenerate Levels and Reproducible States
@@ -210,7 +210,7 @@ assembly paths and MPI rank counts to rounding.
 Saved eigenstates
 -----------------
 
-When ``NBoundStates > 0``, ``static/EigenData_<input>.h5`` is always written
+When ``NBoundStates > 0``, ``static/<name>_eigen.h5`` is always written
 with the spectrum and the run metadata, including :math:`\eta` of each state.
 ``NBoundStatesSave = 1`` adds, for each kept state :math:`i`, the vector
 ``psi_<i>`` in the PetIGA layout and ``coeff_<i>`` in natural ordering

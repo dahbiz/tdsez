@@ -38,7 +38,7 @@ def _run(name, text):
     out = r.stdout.decode(errors="replace") + r.stderr.decode(errors="replace")
     out = " ".join(out.split())  # wrapped log lines
     spec = None
-    f = os.path.join(d, "static", f"EigenData_{name}.inp.h5")
+    f = os.path.join(d, "static", f"{name}_eigen.h5")
     if r.returncode == 0 and os.path.exists(f):
         with h5py.File(f) as h:
             spec = np.sort(np.asarray(h["spectrum"])[:, 0])

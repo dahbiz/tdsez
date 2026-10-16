@@ -1,3 +1,4 @@
+#include "tdsez_paths.hpp"
 #include "tdsez_internal.hpp"
 
 /**
@@ -124,15 +125,14 @@ PetscErrorCode TDSEZCompUnifiedDipoleMatrix(
         }
     }
 
-    // Output destination: write the TDM info into a "static" sub-directory,
-    // named TDMInfo_<prefix>.txt (prefix = the input-file stem, as in the
-    // legacy "DipoleMatrix_<prefix>" convention). Create the dir if needed.
+    // Output destination: static/<name>_tdm.txt (name = the input file name
+    // without extension; fileName is "DipoleMatrix_<input>"). Create the dir if needed.
     std::error_code tdm_ec;
     std::filesystem::create_directories("static", tdm_ec);
     std::string tdmPrefix = fileName;
     const std::string tdmTag = "DipoleMatrix_";
     if (tdmPrefix.rfind(tdmTag, 0) == 0) tdmPrefix = tdmPrefix.substr(tdmTag.size());
-    const std::string tdmPath = "static/TDMInfo_" + tdmPrefix + ".txt";
+    const std::string tdmPath = TDSEZPaths::Static(tdmPrefix, "tdm.txt");
 
     PetscViewer log;
     PetscCall(PetscViewerASCIIOpen(PETSC_COMM_WORLD, tdmPath.c_str(), &log));

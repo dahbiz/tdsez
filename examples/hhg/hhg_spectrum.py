@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """HHG spectrum from a TDSE-Z run.
 
-    python hhg_spectrum.py td/TimeEvolutionData_hhg_1d.inp.h5 --omega 0.057
+    python hhg_spectrum.py td/hhg_1d_observables.h5 --omega 0.057
 
 Reads the dipole table (t, E, D = q<x>, A = q d<v>/dt per axis) and the
 current table (J = q<v>), and computes the emitted spectrum three equivalent
@@ -35,7 +35,7 @@ def spectrum(t, s, window):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("h5", help="td/TimeEvolutionData_<input>.h5")
+    ap.add_argument("h5", help="td/<name>_observables.h5")
     ap.add_argument("--omega", type=float, required=True, help="laser angular frequency (a.u.)")
     ap.add_argument("--axis", default="x", choices="xyz", help="emission axis (default x)")
     ap.add_argument("--window", default="hann", choices=["hann", "blackman", "none"])

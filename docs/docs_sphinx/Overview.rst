@@ -85,7 +85,7 @@ A run of ``tdsez.x`` follows the stages of :numref:`fig-overview-workflow`:
 3. Assemble :math:`\mathbf H` and :math:`\mathbf M`.
 4. Solve :eq:`eq-overview-eigen` for ``NBoundStates`` states (skipped for
    ``NBoundStates = 0`` with an analytic or wave-packet initial state) and
-   write ``static/EigenData_<input>.h5``.
+   write ``static/<name>_eigen.h5``.
 5. Build the initial state (:doc:`Initial-State`).
 6. With ``EnablePropagation = 1`` (default): assemble the time-dependent
    operators, propagate :eq:`eq-overview-semidiscrete` to ``FinalTime`` and
@@ -102,7 +102,8 @@ A run of ``tdsez.x`` follows the stages of :numref:`fig-overview-workflow`:
 Output files
 ------------
 
-``<input>`` is the file name of the input file (without directories).
+Every file starts with ``<name>``, the input file name without directory and
+extension (``h2p.inp`` → ``h2p``).
 
 .. list-table::
    :header-rows: 1
@@ -110,25 +111,25 @@ Output files
 
    * - File
      - Content
-   * - ``static/EigenData_<input>.h5``
+   * - ``static/<name>_eigen.h5``
      - Spectrum, eigenstates (with ``NBoundStatesSave = 1``), knot vectors
        and run metadata; written when ``NBoundStates > 0``.
-   * - ``static/D{x,y,z}_<input>.bin``
+   * - ``static/<name>_D{x,y,z}.bin``
      - Dipole operator matrices in PETSc binary format; written with
        ``SaveDipoleMatrix = 1`` or ``-save_dipole``.
-   * - ``static/TDMInfo_<input>.txt``
+   * - ``static/<name>_tdm.txt``
      - Transition dipoles and oscillator strengths between the bound states;
        written at the start of a propagation run.
-   * - ``static/GS_<input>.log``
+   * - ``static/<name>_gs.log``
      - Degenerate-shell splitting log (2D, ``EnableLzDiag = 1``).
-   * - ``td/TimeEvolutionData_<input>.h5``
+   * - ``td/<name>_observables.h5``
      - Time series: dipoles, energies, currents, populations,
        autocorrelation.
-   * - ``td/wfs_<input>.h5``
+   * - ``td/<name>_wfs.h5``
      - Wavefunction snapshots every ``OutputStrideWFS`` steps.
-   * - ``td/surff_<input>.h5``
+   * - ``td/<name>_surff.h5``
      - t-SURFF momentum spectrum (``TSurff = 1``).
-   * - ``ts_<input>.h5``
+   * - ``td/<name>_ts.h5``
      - PETSc ``TSView`` output in the working directory
        (``OutputStrideTS > 0``).
 

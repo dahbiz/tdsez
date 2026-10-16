@@ -124,7 +124,7 @@ the harmless values marked in the last column, which only produce a warning.
      - --
    * - ``OutputStrideAC``
      - None; the autocorrelation is the ``autocorrelation`` dataset of
-       ``td/TimeEvolutionData_<input>.h5``, recorded every step
+       ``td/<name>_observables.h5``, recorded every step
      - any value
    * - ``SurffCouplingSign``
      - None; the t-SURFF coupling sign follows ``Charge``
@@ -411,7 +411,7 @@ See :doc:`Eigensolver`.
    * - ``NBoundStatesSave`` (``SaveBoundStates``)
      - bool
      - 0
-     - Write the bound states to ``static/EigenData_<input>.h5``.
+     - Write the bound states to ``static/<name>_eigen.h5``.
    * - ``BoundStateFormat`` (``SaveStateFormat``, ``StateFormat``)
      - string
      - ``complex``
@@ -571,7 +571,7 @@ See :doc:`Output-Control`, :doc:`Observables` and :doc:`HDF5-Output`.
      - int
      - 0
      - > 0: every N steps, write the time-series buffer (at most every 2 s of
-       wall time) and a time-stepper snapshot to ``ts_<input>.h5``. 0: no
+       wall time) and a time-stepper snapshot to ``td/<name>_ts.h5``. 0: no
        snapshots; the buffer is written every 5000 steps and at the end.
    * - ``OutputStrideWFS``
      - int
@@ -588,12 +588,12 @@ See :doc:`Output-Control`, :doc:`Observables` and :doc:`HDF5-Output`.
    * - ``SaveDipoleMatrix``
      - bool
      - 0
-     - Write the dipole operator :math:`D_x` to ``static/Dx_<input>.bin``
+     - Write the dipole operator :math:`D_x` to ``static/<name>_Dx.bin``
        (PETSc binary) when ``SaveDipoleAxes`` is empty.
    * - ``SaveDipoleAxes``
      - string
      - --
-     - Dipole operators to write to ``static/D<a>_<input>.bin``: any
+     - Dipole operators to write to ``static/<name>_D<a>.bin``: any
        combination of ``x``, ``y``, ``z``, or ``all``, or ``none``.
        Overridden by ``-save_dipole``. Only assembled operators are written.
 
@@ -614,7 +614,7 @@ Used only with ``TSurff = 1``; see :doc:`TSurff`.
      - bool
      - 0
      - Compute the t-SURFF momentum spectrum (requires
-       ``EnablePropagation = 1``); output ``td/surff_<input>.h5``.
+       ``EnablePropagation = 1``); output ``td/<name>_surff.h5``.
    * - ``SurffRadius``
      - real
      - 0

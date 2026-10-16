@@ -3,26 +3,28 @@
 // ----------------------------------------------------------------------------
 //  Reads every saved assembled dipole operator (Dx, Dy, Dz; PETSc binary,
 //  written by the SaveDipoleMatrix / -save_dipole path) and the eigenstates from the static
-//  HDF5 (EigenData_<stem>.h5, datasets psi_0, psi_1, ...), then computes the
+//  HDF5 (static/<name>_eigen.h5, datasets psi_0, psi_1, ...), then computes the
 //  transition-dipole matrix
 //
 //        d_ij^(a) = < psi_i | D_a | psi_j >,  a = x, y, z
 //
 //  Each D_a is Hermitian, so d_ji = conj(d_ij); only the upper triangle is computed
 //  and the lower triangle is filled by conjugation. Writes d_ij to
-//  static/TDM_D{axis}_<stem>.txt (human-readable) and NumPy .npy files:
-//  static/TDM_D{axis}_<stem>.npy (complex NxN, D[i,j]==d_ij),
-//  static/EigenEnergies_<stem>.npy (float64 N), static/States_<stem>.npy (int32 N).
+//  static/<name>_tdm_D{axis}.txt (human-readable) and NumPy .npy files:
+//  static/<name>_tdm_D{axis}.npy (complex NxN, D[i,j]==d_ij),
+//  static/<name>_energies.npy (float64 N), static/<name>_states.npy (int32 N),
+//  with <name> the input file name without extension (tdsez_paths.hpp).
 //
 //  Build (separately, against the same PETSc stack):
 //    mpicxx tdmprocessor.cpp -I$PETSC_DIR/include -L$PETSC_DIR/lib
 //          -lpetsc -o tdmprocessor
 //
 //  Run:
-//    ./tdmprocessor <input-stem>
-//  e.g. for input file foo.prm:
-//    ./tdmprocessor foo.prm
-//  (it auto-detects static/Dx|Dy|Dz_foo.prm.bin and reads EigenData_foo.prm.h5)
+//    ./tdmprocessor <input>
+//  e.g. for input file foo.inp:
+//    ./tdmprocessor foo.inp        (or ./tdmprocessor foo)
+//  (it auto-detects static/foo_Dx|Dy|Dz.bin and reads static/foo_eigen.h5;
+//   files of earlier runs, Dx_foo.inp.bin and foo_eigen.h5, are read too)
 // ============================================================================
 
 /**
@@ -32,6 +34,7 @@
  *        streaming the N×N result to a .npy file block-by-block.
  */
 
+#include "tdsez_paths.hpp"
 #include <petsc.h>
 #include <petscviewerhdf5.h>
 #include <cstring>
@@ -46,9 +49,9 @@
 // Writes a contiguous array with the given dtype string and shape. This makes
 // the TDM trivially loadable from Python:
 //     import numpy as np
-//     D = np.load("static/TDM_Dx_foo.npy")          # D[i,j] == d_ij (and Dy/Dz if saved)
-//     E = np.load("static/EigenEnergies_foo.npy")   # E[i]  == energy of psi_i
-//     idx = np.load("static/States_foo.npy")        # state labels 0..N-1
+//     D = np.load("static/foo_tdm_Dx.npy")      # D[i,j] == d_ij (and Dy/Dz if saved)
+//     E = np.load("static/foo_energies.npy")    # E[i]  == energy of psi_i
+//     idx = np.load("static/foo_states.npy")    # state labels 0..N-1
 // Supported descr: "<c16" (complex128), "<f8" (float64), "<i4" (int32).
 // ----------------------------------------------------------------------------
 /// Minimal NumPy .npy writer (version 1.0, little-endian), no external deps.
@@ -300,8 +303,8 @@ static PetscErrorCode processAxis(const std::string& stem, char axis,
 {
     PetscFunctionBeginUser;
     const std::string dipole = std::string("D") + axis;
-    std::string dxPath   = "static/" + dipole + "_" + stem + ".bin";
-    std::string eigPath  = "static/EigenData_" + stem + ".h5";
+    std::string dxPath   = TDSEZPaths::Existing(TDSEZPaths::Static(stem, dipole + ".bin"), "static", dipole + "_", stem, ".bin");
+    std::string eigPath  = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "eigen.h5"), "static", "EigenData_", stem, ".h5");
 
     // --- 1. Load Dx operator matrix (serial, seqaij) ---
     // The matrix is written as a sequential PETSc binary by the solver. For now
@@ -350,9 +353,9 @@ static PetscErrorCode processAxis(const std::string& stem, char axis,
     const PetscInt B = 256; // row-block size; tune to fit device/host memory
     std::vector<PetscInt64> shape2 = {(PetscInt64)N, (PetscInt64)N};
     std::vector<PetscInt64> shape1 = {(PetscInt64)N};
-    std::string npyD = "static/TDM_" + dipole + "_" + stem + ".npy";
-    std::string npyE = "static/EigenEnergies_" + stem + ".npy";
-    std::string npyS = "static/States_" + stem + ".npy";
+    std::string npyD = TDSEZPaths::Static(stem, "tdm_" + dipole + ".npy");
+    std::string npyE = TDSEZPaths::Static(stem, "energies.npy");
+    std::string npyS = TDSEZPaths::Static(stem, "states.npy");
     std::error_code ec;
     std::filesystem::create_directories("static", ec);
     size_t hdrLen = createNpy(npyD, "<c16", shape2);
@@ -516,7 +519,7 @@ static PetscErrorCode processAxis(const std::string& stem, char axis,
 
     // --- 5. Optional human-readable .txt (small N only) ---
     if (rank == 0 && N <= 200) {
-        std::string outPath = "static/TDM_" + dipole + "_" + stem + ".txt";
+        std::string outPath = TDSEZPaths::Static(stem, "tdm_" + dipole + ".txt");
         std::FILE* fp = std::fopen(outPath.c_str(), "w");
         if (fp) {
             std::fprintf(fp, "# Transition dipole matrix d_ij = <psi_i | %s | psi_j>\n", dipole.c_str());
@@ -580,14 +583,15 @@ int main(int argc, char **argv)
     bool found = false;
     std::vector<std::string> componentFiles;
     for (char axis : {'x', 'y', 'z'}) {
-        const std::string path = "static/D" + std::string(1, axis) + "_" + stem + ".bin";
+        const std::string D = "D" + std::string(1, axis);
+        const std::string path = TDSEZPaths::Existing(TDSEZPaths::Static(stem, D + ".bin"), "static", D + "_", stem, ".bin");
         if (!std::filesystem::exists(path)) continue;
         found = true;
         PetscCall(processAxis(stem, axis, gpu, rank));
-        componentFiles.push_back("static/TDM_D" + std::string(1, axis) + "_" + stem + ".npy");
+        componentFiles.push_back(TDSEZPaths::Static(stem, "tdm_" + D + ".npy"));
     }
     PetscCheck(found, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
-               "tdmprocessor: no saved dipole operator found for %s (expected static/Dx_, Dy_, or Dz_<stem>.bin)",
+               "tdmprocessor: no saved dipole operator found for %s (expected static/<name>_Dx.bin, _Dy.bin or _Dz.bin)",
                stem.c_str());
 
     // The total transition-dipole magnitude is an axis-independent scalar:
@@ -595,8 +599,8 @@ int main(int argc, char **argv)
     // saved by the simulation are naturally omitted from the sum.
     PetscInt N = 0;
     std::vector<PetscReal> energies;
-    PetscCall(loadSpectrum("static/EigenData_" + stem + ".h5", N, energies));
-    const std::string magnitudePath = "static/TDM_magnitude_" + stem + ".npy";
+    PetscCall(loadSpectrum(TDSEZPaths::Existing(TDSEZPaths::Static(stem, "eigen.h5"), "static", "EigenData_", stem, ".h5"), N, energies));
+    const std::string magnitudePath = TDSEZPaths::Static(stem, "tdm_magnitude.npy");
     const std::vector<PetscInt64> magnitudeShape = {(PetscInt64)N, (PetscInt64)N};
     const size_t magnitudeHeader = createNpy(magnitudePath, "<f8", magnitudeShape);
     PetscCheck(magnitudeHeader > 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
@@ -636,7 +640,7 @@ int main(int argc, char **argv)
     // Few-level models also need the Bohr angular frequencies omega_ij = E_j -
     // E_i.  Write them explicitly so no convention needs to be inferred from
     // the energy vector or the ordering of a matrix element.
-    const std::string frequencyPath = "static/TransitionFrequencies_" + stem + ".npy";
+    const std::string frequencyPath = TDSEZPaths::Static(stem, "frequencies.npy");
     const size_t frequencyHeader = createNpy(frequencyPath, "<f8", magnitudeShape);
     PetscCheck(frequencyHeader > 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
                "tdmprocessor: cannot create %s", frequencyPath.c_str());
@@ -656,9 +660,9 @@ int main(int argc, char **argv)
 
     // A self-describing manifest keeps the files directly usable as a
     // truncated eigenstate basis: H0 is diagonal with EigenEnergies, while
-    // laser couplings are +E(t) dot TDM_D{axis}, matching TDSE-Z's length-gauge
+    // laser couplings are +E(t) dot <name>_tdm_D{axis}, matching TDSE-Z's length-gauge
     // convention i dpsi/dt = (H0 + E(t) D) psi.
-    const std::string manifestPath = "static/FewLevelSystem_" + stem + ".json";
+    const std::string manifestPath = TDSEZPaths::Static(stem, "fewlevel.json");
     std::ofstream manifest(manifestPath);
     PetscCheck((bool)manifest, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN,
                "tdmprocessor: cannot create %s", manifestPath.c_str());
@@ -669,9 +673,9 @@ int main(int argc, char **argv)
              << "  \"angular_frequency_units\": \"atomic units (hartree/hbar)\",\n"
              << "  \"dipole_units\": \"atomic units\",\n"
              << "  \"field_coupling\": \"H_ij(t) = E_i delta_ij + E(t) dot d_ij\",\n"
-             << "  \"energies\": \"EigenEnergies_" << stem << ".npy\",\n"
-             << "  \"transition_frequencies\": \"TransitionFrequencies_" << stem << ".npy\",\n"
-             << "  \"dipole_magnitude\": \"TDM_magnitude_" << stem << ".npy\",\n"
+             << "  \"energies\": \"" << TDSEZPaths::Name(stem) << "_energies.npy\",\n"
+             << "  \"transition_frequencies\": \"" << TDSEZPaths::Name(stem) << "_frequencies.npy\",\n"
+             << "  \"dipole_magnitude\": \"" << TDSEZPaths::Name(stem) << "_tdm_magnitude.npy\",\n"
              << "  \"dipole_components\": [";
     for (size_t a = 0; a < componentFiles.size(); ++a) {
         if (a) manifest << ", ";

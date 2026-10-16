@@ -8,7 +8,7 @@
 # so A and E vanish at both ends of the pulse (zero field area, no drift).
 #
 #   tdsez.x -inp hhg_1d.inp
-#   python hhg_spectrum.py td/TimeEvolutionData_hhg_1d.inp.h5 --omega 0.057 --plot hhg.png
+#   python hhg_spectrum.py td/hhg_1d_observables.h5 --omega 0.057 --plot hhg.png
 
 Dimension         = 1
 Domain            = -70.0, 70.0

@@ -34,7 +34,7 @@ Observable Selection
 
 A quantity missing from ``PhysicsOutput`` is not computed: its products and
 reductions are skipped. Its dataset is still written with the same shape, the
-time in column 0 and zeros elsewhere, so every ``TimeEvolutionData`` file has
+time in column 0 and zeros elsewhere, so every ``td/<name>_observables.h5`` file has
 the same layout and readers (zkit) always find the time axis. The quantities
 that are computed are the same as in a full run (to rounding).
 
@@ -95,7 +95,7 @@ Output Strides
 --------------
 
 The time series of :doc:`Observables`, including the autocorrelation, are
-recorded at every step in ``td/TimeEvolutionData_<input>.h5``, independently
+recorded at every step in ``td/<name>_observables.h5``, independently
 of the strides below.
 
 .. list-table::
@@ -109,23 +109,23 @@ of the strides below.
    * - OutputStrideWFS
      - int
      - 100
-     - Write the state to ``td/wfs_<input>.h5`` every N steps (dataset
+     - Write the state to ``td/<name>_wfs.h5`` every N steps (dataset
        ``wavefunction``, time-step index :math:`\text{step}/N`); requires
        ``wfs`` in ``PhysicsOutput``. 0 disables the snapshots.
    * - OutputStrideTS
      - int
      - 0
-     - If :math:`N > 0`: (i) ``TimeEvolutionData`` is also flushed at
+     - If :math:`N > 0`: (i) ``td/<name>_observables.h5`` is also flushed at
        multiples of N steps when at least 2 s of wall time have passed since
        the last write; (ii) with ``Propagator = cn`` the 1D and 3D monitors
        write the state of the PETSc ``TS`` object (``TSView``) every N steps
-       to ``ts_<input>.h5`` in the run directory. 0 disables both.
+       to ``td/<name>_ts.h5`` in the run directory. 0 disables both.
    * - OutputStrideSurff
      - int
      - 1
      - Sampling stride of the t-SURFF observer (:doc:`TSurff`).
 
-The rows of ``TimeEvolutionData`` are buffered in memory and appended to the
+The rows of ``td/<name>_observables.h5`` are buffered in memory and appended to the
 file when the buffer is full, every 5000 recorded steps, at multiples of
 ``OutputStrideTS`` as above, and at the end of the run. A small
 ``OutputStrideTS`` therefore makes partial results visible in the file during
@@ -145,7 +145,7 @@ Static Output
    * - NBoundStatesSave / SaveBoundStates
      - bool
      - 0
-     - Write the eigenstates to ``static/EigenData_<input>.h5`` (datasets
+     - Write the eigenstates to ``static/<name>_eigen.h5`` (datasets
        ``psi_i`` and ``coeff_i``). Required by the post-processing tools.
    * - BoundStateFormat / StateFormat / SaveStateFormat
      - string
@@ -156,7 +156,7 @@ Static Output
      - bool
      - 0
      - Write the assembled position matrix :math:`\mathbf D_x` to
-       ``static/Dx_<input>.bin`` (PETSc binary).
+       ``static/<name>_Dx.bin`` (PETSc binary).
    * - SaveDipoleAxes
      - string
      - (empty)
@@ -179,14 +179,14 @@ Compression and Console Output
    * - HDF5Compress
      - bool
      - 0
-     - Compress the HDF5 output. The ``TimeEvolutionData`` datasets
+     - Compress the HDF5 output. The ``<name>_observables.h5`` datasets
        (chunks of 256 rows) use the shuffle filter and deflate at
        ``HDF5CompressLevel``; the files written through PETSc viewers
-       (``EigenData``, ``wfs``, ``ts``) use PETSc's HDF5 compression.
+       (``_eigen``, ``_wfs``, ``_ts``) use PETSc's HDF5 compression.
    * - HDF5CompressLevel
      - int
      - 6
-     - Deflate level of the ``TimeEvolutionData`` datasets, clamped to 1-9.
+     - Deflate level of the ``<name>_observables.h5`` datasets, clamped to 1-9.
    * - Verbose
      - bool
      - 1

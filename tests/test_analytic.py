@@ -38,8 +38,8 @@ def run(tmp_path, name, text, nproc=2, args=()):
     log = proc.stdout + proc.stderr
     log = " ".join(log.split())  # wrapped log lines
     assert proc.returncode == 0, f"tdsez failed (rc={proc.returncode}):\n{log[-2000:]}"
-    return (log, tmp_path / "static" / f"EigenData_{inp.name}.h5",
-            tmp_path / "td" / f"TimeEvolutionData_{inp.name}.h5")
+    return (log, tmp_path / "static" / f"{inp.stem}_eigen.h5",
+            tmp_path / "td" / f"{inp.stem}_observables.h5")
 
 
 def spectrum(h5):
