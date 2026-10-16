@@ -88,12 +88,13 @@ public:
         std::string r((size_t)INDENT, ' ');
         for (int i = 0; i < width(); ++i) r += "═";
         PetscPrintf(m_comm, "%s\n", r.c_str());
+        lastBlank() = false;
     }
 
     /// Stage of the run: centred title between two rules.
     void header(const char* title) const
     {
-        PetscPrintf(m_comm, "\n");
+        gap();
         rule();
         center(title);
         rule();
@@ -108,7 +109,9 @@ public:
         for (int i = 0; i < left; ++i) s += "─";
         s += " "; s += label; s += " ";
         for (int i = 0; i < right; ++i) s += "─";
-        PetscPrintf(m_comm, "\n%*s%s\n", col(), "", s.c_str());
+        gap();
+        PetscPrintf(m_comm, "%*s%s\n", col(), "", s.c_str());
+        lastBlank() = false;
     }
 
     /// Thin rule across the body.
@@ -117,6 +120,7 @@ public:
         std::string s;
         for (int i = 0; i < body(); ++i) s += "─";
         PetscPrintf(m_comm, "%*s%s\n", col(), "", s.c_str());
+        lastBlank() = false;
     }
 
     /// "Label = value" row; a long value wraps under itself.
@@ -153,6 +157,7 @@ public:
         vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
         PetscPrintf(m_comm, "%*s%s\n", col(), "", msg);
+        lastBlank() = false;
     }
 
     /// Icon and message; continuation lines align after the icon.
@@ -175,7 +180,9 @@ public:
         va_start(args, fmt);
         vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
+        gap();
         emit("ⵣ WARNING: ", msg, 2);
+        gap();
     }
 
     /// "✖ TDSEZ FATAL: message" (the caller aborts).
@@ -186,12 +193,15 @@ public:
         va_start(args, fmt);
         vsnprintf(msg, sizeof(msg), fmt, args);
         va_end(args);
-        PetscPrintf(m_comm, "\n");
+        gap();
         emit("✖ TDSEZ FATAL: ", msg, 2);
     }
 
     /// Empty line.
-    void blank() const { PetscPrintf(m_comm, "\n"); }
+    void blank() const { PetscPrintf(m_comm, "\n"); lastBlank() = true; }
+
+    /// Empty line unless the previous line was already empty.
+    void gap() const { if (!lastBlank()) blank(); }
 
     /// Closing rule of a stage.
     void footer() const
@@ -228,6 +238,8 @@ public:
             PetscPrintf(m_comm, "\n");
             for (const auto& t : g) center(t.c_str(), width());
         }
+        blank();
+        rule();
     }
 
     /// Centre a string under the rules; a string wider than the body is
@@ -236,6 +248,7 @@ public:
     {
         for (const auto& l : wrap(s, w > 0 ? w : body()))
             PetscPrintf(m_comm, "%*s%s\n", INDENT + PetscMax(0, (width() - displayWidth(l)) / 2), "", l.c_str());
+        lastBlank() = false;
     }
 
     /// Width of the rules.
@@ -273,6 +286,9 @@ public:
 
 private:
     MPI_Comm m_comm;
+
+    /// Whether the last line printed was empty (shared by all printers).
+    static bool& lastBlank() { static bool b = false; return b; }
 
     /// Greedy word wrap of @p s to @p w columns (explicit '\n' kept).
     static std::vector<std::string> wrap(const std::string& s, int w)
@@ -313,6 +329,7 @@ private:
             if (k == 0) PetscPrintf(m_comm, "%*s%s%s\n", col(), "", head.c_str(), lines[k].c_str());
             else PetscPrintf(m_comm, "%*s%s\n", col() + hang, "", lines[k].c_str());
         }
+        lastBlank() = false;
     }
 };
 

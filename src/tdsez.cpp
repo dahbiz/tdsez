@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
             TDSEZInfo infoSelf(PETSC_COMM_SELF);
             infoSelf.banner(logoLines, {
                 {"Z is not the author's initial. Z is not the third axis.",
-                 "Z is ⵣ (yaz): the free man, the free people, in Moroccan Amazigh."},
+                 "Z is ⵣ (yaz): the free man, the free people, in Amazigh (Morocco)."},
                 {"TDSE-Z  |  Time-Dependent Schrödinger Equation solver (B-spline / IGA)",
                  "Dr. Zakaria Dahbi  |  zdahbi@outlook.es",
                  "Attosecond Quantum Physics Lab, King's College London, UK"}
