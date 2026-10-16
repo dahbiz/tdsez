@@ -280,6 +280,57 @@ Recommended box half widths are 10 a.u. for the ground state, 20 a.u. for
 :math:`\pm 20` with :math:`N_{\exp} = 15` (79 507 DOFs) the 1s level and the
 four :math:`n = 2` states agree with the exact energies to 2·10\ :sup:`-6`.
 
+**Degree 5, levels up to** :math:`n = 3`. A degree-5 grid on :math:`\pm 35`
+resolves the first three shells:
+
+.. code-block:: text
+
+   Dimension      = 3
+   Domain         = -35.0, 35.0
+   SplineDegree   = 5
+   NQuadratures   = 7
+   KnotSequence   = hydrogenic
+   HydrogenicR1   = 0.05, 0.05, 0.05
+   HydrogenicNLin = 5, 5, 5
+   HydrogenicNExp = 15, 15, 15
+   Potential      = -1.0 / sqrt(x*x + y*y + z*z + 1e-8)
+   TargetEigenvalue = -0.5
+   NBoundStates   = 8
+
+40 elements and 45 B-splines per axis (91 125 DOFs). The grid splits the
+:math:`n = 3` shell into :math:`3s` and :math:`3p` by :math:`10^{-6}`, so
+``NBoundStates = 8`` ends inside the :math:`3p` level and nine states are kept
+(:doc:`Eigensolver`):
+
+.. list-table:: 3D hydrogen, degree 5, :math:`\pm 35`, exact :math:`E_n = -1/(2n^2)`
+   :name: table-knot-sequences-hydrogen-p5
+   :widths: 22 26 26 26
+   :header-rows: 1
+
+   * - Level
+     - TDSE-Z
+     - exact
+     - backward error
+   * - :math:`1s`
+     - -0.499999
+     - -0.5
+     - :math:`2\times10^{-18}`
+   * - :math:`n = 2` (4 states)
+     - -0.125000
+     - -0.125
+     - :math:`3\times10^{-13}`–:math:`2\times10^{-12}`
+   * - :math:`3s`
+     - -0.0555582
+     - -0.0555556
+     - :math:`1\times10^{-11}`
+   * - :math:`3p` (3 states)
+     - -0.0555572
+     - -0.0555556
+     - :math:`5\times10^{-12}`–:math:`9\times10^{-12}`
+
+The energies are printed to six significant digits; the :math:`n = 3` levels
+lie 1.6–2.6·10\ :sup:`-6` from the exact value.
+
 **Grading.** Refining the inner region (5 elements of 0.05 a.u.) changes the
 ground-state energy by less than 10\ :sup:`-6`; the accuracy is limited by the
 outer, exponentially graded elements (13 instead of 10 exponential elements:

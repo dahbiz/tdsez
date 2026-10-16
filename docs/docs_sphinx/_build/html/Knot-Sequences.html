@@ -610,6 +610,65 @@ probability.</p>
 3–6·10<sup>-3</sup> too low) and about 35 a.u. for <span class="math notranslate nohighlight">\(n = 3\)</span>. On
 <span class="math notranslate nohighlight">\(\pm 20\)</span> with <span class="math notranslate nohighlight">\(N_{\exp} = 15\)</span> (79 507 DOFs) the 1s level and the
 four <span class="math notranslate nohighlight">\(n = 2\)</span> states agree with the exact energies to 2·10<sup>-6</sup>.</p>
+<p><strong>Degree 5, levels up to</strong> <span class="math notranslate nohighlight">\(n = 3\)</span>. A degree-5 grid on <span class="math notranslate nohighlight">\(\pm 35\)</span>
+resolves the first three shells:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Dimension      = 3
+Domain         = -35.0, 35.0
+SplineDegree   = 5
+NQuadratures   = 7
+KnotSequence   = hydrogenic
+HydrogenicR1   = 0.05, 0.05, 0.05
+HydrogenicNLin = 5, 5, 5
+HydrogenicNExp = 15, 15, 15
+Potential      = -1.0 / sqrt(x*x + y*y + z*z + 1e-8)
+TargetEigenvalue = -0.5
+NBoundStates   = 8
+</pre></div>
+</div>
+<p>40 elements and 45 B-splines per axis (91 125 DOFs). The grid splits the
+<span class="math notranslate nohighlight">\(n = 3\)</span> shell into <span class="math notranslate nohighlight">\(3s\)</span> and <span class="math notranslate nohighlight">\(3p\)</span> by <span class="math notranslate nohighlight">\(10^{-6}\)</span>, so
+<code class="docutils literal notranslate"><span class="pre">NBoundStates</span> <span class="pre">=</span> <span class="pre">8</span></code> ends inside the <span class="math notranslate nohighlight">\(3p\)</span> level and nine states are kept
+(<a class="reference internal" href="Eigensolver.html"><span class="doc">Eigensolver</span></a>):</p>
+<table class="docutils align-default" id="table-knot-sequences-hydrogen-p5">
+<caption><span class="caption-number">Table 3 </span><span class="caption-text">3D hydrogen, degree 5, <span class="math notranslate nohighlight">\(\pm 35\)</span>, exact <span class="math notranslate nohighlight">\(E_n = -1/(2n^2)\)</span></span><a class="headerlink" href="#table-knot-sequences-hydrogen-p5" title="Link to this table"></a></caption>
+<colgroup>
+<col />
+<col />
+<col />
+<col />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Level</p></th>
+<th class="head"><p>TDSE-Z</p></th>
+<th class="head"><p>exact</p></th>
+<th class="head"><p>backward error</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(1s\)</span></p></td>
+<td><p>-0.499999</p></td>
+<td><p>-0.5</p></td>
+<td><p><span class="math notranslate nohighlight">\(2\times10^{-18}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(n = 2\)</span> (4 states)</p></td>
+<td><p>-0.125000</p></td>
+<td><p>-0.125</p></td>
+<td><p><span class="math notranslate nohighlight">\(3\times10^{-13}\)</span>–<span class="math notranslate nohighlight">\(2\times10^{-12}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(3s\)</span></p></td>
+<td><p>-0.0555582</p></td>
+<td><p>-0.0555556</p></td>
+<td><p><span class="math notranslate nohighlight">\(1\times10^{-11}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(3p\)</span> (3 states)</p></td>
+<td><p>-0.0555572</p></td>
+<td><p>-0.0555556</p></td>
+<td><p><span class="math notranslate nohighlight">\(5\times10^{-12}\)</span>–<span class="math notranslate nohighlight">\(9\times10^{-12}\)</span></p></td>
+</tr>
+</tbody>
+</table>
+<p>The energies are printed to six significant digits; the <span class="math notranslate nohighlight">\(n = 3\)</span> levels
+lie 1.6–2.6·10<sup>-6</sup> from the exact value.</p>
 <p><strong>Grading.</strong> Refining the inner region (5 elements of 0.05 a.u.) changes the
 ground-state energy by less than 10<sup>-6</sup>; the accuracy is limited by the
 outer, exponentially graded elements (13 instead of 10 exponential elements:
@@ -637,7 +696,7 @@ to 10 points; the eigensolve time does not depend on the rule.</p>
 more accurate than the <span class="math notranslate nohighlight">\(C^0\)</span> element bases, which span the same space as
 each other and differ only in conditioning (<a class="reference internal" href="Grid-Domain.html"><span class="doc">Grid &amp; Domain</span></a>):</p>
 <table class="docutils align-default" id="id7">
-<caption><span class="caption-number">Table 3 </span><span class="caption-text">Ground-state error of 3D hydrogen for the four bases</span><a class="headerlink" href="#id7" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 4 </span><span class="caption-text">Ground-state error of 3D hydrogen for the four bases</span><a class="headerlink" href="#id7" title="Link to this table"></a></caption>
 <colgroup>
 <col />
 <col />
@@ -681,7 +740,7 @@ the integrated odd-harmonic yields of <span class="math notranslate nohighlight"
 grid (<span class="math notranslate nohighlight">\(R_1 = 0.02\)</span>, <code class="docutils literal notranslate"><span class="pre">HydrogenicHMax</span> <span class="pre">=</span> <span class="pre">0.25</span></code>, 179k DOFs), in decades,
 <span class="math notranslate nohighlight">\(|\log_{10} I/I_{\mathrm{ref}}|\)</span>. The harmonic cutoff lies at H24.</p>
 <table class="docutils align-default" id="id8">
-<caption><span class="caption-number">Table 4 </span><span class="caption-text">Harmonic-yield error against the hydrogenic grid</span><a class="headerlink" href="#id8" title="Link to this table"></a></caption>
+<caption><span class="caption-number">Table 5 </span><span class="caption-text">Harmonic-yield error against the hydrogenic grid</span><a class="headerlink" href="#id8" title="Link to this table"></a></caption>
 <colgroup>
 <col />
 <col />
