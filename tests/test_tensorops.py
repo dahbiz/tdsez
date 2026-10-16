@@ -189,3 +189,48 @@ def test_matrix_free_saves_requested_dipoles():
         (sr, vr), (sm, vm) = files[("ref", a)], files[("mf", a)]
         err = np.max(np.abs(vr - vm)) / np.max(np.abs(vr))
         _step(f"D{a}: same structure and values with -tdsez_mat_free", sr == sm and err < 1e-13, f"{err:.1e}")
+
+
+def test_lz_diagonalisation_gives_symmetric_m_states():
+    """EnableLzDiag (2D): for an isotropic potential and an x-polarised field
+    from the ground state, the m = +1 and m = -1 populations are equal, and
+    the result does not depend on the rank count. (The dense Hermitian
+    eigensolver of the Lz steps once read its row-major matrix as
+    column-major, i.e. diagonalised A^T = conj(A).)"""
+    text = """Verbose = 0
+Charge = -1.0
+Dimension = 2
+Domain = -12.0, 12.0
+SplineDegree = 3
+NQuadratures = 5
+KnotSequence = uniform
+NSplines = 24
+Mass = 1.0
+Potential = -1/sqrt(x*x + y*y + 1)
+PotentialDerivativeX = x/(x*x + y*y + 1)^1.5
+PotentialDerivativeY = y/(x*x + y*y + 1)^1.5
+NBoundStates = 4
+TargetEigenvalue = -1.0
+InitialState = ground
+Polarization = x
+LaserX = 0.05*sin(t)
+Propagator = pade22
+TimeStep = 0.05
+FinalTime = 0.5
+OutputStrideWFS = 100000
+EnableLzDiag = 1
+"""
+    res = {}
+    for n in (1, 3):
+        name = f"lzdiag_np{n}"
+        path = _write_tmp(name + ".inp", text)
+        d = os.path.dirname(path)
+        r = subprocess.run(["mpirun", "--bind-to", "none", "-np", str(n), zkit.find_binary(), "-inp", path],
+                           capture_output=True, cwd=d)
+        _step(f"np={n} runs", r.returncode == 0, r.stdout.decode(errors="replace")[-800:])
+        with h5py.File(os.path.join(d, "td", f"TimeEvolutionData_{name}.inp.h5")) as f:
+            res[n] = np.asarray(f["populations"])
+        P = res[n][-1]
+        _step(f"np={n}: P(m=-1) = P(m=+1)", abs(P[2] - P[3]) <= 1e-9 * max(P[2], P[3]) and P[2] > 0, f"{P[2]:.6e} {P[3]:.6e}")
+    err = np.max(np.abs(res[1] - res[3]))
+    _step("np=1 and np=3 give the same populations", err < 1e-10, f"{err:.1e}")

@@ -717,113 +717,46 @@ PetscErrorCode ApplyLzPhysical(TDSEZManager *TDSEZ, KSP ksp_M, Vec psi, Vec u)
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DiagDenseHermitian:
-//    Diagonalise a dense dim×dim Hermitian matrix (row-major) with LAPACK.
-//    Returns eigenvalues ascending, eigenvectors as rows of evecs.
-//    Phase canonicalized: largest component real-positive.
+//    Diagonalise a dense dim×dim Hermitian matrix given row-major
+//    (Amat[i*dim + j] = A(i, j)) with LAPACK heev. Returns the eigenvalues
+//    ascending and the eigenvectors as rows of evecs (evecs[k][j] = v_k(j)).
+//    Phase: the first component whose modulus is within 1e-8 of the largest
+//    is made real-positive, so an exact tie (e.g. (1, ±i)/√2) is not decided
+//    by rounding.
 // ─────────────────────────────────────────────────────────────────────────────
 static PetscErrorCode DiagDenseHermitian(
     PetscInt                               dim,
     const std::vector<std::complex<double>> &Amat,
     std::vector<double>                    &evals,
-    std::vector<std::vector<std::complex<double>>> &evecs,
-    double                                  tol = 1e-12) // degeneracy tolerance
+    std::vector<std::vector<std::complex<double>>> &evecs)
 {
     PetscFunctionBeginUser;
+    const size_t n = (size_t)dim;
+    std::vector<PetscScalar> O(n * n);
+    for (size_t i = 0; i < n; ++i)                     // column-major, exactly Hermitian
+        for (size_t j = 0; j < n; ++j)
+            O[i + n * j] = 0.5 * (Amat[i * n + j] + std::conj(Amat[j * n + i]));
+    PetscBLASInt nb = (PetscBLASInt)dim, lwork = (PetscBLASInt)(4 * dim), info = 0;
+    std::vector<PetscReal> ev(n);
+    std::vector<PetscScalar> work(4 * n);
+#if defined(PETSC_USE_COMPLEX)
+    std::vector<PetscReal> rwork(3 * n);
+    LAPACKsyev_("V", "U", &nb, O.data(), &nb, ev.data(), work.data(), &lwork, rwork.data(), &info);
+#else
+    LAPACKsyev_("V", "U", &nb, O.data(), &nb, ev.data(), work.data(), &lwork, &info);
+#endif
+    PetscCheck(info == 0, PETSC_COMM_SELF, PETSC_ERR_LIB, "LAPACK heev failed: %d", (int)info);
 
-    // Step 1: Create PETSc dense matrix
-    Mat A;
-    PetscCall(MatCreateSeqDense(PETSC_COMM_SELF, dim, dim,
-                                reinterpret_cast<PetscScalar*>(const_cast<std::complex<double>*>(Amat.data())), &A));
-
-    // Step 2: Create SLEPc EPS solver for Hermitian problem
-    EPS eps;
-    PetscCall(EPSCreate(PETSC_COMM_SELF, &eps));
-    PetscCall(EPSSetOperators(eps, A, NULL));
-    PetscCall(EPSSetProblemType(eps, EPS_HEP));            // Hermitian
-    PetscCall(EPSSetWhichEigenpairs(eps, EPS_SMALLEST_REAL)); // deterministic ordering
-    PetscCall(EPSSetFromOptions(eps));
-    PetscCall(EPSSolve(eps));
-
-    PetscInt nconv;
-    PetscCall(EPSGetConverged(eps, &nconv));
-    if (nconv < dim)
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Not all eigenvalues converged");
-
-    evals.resize(dim);
-    evecs.assign(dim, std::vector<std::complex<double>>(dim));
-
-    Vec xr;
-    PetscCall(MatCreateVecs(A, &xr, NULL));
-
-    // Step 3: Extract eigenpairs
-    std::vector<std::vector<std::complex<double>>> raw_evecs(dim, std::vector<std::complex<double>>(dim));
-    for (PetscInt i = 0; i < dim; i++) {
-        PetscScalar kr;
-        PetscCall(EPSGetEigenpair(eps, i, &kr, NULL, xr, NULL));
-        evals[i] = PetscRealPart(kr);
-
-        const PetscScalar *xdata;
-        PetscCall(VecGetArrayRead(xr, &xdata));
-        for (PetscInt j = 0; j < dim; j++)
-            raw_evecs[i][j] = xdata[j];
-        PetscCall(VecRestoreArrayRead(xr, &xdata));
+    evals.assign(ev.begin(), ev.end());
+    evecs.assign(n, std::vector<std::complex<double>>(n));
+    for (size_t k = 0; k < n; ++k) {
+        double vmax = 0.0;
+        for (size_t j = 0; j < n; ++j) vmax = std::max(vmax, (double)PetscAbsScalar(O[j + n * k]));
+        std::complex<double> phase = 1.0;
+        for (size_t j = 0; j < n; ++j)
+            if (PetscAbsScalar(O[j + n * k]) >= (1.0 - 1e-8) * vmax) { phase = O[j + n * k] / PetscAbsScalar(O[j + n * k]); break; }
+        for (size_t j = 0; j < n; ++j) evecs[k][j] = O[j + n * k] / phase;
     }
-
-    // Step 4: Identify degenerate blocks and sort deterministically
-    std::vector<bool> used(dim,false);
-    PetscInt idx = 0;
-    while (idx < dim) {
-        // Find degenerate block
-        PetscInt block_start = idx;
-        PetscInt block_end = idx;
-        while (block_end+1 < dim && std::abs(evals[block_end+1]-evals[block_start]) < tol)
-            block_end++;
-
-        PetscInt block_size = block_end - block_start + 1;
-
-        // Deterministic sort: by max component index in original basis
-        std::vector<std::pair<PetscInt,std::complex<double>>> maxidx(block_size);
-        for (PetscInt k = 0; k < block_size; k++) {
-            PetscInt max_j = 0;
-            double max_val = 0.0;
-            for (PetscInt j = 0; j < dim; j++) {
-                double av = std::abs(raw_evecs[block_start+k][j]);
-                if (av > max_val) { max_val = av; max_j = j; }
-            }
-            maxidx[k] = {max_j, 0.0}; // store max index for sorting
-        }
-
-        // sort indices deterministically
-        std::vector<PetscInt> order(block_size);
-        std::iota(order.begin(), order.end(), 0);
-        std::sort(order.begin(), order.end(),
-                  [&](PetscInt a, PetscInt b){ return maxidx[a].first < maxidx[b].first; });
-
-        // Assign sorted + phase-fixed eigenvectors
-        for (PetscInt k = 0; k < block_size; k++) {
-            PetscInt src = block_start + order[k];
-            evecs[block_start+k] = raw_evecs[src];
-
-            // phase-fix: largest component positive real
-            PetscInt max_j = 0;
-            double max_val = 0.0;
-            for (PetscInt j = 0; j < dim; j++) {
-                double av = std::abs(evecs[block_start+k][j]);
-                if (av > max_val) { max_val = av; max_j = j; }
-            }
-            if (max_val > 1e-14) {
-                std::complex<double> phase = evecs[block_start+k][max_j] / max_val;
-                for (PetscInt j = 0; j < dim; j++) evecs[block_start+k][j] /= phase;
-            }
-        }
-
-        idx = block_end + 1;
-    }
-
-    PetscCall(VecDestroy(&xr));
-    PetscCall(EPSDestroy(&eps));
-    PetscCall(MatDestroy(&A));
-
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
