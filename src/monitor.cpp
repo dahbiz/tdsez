@@ -27,6 +27,30 @@ static bool TDSEZShouldLogProgress(PetscInt step)
     return step == 0 || step >= total || (step % stride) == 0;
 }
 
+/// Products a monitor call needs for the requested outputs (PhysicsOutput)
+/// and the progress line; everything else is skipped.
+struct TDSEZMonitorNeeds {
+    bool acc, energy, log;      // acceleration, energies, progress row at this step
+    bool dip, force, vel, cur;  // dipole products, force operators, velocities, current group
+    bool kvmd, m, h;            // MonitorProducts: Md/K/V (+ quadrature values), M psi, H psi
+};
+static TDSEZMonitorNeeds TDSEZMonitorNeedsAt(const TDSEZManager *TDSEZ, PetscInt step)
+{
+    TDSEZMonitorNeeds n;
+    const bool disc = TDSEZ->UseDiscreteAcceleration();
+    n.acc    = TDSEZParser::out_accel;
+    n.energy = TDSEZParser::out_energy;
+    n.cur    = TDSEZParser::out_current;
+    n.log    = TDSEZShouldLogProgress(step);
+    n.dip    = TDSEZParser::out_dipole || n.acc || n.energy || n.log;   // <r> feeds the interaction energy
+    n.force  = n.acc && !disc;
+    n.vel    = n.cur;
+    n.kvmd   = n.energy || n.force || n.cur;                             // also the quadrature-point values
+    n.m      = n.energy || n.cur || TDSEZParser::out_population || TDSEZParser::out_autocorr || n.log;
+    n.h      = n.energy || (n.acc && disc) || n.log;
+    return n;
+}
+
 /// One progress row (the column header before the first one).
 static void TDSEZProgressRow(PetscInt step, PetscReal t, PetscScalar normSq, PetscScalar energy)
 {
@@ -475,14 +499,15 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
     // dipole (accel needs invMassAvg); they are skipped when neither is on.
-    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)(TDSEZParser::out_energy || TDSEZParser::out_dipole)));
+    const TDSEZMonitorNeeds need = TDSEZMonitorNeedsAt(TDSEZ, step);
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)need.kvmd, (PetscBool)need.m, (PetscBool)need.h));
     const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
 
     PetscInt nBatch = 5;
     PetscInt idxDx=-1, idxAccX=-1, idxVx=-1;
-    if (TDSEZ->hasX) {
+    if (TDSEZ->hasX && need.dip) {
         idxDx   = nBatch++; PetscCall(MatMult(TDSEZ->Dx(),   psi, TDSEZ->tmpVec[idxDx]));
-        if (!useDiscAcc) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
+        if (need.force) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
     }
     if (TDSEZParser::out_current && TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR) {
         idxVx = nBatch++; PetscCall(MatMult(TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx]));
@@ -496,32 +521,32 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     const PetscReal   normSq       = PetscRealPart(res[0]);
     const PetscScalar expectationH = res[1];
-    const PetscScalar invMassAvg   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) ? res[2] : 0.0;
+    const PetscScalar invMassAvg   = need.kvmd ? res[2] : 0.0;
     const PetscScalar kineticE     = (TDSEZParser::out_energy) ? res[3] : 0.0;
     const PetscScalar potentialE   = (TDSEZParser::out_energy) ? res[4] : 0.0;
 
     PetscScalar laserEx=0.0, dipoleMX=0.0, accelX=0.0, projDx=0.0;
 
-    if (TDSEZ->hasX)
+    if (TDSEZ->hasX) laserEx = TDSEZParser::Field(0, t);
+    if (idxDx >= 0)
     {
-        laserEx  = TDSEZParser::Field(0, t);
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
-        accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && idxAccX >= 0
+        accelX   = need.acc && idxAccX >= 0
                    ? TDSEZ->charge * (res[idxAccX] - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
     }
 
 
     // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
     // delta-like there, so take a(t) from the discrete equation of motion instead.
-    if (TDSEZParser::out_dipole && useDiscAcc) {
+    if (need.acc && useDiscAcc) {
         PetscScalar acc[3];
         PetscCall(TDSEZ->DiscreteAcceleration(t, psi, TDSEZ->tmpVec[1], acc));
         accelX = acc[0];
     }
 
     PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
-    if (TDSEZParser::out_energy) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    if (need.energy || need.log) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
     const PetscScalar interactionE = TDSEZParser::CarrierSign() * laserEx*projDx + fieldTermE;
     const PetscScalar totalEnergy  = expectationH + interactionE;
 
@@ -578,14 +603,20 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     if (TDSEZ->rank == 0)
     {
         PetscInt sIdx = TDSEZ->recordedSteps % TDSEZ->maxAllocatedSteps;
+        // time column of every dataset, also of the quantities not recorded
+        TDSEZ->dipBuffer[sIdx * TDSEZ->dipWidth]       = t;
+        TDSEZ->popBuffer[sIdx * TDSEZ->popWidth]       = t;
+        TDSEZ->energyBuffer[sIdx * TDSEZ->energyWidth] = t;
+        TDSEZ->currBuffer[sIdx * (TDSEZParser::Dimension == 3 ? 15 : 11)] = t;
+        TDSEZ->acBuffer[sIdx * 3]                      = t;
 
         // Dipoles Table [t, Ex, Dx, Ax]
-        if (TDSEZParser::out_dipole) {
+        if (TDSEZParser::out_dipole || TDSEZParser::out_accel) {
             PetscInt dOff = sIdx * 4;
             TDSEZ->dipBuffer[dOff+0] = t;
             TDSEZ->dipBuffer[dOff+1] = laserEx;
-            TDSEZ->dipBuffer[dOff+2] = dipoleMX;
-            TDSEZ->dipBuffer[dOff+3] = accelX;
+            TDSEZ->dipBuffer[dOff+2] = TDSEZParser::out_dipole ? dipoleMX : 0.0;
+            TDSEZ->dipBuffer[dOff+3] = TDSEZParser::out_accel ? accelX : 0.0;
         }
 
         // Populations Table [t, P0, P1, P2, ...]
@@ -721,28 +752,29 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
        ---------------------------------------------------------------- */
     // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
     // dipole (accel needs invMassAvg); they are skipped when neither is on.
-    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)(TDSEZParser::out_energy || TDSEZParser::out_dipole)));
+    const TDSEZMonitorNeeds need = TDSEZMonitorNeedsAt(TDSEZ, step);
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)need.kvmd, (PetscBool)need.m, (PetscBool)need.h));
     const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
 
     PetscInt nBatch = 5;
     PetscInt idxDx=-1, idxDy=-1, idxAccX=-1, idxAccY=-1;
     PetscInt idxVx=-1, idxVy=-1, idxLz=-1;
 
-    if (TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::DipX, TDSEZ->Dx())) {
+    if (need.dip && TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::DipX, TDSEZ->Dx())) {
         idxDx   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), psi, TDSEZ->tmpVec[idxDx]));
-        if (!useDiscAcc && !TDSEZ->QuadForce(0)) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
+        if (need.force && !TDSEZ->QuadForce(0)) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
     }
-    if (TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::DipY, TDSEZ->Dy())) {
+    if (need.dip && TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::DipY, TDSEZ->Dy())) {
         idxDy   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), psi, TDSEZ->tmpVec[idxDy]));
-        if (!useDiscAcc && !TDSEZ->QuadForce(1)) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
+        if (need.force && !TDSEZ->QuadForce(1)) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
     }
-    if (TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) {
+    if (need.vel && TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) {
         idxVx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx]));
     }
-    if (TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) {
+    if (need.vel && TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) {
         idxVy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy]));
     }
-    if (TDSEZ->Lz() != PETSC_NULLPTR) {
+    if (need.cur && TDSEZ->Lz() != PETSC_NULLPTR) {
         idxLz = nBatch++; PetscCall(MatMult(TDSEZ->Lz(), psi, TDSEZ->tmpVec[idxLz]));
     }
     
@@ -756,7 +788,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     const PetscReal   normSq     = PetscRealPart(res[0]);
     const PetscScalar expectH    = res[1];
-    const PetscScalar invMassAvg = (TDSEZParser::out_energy || TDSEZParser::out_dipole) ? res[2] : 0.0;
+    const PetscScalar invMassAvg = need.kvmd ? res[2] : 0.0;
     const PetscScalar kineticE   = (TDSEZParser::out_energy) ? res[3] : 0.0;
     const PetscScalar potentialE = (TDSEZParser::out_energy) ? res[4] : 0.0;
 
@@ -766,20 +798,20 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     PetscScalar accelX=0,   accelY=0;
     PetscScalar Jx_total=0, Jy_total=0;
 
+    if (TDSEZ->hasX) laserEx = TDSEZParser::Field(0, t);
+    if (TDSEZ->hasY) laserEy = TDSEZParser::Field(1, t);
     if (idxDx >= 0) 
     {
-        laserEx  = TDSEZParser::Field(0, t);
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
-        accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && (idxAccX >= 0 || TDSEZ->QuadForce(0))
+        accelX   = need.acc && (idxAccX >= 0 || TDSEZ->QuadForce(0))
                    ? TDSEZ->charge * ((idxAccX >= 0 ? res[idxAccX] : TDSEZ->QuadForceValue(0)) - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
     }
 
     if (idxDy >= 0) {
-        laserEy  = TDSEZParser::Field(1, t);
         projDy   = res[idxDy];
         dipoleMY = TDSEZ->charge * projDy;
-        accelY   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && (idxAccY >= 0 || TDSEZ->QuadForce(1))
+        accelY   = need.acc && (idxAccY >= 0 || TDSEZ->QuadForce(1))
                    ? TDSEZ->charge * ((idxAccY >= 0 ? res[idxAccY] : TDSEZ->QuadForceValue(1)) - invMassAvg * TDSEZParser::CarrierSign() * laserEy) : 0.0;
     }
     if (idxVx >= 0) Jx_total = res[idxVx];
@@ -789,14 +821,14 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
     // delta-like there, so take a(t) from the discrete equation of motion instead.
-    if (TDSEZParser::out_dipole && useDiscAcc) {
+    if (need.acc && useDiscAcc) {
         PetscScalar acc[3];
         PetscCall(TDSEZ->DiscreteAcceleration(t, psi, TDSEZ->tmpVec[1], acc));
         accelX = acc[0]; accelY = acc[1];
     }
 
     PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
-    if (TDSEZParser::out_energy) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    if (need.energy || need.log) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
     const PetscScalar interactionE = TDSEZParser::CarrierSign() * (laserEx*projDx + laserEy*projDy) + fieldTermE;
     const PetscScalar totalEnergy  = expectH + interactionE;
 
@@ -832,7 +864,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     --------------------------------------------------------------- */
     const PetscInt N = TDSEZ->NPOP;
     PetscReal dGamma = 0.0;
-    if (!TDSEZ->popDots_prev.empty())
+    if (TDSEZParser::out_current && !TDSEZ->popDots_prev.empty())
     {
         PetscScalar overlap = 0.0;
         for (PetscInt n = 0; n < N; n++)
@@ -842,7 +874,7 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
                                         PetscRealPart(overlap));
         TDSEZ->BerryPhase += dGamma;
     }
-    TDSEZ->popDots_prev = TDSEZ->popDots;
+    if (TDSEZParser::out_current) TDSEZ->popDots_prev = TDSEZ->popDots;
 
 
     /* ----------------------------------------------------------------
@@ -884,17 +916,23 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     if (TDSEZ->rank == 0)
     {
         PetscInt sIdx = TDSEZ->recordedSteps % TDSEZ->maxAllocatedSteps;
+        // time column of every dataset, also of the quantities not recorded
+        TDSEZ->dipBuffer[sIdx * TDSEZ->dipWidth]       = t;
+        TDSEZ->popBuffer[sIdx * TDSEZ->popWidth]       = t;
+        TDSEZ->energyBuffer[sIdx * TDSEZ->energyWidth] = t;
+        TDSEZ->currBuffer[sIdx * (TDSEZParser::Dimension == 3 ? 15 : 11)] = t;
+        TDSEZ->acBuffer[sIdx * 3]                      = t;
 
         // Dipoles [t, Ex, Ey, Dx, Dy, Ax, Ay]
-        if (TDSEZParser::out_dipole) {
+        if (TDSEZParser::out_dipole || TDSEZParser::out_accel) {
             PetscInt dOff = sIdx * 7;
             TDSEZ->dipBuffer[dOff+0] = t;
             TDSEZ->dipBuffer[dOff+1] = PetscRealPart(laserEx);
             TDSEZ->dipBuffer[dOff+2] = PetscRealPart(laserEy);
-            TDSEZ->dipBuffer[dOff+3] = PetscRealPart(dipoleMX);
-            TDSEZ->dipBuffer[dOff+4] = PetscRealPart(dipoleMY);
-            TDSEZ->dipBuffer[dOff+5] = PetscRealPart(accelX);
-            TDSEZ->dipBuffer[dOff+6] = PetscRealPart(accelY);
+            TDSEZ->dipBuffer[dOff+3] = TDSEZParser::out_dipole ? PetscRealPart(dipoleMX) : 0.0;
+            TDSEZ->dipBuffer[dOff+4] = TDSEZParser::out_dipole ? PetscRealPart(dipoleMY) : 0.0;
+            TDSEZ->dipBuffer[dOff+5] = TDSEZParser::out_accel ? PetscRealPart(accelX) : 0.0;
+            TDSEZ->dipBuffer[dOff+6] = TDSEZParser::out_accel ? PetscRealPart(accelY) : 0.0;
         }
 
         // Populations [t, P0, P1, ..., P_{N-1}]
@@ -1031,29 +1069,30 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     // ------------------------
     // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
     // dipole (accel needs invMassAvg); they are skipped when neither is on.
-    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)(TDSEZParser::out_energy || TDSEZParser::out_dipole)));
+    const TDSEZMonitorNeeds need = TDSEZMonitorNeedsAt(TDSEZ, step);
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)need.kvmd, (PetscBool)need.m, (PetscBool)need.h));
     const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
 
     PetscInt nBatch = 5;
     PetscInt idxDx=-1, idxDy=-1, idxDz=-1, idxAccX=-1, idxAccY=-1, idxAccZ=-1;
     PetscInt idxVx=-1, idxVy=-1, idxVz=-1, idxLz=-1;
     if (TDSEZ->hasX) {
-        idxDx   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), psi, TDSEZ->tmpVec[idxDx]));
-        if (!useDiscAcc && !TDSEZ->QuadForce(0)) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
-        if (TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) { idxVx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx])); }
+        if (need.dip) { idxDx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), psi, TDSEZ->tmpVec[idxDx])); }
+        if (need.force && !TDSEZ->QuadForce(0)) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
+        if (need.vel && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) { idxVx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx])); }
     }
     if (TDSEZ->hasY) {
-        idxDy   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), psi, TDSEZ->tmpVec[idxDy]));
-        if (!useDiscAcc && !TDSEZ->QuadForce(1)) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
-        if (TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) { idxVy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy])); }
+        if (need.dip) { idxDy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), psi, TDSEZ->tmpVec[idxDy])); }
+        if (need.force && !TDSEZ->QuadForce(1)) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
+        if (need.vel && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) { idxVy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy])); }
     }
 
     if (TDSEZ->hasZ) {
-        idxDz   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipZ, TDSEZ->Dz(), psi, TDSEZ->tmpVec[idxDz]));
-        if (!useDiscAcc && !TDSEZ->QuadForce(2)) { idxAccZ = nBatch++; PetscCall(MatMult(TDSEZ->dVdz(), psi, TDSEZ->tmpVec[idxAccZ])); }
-        if (TDSEZ->HasOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ())) { idxVz = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ(), psi, TDSEZ->tmpVec[idxVz])); }
+        if (need.dip) { idxDz = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipZ, TDSEZ->Dz(), psi, TDSEZ->tmpVec[idxDz])); }
+        if (need.force && !TDSEZ->QuadForce(2)) { idxAccZ = nBatch++; PetscCall(MatMult(TDSEZ->dVdz(), psi, TDSEZ->tmpVec[idxAccZ])); }
+        if (need.vel && TDSEZ->HasOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ())) { idxVz = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ(), psi, TDSEZ->tmpVec[idxVz])); }
     }
-    if (TDSEZ->Lz() != PETSC_NULLPTR) {
+    if (need.cur && TDSEZ->Lz() != PETSC_NULLPTR) {
         idxLz = nBatch++; PetscCall(MatMult(TDSEZ->Lz(), psi, TDSEZ->tmpVec[idxLz]));
     }
 
@@ -1066,7 +1105,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     const PetscReal   normSq       = PetscRealPart(res[0]);
     const PetscScalar expectationH = res[1];
-    const PetscScalar invMassAvg   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) ? res[2] : 0.0;
+    const PetscScalar invMassAvg   = need.kvmd ? res[2] : 0.0;
     const PetscScalar kineticE     = (TDSEZParser::out_energy) ? res[3] : 0.0;
     const PetscScalar potentialE   = (TDSEZParser::out_energy) ? res[4] : 0.0;
 
@@ -1075,39 +1114,39 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     PetscScalar accelX=0.0, accelY=0.0, accelZ=0.0;
     PetscScalar projDx=0.0, projDy=0.0, projDz=0.0;
 
-    if (TDSEZ->hasX) {
-        laserEx  = TDSEZParser::Field(0, t);
+    if (TDSEZ->hasX) laserEx = TDSEZParser::Field(0, t);
+    if (idxDx >= 0) {
         projDx   = res[idxDx];
         dipoleMX = TDSEZ->charge * projDx;
-        accelX   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && (idxAccX >= 0 || TDSEZ->QuadForce(0))
+        accelX   = need.acc && (idxAccX >= 0 || TDSEZ->QuadForce(0))
                    ? TDSEZ->charge * ((idxAccX >= 0 ? res[idxAccX] : TDSEZ->QuadForceValue(0)) - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
     }
-    if (TDSEZ->hasY) {
-        laserEy  = TDSEZParser::Field(1, t);
+    if (TDSEZ->hasY) laserEy = TDSEZParser::Field(1, t);
+    if (idxDy >= 0) {
         projDy   = res[idxDy];
         dipoleMY = TDSEZ->charge * projDy;
-        accelY   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && (idxAccY >= 0 || TDSEZ->QuadForce(1))
+        accelY   = need.acc && (idxAccY >= 0 || TDSEZ->QuadForce(1))
                    ? TDSEZ->charge * ((idxAccY >= 0 ? res[idxAccY] : TDSEZ->QuadForceValue(1)) - invMassAvg * TDSEZParser::CarrierSign() * laserEy) : 0.0;
     }
 
-    if (TDSEZ->hasZ) {
-        laserEz  = TDSEZParser::Field(2, t);
+    if (TDSEZ->hasZ) laserEz = TDSEZParser::Field(2, t);
+    if (idxDz >= 0) {
         projDz   = res[idxDz];
         dipoleMZ = TDSEZ->charge * projDz;
-        accelZ   = (TDSEZParser::out_energy || TDSEZParser::out_dipole) && (idxAccZ >= 0 || TDSEZ->QuadForce(2))
+        accelZ   = need.acc && (idxAccZ >= 0 || TDSEZ->QuadForce(2))
                    ? TDSEZ->charge * ((idxAccZ >= 0 ? res[idxAccZ] : TDSEZ->QuadForceValue(2)) - invMassAvg * TDSEZParser::CarrierSign() * laserEz) : 0.0;
     }
 
     // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
     // delta-like there, so take a(t) from the discrete equation of motion instead.
-    if (TDSEZParser::out_dipole && useDiscAcc) {
+    if (need.acc && useDiscAcc) {
         PetscScalar acc[3];
         PetscCall(TDSEZ->DiscreteAcceleration(t, psi, TDSEZ->tmpVec[1], acc));
         accelX = acc[0]; accelY = acc[1]; accelZ = acc[2];
     }
 
     PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
-    if (TDSEZParser::out_energy) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    if (need.energy || need.log) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
     const PetscScalar interactionE = TDSEZParser::CarrierSign() * ((laserEx*projDx) + (laserEy*projDy) + (laserEz*projDz)) + fieldTermE;
     const PetscScalar totalEnergy  = expectationH + interactionE;
 
@@ -1146,7 +1185,7 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
         dGamma = -PetscAtan2Real(PetscImaginaryPart(overlap), PetscRealPart(overlap));
         TDSEZ->BerryPhase += dGamma;
     }
-    TDSEZ->popDots_prev = TDSEZ->popDots;
+    if (TDSEZParser::out_current) TDSEZ->popDots_prev = TDSEZ->popDots;
 
     /* ----------------------------------------------------------------
        currents — reuse popDots, no extra MatMults
@@ -1189,20 +1228,26 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
     if (TDSEZ->rank == 0) {
         PetscInt sIdx = TDSEZ->recordedSteps % TDSEZ->maxAllocatedSteps;
+        // time column of every dataset, also of the quantities not recorded
+        TDSEZ->dipBuffer[sIdx * TDSEZ->dipWidth]       = t;
+        TDSEZ->popBuffer[sIdx * TDSEZ->popWidth]       = t;
+        TDSEZ->energyBuffer[sIdx * TDSEZ->energyWidth] = t;
+        TDSEZ->currBuffer[sIdx * (TDSEZParser::Dimension == 3 ? 15 : 11)] = t;
+        TDSEZ->acBuffer[sIdx * 3]                      = t;
 
         // Dipoles Table [t, Ex, Ey, Ez, Dx, Dy, Dz, Ax, Ay, Az]
-        if (TDSEZParser::out_dipole) {
+        if (TDSEZParser::out_dipole || TDSEZParser::out_accel) {
             PetscInt dOff = sIdx * 10;
             TDSEZ->dipBuffer[dOff+0] = t;
             TDSEZ->dipBuffer[dOff+1] = laserEx;
             TDSEZ->dipBuffer[dOff+2] = laserEy;
             TDSEZ->dipBuffer[dOff+3] = laserEz;
-            TDSEZ->dipBuffer[dOff+4] = dipoleMX;
-            TDSEZ->dipBuffer[dOff+5] = dipoleMY;
-            TDSEZ->dipBuffer[dOff+6] = dipoleMZ;
-            TDSEZ->dipBuffer[dOff+7] = accelX;
-            TDSEZ->dipBuffer[dOff+8] = accelY;
-            TDSEZ->dipBuffer[dOff+9] = accelZ;
+            TDSEZ->dipBuffer[dOff+4] = TDSEZParser::out_dipole ? dipoleMX : 0.0;
+            TDSEZ->dipBuffer[dOff+5] = TDSEZParser::out_dipole ? dipoleMY : 0.0;
+            TDSEZ->dipBuffer[dOff+6] = TDSEZParser::out_dipole ? dipoleMZ : 0.0;
+            TDSEZ->dipBuffer[dOff+7] = TDSEZParser::out_accel ? accelX : 0.0;
+            TDSEZ->dipBuffer[dOff+8] = TDSEZParser::out_accel ? accelY : 0.0;
+            TDSEZ->dipBuffer[dOff+9] = TDSEZParser::out_accel ? accelZ : 0.0;
         }
 
         // Populations Table [t, P0, P1, P2, ...]

@@ -19,9 +19,12 @@ Observable Selection
    * - PhysicsOutput / OutputQuantities
      - string
      - ``all``
-     - Comma-separated list of ``dipole``, ``population``, ``energy``,
+     - Comma-separated list of ``position`` (dipole :math:`\langle q\mathbf r\rangle`),
+       ``acceleration``, ``dipole`` (both), ``population``, ``energy``,
        ``current``, ``autocorrelation`` (or ``ac``) and ``wfs``; case and
-       spaces are ignored. ``all`` or an empty value enables everything.
+       spaces are ignored. ``all`` or an empty value enables everything,
+       ``none`` only the time axis. An unknown entry stops the run
+       (``StrictInput = 1``).
    * - ObserveAllAxes
      - bool
      - 1
@@ -30,12 +33,63 @@ Observable Selection
        of the other axes are not assembled and their columns are zero.
 
 A quantity missing from ``PhysicsOutput`` is not computed: its products and
-reductions are skipped. Its dataset is still written, filled with zeros, so
-that every ``TimeEvolutionData`` file has the same datasets and shapes. The
-products needed by several quantities are formed when any of them is enabled
-(the inverse-mass expectation value for ``energy`` or ``dipole``, the
-bound-state projections for ``population`` or ``current``). ``wfs`` enables
-the wavefunction snapshots controlled by ``OutputStrideWFS``.
+reductions are skipped. Its dataset is still written with the same shape, the
+time in column 0 and zeros elsewhere, so every ``TimeEvolutionData`` file has
+the same layout and readers (zkit) always find the time axis. The quantities
+that are computed are the same as in a full run (to rounding).
+
+Each monitor call forms only the products the requested quantities read:
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 1
+
+   * - Entry
+     - Products per step
+   * - ``position``
+     - dipole :math:`D_a\psi` on the observed axes
+   * - ``acceleration``
+     - operator form: force operators, :math:`\langle m^{-1}\rangle`;
+       discrete form: :math:`H\psi` and one CG solve with :math:`M`
+       (:doc:`Observables`)
+   * - ``energy``
+     - :math:`M\psi`, :math:`H\psi`, :math:`K\psi`, :math:`V\psi`, :math:`M_d\psi`, dipoles
+   * - ``population``, ``ac``
+     - :math:`M\psi` and the bound-state projections
+   * - ``current``
+     - velocities, :math:`L_z`, projections, Berry phase
+
+:math:`\langle\psi|\psi\rangle` and :math:`\langle H\rangle` of the progress
+log are computed at the logged steps only. On a 2D atom (27 225 DOFs, 4 ranks,
+``pade22``, 400 steps) the monitors take
+
+.. list-table::
+   :widths: 30 25 25
+   :header-rows: 1
+
+   * - ``PhysicsOutput``
+     - operator acceleration
+     - discrete acceleration
+   * - ``all``
+     - 2.44 s (run 12.2 s)
+     - 14.3 s (run 23.9 s)
+   * - ``position``
+     - 0.53 s (run 10.9 s)
+     - 0.55 s (run 11.0 s)
+   * - ``population``
+     - 0.32 s
+     - 0.33 s
+   * - ``none``
+     - 0.09 s
+     - 0.10 s
+
+The discrete acceleration (default for a position-dependent mass or a
+``FieldTerm``) is the expensive observable: record it only when needed, e.g.
+``PhysicsOutput = position, population`` for dynamics and ``acceleration`` for
+HHG. Its mass solve starts from the previous step's solution (same
+:math:`10^{-14}` tolerance).
+
+``wfs`` enables the wavefunction snapshots controlled by ``OutputStrideWFS``.
 
 Output Strides
 --------------

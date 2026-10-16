@@ -553,6 +553,11 @@ void TDSEZParser::ValidateOrThrow()
     }
 
 
+    // PhysicsOutput: a misspelt quantity would silently not be recorded.
+    if (!PhysicsOutputBad.empty() && StrictInput)
+        throw std::runtime_error("ValidateOrThrow: PhysicsOutput has unknown entries (" + PhysicsOutputBad + "); use "
+            "dipole, position, acceleration, population, energy, current, autocorrelation (ac), wfs, all or none");
+
     // Structured field terms: the profile may use x, y, z only and the time
     // factor t only (muParser reports anything else at the first evaluation,
     // which would be deep inside the assembly or the time stepper).

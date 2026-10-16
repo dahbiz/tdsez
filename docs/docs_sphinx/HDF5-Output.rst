@@ -46,7 +46,7 @@ File ``td/TimeEvolutionData_<input>.h5``. Five two-dimensional ``float64``
 datasets with one row per recorded step (:math:`t = 0` and every step after
 it), written by rank 0 as extendable datasets in chunks of 256 rows. Every
 dataset is present in every file; quantities disabled with ``PhysicsOutput``
-are filled with zeros (:doc:`Output-Control`). Definitions are in
+keep the time column and are zero elsewhere (:doc:`Output-Control`). Definitions are in
 :doc:`Observables`; :math:`q` = ``Charge``, :math:`s = -q`.
 
 Rows are buffered in memory and appended when the buffer is full, every 5000

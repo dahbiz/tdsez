@@ -557,9 +557,11 @@ See :doc:`Output-Control`, :doc:`Observables` and :doc:`HDF5-Output`.
    * - ``PhysicsOutput`` (``OutputQuantities``)
      - string
      - ``all``
-     - Comma-separated subset of ``dipole``, ``population``, ``energy``,
-       ``current``, ``autocorrelation`` (``ac``), ``wfs``, or ``all``;
-       case-insensitive. Unrecognised entries are ignored.
+     - Comma-separated subset of ``position``, ``acceleration``, ``dipole``
+       (both), ``population``, ``energy``, ``current``, ``autocorrelation``
+       (``ac``), ``wfs``, or ``all`` / ``none``; case-insensitive. Only the
+       listed quantities are computed; the HDF5 layout is unchanged
+       (:doc:`Output-Control`). Unknown entries stop the run.
    * - ``ObserveAllAxes``
      - bool
      - 1

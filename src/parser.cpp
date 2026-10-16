@@ -442,17 +442,22 @@ void TDSEZParser::PrmReader(const std::string &prm)
         std::string s = PhysicsOutput;
         for (auto& c : s) c = (char)std::tolower((unsigned char)c);
         s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
+        PhysicsOutputBad.clear();
         if (!(s.empty() || s == "all")) {
-            out_dipole = out_population = out_energy = out_current = out_autocorr = out_wfs = PETSC_FALSE;
+            out_dipole = out_accel = out_population = out_energy = out_current = out_autocorr = out_wfs = PETSC_FALSE;
             std::istringstream iss(s);
             std::string tok;
             while (std::getline(iss, tok, ',')) {
-                if      (tok == "dipole")         out_dipole    = PETSC_TRUE;
+                if      (tok == "dipole")         out_dipole    = out_accel = PETSC_TRUE;
+                else if (tok == "position")       out_dipole    = PETSC_TRUE;
+                else if (tok == "acceleration")   out_accel     = PETSC_TRUE;
+                else if (tok == "none" || tok.empty()) {}
                 else if (tok == "population")      out_population = PETSC_TRUE;
                 else if (tok == "energy")         out_energy    = PETSC_TRUE;
                 else if (tok == "current")        out_current   = PETSC_TRUE;
                 else if (tok == "autocorrelation" || tok == "ac") out_autocorr = PETSC_TRUE;
                 else if (tok == "wfs")            out_wfs       = PETSC_TRUE;
+                else PhysicsOutputBad += (PhysicsOutputBad.empty() ? "" : ", ") + tok;
             }
         }
     }

@@ -222,11 +222,11 @@ class TDSEZManager
     PetscErrorCode DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi, PetscScalar acc[3]);
 
     /// @brief Monitor products tmpVec[0..4] = (M, H, Md, K, V) psi; Md/K/V only
-    ///        when @p needKVMd. Uses H psi = K psi + V psi and
+    ///        when @p needKVMd, M and H only when @p needM / @p needH (or needKVMd). Uses H psi = K psi + V psi and
     ///        Md psi = M psi / m when both are verified to rounding for this
     ///        run (no CAP; constant mass), which saves up to two sparse products
     ///        per step without changing any output.
-    PetscErrorCode MonitorProducts(Vec psi, PetscBool needKVMd);
+    PetscErrorCode MonitorProducts(Vec psi, PetscBool needKVMd, PetscBool needM = PETSC_TRUE, PetscBool needH = PETSC_TRUE);
     /// Factorised separable operators (2D/3D), validated at the first monitor call.
     TDSEZTensorOps *tensorOps_ = PETSC_NULLPTR;
     /// y = op x: factorised when validated, MatMult(A, x, y) otherwise.

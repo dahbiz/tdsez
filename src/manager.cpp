@@ -172,25 +172,17 @@ PetscErrorCode TDSEZManager::WriteHDF5(const std::string& filename)
     herr_t overall = 0;
     if (nRows > 0) {
         // Contract: every dataset is always present with the same shape.
-        // A quantity disabled via PhysicsOutput is written as zeros (stable
-        // schema for downstream readers) while still skipping the per-step
-        // compute that would have filled it. We reuse one zeroed scratch
-        // buffer. CRITICAL: it must be sized to the FULL RING CAPACITY
-        // (maxAllocatedSteps rows x ZW), NOT just nRows rows. The write path
-        // indexes it as buf + startOff*cols where startOff = lastWrittenSteps %
-        // maxAllocatedSteps (the ring position, which grows across flushes and
-        // exceeds nRows after the first flush). Sizing it to only nRows rows
-        // caused a heap-buffer-overflow (ASan) on every disabled dataset from
-        // the 2nd flush onward. ZW is the widest dataset width in use.
-        const PetscInt ZW = std::max<PetscInt>({dipWidth, popWidth, energyWidth,
-                                      (TDSEZParser::Dimension == 3 ? 15 : 11), (PetscInt)3});
-        const PetscInt zRows = (maxAllocatedSteps > 0) ? maxAllocatedSteps : nRows;
-        std::vector<PetscScalar> zeros((size_t)zRows * (size_t)ZW, 0.0);
-        const PetscScalar* dipSrc = TDSEZParser::out_dipole     ? dipBuffer    : zeros.data();
-        const PetscScalar* popSrc = TDSEZParser::out_population ? popBuffer    : zeros.data();
-        const PetscScalar* eneSrc = TDSEZParser::out_energy     ? energyBuffer : zeros.data();
-        const PetscScalar* curSrc = TDSEZParser::out_current    ? currBuffer   : zeros.data();
-        const PetscScalar* acSrc  = TDSEZParser::out_autocorr   ? acBuffer     : zeros.data();
+        // A quantity disabled via PhysicsOutput keeps its time column and is
+        // zero elsewhere (stable schema for downstream readers) while its
+        // per-step compute is skipped.
+        // The buffers are zeroed at allocation and the monitors fill column 0
+        // (time) of every dataset, the other columns only for the requested
+        // quantities, so a disabled quantity is time + zeros.
+        const PetscScalar* dipSrc = dipBuffer;
+        const PetscScalar* popSrc = popBuffer;
+        const PetscScalar* eneSrc = energyBuffer;
+        const PetscScalar* curSrc = currBuffer;
+        const PetscScalar* acSrc  = acBuffer;
 
         overall |= AppendDataset("dipoles",         dipSrc, dipWidth);
         overall |= AppendDataset("populations",     popSrc, popWidth);
@@ -584,14 +576,15 @@ PetscBool TDSEZDiscreteAccelerationActive()
 ///          shortcut is used afterwards only if it holds to 1e-12 relative, so
 ///          the written observables are unchanged up to rounding; K and Md are
 ///          then freed.
-PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd)
+PetscErrorCode TDSEZManager::MonitorProducts(Vec psi, PetscBool needKVMd, PetscBool needM, PetscBool needH)
 {
     PetscFunctionBeginUser;
-    PetscCall(ApplyOp(TDSEZTensorOps::Mass, m_M, psi, tmpVec[0]));
-    if (!needKVMd) {
-        PetscCall(MatMult(m_H, psi, tmpVec[1]));
+    if (!needKVMd) {                        // only what the requested outputs read
+        if (needM) PetscCall(ApplyOp(TDSEZTensorOps::Mass, m_M, psi, tmpVec[0]));
+        if (needH) PetscCall(MatMult(m_H, psi, tmpVec[1]));
         PetscFunctionReturn(PETSC_SUCCESS);
     }
+    PetscCall(ApplyOp(TDSEZTensorOps::Mass, m_M, psi, tmpVec[0]));
     if (!monitorChecked_ && matFree_) {
         // nothing assembled to check against: set up the quadrature values
         // and continue with the steady-state products below
@@ -939,6 +932,9 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
         PetscCall(KSPSetOperators(kspMass, m_M, m_M));
         PetscCall(KSPSetType(kspMass, KSPCG));
         PetscCall(KSPSetTolerances(kspMass, 1e-14, PETSC_DEFAULT, PETSC_DEFAULT, 1000));
+        // w = M^{-1}(H + E.D) psi changes little between monitor calls: start
+        // from the previous one (accelWork[1]); the tolerance is unchanged.
+        PetscCall(KSPSetInitialGuessNonzero(kspMass, PETSC_TRUE));
         PetscCall(KSPGetPC(kspMass, &pc));
         PetscCall(PCSetType(pc, PCBJACOBI));
         PetscCall(KSPSetFromOptions(kspMass));

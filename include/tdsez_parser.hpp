@@ -377,10 +377,15 @@ class TDSEZParser
         // Normalize the assembled initial state so <psi|M|psi> = 1 (default on).
         /// Whether to normalize the initial state so <psi|M|psi> = 1.
         inline static PetscBool             NormalizeInitialState = PETSC_TRUE;
-        /// Declarative output enable list: dipole,population,energy,current,autocorrelation,wfs (or "all").
-        inline static std::string           PhysicsOutput      = "all";  // declarative enable list: dipole,population,energy,current,autocorrelation,wfs (or "all")
-        /// Whether dipole diagnostics are enabled.
+        /// Declarative output list: dipole (= position + acceleration), position,
+        /// acceleration, population, energy, current, autocorrelation, wfs, all or none.
+        inline static std::string           PhysicsOutput      = "all";
+        /// Whether the dipole <r> is recorded (tokens dipole, position).
         inline static PetscBool             out_dipole         = PETSC_TRUE;
+        /// Whether the dipole acceleration is recorded (tokens dipole, acceleration).
+        inline static PetscBool             out_accel          = PETSC_TRUE;
+        /// Unrecognised PhysicsOutput tokens (reported by ValidateOrThrow).
+        inline static std::string           PhysicsOutputBad;
         /// Whether population diagnostics are enabled.
         inline static PetscBool             out_population     = PETSC_TRUE;
         /// Whether energy diagnostics are enabled.
