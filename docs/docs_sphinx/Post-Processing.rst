@@ -385,3 +385,19 @@ test suite uses it::
     ev  = run.evolution                     # dipoles, energies, currents, ...
 
 ``zkit --help`` lists every command.
+
+Visualisation with ParaView and VisIt
+-------------------------------------
+
+The states (``NBoundStatesSave = 1``) and the wavefunction snapshots
+(``PhysicsOutput`` with ``wfs``, every ``OutputStrideWFS`` steps) are turned
+into VTK files, images and movies by zkit:
+
+.. code-block:: bash
+
+   zkit --run-dir . vtk run.inp                 # vtk/: .vti files, .pvd (ParaView), .visit (VisIt)
+   zkit --run-dir . vtk run.inp --render        # plus state images and an MP4 (ParaView's pvpython)
+   zkit render vtk/run_wfs.pvd --orbit          # 3D: volume + isosurfaces, orbiting camera
+
+Each snapshot carries its physical time and the laser field, so ParaView and
+VisIt animate in a.u. of time. See the zkit documentation, *Visualization*.
