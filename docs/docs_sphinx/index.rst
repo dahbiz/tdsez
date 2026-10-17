@@ -72,6 +72,7 @@ Documentation
    Input-File
    CLI-Flags
    Examples
+   Gallery
 
 .. toctree::
    :maxdepth: 2

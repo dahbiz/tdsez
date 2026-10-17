@@ -1,0 +1,27 @@
+Verbose = 1
+Dimension = 3
+Domain = -20, 20, -20, 20, -20, 20
+SplineDegree = 4
+NQuadratures = 5
+KnotSequence = uniform
+NSplines = 30
+Potential = -1/sqrt(x*x + y*y + z*z + 0.04)
+PotentialDerivativeX = x/(x*x + y*y + z*z + 0.04)^1.5
+PotentialDerivativeY = y/(x*x + y*y + z*z + 0.04)^1.5
+PotentialDerivativeZ = z/(x*x + y*y + z*z + 0.04)^1.5
+NBoundStates = 2
+NBoundStatesSave = 1
+TargetEigenvalue = -0.6
+InitialState = ground
+EnablePropagation = 1
+EnableCAP = 1
+CAPKmin = 0.6
+Propagator = pade22
+TimeStep = 0.05
+FinalTime = 40
+OutputStrideWFS = 10
+PhysicsOutput = dipole, population, energy, wfs
+Variables = E0=0.15, w=0.4, T=31.4
+Polarization = z
+Omegaz = 0.4
+LaserZ = t < T ? E0*sin(pi*t/T)^2*sin(w*t) : 0

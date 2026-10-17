@@ -1,0 +1,27 @@
+# elliptical 800 nm, 2D, Mode = kh
+# alpha0 = 20, eps = 0.6
+# quiver amplitudes alpha_x = 17.150, alpha_y = 10.290 a.u.; constant amplitude (KH of the monochromatic field)
+# box +-[38, 31] a.u.; estimated DOFs ~ 5.24e+04
+Verbose = 1
+Dimension = 2
+Domain = -38, 38, -31, 31
+KnotSequence = hydrogenic
+HydrogenicR1 = 0.3, 0.3
+HydrogenicNLin = 1
+HydrogenicNExp = 10
+HydrogenicHMax = 0.3, 0.3
+Potential = -1/sqrt(x*x + y*y + 0.6363)
+PotentialDerivativeX = x/(x*x + y*y + 0.6363)^1.5
+PotentialDerivativeY = y/(x*x + y*y + 0.6363)^1.5
+Mode = kh
+NBoundStates = 10
+NBoundStatesSave = 1
+TargetEigenvalue = -0.6
+SplineDegree = 6
+NQuadratures = 8
+Variables = w=0.0569541875, N=6, tau=330.9599654, E0=0.06487558948, eps=0.6
+Polarization = xy
+Omegax = 0.0569541875
+LaserX = 1*E0/sqrt(1 + eps*eps)*cos(w*(t - tau))
+LaserY = 1*E0*eps/sqrt(1 + eps*eps)*sin(w*(t - tau))
+FinalTime = 220.6399769
