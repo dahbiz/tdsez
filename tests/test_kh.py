@@ -13,13 +13,13 @@ m alpha'' = q E(t), integrated by TDSE-Z from the laser expressions.
   scipy and V_KH diagonalised by 4th-order finite differences.
 """
 
+import re
+
 import numpy as np
 import pytest
-from scipy.integrate import cumulative_trapezoid
-
 import zkit
+from scipy.integrate import cumulative_trapezoid
 from zkit.validation import KH_CASES, Validator, kramers_henneberger
-import re
 
 from tests.test_tdsez import REPO, _expect_fatal, _run, _step, _write_tmp
 
@@ -59,7 +59,7 @@ FinalTime = 40
 
 
 def _reference_gauss(n_levels=2):
-    E = lambda t: 0.8 * np.sin(np.pi * t / 40) ** 2 * np.sin(1.2 * t)  # noqa: E731
+    E = lambda t: 0.8 * np.sin(np.pi * t / 40) ** 2 * np.sin(1.2 * t)
     tg = np.linspace(0, 40, 40001)                     # peak of |E| on the solver's grid
     tpk = tg[np.argmax(np.abs(E(tg)))]
     P = 2 * np.pi / 1.2
@@ -129,12 +129,12 @@ FinalTime = 20
 #   c = -(<a_p> + b (t0 + t1) / 2),  <a_p> = sum_j c_j (cos(k_j t1+phi_j) - cos(k_j t0+phi_j)) / (k_j^3 P).
 # sin^2 pulse: E0 sin^2(pi t/T) sin(w t) = E0/2 sin(w t) - E0/4 [sin((w+W) t) + sin((w-W) t)], W = 2 pi / T.
 # ---------------------------------------------------------------------------
-import h5py  # noqa: E402
+import h5py
 
 
 def _exact_quiver(t, terms, t0, t1, qm):
     P = t1 - t0
-    ap = lambda tt: -sum(c * np.sin(k * tt + p) / k**2 for c, k, p in terms)  # noqa: E731
+    ap = lambda tt: -sum(c * np.sin(k * tt + p) / k**2 for c, k, p in terms)
     mean_ap = sum(c * (np.cos(k * t1 + p) - np.cos(k * t0 + p)) / k**3 for c, k, p in terms) / P
     b = -(ap(t1) - ap(t0)) / P
     c = -(mean_ap + b * 0.5 * (t0 + t1))
@@ -278,9 +278,14 @@ def test_kh_nondipole_figure_eight_against_closed_form(case):
     path = _write_tmp(f"khnd_{tag}.inp", head + deck)
     r, _, _ = _run(path, zkit.find_binary(), 1)
     _step(f"{case}: runs", r.returncode == 0, r.stdout.decode()[-1500:])
-    with h5py.File(zkit.Run(REPO, path).path("eigen")) as f:
-        t, wt, alpha = f["run_metadata"]["kh_times"][:], f["run_metadata"]["kh_weights"][:], f["run_metadata"]["kh_alpha"][:]
+    run = zkit.Run(REPO, path)                  # read through zkit: HDF5 layout and metadata
+    kh, mpi = run.kh, run.multipole
+    t, wt, alpha = kh.times, kh.weights, kh.alpha
     ax = 1 if "2D" in case else 2
+    n = [0.0, 0.0, 0.0]
+    n[ax] = 1.0
+    _step(f"{case}: zkit metadata Multipole = 2, n = {mpi.direction}, c = {mpi.speed_of_light}",
+          mpi.order == 2 and np.allclose(mpi.direction, n) and mpi.speed_of_light == c)
     amp = qm**2 * (1 - eps**2) * E0**2 / (8 * c * w**3 * (1 + eps**2))
     ex = amp * np.sin(2 * w * t)
     err = np.max(np.abs(alpha[:, ax] - ex))

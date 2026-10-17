@@ -220,7 +220,14 @@ File ``static/<name>_eigen.h5``.
      - Attributes ``code_version``, ``input_file``, ``units``,
        ``Dimension``, ``SplineDegree``, ``Nelements``, ``LMinX`` ...
        ``LMaxZ``, ``Charge``, ``TargetEigenvalue``, ``NBoundStatesSave``,
-       ``NBoundStates`` and ``state_format``; dataset ``eig_residual``.
+       ``NBoundStates``, ``state_format``, ``Mode`` (``td`` or ``kh``) and
+       ``Multipole``; with ``Multipole >= 2`` also ``PropagationDirection_x/y/z``
+       (normalised), ``SpeedOfLight`` and ``MultipoleMagnetic``; with
+       ``Mode = kh`` ``KH_window_start``, ``KH_window_end``, ``KH_omega``,
+       ``KH_alpha_x/y/z`` (largest :math:`|\alpha|`) and ``KH_samples``.
+       Datasets ``eig_residual`` and, with ``Mode = kh``, the quiver at the
+       averaging nodes: ``kh_times`` (N), ``kh_weights`` (N, sum 1) and
+       ``kh_alpha`` (N, 3), read by ``zkit.Run(...).kh``.
    * - ``knots_x``, ``knots_y``, ``knots_z``
      - Knot vector of each axis; attributes ``mult_start_end`` (multiplicity
        of the first and last knot), ``SplineDegree`` and ``nfuncs`` (number

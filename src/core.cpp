@@ -1402,6 +1402,14 @@ PetscErrorCode TDSEZCore::Output()
                 write_int ("NBoundStates", TDSEZParser::NBoundStates);
                 write_attr("state_format", TDSEZParser::BoundStateFormat);
                 write_attr("Mode", TDSEZParser::KHFrame ? "kh" : "td");
+                write_int ("Multipole", TDSEZParser::Multipole);
+                if (TDSEZParser::Multipole >= 2) {    // plane wave E(t - n.r/c), n normalised
+                    write_real("PropagationDirection_x", TDSEZParser::PropagationDir[0]);
+                    write_real("PropagationDirection_y", TDSEZParser::PropagationDir[1]);
+                    write_real("PropagationDirection_z", TDSEZParser::PropagationDir[2]);
+                    write_real("SpeedOfLight", TDSEZParser::SpeedOfLight);
+                    write_int ("MultipoleMagnetic", TDSEZParser::MultipoleMagnetic ? 1 : 0);
+                }
                 if (TDSEZParser::KHFrame) {           // static Kramers-Henneberger problem
                     const TDSEZKHInfo &kh = TDSEZKHSummary();
                     write_real("KH_window_start", kh.t0);

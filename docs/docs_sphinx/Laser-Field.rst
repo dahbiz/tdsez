@@ -330,6 +330,13 @@ electric terms equal hand-written ``FieldTerm`` lines with analytic
 ``Multipole = 3`` coupling is covariant under the rotation
 :math:`(\mathbf n, \mathbf E) = (\hat z, \hat x) \to (\hat x, \hat y)` to
 :math:`10^{-10}`, and the norm stays 1 without the CAP (Hermitian terms).
+The full ``Multipole = 3`` coupling, all five terms, is compared with an
+independent reference: an anisotropic oscillator solved in its own Hermite
+basis, where every term is a polynomial in :math:`\mathbf r` and
+:math:`\mathbf p` whose matrix follows exactly from the ladder operators.
+:math:`\langle\mathbf r\rangle(t)` agrees to :math:`4\cdot10^{-7}` (2D) and
+:math:`10^{-5}` (3D, the grid error of the dipole dynamics alone), and the
+:math:`1/c^2` part alone (``Multipole = 3`` minus ``2``) to the same level.
 
 Field Scales
 ------------
