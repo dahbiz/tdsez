@@ -535,6 +535,7 @@ set(TDSEZ_SOURCES
     src/tsurff.cpp
     src/kh.cpp
     src/coupling.cpp
+    src/velocity_gauge.cpp
     src/tensorops.cpp
     src/quadobs.cpp
     src/multigrid.cpp

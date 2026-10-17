@@ -110,6 +110,7 @@ class TDSEZParser
         ///          over one optical cycle; see src/kh.cpp).
         /// @{
         inline static PetscBool KHFrame = PETSC_FALSE;      ///< Mode = kh: solve the static KH problem
+        inline static PetscBool VelocityGauge = PETSC_FALSE; ///< Gauge = velocity: (p - qA)^2/2m, no E.r term
         inline static PetscReal KHWindow[2] = {0.0, 0.0};   ///< averaging window [t0, t1] (0, 0: one cycle at the peak)
         inline static PetscInt  KHSamples = 0;              ///< samples of alpha per window (0: automatic)
         inline static std::vector<std::array<PetscReal, 3>> KHAlpha_;   ///< alpha(t_k); empty = lab frame
@@ -186,7 +187,11 @@ class TDSEZParser
             return a == 0 ? Ex(t) : (a == 1 ? Ey(t) : Ez(t));
         }
         /// Field term as it enters H, s E_a(t) (s = CarrierSign()).
-        inline static PetscReal Coupling(int a, PetscReal t) { return CarrierSign() * Field(a, t); }
+        inline static PetscReal Coupling(int a, PetscReal t)
+        {
+            if (VelocityGauge) return 0.0;   // velocity gauge: the field enters through A.p (velocity_gauge.cpp)
+            return CarrierSign() * Field(a, t);
+        }
         /// @name Structured (separable) field terms: FieldTerm = w(x,y,z) ; f(t)
         /// @details Each term adds s f_k(t) w_k(r) to H (s = CarrierSign()), the
         ///          length-gauge coupling to the quasi-static field

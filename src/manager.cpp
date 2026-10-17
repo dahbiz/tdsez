@@ -992,6 +992,14 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
         } else continue;
         acc[a] = -2.0 * charge * PetscImaginaryPart(z);
     }
+    // Gauge = velocity: Vel = p/m is the canonical velocity; the kinetic one
+    // is (p - qA)/m, so d<v>/dt gains -(q/m) dA/dt = (q/m) E (dipole order;
+    // with Multipole >= 2 the O(1/c) convective terms are not included).
+    if (TDSEZParser::VelocityGauge) {
+        const PetscReal m0 = TDSEZParser::MassDist(0.0, 0.0, 0.0);
+        for (int a = 0; a < 3; ++a)
+            if (on[a] && TDSEZParser::Coupled(a)) acc[a] += charge * charge / m0 * TDSEZParser::Field(a, t);
+    }
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 

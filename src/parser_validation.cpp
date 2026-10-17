@@ -654,6 +654,23 @@ void TDSEZParser::ValidateOrThrow()
             throw std::runtime_error("ValidateOrThrow: AccelerationMethod = operator does not include the multipole "
                                      "terms; use auto or discrete");
     }
+    // Gauge = velocity: (p - qA)^2 / 2m through coupling terms (velocity_gauge.cpp)
+    if (VelocityGauge) {
+        if (KHFrame)
+            throw std::runtime_error("ValidateOrThrow: Gauge = velocity applies to Mode = td; Mode = kh is a static problem");
+        if (TSurff)
+            throw std::runtime_error("ValidateOrThrow: TSurff with Gauge = velocity is not supported yet (the Volkov "
+                                     "phases are those of the length gauge)");
+        if (AccelerationMethod == "operator")
+            throw std::runtime_error("ValidateOrThrow: AccelerationMethod = operator is not available with Gauge = velocity; "
+                                     "use auto or discrete");
+        bool massConst = MassIsConstant;
+        try { if (MassExpr.GetUsedVar().empty()) massConst = true; } catch (const mu::Parser::exception_type &) {}
+        if (!massConst)
+            throw std::runtime_error("ValidateOrThrow: Gauge = velocity needs a constant mass ((p - qA)^2 / 2m)");
+        if (EnablePropagation && (Polarization.empty() || Polarization == "none"))
+            throw std::runtime_error("ValidateOrThrow: Gauge = velocity needs the laser (Polarization and LaserX/Y/Z)");
+    }
     // Mode = kh with Multipole = 2: the quiver gains the 1/c Lorentz-force motion along n
     if (KHFrame && Multipole == 3)
         throw std::runtime_error("ValidateOrThrow: Mode = kh includes the nondipole quiver to order 1/c; "

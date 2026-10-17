@@ -23,6 +23,8 @@ is :math:`-\mathbf E(t)`.
 
 ``Multipole = 2, 3`` adds the nondipole terms of a plane wave, up to the
 electric octupole (:ref:`multipole-coupling`).
+``Gauge = velocity`` uses :math:`(\mathbf p - q\mathbf A)^2/2m` instead
+(:ref:`velocity-gauge`).
 
 Polarization
 ------------
@@ -337,6 +339,87 @@ basis, where every term is a polynomial in :math:`\mathbf r` and
 :math:`\langle\mathbf r\rangle(t)` agrees to :math:`4\cdot10^{-7}` (2D) and
 :math:`10^{-5}` (3D, the grid error of the dipole dynamics alone), and the
 :math:`1/c^2` part alone (``Multipole = 3`` minus ``2``) to the same level.
+
+.. _velocity-gauge:
+
+Velocity Gauge
+--------------
+
+``Gauge = velocity`` propagates
+
+.. math::
+
+   H(t) = \frac{\big(\mathbf p - q\,\mathbf A(t - \mathbf n\cdot\mathbf r/c)\big)^2}{2m} + V(\mathbf r),
+   \qquad \dot{\mathbf A} = -\mathbf E ,\quad \mathbf A(0) = 0 ,
+
+with the same laser expressions (:math:`\mathbf E(t)`); TDSE-Z integrates
+:math:`\mathbf A(t) = -\int_0^t \mathbf E` once at start-up (Gauss-Legendre on
+a table of step :math:`\le 0.01` a.u., cubic Hermite interpolation with the
+exact slope, error about :math:`10^{-10}`). The length-gauge term
+:math:`s\,\mathbf E\cdot\mathbf r` is switched off. With ``Multipole``
+(and ``PropagationDirection``, ``SpeedOfLight``) the vector potential is
+expanded in :math:`s = \mathbf n\cdot\mathbf r/c`, and, dropping the constant
+:math:`A^2`,
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 82
+
+   * - order
+     - terms
+   * - dipole
+     - :math:`-\frac{q}{m}\,\mathbf A\cdot\mathbf p`
+   * - :math:`1/c` (``Multipole = 2``)
+     - :math:`-\frac{q}{m}\,s\,\mathbf E\cdot\mathbf p + \frac{q^2}{m}\,s\,\mathbf A\cdot\mathbf E`
+   * - :math:`1/c^2` (``Multipole = 3``)
+     - :math:`+\frac{q}{2m}\,s^2\,\dot{\mathbf E}\cdot\mathbf p + \frac{q^2}{2m}\,s^2\,(E^2 - \mathbf A\cdot\dot{\mathbf E})`
+
+The fields are the same as those of the multipolar terms of
+:ref:`multipole-coupling` at each order, so both gauges describe the same
+physics to the truncation order; they differ by :math:`O(1/c^3)` at
+``Multipole = 3``. ``MultipoleMagnetic`` has no effect (the magnetic field is
+contained in :math:`\mathbf A(t - \mathbf n\cdot\mathbf r/c)`).
+
+**When to use it.** In strong, high-frequency fields the length-gauge
+wavefunction carries the phase :math:`e^{iq\mathbf A\cdot\mathbf r}`, with
+wavenumbers up to :math:`|q|A_0 = |q|E_0/\omega`; in the velocity gauge the
+canonical momentum of a dressed (stabilised) electron stays small, so far
+coarser grids and longer time steps suffice. The velocity-gauge :math:`1/c`
+terms need :math:`\mathbf E` only, so a pulse whose field has corners (a
+trapezoidal :math:`\mathbf A`) is treated exactly, while the length-gauge
+quadrupole needs :math:`\dot{\mathbf E}`.
+
+**Derivative impulses.** Terms that use :math:`\dot{\mathbf E}` (length
+:math:`1/c`, velocity :math:`1/c^2`) or :math:`\ddot{\mathbf E}` (length
+:math:`1/c^2`) contain a delta impulse where the field or its derivative
+jumps, which a time grid does not sample correctly. TDSE-Z checks the laser
+expressions at start-up and warns with the time of the jump. A pulse defined
+by :math:`A = A_0\sin^2(\pi t/T)\sin\omega t` has a jump in :math:`\dot E` at
+:math:`T`; :math:`\sin^4` envelopes are smooth enough for every term.
+
+**Observables.** :math:`q\langle\mathbf r\rangle`, the norm and, when
+:math:`\mathbf A = 0`, the populations are gauge invariant. The acceleration
+(discrete, ``AccelerationMethod = auto``) is that of the kinetic velocity
+:math:`(\mathbf p - q\mathbf A)/m` in the dipole terms; with ``Multipole >= 2``
+its :math:`O(1/c)` convective corrections are not included. During a pulse the
+populations are projections of the velocity-gauge state; they equal the
+length-gauge ones when :math:`\mathbf A(t) = 0`, e.g. after a pulse whose
+:math:`\int\mathbf E\,dt` vanishes. Not supported yet: ``TSurff``,
+``Mode = kh``, ``AccelerationMethod = operator``, a position-dependent mass.
+
+**Validation** (``tests/test_velocity_gauge.py``): dipole velocity = length
+gauge for :math:`q\langle\mathbf r\rangle`, the acceleration and the final
+populations (1D: :math:`5\cdot10^{-11}`; 2D circular: :math:`10^{-8}`; the 2D
+acceleration :math:`2\cdot10^{-5}` in a :math:`\pm 25` box and
+:math:`4\cdot10^{-8}` in :math:`\pm 40`, the truncation error of the
+length-gauge field term :math:`\mathbf E\cdot\langle[D, V]\rangle` near the
+walls);
+``Multipole = 2`` on an oscillator follows the classical Hamilton equations
+(:math:`3\cdot10^{-7}`); ``Multipole = 2, 3`` against the Hermite-basis
+reference (:math:`7\cdot10^{-7}`, the :math:`1/c^2` part alone
+:math:`1.5\cdot10^{-5}`); the velocity and multipolar results differ by
+:math:`O(1/c^3)` (ratio 8.0 when :math:`c` doubles), and both converge as
+:math:`1/c^3` to the untruncated :math:`\mathbf A(t - \mathbf n\cdot\mathbf r/c)`.
 
 Field Scales
 ------------

@@ -387,6 +387,12 @@ PetscErrorCode TDSEZFormCouplingTerms(IGAPoint p, PetscInt nmat, PetscScalar *M[
 extern PetscInt TDSEZCouplingIndex;                                                     ///< first term of the batch
 /// Build TDSEZParser::CouplingTerms_ (FieldTerms, multipoles; src/coupling.cpp).
 void TDSEZSetupCouplingTerms();
+/// Log a warning where the order-th derivative of the laser (0: E) jumps (impulse in the next one).
+void TDSEZWarnFieldKinks(int order, const char *terms);
+/// Gauge = velocity: A(t) table and the (p - qA(t - n.r/c))^2 / 2m terms (velocity_gauge.cpp).
+void TDSEZSetupVelocityGauge();
+/// Gauge = velocity: A_a(t) = -int_0^t E_a (0 on uncoupled axes).
+PetscReal TDSEZVectorPotential(int a, PetscReal t);
 PetscErrorCode TDSEZformCap(IGAPoint p, PetscScalar *CAP, void *ctx);                     ///< CAP form kernel
 /// @}
 

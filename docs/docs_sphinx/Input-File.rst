@@ -353,6 +353,11 @@ See :doc:`Laser-Field`.
      - Separable structured field term: adds :math:`s\,f(t)\,w(\mathbf r)`
        to :math:`H`. Repeat the line for several terms. See
        :ref:`structured-fields`.
+   * - ``Gauge``
+     - ``length`` | ``velocity``
+     - ``length``
+     - ``velocity``: :math:`(\mathbf p - q\mathbf A)^2/2m` with :math:`\dot{\mathbf A} = -\mathbf E`
+       (and the :math:`1/c` expansion with ``Multipole``). See :ref:`velocity-gauge`.
    * - ``Multipole``
      - 1, 2, 3
      - 1

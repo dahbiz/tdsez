@@ -283,6 +283,12 @@ void TDSEZParser::PrmReader(const std::string &prm)
                     if (m == "td" || m == "lab") KHFrame = PETSC_FALSE;
                     else if (m == "kh") KHFrame = PETSC_TRUE;
                     else throw std::runtime_error("Mode must be td or kh"); }}},
+                // Gauge = length (s E.r, default) | velocity ((p - qA)^2 / 2m, velocity_gauge.cpp)
+                {"Gauge", H{[](const std::string &v){
+                    std::string m = v; for (auto &c : m) c = (char)std::tolower((unsigned char)c);
+                    if (m == "length") VelocityGauge = PETSC_FALSE;
+                    else if (m == "velocity") VelocityGauge = PETSC_TRUE;
+                    else throw std::runtime_error("Gauge must be length or velocity"); }}},
                 {"KHWindow",  H{[](const std::string &v){
                     std::string s = v; s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
                     const size_t c = s.find(',');
