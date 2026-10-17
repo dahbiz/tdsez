@@ -166,10 +166,25 @@ void TDSEZParser::PrmReader(const std::string &prm)
                         if (pairs.size() >= 2) parsePair(pairs[1], LMinY, LMaxY); else { LMinY = LMinX; LMaxY = LMaxX; }
                         if (pairs.size() >= 3) parsePair(pairs[2], LMinZ, LMaxZ); else { LMinZ = LMinX; LMaxZ = LMaxX; }
                     } else {
-                        auto commaPos = s.find(',');
-                        if (commaPos != std::string::npos) {
-                            LMinX = LMinY = LMinZ = std::stod(s.substr(0, commaPos));
-                            LMaxX = LMaxY = LMaxZ = std::stod(s.substr(commaPos + 1));
+                        // flat list: "lo, hi" for every axis, or one pair per
+                        // axis "xlo, xhi, ylo, yhi[, zlo, zhi]" (the extra values
+                        // used to be ignored silently, giving a cubic box)
+                        std::vector<PetscReal> v;
+                        size_t p = 0;
+                        while (p <= s.size()) {
+                            const size_t c = s.find(',', p);
+                            const std::string tok = s.substr(p, c == std::string::npos ? std::string::npos : c - p);
+                            if (!tok.empty()) v.push_back(std::stod(tok));
+                            if (c == std::string::npos) break;
+                            p = c + 1;
+                        }
+                        if (v.size() != 2 && v.size() != 4 && v.size() != 6)
+                            throw std::runtime_error("Domain must be 'lo, hi' (every axis) or one 'lo, hi' pair per "
+                                                     "axis, e.g. -50, 50, -20, 20 (got " + std::to_string(v.size()) + " values)");
+                        PetscReal *lo[3] = {&LMinX, &LMinY, &LMinZ}, *hi[3] = {&LMaxX, &LMaxY, &LMaxZ};
+                        for (size_t a = 0; a < 3; ++a) {
+                            const size_t k = (2 * a < v.size()) ? 2 * a : 0;   // missing axes copy x
+                            *lo[a] = v[k]; *hi[a] = v[k + 1];
                         }
                     }
                 }}},
@@ -275,6 +290,11 @@ void TDSEZParser::PrmReader(const std::string &prm)
                     KHWindow[0] = std::stod(s.substr(0, c)); KHWindow[1] = std::stod(s.substr(c + 1)); }}},
                 {"KHSamples",          I(KHSamples)},
                 {"StructuredField", H{AddFieldTerm}},   // intuitive alias
+                // nondipole coupling of a plane wave E(t - n.r/c)
+                {"Multipole",            I(Multipole)},
+                {"PropagationDirection", H{[](const std::string &v){ ParseAxisList(v, PropagationDir); }}},
+                {"MultipoleMagnetic",    B(MultipoleMagnetic)},
+                {"SpeedOfLight",         R(SpeedOfLight)},
                 {"Driver", S(Laser)},
                 {"Laser",  S(Laser)},
 

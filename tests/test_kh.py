@@ -227,3 +227,113 @@ def test_kh_quiver_against_closed_form(case):
     if "KHWindow" not in deck and "pulse" not in case:
         k = terms[0][0][1]                       # one full period of the fundamental
         _step(f"{case}: window = one period", abs((t1 - t0) - 2 * np.pi / k) < 1e-12 * (t1 - t0))
+
+
+# ---------------------------------------------------------------------------
+# Multipole = 2: the 1/c Lorentz force adds the figure-eight along n,
+#   alpha_n = (q/m)^2 (1 - eps^2) E0^2 / (8 c w^3 (1 + eps^2)) sin(2 w t)
+# for E = E0 / sqrt(1 + eps^2) (sin w t, eps cos w t); zero for circular light.
+# On an oscillator the levels shift by exactly m w0^2 <alpha_n^2> / 2 more.
+# ---------------------------------------------------------------------------
+NONDIPOLE_QUIVER = {
+    # name: (deck, E0, eps, q/m, w, c)
+    "2D linear, n = y": ("""Dimension = 2
+Domain = -10, 10, -10, 10
+NSplines = 10
+Polarization = x
+LaserX = 0.6*sin(0.8*t)
+PropagationDirection = 0, 1, 0
+SpeedOfLight = 3
+FinalTime = 20
+""", 0.6, 0.0, -1.0, 0.8, 3.0),
+    "3D elliptical eps = 0.5, n = z, m = 2": ("""Dimension = 3
+Domain = -10, 10, -10, 10, -10, 10
+NSplines = 6
+Mass = 2.0
+Polarization = xy
+LaserX = 0.6/sqrt(1.25)*sin(0.8*t)
+LaserY = 0.5*0.6/sqrt(1.25)*cos(0.8*t)
+PropagationDirection = 0, 0, 2
+SpeedOfLight = 3
+FinalTime = 20
+""", 0.6, 0.5, -0.5, 0.8, 3.0),
+    "3D circular, n = z": ("""Dimension = 3
+Domain = -10, 10, -10, 10, -10, 10
+NSplines = 6
+Polarization = xy
+LaserX = 0.6/sqrt(2)*sin(0.8*t)
+LaserY = 0.6/sqrt(2)*cos(0.8*t)
+PropagationDirection = 0, 0, 1
+SpeedOfLight = 3
+FinalTime = 20
+""", 0.6, 1.0, -1.0, 0.8, 3.0),
+}
+
+
+@pytest.mark.parametrize("case", list(NONDIPOLE_QUIVER))
+def test_kh_nondipole_figure_eight_against_closed_form(case):
+    deck, E0, eps, qm, w, c = NONDIPOLE_QUIVER[case]
+    head = "Verbose = 0\nMode = kh\nMultipole = 2\nSplineDegree = 3\nNQuadratures = 4\nPotential = 0.5*(x*x+y*y+z*z)\nNBoundStates = 1\n"
+    tag = "".join(ch for ch in case if ch.isalnum())[:24]
+    path = _write_tmp(f"khnd_{tag}.inp", head + deck)
+    r, _, _ = _run(path, zkit.find_binary(), 1)
+    _step(f"{case}: runs", r.returncode == 0, r.stdout.decode()[-1500:])
+    with h5py.File(zkit.Run(REPO, path).path("eigen")) as f:
+        t, wt, alpha = f["run_metadata"]["kh_times"][:], f["run_metadata"]["kh_weights"][:], f["run_metadata"]["kh_alpha"][:]
+    ax = 1 if "2D" in case else 2
+    amp = qm**2 * (1 - eps**2) * E0**2 / (8 * c * w**3 * (1 + eps**2))
+    ex = amp * np.sin(2 * w * t)
+    err = np.max(np.abs(alpha[:, ax] - ex))
+    _step(f"{case}: alpha_n = {amp:.4f} sin 2wt ({err:.1e})", err < 1e-12 * max(abs(amp), 1.0))
+    _step(f"{case}: <alpha_n> = 0", abs(wt @ alpha[:, ax]) < 1e-13)
+    # the transverse quiver is the dipole one
+    vx = -qm * E0 / np.sqrt(1 + eps**2) / w**2 * np.sin(w * t)
+    _step(f"{case}: alpha_x unchanged", np.max(np.abs(alpha[:, 0] - vx)) < 1e-12)
+
+
+def test_kh_nondipole_oscillator_shift():
+    deck = """Verbose = 0
+Mode = kh
+Dimension = 2
+Domain = -12, 12, -12, 12
+SplineDegree = 6
+NQuadratures = 8
+NSplines = 24
+Potential = 0.5*0.5*(x*x + y*y)
+NBoundStates = 3
+TargetEigenvalue = 0
+Polarization = x
+LaserX = 1.2*sin(0.8*t)
+PropagationDirection = 0, 1, 0
+SpeedOfLight = 2
+FinalTime = 20
+"""
+    e1, _ = _levels("khnd_ho_dip.inp", deck)
+    e2, _ = _levels("khnd_ho_nd.inp", deck + "Multipole = 2\n")
+    an = 1.2**2 / (8 * 2 * 0.8**3)
+    shift = 0.5 * 0.5 * an**2 / 2                     # m w0^2 <alpha_n^2> / 2
+    err = np.max(np.abs((e2 - e1)[:3] - shift))
+    _step(f"levels shift by m w0^2 <alpha_n^2>/2 = {shift:.6f} ({err:.1e})", err < 1e-9)
+
+
+@pytest.mark.parametrize(
+    "extra,label",
+    [
+        ("Multipole = 3\nPropagationDirection = 0, 1, 0\n", "kh_multipole3"),
+        ("Multipole = 2\n", "kh_nd_no_direction"),
+        ("Multipole = 2\nPropagationDirection = 1, 0, 0\n", "kh_nd_not_transverse"),
+    ],
+)
+def test_kh_nondipole_guards(extra, label):
+    deck = """Verbose = 0
+Mode = kh
+Dimension = 2
+Domain = -20, 20, -20, 20
+NSplines = 20
+Potential = 0.5*(x*x+y*y)
+NBoundStates = 2
+Polarization = x
+LaserX = 0.1*sin(t)
+FinalTime = 20
+"""
+    _expect_fatal(deck + extra, label)

@@ -25,6 +25,8 @@
 //  evaluated by composite 8-point Gauss-Legendre (accurate to rounding).
 //  The number of nodes doubles from 16 until V_KH changes by less than 1e-12
 //  (relative) on a test lattice (KHSamples = N fixes it, rounded up to 8).
+//  Multipole = 2 adds the 1/c Lorentz-force motion along the propagation
+//  direction n (the figure-eight of a linearly polarised plane wave).
 // ============================================================================
 
 #include "tdsez_internal.hpp"
@@ -145,7 +147,8 @@ void moments(int a, PetscReal t0, PetscReal sa, PetscReal sb, PetscReal j[3])
 }
 
 /// alpha(t0 + s_k) for every coupled axis (s sorted in [0, P]).
-std::vector<std::array<PetscReal, 3>> quiver(PetscReal t0, PetscReal P, const std::vector<PetscReal> &s, PetscReal qm)
+std::vector<std::array<PetscReal, 3>> quiver(PetscReal t0, PetscReal P, const std::vector<PetscReal> &s, PetscReal qm,
+                                             std::array<std::vector<PetscReal>, 3> &J0s, PetscReal meanVs[3])
 {
     const size_t N = s.size();
     std::vector<std::array<PetscReal, 3>> alpha(N, std::array<PetscReal, 3>{0.0, 0.0, 0.0});
@@ -166,12 +169,53 @@ std::vector<std::array<PetscReal, 3>> quiver(PetscReal t0, PetscReal P, const st
         const PetscReal meanV  = j0 - j1 / P;                                  // (1/P) int_0^P J_0
         const PetscReal meanA2 = (0.5 * P * P * j0 - P * j1 + 0.5 * j2) / P;   // (1/P) int_0^P (s J_0 - J_1)
         const PetscReal meanRaw = meanA2 - meanV * 0.5 * P;
+        J0s[(size_t)a] = J0;
+        meanVs[a] = meanV;
         for (size_t k = 0; k < N; ++k) {
             const PetscReal raw = s[k] * J0[k] - J1[k] - meanV * s[k];
             alpha[k][(size_t)a] = qm * (raw - meanRaw);
         }
     }
     return alpha;
+}
+
+/// Multipole = 2: the 1/c Lorentz force q v x B, B = n x E / c, on the quiver
+/// velocity v = alpha' (transverse) drives alpha_n'' = (q/mc) v.E = (|v|^2/2)'/c.
+/// alpha_n' = |v|^2/(2c) less its window mean (the drift along n, removed like
+/// the transverse one), alpha_n its integral less its mean: the figure-eight,
+/// E0^2 q^2 / (8 m^2 c w^3) sin 2wt for a linear field, zero for a circular one.
+/// v at 8 Gauss points per gap from J_0 at the gap start plus a nested 8-point
+/// integral of E (rounding accuracy); the mean of alpha_n on the window nodes.
+void longitudinal(PetscReal t0, PetscReal P, const std::vector<PetscReal> &s, const std::vector<PetscReal> &w,
+                  PetscReal qm, const std::array<std::vector<PetscReal>, 3> &J0s, const PetscReal meanVs[3],
+                  std::vector<std::array<PetscReal, 3>> &alpha)
+{
+    const PetscReal c = TDSEZParser::SpeedOfLight, *n = TDSEZParser::PropagationDir;
+    const size_t N = s.size();
+    std::vector<PetscReal> G(N);
+    PetscReal acc = 0.0, prev = 0.0;
+    for (size_t k = 0; k <= N; ++k) {
+        const PetscReal sb = k < N ? s[k] : P, h = sb - prev;
+        for (int g = 0; g < 8; ++g) {
+            const PetscReal u = prev + 0.5 * h * (gx[g] + 1.0);
+            PetscReal v2 = 0.0;
+            for (int a = 0; a < 3; ++a) {
+                if (!coupled(a)) continue;
+                PetscReal m[3];
+                moments(a, t0, prev, u, m);
+                const PetscReal v = qm * ((k > 0 ? J0s[(size_t)a][k - 1] : 0.0) + m[0] - meanVs[a]);
+                v2 += v * v;
+            }
+            acc += 0.5 * h * gw[g] * v2 / (2 * c);
+        }
+        if (k < N) G[k] = acc;
+        prev = sb;
+    }
+    const PetscReal gbar = acc / P;          // drift velocity <|v|^2> / 2c
+    PetscReal mean = 0.0;
+    for (size_t k = 0; k < N; ++k) mean += w[k] * (G[k] - gbar * s[k]);
+    for (size_t k = 0; k < N; ++k)
+        for (int d = 0; d < 3; ++d) alpha[k][(size_t)d] += n[d] * (G[k] - gbar * s[k] - mean);
 }
 
 /// V_KH on a lattice of points in the domain (sign included).
@@ -211,7 +255,10 @@ void TDSEZSetupKH()
     std::vector<PetscReal> s, w;
     auto build = [&]() {
         nodes(P, nseg, s, w);
-        TDSEZParser::KHAlpha_ = quiver(t0, P, s, qm);
+        std::array<std::vector<PetscReal>, 3> J0s;
+        PetscReal meanVs[3] = {0, 0, 0};
+        TDSEZParser::KHAlpha_ = quiver(t0, P, s, qm, J0s, meanVs);
+        if (TDSEZParser::Multipole >= 2) longitudinal(t0, P, s, w, qm, J0s, meanVs, TDSEZParser::KHAlpha_);
         TDSEZParser::KHWeight_ = w;
         TDSEZParser::KHTime_.assign(s.size(), 0.0);
         for (size_t k = 0; k < s.size(); ++k) TDSEZParser::KHTime_[k] = t0 + s[k];
@@ -248,11 +295,15 @@ void TDSEZSetupKH()
     info.header("KRAMERS-HENNEBERGER FRAME");
     info.line("Mode = kh: eigenstates of the cycle-averaged potential V_KH(r) = < V(r + alpha(t)) > over the "
               "free-carrier quiver m alpha'' = q E(t); no propagation.");
+    if (TDSEZParser::Multipole >= 2)
+        info.kv("Nondipole quiver", "+ 1/c Lorentz force along n = (%g, %g, %g), c = %.9g a.u. (figure-eight)",
+                (double)TDSEZParser::PropagationDir[0], (double)TDSEZParser::PropagationDir[1],
+                (double)TDSEZParser::PropagationDir[2], (double)TDSEZParser::SpeedOfLight);
     info.kv("Window", "t = %.6g .. %.6g a.u. (%s)", (double)t0, (double)(t0 + P),
             TDSEZParser::KHWindow[1] > TDSEZParser::KHWindow[0] ? "KHWindow" : "one cycle at the field peak");
     info.kv("Period, omega", "%.6g a.u., %.6g a.u.", (double)P, (double)omega);
     for (int a = 0; a < (int)TDSEZParser::Dimension; ++a) {
-        if (!coupled(a)) continue;
+        if (!coupled(a) && amp[a] == 0.0) continue;
         char lab[32];
         snprintf(lab, sizeof(lab), "Quiver %c", "xyz"[a]);
         info.kv(lab, "amplitude %.6g a.u., rms %.6g a.u.", (double)amp[a], (double)rms[a]);

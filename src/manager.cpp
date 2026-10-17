@@ -20,8 +20,8 @@ PetscErrorCode TDSEZManager::PolarizationSelector()
 {
     PetscFunctionBegin;
     std::string polType = TDSEZParser::Polarization;
-    if (TDSEZParser::NFieldTerms() > 0) {
-        // structured field terms: one residual/Jacobian over the term list
+    if (TDSEZParser::NCouplingTerms() > 0) {
+        // coupling terms (FieldTerm, multipoles): one residual/Jacobian over the term list
         TDSEZIFunctionPtr = TDSEZIFunctionTerms; TDSEZIJacobianPtr = TDSEZIJacobianTerms;
         PetscFunctionReturn(PETSC_SUCCESS);
     }
@@ -549,7 +549,7 @@ PetscBool TDSEZDiscreteAccelerationActive()
     const std::string &m = TDSEZParser::AccelerationMethod;
     if (m == "discrete") return PETSC_TRUE;
     if (m == "operator") return PETSC_FALSE;
-    if (TDSEZParser::NFieldTerms() > 0) return PETSC_TRUE;             // "auto": the force of w_k is not assembled
+    if (TDSEZParser::NCouplingTerms() > 0) return PETSC_TRUE;          // "auto": the forces of the terms are not assembled
     if (TDSEZParser::MassIsConstant) return PETSC_FALSE;               // "auto"
     // GetUsedVar() re-parses the expression and this is queried from the
     // assembly kernels at every quadrature point, so cache the answer per
@@ -965,10 +965,10 @@ PetscErrorCode TDSEZManager::DiscreteAcceleration(PetscReal t, Vec psi, Vec Hpsi
         PetscCall(ApplyOp(dop[a], D[a], psi, s));
         PetscCall(VecAXPY(r, E[a], s));
     }
-    if (!m_G.empty()) {                                // structured field terms, s f_k(t) G_k psi
+    if (!m_G.empty()) {                                // coupling terms, c_k(t) G_k psi
         PetscCall(FieldTermProducts(psi));
         for (size_t k = 0; k < m_G.size(); ++k)
-            PetscCall(VecAXPY(r, TDSEZParser::FieldTermCoupling((PetscInt)k, t), termPsi_[k]));
+            PetscCall(VecAXPY(r, TDSEZParser::CouplingTerms_[k].coeff(t), termPsi_[k]));
     }
     PetscCall(KSPSolve(kspMass, r, w));
     {
@@ -1012,7 +1012,7 @@ void TDSEZManager::TermCoefficients(PetscReal t, std::vector<PetscScalar> &c) co
     c.clear();
     const Mat D[3] = {m_Dx, m_Dy, m_Dz};
     for (int a = 0; a < 3; ++a) if (TDSEZParser::Coupled(a) && D[a]) c.push_back(TDSEZParser::Coupling(a, t));
-    for (size_t k = 0; k < m_G.size(); ++k) c.push_back(TDSEZParser::FieldTermCoupling((PetscInt)k, t));
+    for (size_t k = 0; k < m_G.size(); ++k) c.push_back(TDSEZParser::CouplingTerms_[k].coeff(t));
 }
 
 PetscErrorCode TDSEZManager::FieldTermProducts(Vec psi)
@@ -1041,6 +1041,6 @@ PetscErrorCode TDSEZManager::FieldTermEnergy(PetscReal t, Vec psi, PetscScalar *
     *e = 0.0;
     if (m_G.empty()) PetscFunctionReturn(PETSC_SUCCESS);
     PetscCall(FieldTermProducts(psi));
-    for (size_t k = 0; k < m_G.size(); ++k) *e += TDSEZParser::FieldTermCoupling((PetscInt)k, t) * termExp_[k];
+    for (size_t k = 0; k < m_G.size(); ++k) *e += TDSEZParser::CouplingTerms_[k].coeff(t) * termExp_[k];
     PetscFunctionReturn(PETSC_SUCCESS);
 }

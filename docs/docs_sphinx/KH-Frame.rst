@@ -120,6 +120,45 @@ pulse) is required; the mass must be constant (the quiver of a free carrier);
 ``FieldTerm`` is not supported. Linear, elliptical and circular polarisation in
 1D, 2D and 3D are handled alike.
 
+.. _kh-nondipole:
+
+Nondipole quiver (``Multipole = 2``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In a plane wave travelling along :math:`\mathbf n` (``PropagationDirection``)
+the magnetic force :math:`q\,\dot{\boldsymbol\alpha}\times\mathbf B`,
+:math:`\mathbf B = \mathbf n\times\mathbf E/c`, adds to order :math:`1/c` a
+motion along :math:`\mathbf n`:
+
+.. math::
+
+   \ddot\alpha_n = \frac{q}{mc}\,\dot{\boldsymbol\alpha}\cdot\mathbf E
+                  = \frac{1}{c}\frac{d}{dt}\frac{|\dot{\boldsymbol\alpha}|^2}{2} .
+
+TDSE-Z integrates it from the transverse quiver velocity and removes the drift
+:math:`\langle|\dot{\boldsymbol\alpha}|^2\rangle/2c` (the KH frame moves with
+it) and the mean position, as for the transverse quiver. For
+:math:`\mathbf E = E_0(\sin\omega t,\ \varepsilon\cos\omega t)/\sqrt{1+\varepsilon^2}`
+the result is the figure-eight
+
+.. math::
+
+   \alpha_n(t) = \frac{q^2}{m^2}\,\frac{1-\varepsilon^2}{1+\varepsilon^2}\,
+                  \frac{E_0^2}{8c\,\omega^3}\,\sin 2\omega t ,
+
+zero for circular light. :math:`V_{\text{KH}}` is then the average of
+:math:`V` over the full path, :math:`\mathbf r + \boldsymbol\alpha_\perp + \alpha_n\mathbf n`.
+:math:`\mathbf n` must be transverse to the polarised axes and in the plane
+of the problem (2D or 3D); ``SpeedOfLight`` sets :math:`c`. The remaining
+terms of the exact nondipole KH Hamiltonian (Førre et al., PRL **95**, 043601,
+2005) are of order :math:`v/c` and :math:`1/c^2` and are not included;
+``Multipole = 3`` is rejected in ``Mode = kh``. The drift itself, which pushes
+the electron out of the stabilised state in a pulse, is beyond a static model.
+
+``tests/test_kh.py`` checks :math:`\alpha_n(t)` against the closed form
+(linear 2D, elliptical and circular 3D, to :math:`10^{-16}`) and the extra
+oscillator shift :math:`m\omega_0^2\langle\alpha_n^2\rangle/2` (to :math:`10^{-15}`).
+
 Example: a soft-core atom dressed by a strong high-frequency field, linear
 along :math:`z`:
 

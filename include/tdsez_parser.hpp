@@ -8,6 +8,22 @@
 #include <utility>
 #include <vector>
 #include <array>
+#include <functional>
+
+/**
+ * @brief One time-dependent coupling term of H(t) = H + sum_i c_i(t) G_i (src/coupling.cpp).
+ * @details The spatial operator G_i is either a scalar profile, <B_a| w |B_b>
+ *          (Kind::Scalar), or the Hermitian first-order operator
+ *          -i (w v.grad + div(w v)/2), assembled as
+ *          -(i/2) int w v.(B_a grad B_b - B_b grad B_a) (Kind::Gradient).
+ */
+struct TDSEZCouplingTerm {
+    enum Kind { Scalar, Gradient } kind = Scalar;
+    std::string label;                                             ///< for the log
+    std::function<PetscReal(const PetscReal *r)> w;                ///< w(r)
+    std::function<void(const PetscReal *r, PetscReal *v)> v;       ///< v(r) (Gradient)
+    std::function<PetscReal(PetscReal t)> coeff;                   ///< c(t)
+};
 
 // ============================================================================
 //  TDSEZParser  — input / parameter parser (declaration region verbatim)
@@ -191,6 +207,31 @@ class TDSEZParser
         /// Coefficient of the term matrix in H, s f_k(t).
         inline static PetscReal FieldTermCoupling(PetscInt k, PetscReal t) { return CarrierSign() * FieldTime(k, t); }
         /// @}
+
+        /// @name Nondipole multipole coupling of a plane wave E(t - n.r/c)
+        /// @details Multipolar (Power-Zienau-Woolley) gauge to order 1/c^(Multipole-1):
+        ///          Multipole = 2 adds the electric quadrupole and the magnetic
+        ///          dipole, 3 the electric octupole, the magnetic quadrupole and
+        ///          the diamagnetic term (src/coupling.cpp).
+        /// @{
+        inline static PetscInt  Multipole = 1;                          ///< 1 dipole, 2 quadrupole, 3 octupole
+        inline static PetscReal PropagationDir[3] = {0.0, 0.0, 0.0};    ///< n (normalised by the validation)
+        inline static PetscBool MultipoleMagnetic = PETSC_TRUE;         ///< include the magnetic terms
+        inline static PetscReal SpeedOfLight = 137.035999084;           ///< c in a.u. (tests may lower it)
+        inline static PetscReal FieldDerivStep_ = 1e-3;                 ///< step of the 5-point derivatives
+        /// d^order E_a / dt^order (5-point central differences, order 1 or 2).
+        inline static PetscReal FieldDerivative(int a, PetscReal t, int order)
+        {
+            const PetscReal h = FieldDerivStep_;
+            const PetscReal fm2 = Field(a, t - 2 * h), fm1 = Field(a, t - h), fp1 = Field(a, t + h), fp2 = Field(a, t + 2 * h);
+            if (order == 1) return (fm2 - 8 * fm1 + 8 * fp1 - fp2) / (12 * h);
+            return (-fm2 + 16 * fm1 - 30 * Field(a, t) + 16 * fp1 - fp2) / (12 * h * h);
+        }
+        /// @}
+
+        /// Every coupling term beyond the dipoles: FieldTerms, then multipoles.
+        inline static std::vector<TDSEZCouplingTerm> CouplingTerms_;
+        inline static PetscInt NCouplingTerms() { return (PetscInt)CouplingTerms_.size(); }
         /**
          * @brief Evaluate the position-dependent mass distribution M(x,y,z).
          * @param x Cartesian x coordinate.

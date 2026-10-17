@@ -353,6 +353,27 @@ See :doc:`Laser-Field`.
      - Separable structured field term: adds :math:`s\,f(t)\,w(\mathbf r)`
        to :math:`H`. Repeat the line for several terms. See
        :ref:`structured-fields`.
+   * - ``Multipole``
+     - 1, 2, 3
+     - 1
+     - Order of the plane-wave coupling: 1 dipole, 2 adds the :math:`1/c`
+       terms (electric quadrupole, magnetic dipole), 3 the :math:`1/c^2`
+       terms (electric octupole, magnetic quadrupole, diamagnetic). See
+       :ref:`multipole-coupling`. With ``Mode = kh``, 2 adds the figure-eight
+       quiver along :math:`\mathbf n` (:ref:`kh-nondipole`).
+   * - ``PropagationDirection``
+     - ``nx, ny, nz``
+     - --
+     - Propagation direction :math:`\mathbf n` of the wave, transverse to the
+       polarised axes (normalised). Required for ``Multipole >= 2``.
+   * - ``MultipoleMagnetic``
+     - 0/1
+     - 1
+     - Include the magnetic and diamagnetic terms of ``Multipole``.
+   * - ``SpeedOfLight``
+     - real
+     - 137.035999084
+     - :math:`c` in atomic units, used by ``Multipole``.
    * - ``Ampx``, ``Ampy``, ``Ampz``
      - real
      - 0

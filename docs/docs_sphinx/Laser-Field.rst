@@ -21,6 +21,9 @@ where :math:`H_0` is the field-free Hamiltonian
 :math:`s = 1`) the expression enters as written and the force on the carrier
 is :math:`-\mathbf E(t)`.
 
+``Multipole = 2, 3`` adds the nondipole terms of a plane wave, up to the
+electric octupole (:ref:`multipole-coupling`).
+
 Polarization
 ------------
 
@@ -235,6 +238,98 @@ the surface only the uniform field acts. With ``TSurff = 1`` every
 :math:`\nabla w_k` is therefore sampled outside the surface at start-up and
 must be below :math:`10^{-6}` of its maximum, and with ``SurffEndTerm = 1``
 every :math:`f_k` must vanish after ``FinalTime``.
+
+.. _multipole-coupling:
+
+Nondipole Coupling (Multipole)
+------------------------------
+
+``Multipole = 2`` or ``3`` replaces the uniform field by a plane wave
+travelling along the unit vector :math:`\mathbf n` (``PropagationDirection``),
+
+.. math::
+
+   \mathbf E(\mathbf r, t) = \mathbf E(t - \mathbf n\cdot\mathbf r/c), \qquad
+   \mathbf B = \mathbf n\times\mathbf E / c ,
+
+and expands it about the origin in powers of :math:`1/c`, in the multipolar
+(Power-Zienau-Woolley) gauge. With the charge :math:`q`, the mass :math:`m`,
+:math:`\mathbf C(t) = \mathbf n\times\mathbf E(t)` and
+:math:`\mathbf L = -i\,\mathbf r\times\nabla`, the terms added to
+:eq:`eq-laser-field-coupling` are
+
+.. list-table::
+   :header-rows: 1
+   :widths: 14 30 56
+
+   * - order
+     - term
+     - operator
+   * - :math:`1/c`
+     - electric quadrupole
+     - :math:`+\frac{q}{2c}\,(\mathbf n\cdot\mathbf r)\,(\mathbf r\cdot\dot{\mathbf E})`
+   * -
+     - magnetic dipole
+     - :math:`-\frac{q}{2mc}\,\mathbf L\cdot\mathbf C`
+   * - :math:`1/c^2`
+     - electric octupole
+     - :math:`-\frac{q}{6c^2}\,(\mathbf n\cdot\mathbf r)^2\,(\mathbf r\cdot\ddot{\mathbf E})`
+   * -
+     - magnetic quadrupole
+     - :math:`+\frac{q}{3mc^2}\,\tfrac12\{\mathbf n\cdot\mathbf r,\ \mathbf L\}\cdot\dot{\mathbf C}`
+   * -
+     - diamagnetic
+     - :math:`+\frac{q^2}{8mc^2}\,|\mathbf C\times\mathbf r|^2`
+
+``Multipole = 2`` keeps the :math:`1/c` terms (the leading nondipole
+correction, which drives the motion along :math:`\mathbf n`), ``Multipole = 3``
+all of them; ``Multipole = 1`` (default) is the dipole coupling alone.
+``MultipoleMagnetic = 0`` keeps only the electric terms. The laser expressions
+are the field at the origin, :math:`\mathbf E(t)`; :math:`\dot{\mathbf E}` and
+:math:`\ddot{\mathbf E}` are taken from them by 5-point central differences
+(step :math:`2\cdot10^{-3}/\omega`, relative error about :math:`10^{-11}`).
+At a point where a pulse switches off with a kink, the difference averages
+across it.
+
+.. code-block:: text
+
+   # 800 nm along x, travelling along z, through the octupole order
+   Dimension            = 3
+   Polarization         = x
+   Omegax               = 0.057
+   LaserX               = 0.12*sin(pi*t/662)^2*sin(0.057*t)
+   Multipole            = 3
+   PropagationDirection = 0, 0, 1
+
+**Rules.** ``Dimension`` must be 2 or 3, and :math:`\mathbf n` (normalised by
+TDSE-Z) must lie in the plane of the problem and be transverse to the
+polarised axes. The magnetic terms need a constant ``Mass``.
+``SpeedOfLight`` (default 137.035999084) can be lowered to enlarge the
+nondipole effects in tests. ``TSurff = 1`` and
+``AccelerationMethod = operator`` are rejected. In ``Mode = kh``,
+``Multipole = 2`` adds the figure-eight to the quiver instead
+(:ref:`kh-nondipole`).
+
+**Cost.** Each term is one matrix of the sparsity of :math:`H`, assembled once
+(sum factorised, the :math:`\mathbf L` terms as antisymmetric first-order
+forms) and handled like a ``FieldTerm`` (:ref:`structured-fields`). For
+:math:`\mathbf n = \hat z` and :math:`\mathbf E \parallel \hat x`,
+``Multipole = 2`` adds two matrices and ``Multipole = 3`` five.
+
+**Observables.** The interaction energy includes every term. The acceleration
+is the discrete one (``AccelerationMethod = auto``); with the magnetic terms
+it is the time derivative of the canonical :math:`\langle\mathbf p\rangle/m`,
+not of the kinetic velocity. The field columns hold :math:`\mathbf E(t)`.
+
+**Validation** (``tests/test_multipole.py``). On a 2D oscillator,
+``Multipole = 2`` keeps the Hamiltonian quadratic, and :math:`\langle\mathbf r\rangle(t)`
+follows the classical Hamilton equations to :math:`5\cdot10^{-7}`, including
+the drift along :math:`\mathbf n`, which only the nondipole terms drive. The
+electric terms equal hand-written ``FieldTerm`` lines with analytic
+:math:`\dot E`, :math:`\ddot E` to :math:`10^{-9}`. In 3D, the full
+``Multipole = 3`` coupling is covariant under the rotation
+:math:`(\mathbf n, \mathbf E) = (\hat z, \hat x) \to (\hat x, \hat y)` to
+:math:`10^{-10}`, and the norm stays 1 without the CAP (Hermitian terms).
 
 Field Scales
 ------------

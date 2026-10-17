@@ -1653,6 +1653,7 @@ PetscErrorCode TDSEZCore::Output()
             try {
                 TDSEZParser::ValidateOrThrow();
                 TDSEZSetupKH();                       // Mode = kh: cycle-averaged potential
+                TDSEZSetupCouplingTerms();            // FieldTerms, multipoles
             } catch (const std::exception &e) {
                 TDSEZInfo().fatal("input validation failed: %s", e.what());
                 MPI_Abort(PETSC_COMM_WORLD, 3);

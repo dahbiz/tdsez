@@ -622,6 +622,43 @@ void TDSEZParser::ValidateOrThrow()
                 throw std::runtime_error("ValidateOrThrow: " + id + ": the profile uses " + std::string(1, "xyz"[d]) +
                     ", which does not exist in a " + std::to_string((int)Dimension) + "D problem");
     }
+    // Nondipole multipole coupling of a plane wave E(t - n.r/c)
+    if (Multipole < 1 || Multipole > 3)
+        throw std::runtime_error("ValidateOrThrow: Multipole must be 1 (dipole), 2 (+ quadrupole) or 3 (+ octupole)");
+    if (Multipole >= 2 && (KHFrame || EnablePropagation)) {
+        if (Dimension < 2)
+            throw std::runtime_error("ValidateOrThrow: Multipole >= 2 needs Dimension 2 or 3 (the propagation "
+                                     "direction is orthogonal to the polarisation)");
+        PetscReal nn = 0;
+        for (int d = 0; d < 3; ++d) nn += PropagationDir[d] * PropagationDir[d];
+        if (!(nn > 0))
+            throw std::runtime_error("ValidateOrThrow: Multipole >= 2 needs PropagationDirection = nx, ny, nz");
+        for (int d = 0; d < 3; ++d) PropagationDir[d] /= std::sqrt(nn);
+        if (Dimension == 2 && std::fabs(PropagationDir[2]) > 1e-12)
+            throw std::runtime_error("ValidateOrThrow: in 2D the PropagationDirection must lie in the xy plane");
+        for (int d = 0; d < 3; ++d)
+            if (Polarization.find("xyz"[d]) != std::string::npos && std::fabs(PropagationDir[d]) > 1e-12)
+                throw std::runtime_error(std::string("ValidateOrThrow: Multipole: the field is polarised along ") + "xyz"[d] +
+                    " but PropagationDirection has a " + "xyz"[d] + " component; a plane wave is transverse (n.E = 0)");
+        if (!(SpeedOfLight > 0))
+            throw std::runtime_error("ValidateOrThrow: SpeedOfLight must be > 0");
+        bool massConst = MassIsConstant;
+        try { if (MassExpr.GetUsedVar().empty()) massConst = true; } catch (const mu::Parser::exception_type &) {}
+        if (!massConst && MultipoleMagnetic)
+            throw std::runtime_error("ValidateOrThrow: the magnetic multipole terms (L/m) need a constant mass; "
+                                     "set MultipoleMagnetic = 0 for the electric terms only");
+        if (TSurff)
+            throw std::runtime_error("ValidateOrThrow: TSurff with Multipole >= 2 is not supported (the Volkov "
+                                     "states are those of the dipole approximation)");
+        if (AccelerationMethod == "operator")
+            throw std::runtime_error("ValidateOrThrow: AccelerationMethod = operator does not include the multipole "
+                                     "terms; use auto or discrete");
+    }
+    // Mode = kh with Multipole = 2: the quiver gains the 1/c Lorentz-force motion along n
+    if (KHFrame && Multipole == 3)
+        throw std::runtime_error("ValidateOrThrow: Mode = kh includes the nondipole quiver to order 1/c; "
+                                 "use Multipole = 2 (or 1 for the dipole quiver)");
+
     if (NFieldTerms() > 0 && AccelerationMethod == "operator")
         throw std::runtime_error("ValidateOrThrow: AccelerationMethod = operator needs grad w of every FieldTerm; "
             "use auto or discrete (the discrete equation of motion includes the field terms exactly)");

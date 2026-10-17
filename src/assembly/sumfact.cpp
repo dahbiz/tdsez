@@ -415,8 +415,9 @@ bool SumFactMatFree(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], u
     return true;
 }
 
-/// Structured field terms: work[k] = <B_a| w_{i0+k} |B_b>, i0 = TDSEZFieldTermIndex.
-bool SumFactFieldTerms(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsigned need)
+/// Coupling terms (i0 = TDSEZCouplingIndex): Scalar work[k] = <B_a| w |B_b>;
+/// Gradient work[k] = -(i/2) (E - E^T), E_ab = sum_d int w v_d B_a d_d B_b.
+bool SumFactCouplingTerms(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[], unsigned need)
 {
     const PetscInt dim = e->dim;
     thread_local Axis1D A[3];
@@ -426,23 +427,39 @@ bool SumFactFieldTerms(IGA iga, IGAElement e, PetscInt nmat, PetscScalar *work[]
     if (nen != e->nen) return false;
     const PetscInt Q1 = A[0].Q, Q2 = A[1].Q, Q3 = (dim == 3) ? A[2].Q : 1;
     const size_t nq = (size_t)Q1 * Q2 * Q3;
-    thread_local std::vector<PetscReal> c;
-    c.resize(nq);
+    thread_local std::vector<PetscReal> c[3];
     Scratch &S = scratch;
     Offsets(A, dim, S);
     const int V0[3] = {0, 0, 0};
     for (PetscInt k = 0; k < nmat; ++k) {
         if (!((need >> k) & 1u)) continue;
+        const TDSEZCouplingTerm &t = TDSEZParser::CouplingTerms_[(size_t)(TDSEZCouplingIndex + k)];
+        const bool grad = t.kind == TDSEZCouplingTerm::Gradient;
+        for (int d = 0; d < (grad ? dim : 1); ++d) c[d].resize(nq);
         for (PetscInt q3 = 0; q3 < Q3; ++q3)
         for (PetscInt q2 = 0; q2 < Q2; ++q2)
         for (PetscInt q1 = 0; q1 < Q1; ++q1) {
             const size_t q = (size_t)q1 + (size_t)Q1 * ((size_t)q2 + (size_t)Q2 * q3);
-            const PetscReal z = (dim == 3) ? A[2].X[q3] : 0.0;
-            const PetscReal w = A[0].W[q1] * A[1].W[q2] * ((dim == 3) ? A[2].W[q3] : 1.0);
-            c[q] = w == 0.0 ? 0.0 : TDSEZParser::FieldProfile(TDSEZFieldTermIndex + k, A[0].X[q1], A[1].X[q2], z) * w;
+            const PetscReal r[3] = {A[0].X[q1], A[1].X[q2], (dim == 3) ? A[2].X[q3] : 0.0};
+            const PetscReal W = A[0].W[q1] * A[1].W[q2] * ((dim == 3) ? A[2].W[q3] : 1.0);
+            if (W == 0.0) { for (int d = 0; d < (grad ? dim : 1); ++d) c[d][q] = 0.0; continue; }
+            const PetscReal w = t.w(r) * W;
+            if (!grad) { c[0][q] = w; continue; }
+            PetscReal v[3];
+            t.v(r, v);
+            for (int d = 0; d < dim; ++d) c[d][q] = w * v[d];
         }
-        Contract(A, dim, V0, V0, c.data(), false, S);
-        Store(S, nen, 1.0, Sym::Symmetric, work[k]);
+        if (!grad) {
+            Contract(A, dim, V0, V0, c[0].data(), false, S);
+            Store(S, nen, 1.0, Sym::Symmetric, work[k]);
+            continue;
+        }
+        for (int d = 0; d < dim; ++d) {
+            int ed[3] = {0, 0, 0};
+            ed[d] = 1;
+            Contract(A, dim, V0, ed, c[d].data(), d > 0, S);   // E_ab += int w v_d B_a d_d B_b
+        }
+        Store(S, nen, -0.5 * PETSC_i, Sym::AntiSymmetric, work[k]);
     }
     return true;
 }
@@ -458,7 +475,7 @@ bool SumFactElement(IGA iga, IGAElement e, TDSEZPhysicsKernel kernel,
     if (dim < 2 || dim > 3 || e->dof != 1 || e->geometry || e->rational) return false;
     if (kernel == TDSEZFormPhyAxes) return SumFactAxes(iga, e, nmat, work, need);
     if (kernel == TDSEZFormMatFreeAxes) return SumFactMatFree(iga, e, nmat, work, need);
-    if (kernel == TDSEZFormFieldTerms) return SumFactFieldTerms(iga, e, nmat, work, need);
+    if (kernel == TDSEZFormCouplingTerms) return SumFactCouplingTerms(iga, e, nmat, work, need);
     if (kernel != TDSEZFormHam || nmat < 2) return false;
 
     thread_local Axis1D A[3];

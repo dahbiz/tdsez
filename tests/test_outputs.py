@@ -154,3 +154,50 @@ def test_post_processors_read_former_names(tmp_path):
           p.stdout.decode()[-500:] + p.stderr.decode()[-500:])
     _step("and writes static/<name>_tdm_Dx.npy", (old / f"{name}_tdm_Dx.npy").exists())
     _step("zkit reads the former eigen file", zkit.Run(tmp_path, f"{name}.inp").spectrum.values.size == 3)
+
+
+def test_domain_per_axis_and_state_orientation():
+    """Domain = xlo, xhi, ylo, yhi gives a 24 x 12 box (the flat list used to set
+    every axis to the first pair), and zkit reconstructs the states with x and y
+    in place (TDSE-Z stores [y][x]): oscillator w = (0.5, 1),
+    <x^2> = (n_x + 1/2)/w_x, <y^2> = (n_y + 1/2)/w_y."""
+    import h5py
+    from zkit.io.wfs_field import reconstruct_static_wfs
+
+    text = """Verbose = 0
+Mode = td
+EnablePropagation = 0
+Dimension = 2
+Domain = -12, 12, -6, 6
+SplineDegree = 4
+KnotSequence = hydrogenic
+HydrogenicR1 = 0.5
+HydrogenicNLin = 1
+HydrogenicNExp = 10
+HydrogenicHMax = 0.5
+Potential = 0.5*(0.25*x*x + y*y)
+NBoundStates = 3
+NBoundStatesSave = 1
+"""
+    path = _write_tmp("domain_axes.inp", text)
+    r, _, _ = _run(path, zkit.find_binary(), 1)
+    _step("runs", r.returncode == 0, r.stdout.decode()[-800:])
+    run = zkit.Run(REPO, path)
+    with h5py.File(run.path("eigen")) as f:
+        span = [(f[k][:].min(), f[k][:].max()) for k in ("knots_x", "knots_y")]
+        n = [int(f[k].attrs["nfuncs"]) for k in ("knots_x", "knots_y")]
+    _step(f"box {span} = [-12, 12] x [-6, 6]", span == [(-12.0, 12.0), (-6.0, 6.0)])
+    _step(f"different basis sizes per axis {n}", n[0] != n[1])
+    E = run.spectrum.values
+    x, y = np.linspace(-11.5, 11.5, 231), np.linspace(-5.5, 5.5, 111)
+    for i, (nx, ny) in zip(np.argsort(E), [(0, 0), (1, 0), (2, 0)]):
+        a = reconstruct_static_wfs(run.path("eigen"), int(i), axes=[x, y])["abs2"]
+        a /= a.sum()
+        mx, my = (a.sum(1) * x * x).sum(), (a.sum(0) * y * y).sum()
+        ex, ey = (nx + 0.5) / 0.5, (ny + 0.5) / 1.0
+        _step(f"state ({nx},{ny}): <x^2> {mx:.4f} = {ex}, <y^2> {my:.4f} = {ey}",
+              abs(mx - ex) < 2e-3 * ex and abs(my - ey) < 2e-3 * ey)
+
+
+def test_domain_wrong_count_is_rejected():
+    _expect_fatal(DECK.replace("Domain            = -24.0, 24.0, -24.0, 24.0", "Domain = -24, 24, -24"), "domain_three_values")

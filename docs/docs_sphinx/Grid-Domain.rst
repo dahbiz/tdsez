@@ -52,8 +52,9 @@ Dimension and bounds
    * - ``Domain``
      - string
      - --
-     - ``lo, hi`` sets every axis; ``[lox,hix], [loy,hiy], [loz,hiz]`` sets
-       the axes separately (missing pairs copy the x pair).
+     - ``lo, hi`` sets every axis; ``[lox,hix], [loy,hiy], [loz,hiz]`` or
+       ``lox, hix, loy, hiy[, loz, hiz]`` sets the axes separately (missing
+       pairs copy the x pair). Another number of values stops the run.
    * - ``LMinX``, ``LMaxX``, ``LMinY``, ``LMaxY``, ``LMinZ``, ``LMaxZ``
      - real
      - -10, 10

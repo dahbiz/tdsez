@@ -1894,25 +1894,37 @@ PetscReal TDSEZCapWidth()
     return 2.62206 / (2.0 * 0.2 * TDSEZParser::CAPKmin);
 }
 
-/// First FieldTerm of the batch assembled by TDSEZFormFieldTerms.
-PetscInt TDSEZFieldTermIndex = 0;
+/// First coupling term of the batch assembled by TDSEZFormCouplingTerms.
+PetscInt TDSEZCouplingIndex = 0;
 
-/// Per-point kernel of the structured field terms: M[k] += w_{i0+k}(r) B_a B_b
-/// (i0 = TDSEZFieldTermIndex). 2D/3D elements are sum-factorised (sumfact.cpp).
-PetscErrorCode TDSEZFormFieldTerms(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx)
+/// Per-point kernel of the coupling terms (i0 = TDSEZCouplingIndex):
+/// Scalar: M[k] += w B_a B_b; Gradient: M[k] += -(i/2) w v.(B_a grad B_b - B_b grad B_a).
+/// 2D/3D elements are sum-factorised (sumfact.cpp).
+PetscErrorCode TDSEZFormCouplingTerms(IGAPoint p, PetscInt nmat, PetscScalar *M[], void *ctx)
 {
     (void)ctx;
-    const PetscInt nen = p->nen;
-    const PetscReal *B;
+    const PetscInt nen = p->nen, dim = p->dim;
+    const PetscReal *B, *dB;
     IGAPointGetShapeFuns(p, 0, (const PetscReal**)&B);
+    IGAPointGetShapeFuns(p, 1, (const PetscReal**)&dB);
     PetscReal xyz[3] = {0.0, 0.0, 0.0};
     IGAPointFormGeomMap(p, xyz);
-    const PetscReal w = p->weight[0] * p->detJac[0];
+    const PetscReal W = p->weight[0] * p->detJac[0];
     for (PetscInt k = 0; k < nmat; ++k) {
-        const PetscReal c = TDSEZParser::FieldProfile(TDSEZFieldTermIndex + k, xyz[0], xyz[1], xyz[2]) * w;
-        for (PetscInt a = 0; a < nen; a++) {
-            const PetscReal ca = c * B[a];
-            for (PetscInt b = 0; b < nen; b++) M[k][a * nen + b] += ca * B[b];
+        const TDSEZCouplingTerm &t = TDSEZParser::CouplingTerms_[(size_t)(TDSEZCouplingIndex + k)];
+        const PetscReal w = t.w(xyz) * W;
+        if (t.kind == TDSEZCouplingTerm::Scalar) {
+            for (PetscInt a = 0; a < nen; a++)
+                for (PetscInt b = 0; b < nen; b++) M[k][a * nen + b] += w * B[a] * B[b];
+        } else {
+            PetscReal v[3];
+            t.v(xyz, v);
+            for (PetscInt a = 0; a < nen; a++)
+                for (PetscInt b = 0; b < nen; b++) {
+                    PetscReal g = 0.0;
+                    for (PetscInt d = 0; d < dim; ++d) g += v[d] * (B[a] * dB[b * dim + d] - B[b] * dB[a * dim + d]);
+                    M[k][a * nen + b] += -0.5 * PETSC_i * w * g;
+                }
         }
     }
     return 0;

@@ -205,23 +205,24 @@ TDSEZAssembler::TDSEZAssembler(IGA& iga) : iga(iga)
         throw std::runtime_error("Dimension must be 1, 2 or 3.");
     }
 
-    // Structured field terms: G_k = <B_i| w_k |B_j>, assembled once; the
-    // propagator adds s f_k(t) G_k to the stage matrices with the dipoles.
-    // Batches of up to 12 terms share one element loop (sum-factorised in 2D/3D).
-    G.assign((size_t)TDSEZParser::NFieldTerms(), PETSC_NULLPTR);
-    for (PetscInt k0 = 0; k0 < TDSEZParser::NFieldTerms(); k0 += 12)
+    // Coupling terms beyond the dipoles (FieldTerms, multipoles): G_i assembled
+    // once; the propagator adds c_i(t) G_i to the stage matrices with the
+    // dipoles. Batches of up to 12 terms share one element loop (sum-factorised
+    // in 2D/3D).
+    const PetscInt nterm = TDSEZParser::NCouplingTerms();
+    G.assign((size_t)nterm, PETSC_NULLPTR);
+    for (PetscInt k0 = 0; k0 < nterm; k0 += 12)
     {
-        const PetscInt n = PetscMin((PetscInt)12, TDSEZParser::NFieldTerms() - k0);
+        const PetscInt n = PetscMin((PetscInt)12, nterm - k0);
         Mat *mats[12];
         for (PetscInt i = 0; i < n; ++i) mats[i] = &G[(size_t)(k0 + i)];
-        TDSEZFieldTermIndex = k0;
-        const std::string name = n == 1 ? "Field term " + std::to_string((int)k0 + 1)
-                                        : "Field terms " + std::to_string((int)k0 + 1) + "-" + std::to_string((int)(k0 + n));
-        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormFieldTerms, name.c_str());
+        TDSEZCouplingIndex = k0;
+        const std::string name = n == 1 ? "Coupling term " + std::to_string((int)k0 + 1)
+                                        : "Coupling terms " + std::to_string((int)k0 + 1) + "-" + std::to_string((int)(k0 + n));
+        TDSEZAssembleMatBatchTimed(iga, n, mats, TDSEZFormCouplingTerms, name.c_str());
     }
-    for (PetscInt k = 0; k < TDSEZParser::NFieldTerms(); ++k)
-        info.kv(k == 0 ? "Structured field" : "", "%d: w = %s ; f(t) = %s", (int)k + 1,
-                TDSEZParser::FieldTermProfile[k].c_str(), TDSEZParser::FieldTermTime[k].c_str());
+    for (PetscInt k = 0; k < nterm; ++k)
+        info.kv(k == 0 ? "Coupling terms" : "", "%d: %s", (int)k + 1, TDSEZParser::CouplingTerms_[(size_t)k].label.c_str());
 
     if (TDSEZParser::EnableCAP)
     {
