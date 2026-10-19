@@ -93,7 +93,7 @@ and MPI parallelism are built on [PETSc](https://petsc.org) and
 | [SLEPc](https://slepc.upv.es) | Installed in the PETSc prefix |
 | [PetIGA](https://github.com/dalcinl/PetIGA) | Installed in the PETSc prefix |
 | [muParser](https://github.com/beltoforion/muparser) | Expression parsing |
-| Python 3 with pytest, numpy, scipy, h5py and [zkit](https://github.com/dahbiz/zkit) | Tests and post-processing (optional) |
+| Python 3 with pytest, numpy, scipy, h5py and [zkit](https://github.com/dahbiz/zkit) (`pip install zkit-lib`) | Tests and post-processing (optional) |
 
 A PETSc configuration known to work:
 
