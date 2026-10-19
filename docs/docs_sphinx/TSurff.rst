@@ -195,7 +195,7 @@ The remaining differences are those of the discretisation and the absorber
 (electrons slower than the CAP's :math:`k_{\min}` are partly reflected), the
 same as for a plain t-SURFF run continued until every electron has crossed.
 
-Against SCID-TDSE's infinite-time (iSURFV) spectrum for 3D hydrogen
+Against SCID-TDSE's [Patchkovskii2016]_ infinite-time (iSURFV) spectrum for 3D hydrogen
 (:math:`\omega = 0.4`, :math:`E_0 = 0.05`, 6-cycle :math:`\sin^2` vector
 potential along :math:`z`, Coulomb tail switched off between :math:`r = 5`
 and 10, surface at :math:`R = 11.04`; TDSE-Z with 132 651 DOFs, 4 ranks), the

@@ -100,3 +100,11 @@ Strong-field physics
 .. [Gavrila2002] M. Gavrila, Atomic stabilization in superintense laser
    fields, J. Phys. B 35, R147 (2002).
 
+Reference codes
+---------------
+
+.. [Patchkovskii2016] S. Patchkovskii and H. G. Muller, Simple, accurate, and
+   efficient implementation of 1-electron atomic time-dependent Schrödinger
+   equation in spherical coordinates, *Comput. Phys. Commun.* **199**, 153
+   (2016). The SCID-TDSE code, against which TDSE-Z is compared for 3D
+   hydrogen (:doc:`TSurff`).
