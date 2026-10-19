@@ -1,6 +1,15 @@
 TDSE-Z: Time-Dependent Schrödinger Equation Solver
 ==================================================
 
+|views| |clones|
+
+.. |views| image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fviews.json
+   :alt: Views
+   :target: https://github.com/dahbiz/tdsez/tree/traffic/traffic
+.. |clones| image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fclones.json
+   :alt: Clones
+   :target: https://github.com/dahbiz/tdsez/tree/traffic/traffic
+
 TDSE-Z solves the time-dependent Schrödinger equation (TDSE) for a single
 particle in one, two and three dimensions, from atoms and molecules in strong
 laser fields to semiconductor heterostructures with a position-dependent

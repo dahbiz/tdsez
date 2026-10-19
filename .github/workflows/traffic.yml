@@ -1,0 +1,94 @@
+name: Traffic statistics
+
+# GitHub keeps repository traffic (views and clones) for 14 days and shows it
+# to the owner only. This job reads it every day, adds the new days to a
+# cumulative record on the `traffic` branch and writes the badges shown in the
+# README, on the website and in the documentation:
+#   traffic/traffic.json   per-day counts since the job started
+#   traffic/summary.json   totals (read by the website)
+#   traffic/views.json     shields.io endpoint badge: total views
+#   traffic/clones.json    shields.io endpoint badge: total clones
+#
+# Set-up (once): a fine-grained personal access token with read access to
+# "Administration" of this repository, stored as the Actions secret
+# TRAFFIC_TOKEN (Settings > Secrets and variables > Actions).
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: traffic
+  cancel-in-progress: false
+
+jobs:
+  traffic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Switch to the traffic branch (created on the first run)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin traffic >/dev/null; then
+            git fetch origin traffic
+            git switch traffic
+          else
+            git switch --orphan traffic
+            git rm -rf --quiet . || true
+          fi
+          mkdir -p traffic
+
+      - name: Fetch and accumulate the traffic
+        env:
+          TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          test -n "$TOKEN" || { echo "::error::secret TRAFFIC_TOKEN is not set (see the comment at the top of this file)"; exit 1; }
+          python3 - <<'EOF'
+          import json, os, urllib.request
+          from datetime import datetime, timezone
+
+          repo, token = os.environ["REPO"], os.environ["TOKEN"]
+
+          def get(kind):
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/{repo}/traffic/{kind}?per=day",
+                  headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+                           "X-GitHub-Api-Version": "2022-11-28"})
+              with urllib.request.urlopen(req) as r:
+                  return json.load(r)[kind]
+
+          path = "traffic/traffic.json"
+          data = json.load(open(path)) if os.path.exists(path) else {"views": {}, "clones": {}}
+          for kind in ("views", "clones"):
+              for day in get(kind):                       # the last 14 days; newer counts win
+                  data[kind][day["timestamp"][:10]] = {"count": day["count"], "uniques": day["uniques"]}
+          json.dump(data, open(path, "w"), indent=1, sort_keys=True)
+
+          total = {k: sum(d["count"] for d in data[k].values()) for k in ("views", "clones")}
+          uniq = {k: sum(d["uniques"] for d in data[k].values()) for k in ("views", "clones")}
+          since = min([*data["views"], *data["clones"]], default=None)
+          json.dump({"views": total["views"], "clones": total["clones"], "daily_unique_visitors": uniq["views"],
+                     "daily_unique_cloners": uniq["clones"], "since": since,
+                     "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d")},
+                    open("traffic/summary.json", "w"), indent=1)
+          for k, label in (("views", "views"), ("clones", "clones")):
+              json.dump({"schemaVersion": 1, "label": label, "message": f"{total[k]:,}", "color": "3b6ea5"},
+                        open(f"traffic/{k}.json", "w"))
+          print(total, "since", since)
+          EOF
+
+      - name: Commit the new totals
+        run: |
+          git add traffic
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "Traffic statistics $(date -u +%F)"
+          git push origin traffic

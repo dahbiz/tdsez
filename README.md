@@ -16,6 +16,8 @@
   <img src="https://img.shields.io/badge/C%2B%2B-17-3b6ea5" alt="C++17">
   <img src="https://img.shields.io/badge/built%20on-PETSc%20%C2%B7%20SLEPc%20%C2%B7%20PetIGA-3b6ea5" alt="PETSc, SLEPc, PetIGA">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-3b6ea5" alt="License"></a>
+  <a href="https://github.com/dahbiz/tdsez/tree/traffic/traffic"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fviews.json" alt="Views"></a>
+  <a href="https://github.com/dahbiz/tdsez/tree/traffic/traffic"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fclones.json" alt="Clones"></a>
 </p>
 
 <p align="center">
