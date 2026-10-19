@@ -626,7 +626,7 @@ void TDSEZParser::ValidateOrThrow()
     if (Multipole != 1)
         throw std::runtime_error("ValidateOrThrow: Multipole = " + std::to_string((int)Multipole) +
                                  ": the nondipole coupling is not in the public release; it is available "
-                                 "on request (zdahbi@outlook.es). Use Multipole = 1 (dipole)");
+                                 "on request (drdahbi@outlook.com). Use Multipole = 1 (dipole)");
     // Gauge = velocity: (p - qA)^2 / 2m through coupling terms (velocity_gauge.cpp)
     if (VelocityGauge) {
         if (KHFrame)

@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
                 {"Z is not the author's initial. Z is not the third axis.",
                  "Z is ⵣ (yaz), the Amazigh sign of the free man and the free people."},
                 {"TDSE-Z  |  Time-Dependent Schrödinger Equation solver (B-spline / IGA)",
-                 "Dr. Zakaria Dahbi  |  zdahbi@outlook.es",
+                 "Dr. Zakaria Dahbi  |  drdahbi@outlook.com",
                  "Attosecond Quantum Physics Lab, King's College London, UK"}
             });
         }

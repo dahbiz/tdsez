@@ -249,7 +249,7 @@ Nondipole Coupling (Multipole) (Available on request)
 .. note::
 
    The nondipole coupling is not in the public release yet; it is available
-   from the author on request (zdahbi@outlook.es).
+   from the author on request (drdahbi@outlook.com).
 
 ``Multipole = 2`` or ``3`` replaces the uniform field by a plane wave
 travelling along the unit vector :math:`\mathbf n` (``PropagationDirection``),

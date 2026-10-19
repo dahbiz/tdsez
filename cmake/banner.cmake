@@ -37,7 +37,7 @@ set(_TDSEZ_LOGO_LINES
 # ── Credit / title lines (must match src/tdsez.cpp banner() call) ────────────
 set(_TDSEZ_TITLE_LINES
     "TDSE-Z - Time-Dependent Schrodinger Equation solver (B-spline / IGA)"
-    "Dr. Zakaria Dahbi  |  zdahbi@outlook.es"
+    "Dr. Zakaria Dahbi  |  drdahbi@outlook.com"
     "Attosecond Quantum Physics Lab, King's College London, UK"
 )
 

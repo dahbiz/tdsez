@@ -202,7 +202,7 @@ Citation metadata is also provided in [`CITATION.cff`](CITATION.cff).
 TDSE-Z is released under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 Use, modification and redistribution for non-commercial research and teaching are
 permitted. Commercial use requires a separate license; please contact
-[zdahbi@outlook.es](mailto:zdahbi@outlook.es).
+[drdahbi@outlook.com](mailto:drdahbi@outlook.com).
 
 ## Contact
 
