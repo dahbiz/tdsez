@@ -1,0 +1,44 @@
+# Above-threshold ionisation spectrum of a 1D soft-core atom with t-SURFF.
+# V = -s(x)/sqrt(x^2+1): the soft-core potential (Ip = 0.670 Ha) switched off
+# smoothly by s(x) = (1 - tanh((|x|-Rc)/d))/2 (Rc = 20, d = 2), so the carrier
+# is free beyond the t-SURFF surface |x| = 35 (|V| < 1e-8 Ha there).
+# 800 nm, 1e14 W/cm^2, 8-cycle sin^2 vector-potential pulse, then 400 a.u.
+# of field-free propagation so slow electrons cross the surface.
+#
+#   tdsez.x -inp ati_1d.inp
+#   python plot_tsurff.py td/ati_1d_surff.h5 --energy --omega 0.057
+
+Dimension         = 1
+Domain            = -80.0, 80.0
+SplineDegree      = 7
+NQuadratures      = 10
+KnotSequence      = uniform
+NSplines          = 640
+Charge            = -1.0
+Mass              = 1.0
+
+Variables            = Rc=20, d=2
+Potential            = -0.5*(1 - tanh((abs(x)-Rc)/d)) / sqrt(x*x + 1)
+PotentialDerivativeX = 0.5*(1 - tanh((abs(x)-Rc)/d)) * x/(x*x + 1)^1.5 + 0.5*(1 - tanh((abs(x)-Rc)/d)^2)/d * sign(x) / sqrt(x*x + 1)
+
+TargetEigenvalue  = -0.8
+NBoundStates      = 2
+InitialState      = ground
+
+# A = (E0/w) sin^2(pi t/Tp) sin(w t), E = -dA/dt (8 cycles: Tp = 8*2*pi/w)
+Variables         = E0=0.0534, w=0.057, Tp=881.85
+Polarization      = x
+LaserX            = t<Tp ? -(E0/w)*((pi/Tp)*sin(2*pi*t/Tp)*sin(w*t) + w*sin(pi*t/Tp)^2*cos(w*t)) : 0
+
+EnablePropagation = 1
+Propagator        = pade22
+TimeStep          = 0.05
+FinalTime         = 1281.85
+EnableCAP         = 1
+CAPKmin           = 0.2
+OutputStrideWFS   = 100000
+
+TSurff            = 1
+SurffRadius       = 35
+SurffKmax         = 2.5
+SurffNk           = 501

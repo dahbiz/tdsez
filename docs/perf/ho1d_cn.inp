@@ -1,0 +1,28 @@
+# 1D harmonic oscillator driven by E(t) = cos(0.6 t), T = 50 (PERFORMANCE.md, section 2).
+# Exact: <x>(t) = -E0/(1-w^2) (cos(w t) - cos t), E0 = 1, w = 0.6.
+Dimension = 1
+Domain = -60.0, 60.0
+SplineDegree = 7
+NQuadratures = 10
+KnotSequence = uniform
+NSplines = 1200
+Mass = 1.0
+MassIsConstant = 1
+Charge = -1.0
+UseDirectSolve = 1
+TargetEigenvalue = 0.0
+NBoundStates = 6
+NBoundStatesSave = 0
+Potential = 0.5*x*x
+PotentialDerivativeX = x
+Polarization = x
+LaserX = 1.0*cos(0.6*t)
+EnablePropagation = 1
+FinalTime = 50.0
+InitialState = ground
+EnableCAP = 0
+PhysicsOutput = dipole,energy,population
+OutputStrideTS = 1
+OutputStrideWFS = 1000000
+Propagator = cn
+TimeStep = 0.001

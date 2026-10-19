@@ -1,0 +1,30 @@
+// One step of the rational propagators (Propagator = pade22 | magnus4):
+// TDSEZPropagator::EvolveRational and Pade22Step (src/propagator.cpp).
+digraph TimePropagationStep {
+  graph [fontname="Helvetica", rankdir=TB, nodesep=0.35, ranksep=0.32, bgcolor="transparent"];
+  node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#3b6ea5"];
+  edge  [fontname="Helvetica", fontsize=10, color="#555555", fontcolor="#333333"];
+
+  field  [label="Field values s E(t)\npade22: t + h/2 (one Pade(2,2) exponential, step h)\nmagnus4: Gauss nodes t + c1 h, t + c2 h\n(two Pade(2,2) exponentials, step h/2 each)"];
+  base   [label="B_k = M + g_k H   (k = 1, 2)\ncached; recomputed only when the step length changes"];
+  fused  [label="A_k = B_k + g_k sum_a s E_a D_a\none pass over the stored values\n(same sparsity structure, checked once)"];
+
+  subgraph cluster_stage {
+    label="Stage k = 1, 2"; fontname="Helvetica"; fontsize=11;
+    style="rounded,dashed"; color="#8aa6c8";
+    rhs    [label="Right-hand side  b = 2 M x - A_(3-k) x"];
+    guess  [label="Initial guess  y0 = x + extrapolated increment\n(order q = 3, -pade_guess_order)"];
+    solve  [label="GMRES, right preconditioned, rtol 1e-12\nASM/ILU(0) (default) | mg | gamg"];
+    stale  [shape=diamond, style="filled", label="iterations >\n2 base + 5 ?"];
+    rebuild[label="Rebuild the preconditioner\nfrom A_k at the next solve"];
+    reuse  [label="Keep the preconditioner"];
+  }
+
+  mon    [label="Monitors: observables to the ring buffer,\nwavefunction snapshot, t-SURFF sample", fillcolor="#e8f5e9", color="#3b8a4a"];
+
+  field -> base -> fused -> rhs -> guess -> solve -> stale;
+  stale -> rebuild [label="yes"];
+  stale -> reuse   [label="no"];
+  rebuild -> mon [style=dashed, label="after stage 2"];
+  reuse   -> mon [style=dashed];
+}

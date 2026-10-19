@@ -1,0 +1,116 @@
+# ============================================================================
+#  TDSEZ — gitignore
+#  High-Performance TDSE Solver (PETSc/SLEPc/PETIGA)
+# ============================================================================
+
+# ---- Build artifacts -------------------------------------------------------
+build/
+*.o
+*.s
+*.lo
+*.lai
+*.a
+*.la
+*.so
+*.dylib
+*.dll
+*.lib
+
+# ---- IDE / Editor files ----------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+*.project
+*.classpath
+*.settings/
+
+# ---- OS / Version control --------------------------------------------------
+*.orig
+*.rej
+*.patch
+
+# ---- Python / pytest -------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---- CMake cache ------------------------------------------------------------
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles/
+Makefile
+cmake_check_build_system.cmake
+*.cmake.in
+
+# ---- HDF5 / simulation output data -----------------------------------------
+*.h5
+*.hdf5
+*.bin
+*.npy
+
+# ---- Static output directory (generated solver output) ---------------------
+# static/<name>_eigen.h5, _tdm.txt, _Dx.bin, _tdm_Dx.npy, _drec.csv, ... and
+# the names of earlier versions (EigenData_*, TDMInfo_*, Dx_*, ...)
+static/*.h5
+static/*.bin
+static/*.npy
+static/*.csv
+static/*.json
+static/*.log
+static/*_tdm*.txt
+static/TDM_*
+static/TDMInfo_*
+static/drec_resolved_*
+static/psi_*
+
+# ---- Test output / waveform data ------------------------------------------
+static/waveform_*_data.txt
+docs/h2p/waveform_*_data.txt
+
+# ---- Test input data (keep .inp, remove generated outputs) -----------------
+td/
+
+# ---- Website / docs duplicates (generated from docs/) ---------------------
+website/
+docs/doxygen/
+docs/docs_sphinx/_build/
+
+# ---- Source-level generated files ------------------------------------------
+src/tdsez_version.h.in
+src/tdsez_version.h
+
+# ---- Dev folder (future-push implementations, not tracked) -----------------
+dev/
+
+# ---- Misc ------------------------------------------------------------------
+*.log
+*.out
+run.log
+*.tar.gz
+*.zip
+
+# ---- Local-only files --------------------------------------------------------
+# macOS AppleDouble metadata (created on SMB/network volumes)
+._*
+# Local benchmark data and input decks
+benchmarks/
+inps/
+# Few-level export tool, kept local for now
+src/fewlevelprocessor.cpp
+
+# docs/perf benchmark run directories
+docs/perf/run_*/
+
+# run outputs written by the test suite in the repository root
+/static/
+/td/

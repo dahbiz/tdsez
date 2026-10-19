@@ -1,0 +1,31 @@
+// Output files and the phase that writes them (src/core.cpp, src/tdsez.cpp,
+// src/manager.cpp, src/monitor.cpp, src/tsurff.cpp, src/diagnostics.cpp).
+digraph HDF5OutputDataflow {
+  graph [fontname="Helvetica", rankdir=LR, nodesep=0.25, ranksep=0.45, bgcolor="transparent"];
+  node  [fontname="Helvetica", fontsize=10, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#3b6ea5"];
+  edge  [fontname="Helvetica", fontsize=9, color="#555555", fontcolor="#333333"];
+
+  eig    [label="Eigensolver\n(TDSEZCore::Output)"];
+  asm    [label="Operator assembly"];
+  setup  [label="Propagation set-up"];
+  prop   [label="Time propagation\n(monitor every step)"];
+  surff  [label="t-SURFF observer\n(TSurff = 1)"];
+
+  f_eig  [shape=note, fillcolor="#ffffff", label="static/<name>_eigen.h5\nspectrum, knots_x/y/z\nrun_metadata/ (attributes, eig_residual)\npsi_i, coeff_i (NBoundStatesSave = 1)"];
+  f_bin  [shape=note, fillcolor="#ffffff", label="static/<name>_Dx|Dy|Dz.bin\n(SaveDipoleMatrix = 1 or -save_dipole)"];
+  f_tdm  [shape=note, fillcolor="#ffffff", label="static/<name>_tdm.txt"];
+  f_td   [shape=note, fillcolor="#ffffff", label="td/<name>_observables.h5\ndipoles, energies, currents,\npopulations, autocorrelation"];
+  f_wfs  [shape=note, fillcolor="#ffffff", label="td/<name>_wfs.h5\nwavefunction (every OutputStrideWFS steps),\nknots_x/y/z"];
+  f_ts   [shape=note, fillcolor="#ffffff", label="td/<name>_ts.h5\n(OutputStrideTS > 0, cn)"];
+  f_sf   [shape=note, fillcolor="#ffffff", label="td/<name>_surff.h5\nmomenta, amplitude, pes, ..."];
+
+  post   [label="dipoles.x, dipole_spectrum.x,\ndrecprocessor", fillcolor="#e8f5e9", color="#3b8a4a"];
+  zkit   [label="zkit (Python)", fillcolor="#e8f5e9", color="#3b8a4a"];
+
+  { rank=same; eig; asm; setup; prop; }
+  eig -> asm -> setup -> prop [style=invis];
+  eig -> f_eig; asm -> f_bin; setup -> f_tdm;
+  prop -> f_td; prop -> f_wfs; prop -> f_ts; prop -> surff -> f_sf;
+  f_eig -> post; f_bin -> post;
+  f_eig -> zkit; f_td -> zkit; f_wfs -> zkit;
+}

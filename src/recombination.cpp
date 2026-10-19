@@ -1,0 +1,321 @@
+// ============================================================================
+//  recombination.x.cpp  --  exact recombination dipole d_rec(E)
+// ----------------------------------------------------------------------------
+
+/**
+ * @file recombination.cpp
+ * @brief Computes the exact recombination dipole d_rec(E) for a one-open-channel
+ *        scattering problem using a central finite-difference approximation of
+ *        d|psi>/dE and a Wronskian-scaled complex combination of the regular
+ *        and irregular solutions.
+ */
+//  In a 1-open-channel scattering problem the two independent solutions at
+//  energy E are the regular state psi(E) and its energy derivative
+//  dpsi/dE (the irregular solution).  A finite-box eigenstate |j> is an
+//  arbitrary REAL mixture  a*psi(E) + b*dpsi/dE, which is why the raw
+//  matrix element <psi_0|Dx|j> scatters between two branches.
+//
+//  The physically meaningful (outgoing / recombining) channel is the COMPLEX
+//  combination
+//        |psi^(+)(E)>  =  |psi(E)>  +  i*g * d|psi>/dE
+//  and the recombination dipole is the single smooth function
+//        d_rec(E) = <psi_0 | Dx | psi^(+)(E)>
+//  which dips to its node at destructive-interference energies.
+//
+//  We approximate d|psi>/dE by a central finite difference over the two
+//  neighbouring box eigenstates:
+//        w_j = (psi_{j+1} - psi_{j-1}) / (E_{j+1} - E_{j-1})
+//  and set  d_rec(E_j) = d_j + i*g*d_w,
+//        d_j = <psi_0|Dx|psi_j>,   d_w = <psi_0|Dx|w_j>.
+//  Box states are normalised to 1 in the box; the energy-normalised
+//  continuum state is |psi^(+)>/sqrt(rho(E)), so
+//        |d_rec|^{phys} = rho(E) * |d_rec|^{box}.
+//
+//  g is the (energy-independent) Wronskian scale that sets the relative
+//  weight of the irregular component; tune with -g (default 0.5*(dE) => the
+//  standard unit-flux combination).
+//
+//  CLI:  recombination.x <input> [-i <bra>] [-Ethr <E>] [-axis x|y|z] [-w0 <w>] [-g <g>] [-gpu]
+// ============================================================================
+
+#include "tdsez_paths.hpp"
+#include <petsc.h>
+#include <petscviewerhdf5.h>
+#include <hdf5.h>
+#include <cstring>
+#include <cstdint>
+#include <string>
+#include <filesystem>
+#include <vector>
+#include <cmath>
+#include <tuple>
+#include <algorithm>
+#include <fstream>
+
+static PetscReal g_E0 = 0.0;
+static PetscReal g_W0 = 0.05655;
+
+// ---- direct HDF5 read of 'spectrum' (real parts) -------------------------
+/// Direct HDF5 read of the 'spectrum' dataset (real parts).
+/**
+ * Opens the EigenData HDF5 file and reads the 'spectrum' dataset to extract
+ * the real-valued eigenstate energies.
+ * @param[in]  h5path Path to the HDF5 file.
+ * @param[out] E      Vector of eigenstate energies (real parts).
+ * @return 0 on success.
+ */
+static PetscErrorCode loadSpectrum(const std::string& h5path,
+                                   std::vector<PetscReal>& E)
+{
+    E.clear();
+    hid_t file = H5Fopen(h5path.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+    if (file < 0) SETERRQ(PETSC_COMM_SELF, 1, "cannot open HDF5 %s", h5path.c_str());
+    hid_t dset = H5Dopen2(file, "spectrum", H5P_DEFAULT);
+    if (dset < 0) { H5Fclose(file); SETERRQ(PETSC_COMM_SELF, 1, "'spectrum' missing"); }
+    hid_t ftype = H5Dget_type(dset);
+    hid_t space = H5Dget_space(dset);
+    hsize_t dims[2]; H5Sget_simple_extent_dims(space, dims, NULL);
+    std::vector<double> buf(2 * dims[0]);
+    H5Dread(dset, ftype, H5S_ALL, H5S_ALL, H5P_DEFAULT, buf.data());
+    E.resize(dims[0]);
+    for (hsize_t k = 0; k < dims[0]; ++k) E[k] = (PetscReal)buf[2 * k]; // real part
+    H5Tclose(ftype); H5Sclose(space); H5Dclose(dset); H5Fclose(file);
+    return 0;
+}
+
+// ---- load a single psi dataset by index -----------------------------------
+/// Load a single eigenstate psi_j by index from the HDF5 file.
+/**
+ * Opens the HDF5 file, creates a Vec with the layout of Dx, names it
+ * "psi_<j>", and loads the corresponding dataset. Opens/closes the viewer
+ * per call.
+ * @param[in]  Dx     Dipole operator (provides the Vec layout).
+ * @param[in]  h5path Path to the EigenData HDF5 file.
+ * @param[in]  j      State index to load.
+ * @param[out] v      Newly created and loaded Vec (caller owns).
+ * @return 0 on success.
+ */
+static PetscErrorCode loadState(Mat Dx, const std::string& h5path, PetscInt j, Vec* v)
+{
+    PetscErrorCode ierr;
+    PetscViewer view;
+    ierr = PetscViewerHDF5Open(PETSC_COMM_SELF, h5path.c_str(), FILE_MODE_READ, &view); CHKERRQ(ierr);
+    ierr = MatCreateVecs(Dx, v, NULL); CHKERRQ(ierr);
+    // coeff_j: natural ordering, the ordering of the saved Dx (psi_j for old files)
+    std::string name = "coeff_" + std::to_string(j);
+    PetscBool has = PETSC_FALSE;
+    ierr = PetscViewerHDF5HasDataset(view, name.c_str(), &has); CHKERRQ(ierr);
+    if (!has) name = "psi_" + std::to_string(j);
+    ierr = PetscObjectSetName((PetscObject)(*v), name.c_str()); CHKERRQ(ierr);
+    ierr = VecLoad(*v, view); CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&view); CHKERRQ(ierr);
+
+    // Phase convention that is smooth in E, needed by the finite difference
+    // d psi/dE of continuum (box) states: the B-spline coefficient at the right
+    // wall (= psi(L) for an open knot vector) is real and positive. Near a
+    // reflecting wall a box state is A cos(k (L - x)), so psi(L) > 0 for every
+    // E; at a Dirichlet wall psi(L) = 0 and the next coefficient (sign of
+    // -psi'(L)) is used. Bound states vanish at the wall (the coefficient is
+    // rounding noise) and keep the solver's canonical phase.
+    PetscInt n;
+    ierr = VecGetSize(*v, &n); CHKERRQ(ierr);
+    const PetscScalar *a;
+    ierr = VecGetArrayRead(*v, &a); CHKERRQ(ierr);
+    PetscReal amax = 0.0;
+    for (PetscInt i = 0; i < n; ++i) amax = PetscMax(amax, PetscAbsScalar(a[i]));
+    PetscScalar c = a[n - 1];
+    if (PetscAbsScalar(c) < 1e-10 * amax && n > 1) c = a[n - 2];   // Dirichlet wall
+    ierr = VecRestoreArrayRead(*v, &a); CHKERRQ(ierr);
+    if (PetscAbsScalar(c) > 1e-6 * amax) { ierr = VecScale(*v, PetscConj(c) / PetscAbsScalar(c)); CHKERRQ(ierr); }
+    return 0;
+}
+
+/// Main: compute the exact recombination dipole d_rec(E) for one open channel.
+/**
+ * Loads Dx and the sorted eigenstate spectrum, computes the regular dipole
+ * d_j = <psi_0|Dx|psi_j> and the energy-derivative dipole d_w via central
+ * finite differences over neighbouring box eigenstates, then forms the
+ * complex recombination dipole d_rec = d_j + i g (dE/2) d_w and writes it
+ * (with DOS and energy-normalised |d_rec|²) to a CSV.
+ *
+ * @param argc  Number of CLI arguments.
+ * @param argv  CLI argument strings (<input> [-i <bra>] [-Ethr <E>] [-axis x|y|z] [-g <g>] [-gpu]).
+ * @return 0 on success.
+ */
+int main(int argc, char** argv)
+{
+    PetscInitialize(&argc, &argv, NULL, NULL);
+    PetscErrorCode ierr;
+    MPI_Comm comm = PETSC_COMM_WORLD;
+    PetscMPIInt commSize = 0;
+    MPI_Comm_size(comm, &commSize);
+    if (commSize != 1) {
+        PetscPrintf(comm,
+                    "recombination: sequential dipole files require a single MPI rank\n");
+        PetscFinalize();
+        return 2;
+    }
+
+    std::string stem = "h2p.inp";
+    PetscInt iBra = 0;
+    PetscReal Ethr = -5.0, gfac = 0.5;
+    PetscBool gpu = PETSC_FALSE;
+    std::string axis = "x";
+    for (int a = 1; a < argc; ++a) {
+        std::string s = argv[a];
+        if (s == "-i" && a + 1 < argc) iBra = (PetscInt)std::strtol(argv[++a], NULL, 10);
+        else if (s == "-axis" && a + 1 < argc) axis = argv[++a];
+        else if (s == "-Ethr" && a + 1 < argc) Ethr = (PetscReal)std::strtod(argv[++a], NULL);
+        else if (s == "-w0" && a + 1 < argc) g_W0 = (PetscReal)std::strtod(argv[++a], NULL);
+        else if (s == "-g" && a + 1 < argc) gfac = (PetscReal)std::strtod(argv[++a], NULL);
+        else if (s == "-gpu") gpu = PETSC_TRUE;
+        else if (s.rfind("-", 0) != 0) stem = s;
+    }
+
+    std::string HERE = "."; // run from the dir containing static/
+    // parsed here, not by PETSc: keep them out of the "Option left" report
+    for (const char *o : {"-i", "-Ethr", "-w0", "-g", "-gpu", "-axis"}) PetscOptionsClearValue(NULL, o);
+    if (axis != "x" && axis != "y" && axis != "z") {
+        PetscPrintf(comm, "recombination: -axis must be x, y or z\n");
+        PetscFinalize();
+        return 2;
+    }
+    const std::string D = "D" + axis;   // dipole operator of this axis
+    std::string dxpath = TDSEZPaths::Existing(TDSEZPaths::Static(stem, D + ".bin"), "static", D + "_", stem, ".bin");
+    if (!std::filesystem::exists(dxpath)) {
+        PetscPrintf(comm, "recombination: %s not found; save it with SaveDipoleAxes\n", dxpath.c_str());
+        PetscFinalize();
+        return 2;
+    }
+    std::string h5path = TDSEZPaths::Existing(TDSEZPaths::Static(stem, "eigen.h5"), "static", "EigenData_", stem, ".h5");
+
+    if (gpu) {
+        ierr = PetscOptionsSetValue(NULL, "-vec_type", "cuda"); CHKERRQ(ierr);
+        ierr = PetscOptionsSetValue(NULL, "-mat_type", "aijcusparse"); CHKERRQ(ierr);
+    }
+
+    // ---- Dx ----
+    Mat Dx;
+    PetscViewer dv;
+    ierr = PetscViewerBinaryOpen(comm, dxpath.c_str(), FILE_MODE_READ, &dv); CHKERRQ(ierr);
+    ierr = MatCreate(comm, &Dx); CHKERRQ(ierr);
+    ierr = MatLoad(Dx, dv); CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&dv); CHKERRQ(ierr);
+
+    // ---- spectrum (energies, sorted by E) ----
+    std::vector<PetscReal> Eall;
+    ierr = loadSpectrum(h5path, Eall); CHKERRQ(ierr);
+    PetscInt N = (PetscInt)Eall.size();
+
+    // sort indices by energy
+    std::vector<PetscInt> ord(N);
+    for (PetscInt k = 0; k < N; ++k) ord[k] = k;
+    std::sort(ord.begin(), ord.end(),
+              [&](PetscInt a, PetscInt b) { return Eall[a] < Eall[b]; });
+    std::vector<PetscReal> E(N);
+    for (PetscInt k = 0; k < N; ++k) E[k] = Eall[ord[k]];
+    if (iBra < 0 || iBra >= N) {
+        PetscPrintf(comm, "recombination: -i %lld out of range [0, %lld)\n", (long long)iBra, (long long)N);
+        PetscFinalize();
+        return 2;
+    }
+    g_E0 = E[iBra];   // energy of the bra (states are indexed in energy order)
+
+    // density of states rho_j = dN/dE (central diff)
+    std::vector<PetscReal> rho(N);
+    std::vector<PetscReal> dEhalf(N);
+    for (PetscInt k = 0; k < N; ++k) {
+        if (k == 0) rho[k] = 1.0 / (E[1] - E[0]);
+        else if (k == N - 1) rho[k] = 1.0 / (E[N - 1] - E[N - 2]);
+        else rho[k] = 2.0 / (E[k + 1] - E[k - 1]);
+        PetscInt klo = (k > 0) ? k - 1 : k;
+        PetscInt khi = (k < N - 1) ? k + 1 : k;
+        dEhalf[k] = (khi > klo) ? 0.5 * (E[khi] - E[klo]) : 0.0;
+    }
+
+    PetscInt nSelected = 0;
+    for (PetscInt k = 0; k < N; ++k) if (E[k] > Ethr) ++nSelected;
+
+    PetscPrintf(comm, "bra psi_ %lld  E_i = %.6f a.u.\n", (long long)iBra, (double)g_E0);
+    PetscPrintf(comm, "Ethr        : %.6f  (kept %lld / %lld states)\n",
+                (double)Ethr, (long long)nSelected, (long long)N);
+    PetscPrintf(comm, "w0          :  %.6f\n", (double)g_W0);
+    PetscPrintf(comm, "g (Wronskian scale): %.4f\n", (double)gfac);
+
+    // ---- vectors ----
+    Vec psi0, pkm1, pk, pkp1, w, Dxpsi, Dxw;
+    ierr = MatCreateVecs(Dx, &psi0, NULL); CHKERRQ(ierr);
+    ierr = VecDuplicate(psi0, &pkm1); CHKERRQ(ierr);
+    ierr = VecDuplicate(psi0, &pk); CHKERRQ(ierr);
+    ierr = VecDuplicate(psi0, &pkp1); CHKERRQ(ierr);
+    ierr = VecDuplicate(psi0, &w); CHKERRQ(ierr);
+    ierr = VecDuplicate(psi0, &Dxpsi); CHKERRQ(ierr);
+    ierr = VecDuplicate(psi0, &Dxw); CHKERRQ(ierr);
+
+    // load bra
+    ierr = loadState(Dx, h5path, ord[iBra], &psi0); CHKERRQ(ierr);
+
+    // <psi0 | Dx | psi_k> = VecTDot( conj(psi0), Dx psi_k ): VecTDot(x, y) = y^T x
+    // does not conjugate (VecDot(x, y) = y^H x would conjugate Dx psi_k), so
+    // the bra must be conjugated explicitly. Pre-conjugate once.
+    Vec psi0_conj; ierr = VecDuplicate(psi0, &psi0_conj); CHKERRQ(ierr);
+    ierr = VecCopy(psi0, psi0_conj); CHKERRQ(ierr);
+    ierr = VecConjugate(psi0_conj); CHKERRQ(ierr);
+
+    std::ofstream out(TDSEZPaths::Static(stem, "drec_" + D + ".csv"));
+    out.precision(17);   // full double precision, as dipole_spectrum.x
+    out << "j,E_j,x,Re_d,Im_d,abs_d2,log10_abs_d2,Re_dj,Im_dj,Re_dw,Im_dw,dEhalf,rho\n";
+
+    PetscReal gscale = gfac; // weight of irregular component (tuned)
+
+    for (PetscInt k = 0; k < N; ++k) {
+        if (E[k] <= Ethr) continue;
+
+        PetscInt klo = (k > 0) ? k - 1 : k;
+        PetscInt khi = (k < N - 1) ? k + 1 : k;
+        ierr = loadState(Dx, h5path, ord[klo], &pkm1); CHKERRQ(ierr);
+        ierr = loadState(Dx, h5path, ord[k],   &pk);    CHKERRQ(ierr);
+        ierr = loadState(Dx, h5path, ord[khi], &pkp1);  CHKERRQ(ierr);
+
+        PetscReal dE = (khi > klo) ? (E[khi] - E[klo]) : 1.0;
+        // w = (psi_{k+1} - psi_{k-1}) / dE   (central; one-sided at edges)
+        VecWAXPY(w, -1.0, pkm1, pkp1);
+        VecScale(w, 1.0 / dE);
+
+        // d_j = <psi0 | Dx | psi_k>   (bra conjugated explicitly)
+        MatMult(Dx, pk, Dxpsi);
+        PetscScalar dj; VecTDot(psi0_conj, Dxpsi, &dj);
+        // d_w = <psi0 | Dx | w>
+        MatMult(Dx, w, Dxw);
+        PetscScalar dw; VecTDot(psi0_conj, Dxw, &dw);
+
+        // d_rec = dj + i * gscale * (dE/2) * dw   (unit-flux combination)
+        PetscScalar d = dj + PetscScalar(0.0, gscale * 0.5 * dE) * dw;
+        PetscReal absd2 = PetscRealPart(d * PetscConj(d));
+        PetscReal absd2_phys = absd2 * rho[k];          // energy-normalised
+        PetscReal logd = (absd2_phys > 0) ? std::log10(absd2_phys) : -999.0;
+        PetscReal x = (E[k] - g_E0) / g_W0;
+
+        out << k << "," << E[k] << "," << x << ","
+            << PetscRealPart(d) << "," << PetscImaginaryPart(d) << ","
+            << absd2_phys << "," << logd << ","
+            << PetscRealPart(dj) << "," << PetscImaginaryPart(dj) << ","
+            << PetscRealPart(dw) << "," << PetscImaginaryPart(dw) << ","
+            << dEhalf[k] << "," << rho[k] << "\n";
+    }
+    out.close();
+
+    PetscPrintf(comm, "csv         : %s\n", TDSEZPaths::Static(stem, "drec_" + D + ".csv").c_str());
+
+    ierr = VecDestroy(&psi0); CHKERRQ(ierr);
+    ierr = VecDestroy(&psi0_conj); CHKERRQ(ierr);
+    ierr = VecDestroy(&pkm1); CHKERRQ(ierr);
+    ierr = VecDestroy(&pk); CHKERRQ(ierr);
+    ierr = VecDestroy(&pkp1); CHKERRQ(ierr);
+    ierr = VecDestroy(&w); CHKERRQ(ierr);
+    ierr = VecDestroy(&Dxpsi); CHKERRQ(ierr);
+    ierr = VecDestroy(&Dxw); CHKERRQ(ierr);
+    ierr = MatDestroy(&Dx); CHKERRQ(ierr);
+    PetscFinalize();
+    return 0;
+}

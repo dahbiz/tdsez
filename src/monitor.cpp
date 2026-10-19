@@ -1,0 +1,1370 @@
+#include "tdsez_internal.hpp"
+#include "tdsez_tsurff.hpp"
+
+/**
+ * @file monitor.cpp
+ * @brief TS monitor callbacks computing per-step observables (norm, energy,
+ *        dipole, acceleration, populations, currents, Berry phase,
+ *        autocorrelation) and streaming them to HDF5, plus the IFunction /
+ *        IJacobian callbacks for each polarization combination.
+ */
+
+static PetscInt TDSEZProgressTotal()
+{
+    // the last step is shortened to land on FinalTime
+    return PetscMax((PetscInt)1,
+        (PetscInt)std::ceil(TDSEZParser::FinalTime / PetscMax(TDSEZParser::TimeStep, 1e-30) - 1e-9));
+}
+
+static bool TDSEZShouldLogProgress(PetscInt step)
+{
+    // Verbose means a live per-step monitor.  The observable callbacks already
+    // retain every step when Verbose is enabled; honour that same intent for
+    // the console instead of still throttling output to twenty updates.
+    if (TDSEZParser::Verbose) return true;
+    const PetscInt total = TDSEZProgressTotal();
+    const PetscInt stride = PetscMax((PetscInt)1, total / 20);
+    return step == 0 || step >= total || (step % stride) == 0;
+}
+
+/// Products a monitor call needs for the requested outputs (PhysicsOutput)
+/// and the progress line; everything else is skipped.
+struct TDSEZMonitorNeeds {
+    bool acc, energy, log;      // acceleration, energies, progress row at this step
+    bool dip, force, vel, cur;  // dipole products, force operators, velocities, current group
+    bool kvmd, m, h;            // MonitorProducts: Md/K/V (+ quadrature values), M psi, H psi
+};
+static TDSEZMonitorNeeds TDSEZMonitorNeedsAt(const TDSEZManager *TDSEZ, PetscInt step)
+{
+    TDSEZMonitorNeeds n;
+    const bool disc = TDSEZ->UseDiscreteAcceleration();
+    n.acc    = TDSEZParser::out_accel;
+    n.energy = TDSEZParser::out_energy;
+    n.cur    = TDSEZParser::out_current;
+    n.log    = TDSEZShouldLogProgress(step);
+    n.dip    = TDSEZParser::out_dipole || n.acc || n.energy || n.log;   // <r> feeds the interaction energy
+    n.force  = n.acc && !disc;
+    n.vel    = n.cur;
+    n.kvmd   = n.energy || n.force || n.cur;                             // also the quadrature-point values
+    n.m      = n.energy || n.cur || TDSEZParser::out_population || TDSEZParser::out_autocorr || n.log;
+    n.h      = n.energy || (n.acc && disc) || n.log;
+    return n;
+}
+
+/// One progress row (the column header before the first one).
+static void TDSEZProgressRow(PetscInt step, PetscReal t, PetscScalar normSq, PetscScalar energy)
+{
+    static bool header = false;
+    TDSEZInfo info;
+    if (!header) {
+        header = true;
+        info.section("PROGRESS");
+        info.row("%13s %7s %11s %12s %15s", "step", "%", "t (a.u.)", "<psi|psi>", "<H> (a.u.)");
+    }
+    char st[32];
+    snprintf(st, sizeof(st), "%" PetscInt_FMT "/%" PetscInt_FMT, step, TDSEZProgressTotal());
+    info.row("%13s %7.1f %11.3f %12.8f %15.6e", st, 100.0 * (double)step / TDSEZProgressTotal(), (double)t,
+             (double)PetscRealPart(normSq), (double)PetscRealPart(energy));
+}
+
+/// IFunction for x-polarized propagation: F = i M psidot - H psi - Ex Dx psi.
+/**
+ * @param[in]  ts      Time-stepper context (unused).
+ * @param[in]  t       Current simulation time.
+ * @param[in]  psi     State vector (unused directly; used via MatMult).
+ * @param[in]  psidot  Time derivative of state (unused directly).
+ * @param[out] F       Residual vector F = i M psidot - H psi - Ex Dx psi.
+ * @param[in]  ctx     TDSEZManager providing H, Dx, M, IFuncVec scratch.
+ * @return PETSc error code.
+ */
+PetscErrorCode TDSEZIFunctionPolX(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+  (void)ts; (void)psi; (void)psidot;
+  auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscScalar Ex = TDSEZParser::Coupling(0, t);
+
+    MatMult(TDSEZ->H(),  psi,    TDSEZ->IFuncVec[0]); // vec1 = H * psi
+    MatMult(TDSEZ->Dx(), psi,    TDSEZ->IFuncVec[1]); // vec2 = Dx * psi
+    MatMult(TDSEZ->M(),  psidot, F);                // F    = M * psidot
+    
+    // We want: F = (-1.0)*vec1 + (-Ex)*vec2 + (i)*F
+    VecAXPBYPCZ(F, -1.0, -Ex, PETSC_i, TDSEZ->IFuncVec[0], TDSEZ->IFuncVec[1]);
+
+    return 0;
+}
+
+
+/// IFunction for y-polarized propagation: F = i M psidot - H psi - Ey Dy psi.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual = i M psidot - H psi - Ey Dy psi.
+ *  @param[in] ctx TDSEZManager. @return PETSc error code. */
+PetscErrorCode TDSEZIFunctionPolY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+  (void)ts; (void)psi; (void)psidot;
+  auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    MatMult(TDSEZ->H(),  psi,    TDSEZ->IFuncVec[0]); // vec1 = H * psi
+    MatMult(TDSEZ->Dy(), psi,    TDSEZ->IFuncVec[1]); // vec2 = Dy * psi
+    MatMult(TDSEZ->M(),  psidot, F);                // F    = M * psidot
+    // We want: F = (-1.0)*vec1 + (-Ey)*vec2 + (i)*F
+    VecAXPBYPCZ(F, -1.0, -Ey, PETSC_i, TDSEZ->IFuncVec[0], TDSEZ->IFuncVec[1]);
+
+    return 0;
+}
+
+
+/// IFunction for z-polarized propagation: F = i M psidot - H psi - Ez Dz psi.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual = i M psidot - H psi - Ez Dz psi.
+ *  @param[in] ctx TDSEZManager. @return PETSc error code. */
+PetscErrorCode TDSEZIFunctionPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+  (void)ts; (void)psi; (void)psidot;
+  auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    MatMult(TDSEZ->H(),  psi,    TDSEZ->IFuncVec[0]); // vec1 = H * psi
+    MatMult(TDSEZ->Dz(), psi,    TDSEZ->IFuncVec[1]); // vec2 = Dz * psi
+    MatMult(TDSEZ->M(),  psidot, F);                // F    = M * psidot
+    // We want: F = (-1.0)*vec1 + (-Ez)*vec2 + (i)*F
+    VecAXPBYPCZ(F, -1.0, -Ez, PETSC_i, TDSEZ->IFuncVec[0], TDSEZ->IFuncVec[1]);
+
+    return 0;
+}
+
+
+
+/// IFunction for xy-polarized propagation: F = i M psidot - H psi - Ex Dx - Ey Dy.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
+PetscErrorCode TDSEZIFunctionPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+  (void)ts; (void)psi; (void)psidot;
+  auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    PetscFunctionBeginUser;
+    // 1. MatMults (These stay the same)
+    MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0]); // H0 * psi
+    MatMult(TDSEZ->Dx(), psi, TDSEZ->IFuncVec[1]); // Dx * psi
+    MatMult(TDSEZ->Dy(), psi, TDSEZ->IFuncVec[2]); // Dy * psi
+    // F has the inertial term: F = i * M * psidot
+    MatMult(TDSEZ->M(), psidot, F);
+    VecScale(F, PETSC_i);
+    // F = F + (-1.0)*H0 + (-Ex)*Dx + (-Ey)*Dy
+    const PetscScalar coeffs[3] = {-1.0, -Ex, -Ey};
+    VecMAXPY(F, 3, coeffs, TDSEZ->IFuncVec);
+        PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+
+/// IFunction for xz-polarized propagation: F = i M psidot - H psi - Ex Dx - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
+PetscErrorCode TDSEZIFunctionPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+  (void)ts; (void)psi; (void)psidot;
+  auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    PetscFunctionBeginUser;
+    // We use slots 0, 1, and 2 for H, Dx, and Dz
+    PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0])); // H0 * psi
+    PetscCall(MatMult(TDSEZ->Dx(), psi, TDSEZ->IFuncVec[1])); // Dx * psi
+    PetscCall(MatMult(TDSEZ->Dz(), psi, TDSEZ->IFuncVec[2])); // Dz * psi
+    // 2. Inertial term: F = i * M * psidot
+    PetscCall(MatMult(TDSEZ->M(), psidot, F));                // F = M * psidot
+    PetscCall(VecScale(F, PETSC_i));                        // F = i * M * psidot
+    // F = F + (-1.0)*H0 + (-Ex)*Dx + (-Ez)*Dz
+    const PetscScalar coeffs[3] = {-1.0, -Ex, -Ez};        //
+    PetscCall(VecMAXPY(F, 3, coeffs, TDSEZ->IFuncVec));    //
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// IFunction for yz-polarized propagation: F = i M psidot - H psi - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
+PetscErrorCode TDSEZIFunctionPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+  (void)ts; (void)psi; (void)psidot;
+  auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    PetscFunctionBeginUser;
+    // Mapping: slot 0 = H, slot 1 = Dy, slot 2 = Dz
+    PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0])); // H0 * psi
+    PetscCall(MatMult(TDSEZ->Dy(), psi, TDSEZ->IFuncVec[1])); // Dy * psi
+    PetscCall(MatMult(TDSEZ->Dz(), psi, TDSEZ->IFuncVec[2])); // Dz * psi
+    // Inertial term: F = i * M * psidot
+    PetscCall(MatMult(TDSEZ->M(), psidot, F));                // F = M * psidot
+    PetscCall(VecScale(F, PETSC_i));                        // F = i * M * psidot
+    // F = F + (-1.0)*H0 + (-Ey)*Dy + (-Ez)*Dz
+    const PetscScalar coeffs[3] = {-1.0, -Ey, -Ez};
+    PetscCall(VecMAXPY(F, 3, coeffs, TDSEZ->IFuncVec));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+
+/// IFunction for xyz-polarized propagation: F = i M psidot - H - Ex Dx - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[out] F Residual. @param[in] ctx TDSEZManager. @return PETSc error code. */
+PetscErrorCode TDSEZIFunctionPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+  (void)ts; (void)psi; (void)psidot;
+  auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    PetscFunctionBeginUser;
+    // Mapping: slot 0=H, 1=Dx, 2=Dy, 3=Dz
+    PetscCall(MatMult(TDSEZ->H(),  psi, TDSEZ->IFuncVec[0])); 
+    PetscCall(MatMult(TDSEZ->Dx(), psi, TDSEZ->IFuncVec[1])); 
+    PetscCall(MatMult(TDSEZ->Dy(), psi, TDSEZ->IFuncVec[2])); 
+    PetscCall(MatMult(TDSEZ->Dz(), psi, TDSEZ->IFuncVec[3]));
+    // 2. Inertial term: F = i * M * psidot
+    PetscCall(MatMult(TDSEZ->M(), psidot, F));
+    PetscCall(VecScale(F, PETSC_i));
+    // F = F + (-1.0)*H0 + (-Ex)*Dx + (-Ey)*Dy + (-Ez)*Dz
+    const PetscScalar coeffs[4] = {-1.0, -Ex, -Ey, -Ez};
+    PetscCall(VecMAXPY(F, 4, coeffs, TDSEZ->IFuncVec));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+/// IFunction with structured field terms: F = i M psidot - H psi - sum_i c_i(t) T_i psi
+/// over TDSEZManager::TermMatrices() (coupled dipoles, then FieldTerm matrices).
+PetscErrorCode TDSEZIFunctionTerms(TS ts, PetscReal t, Vec psi, Vec psidot, Vec F, void *ctx)
+{
+    (void)ts;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscFunctionBeginUser;
+    static thread_local std::vector<PetscScalar> c;
+    const std::vector<Mat> T = TDSEZ->TermMatrices();
+    TDSEZ->TermCoefficients(t, c);
+    Vec Hpsi = TDSEZ->IFuncVec[0], Tpsi = TDSEZ->IFuncVec[1];
+    PetscCall(MatMult(TDSEZ->H(), psi, Hpsi));
+    for (size_t i = 0; i < T.size(); ++i) {
+        if (c[i] == 0.0) continue;
+        PetscCall(MatMult(T[i], psi, Tpsi));
+        PetscCall(VecAXPY(Hpsi, c[i], Tpsi));
+    }
+    PetscCall(MatMult(TDSEZ->M(), psidot, F));
+    PetscCall(VecAXPBY(F, -1.0, PETSC_i, Hpsi));      // F = i M psidot - H_E psi
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/// IJacobian with structured field terms: J = i a M - H - sum_i c_i(t) T_i.
+PetscErrorCode TDSEZIJacobianTerms(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    PetscFunctionBeginUser;
+    static thread_local std::vector<PetscScalar> c;
+    const std::vector<Mat> T = TDSEZ->TermMatrices();
+    TDSEZ->TermCoefficients(t, c);
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0));
+    PetscCall(MatAXPY(J, a * PETSC_i, TDSEZ->M(), SAME_NONZERO_PATTERN));
+    for (size_t i = 0; i < T.size(); ++i)
+        if (c[i] != 0.0) PetscCall(MatAXPY(J, -c[i], T[i], SAME_NONZERO_PATTERN));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/// IJacobian for x-polarized propagation: J = i a M - H - Ex Dx.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
+PetscErrorCode TDSEZIJacobianPolX(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar ai = a * PETSC_i; 
+    PetscFunctionBeginUser;
+    // MatCopy is generally faster 
+    PetscCall(MatCopy(TDSEZ->M(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, ai)); 
+    // J = ai*M - 1.0*H - Ex*Dx
+    PetscCall(MatAXPY(J, -1.0, TDSEZ->H(),  SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ex,  TDSEZ->Dx(), SAME_NONZERO_PATTERN));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+
+/// IJacobian for y-polarized propagation: J = i a M - H - Ey Dy.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
+PetscErrorCode TDSEZIJacobianPolY(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar ai = a * PETSC_i;
+    PetscFunctionBeginUser;
+    // We copy H and scale it by -1.0 immediately to get J = -H
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0)); 
+    // J = (-1.0*H) + (ai)*M + (-Ey)*Dy
+    PetscCall(MatAXPY(J, ai,  TDSEZ->M(),  SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ey, TDSEZ->Dy(), SAME_NONZERO_PATTERN));
+
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// IJacobian for z-polarized propagation: J = i a M - H - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
+PetscErrorCode TDSEZIJacobianPolZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    const PetscScalar ai = a * PETSC_i;
+    PetscFunctionBeginUser;
+    // J = -H
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0)); 
+    // J = J + (ai)*M + (-Ez)*Dz -> results in: (ai)M - H - Ez*Dz
+    PetscCall(MatAXPY(J, ai,  TDSEZ->M(),  SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ez, TDSEZ->Dz(), SAME_NONZERO_PATTERN));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+
+/// IJacobian for xy-polarized propagation: J = i a M - H - Ex Dx - Ey Dy.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
+PetscErrorCode TDSEZIJacobianPolXY(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar ai = a * PETSC_i; 
+    PetscFunctionBeginUser;
+    // Starting with H and negate it in one pass
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0)); 
+    // Fused Matrix Accumulation: (ai)M - H - Ex*Dx - Ey*Dy
+    PetscCall(MatAXPY(J, ai,  TDSEZ->M(),  SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ex, TDSEZ->Dx(), SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ey, TDSEZ->Dy(), SAME_NONZERO_PATTERN));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// IJacobian for xz-polarized propagation: J = i a M - H - Ex Dx - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
+PetscErrorCode TDSEZIJacobianPolXZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    const PetscScalar ai = a * PETSC_i;
+    PetscFunctionBeginUser;
+    // Starting with H and negate it immediately
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0)); 
+    // Fused Matrix Accumulation: (ai)M - H - Ex*Dx - Ez*Dz
+    PetscCall(MatAXPY(J, ai,  TDSEZ->M(),  SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ex, TDSEZ->Dx(), SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ez, TDSEZ->Dz(), SAME_NONZERO_PATTERN));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// IJacobian for yz-polarized propagation: J = i a M - H - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
+PetscErrorCode TDSEZIJacobianPolYZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    const PetscScalar ai = a * PETSC_i;
+    PetscFunctionBeginUser;
+    // Starting with H and negate it immediately
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0)); 
+    // Fused Matrix Accumulation: (ai)M - H - Ey*Dy - Ez*Dz
+    PetscCall(MatAXPY(J, ai,  TDSEZ->M(),  SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ey, TDSEZ->Dy(), SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ez, TDSEZ->Dz(), SAME_NONZERO_PATTERN));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+/// IJacobian for xyz-polarized propagation: J = i a M - H - Ex Dx - Ey Dy - Ez Dz.
+/** @param[in] ts Time-stepper (unused). @param[in] t Current time.
+ *  @param[in] psi State (unused). @param[in] psidot State derivative (unused).
+ *  @param[in] a Shift parameter. @param[out] J Jacobian matrix.
+ *  @param[in] P Preconditioner (unused). @param[in] ctx TDSEZManager.
+ *  @return PETSc error code. */
+PetscErrorCode TDSEZIJacobianPolXYZ(TS ts, PetscReal t, Vec psi, Vec psidot, PetscReal a, Mat J, Mat P, void *ctx)
+{
+    (void)ts; (void)psi; (void)psidot; (void)P;
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    const PetscScalar Ex = TDSEZParser::Coupling(0, t);
+    const PetscScalar Ey = TDSEZParser::Coupling(1, t);
+    const PetscScalar Ez = TDSEZParser::Coupling(2, t);
+    const PetscScalar ai = a * PETSC_i;
+    PetscFunctionBeginUser;
+    // Startig with H and negate it in one pass
+    PetscCall(MatCopy(TDSEZ->H(), J, SAME_NONZERO_PATTERN));
+    PetscCall(MatScale(J, -1.0)); 
+    // Fused Matrix Accumulation: (ai)M - H - Ex*Dx - Ey*Dy - Ez*Dz
+    PetscCall(MatAXPY(J, ai,  TDSEZ->M(),  SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ex, TDSEZ->Dx(), SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ey, TDSEZ->Dy(), SAME_NONZERO_PATTERN));
+    PetscCall(MatAXPY(J, -Ez, TDSEZ->Dz(), SAME_NONZERO_PATTERN));
+
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+
+
+// 
+
+/// 1D TS monitor: computes per-step observables and buffers them for HDF5.
+/**
+ * Computes norm, <H>, kinetic/potential/interaction/total energy, x-dipole,
+ * acceleration, populations, and autocorrelation via a fused VecMDot
+ * reduction, writes them into in-memory buffers, and flushes periodically to
+ * HDF5. Also writes wavefunction snapshots, and logs
+ * progress.
+ *
+ * @param[in] ts   Time-stepper context.
+ * @param[in] step Current time-step index.
+ * @param[in] t    Current simulation time.
+ * @param[in] psi  Current state vector.
+ * @param[in] ctx  TDSEZManager providing operators and output buffers.
+ * @return PETSc error code.
+ */
+PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
+{
+    PetscFunctionBeginUser;
+    TDSEZProfile &profile = TDSEZProfile::Get();
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePush(profile.stageObservables));
+    profile.steps = PetscMax(profile.steps, step);
+    (void)ts; // unused callback parameter
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
+
+
+    // ------------------------
+    // Compute temporary vectors
+    // ------------------------
+    // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
+    // dipole (accel needs invMassAvg); they are skipped when neither is on.
+    const TDSEZMonitorNeeds need = TDSEZMonitorNeedsAt(TDSEZ, step);
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)need.kvmd, (PetscBool)need.m, (PetscBool)need.h));
+    const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
+
+    PetscInt nBatch = 5;
+    PetscInt idxDx=-1, idxAccX=-1, idxVx=-1;
+    if (TDSEZ->hasX && need.dip) {
+        idxDx   = nBatch++; PetscCall(MatMult(TDSEZ->Dx(),   psi, TDSEZ->tmpVec[idxDx]));
+        if (need.force) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
+    }
+    if (TDSEZParser::out_current && TDSEZ->hasX && TDSEZ->VelX() != PETSC_NULLPTR) {
+        idxVx = nBatch++; PetscCall(MatMult(TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx]));
+    }
+
+    // ------------------------
+    // Fused reduction
+    // ------------------------
+    PetscScalar res[15];
+    PetscCall(VecMDot(psi, nBatch, TDSEZ->tmpVec, res));
+
+    const PetscReal   normSq       = PetscRealPart(res[0]);
+    const PetscScalar expectationH = res[1];
+    const PetscScalar invMassAvg   = need.kvmd ? res[2] : 0.0;
+    const PetscScalar kineticE     = (TDSEZParser::out_energy) ? res[3] : 0.0;
+    const PetscScalar potentialE   = (TDSEZParser::out_energy) ? res[4] : 0.0;
+
+    PetscScalar laserEx=0.0, dipoleMX=0.0, accelX=0.0, projDx=0.0;
+
+    if (TDSEZ->hasX) laserEx = TDSEZParser::Field(0, t);
+    if (idxDx >= 0)
+    {
+        projDx   = res[idxDx];
+        dipoleMX = TDSEZ->charge * projDx;
+        accelX   = need.acc && idxAccX >= 0
+                   ? TDSEZ->charge * (res[idxAccX] - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
+    }
+
+
+    // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
+    // delta-like there, so take a(t) from the discrete equation of motion instead.
+    if (need.acc && useDiscAcc) {
+        PetscScalar acc[3];
+        PetscCall(TDSEZ->DiscreteAcceleration(t, psi, TDSEZ->tmpVec[1], acc));
+        accelX = acc[0];
+    }
+
+    PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
+    if (need.energy || need.log) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * laserEx*projDx + fieldTermE;
+    const PetscScalar totalEnergy  = expectationH + interactionE;
+
+    // ------------------------
+    // Population projection (needed for population output AND current decomposition)
+    // ------------------------
+    if (TDSEZParser::out_population || TDSEZParser::out_current) {
+        PetscCall(VecMDot(TDSEZ->tmpVec[0], TDSEZ->NPOP, TDSEZ->boundstates.data(), TDSEZ->popDots.data()));
+    }
+
+    // ------------------------
+    // Berry phase and current decomposition (same layout as the 2D monitor;
+    // the y columns and <Lz> stay zero in 1D)
+    // ------------------------
+    const PetscInt N = TDSEZ->NPOP;
+    PetscReal   dGamma   = 0.0;
+    PetscScalar Jx_total = 0.0, Jx_intra = 0.0, Jx_inter = 0.0, Jx_bc = 0.0;
+    if (TDSEZParser::out_current) {
+        if (!TDSEZ->popDots_prev.empty()) {
+            PetscScalar overlap = 0.0;
+            for (PetscInt n = 0; n < N; n++)
+                overlap += PetscConj(TDSEZ->popDots_prev[n]) * TDSEZ->popDots[n];
+            dGamma = -PetscAtan2Real(PetscImaginaryPart(overlap), PetscRealPart(overlap));
+            TDSEZ->BerryPhase += dGamma;
+        }
+        TDSEZ->popDots_prev = TDSEZ->popDots;
+
+        if (idxVx >= 0) {
+            Jx_total = res[idxVx];
+            if (!TDSEZ->vMat_x.empty()) {
+                for (PetscInt n = 0; n < N; n++) {
+                    const PetscReal pop = PetscRealPart(PetscConj(TDSEZ->popDots[n]) * TDSEZ->popDots[n]);
+                    Jx_intra += pop * TDSEZ->vMat_x[n*N+n];
+                }
+                for (PetscInt m = 0; m < N; m++)
+                for (PetscInt n = 0; n < N; n++) {
+                    if (m == n) continue;
+                    Jx_inter += PetscConj(TDSEZ->popDots[m]) * TDSEZ->popDots[n] * TDSEZ->vMat_x[m*N+n];
+                }
+                Jx_bc = Jx_total - Jx_intra - Jx_inter;
+            }
+        }
+    }
+
+
+    // Compute TRUE autocorrelation: <psi(0)|M|psi(t)>
+    // ------------------------
+    PetscScalar autocorr = 0.0;
+    if (TDSEZParser::out_autocorr && TDSEZ->psi0() != PETSC_NULLPTR)
+    {
+        PetscCall(VecDot(TDSEZ->tmpVec[0], TDSEZ->psi0(), &autocorr));  // ⟨ψ(0)| M |ψ(t)⟩
+    }
+
+    if (TDSEZ->rank == 0)
+    {
+        PetscInt sIdx = TDSEZ->recordedSteps % TDSEZ->maxAllocatedSteps;
+        // time column of every dataset, also of the quantities not recorded
+        TDSEZ->dipBuffer[sIdx * TDSEZ->dipWidth]       = t;
+        TDSEZ->popBuffer[sIdx * TDSEZ->popWidth]       = t;
+        TDSEZ->energyBuffer[sIdx * TDSEZ->energyWidth] = t;
+        TDSEZ->currBuffer[sIdx * (TDSEZParser::Dimension == 3 ? 15 : 11)] = t;
+        TDSEZ->acBuffer[sIdx * 3]                      = t;
+
+        // Dipoles Table [t, Ex, Dx, Ax]
+        if (TDSEZParser::out_dipole || TDSEZParser::out_accel) {
+            PetscInt dOff = sIdx * 4;
+            TDSEZ->dipBuffer[dOff+0] = t;
+            TDSEZ->dipBuffer[dOff+1] = laserEx;
+            TDSEZ->dipBuffer[dOff+2] = TDSEZParser::out_dipole ? dipoleMX : 0.0;
+            TDSEZ->dipBuffer[dOff+3] = TDSEZParser::out_accel ? accelX : 0.0;
+        }
+
+        // Populations Table [t, P0, P1, P2, ...]
+        if (TDSEZParser::out_population) {
+            PetscInt pWidth = TDSEZ->NPOP + 1;
+            PetscInt pOff   = sIdx * pWidth;
+            TDSEZ->popBuffer[pOff+0] = t;
+            for (PetscInt i=0; i < TDSEZ->NPOP; ++i)
+            {
+                PetscScalar dot = TDSEZ->popDots[i];
+                TDSEZ->popBuffer[pOff + i + 1] = PetscAbsScalar(dot * PetscConj(dot));
+            }
+        }
+
+        // Energy Table [t, Kin, Pot, Int, Tot, Norm]
+        if (TDSEZParser::out_energy) {
+            PetscInt eOff = sIdx * 7;
+            TDSEZ->energyBuffer[eOff+0] = t;
+            TDSEZ->energyBuffer[eOff+1] = kineticE;
+            TDSEZ->energyBuffer[eOff+2] = potentialE;
+            TDSEZ->energyBuffer[eOff+3] = interactionE;
+            TDSEZ->energyBuffer[eOff+4] = totalEnergy;
+            TDSEZ->energyBuffer[eOff+5] = invMassAvg;
+            TDSEZ->energyBuffer[eOff+6] = (PetscScalar)normSq;
+        }
+
+        // Currents [t, Lz, dGamma, Jx_tot, Jy_tot, Jx_intra, Jy_intra, Jx_inter, Jy_inter, Jx_bc, Jy_bc]
+        if (TDSEZParser::out_current) {
+            PetscInt cOff = sIdx * 11;
+            for (PetscInt c = 0; c < 11; ++c) TDSEZ->currBuffer[cOff+c] = 0.0;
+            TDSEZ->currBuffer[cOff+0] = t;
+            TDSEZ->currBuffer[cOff+2] = dGamma;
+            TDSEZ->currBuffer[cOff+3] = TDSEZ->charge * PetscRealPart(Jx_total);
+            TDSEZ->currBuffer[cOff+5] = TDSEZ->charge * PetscRealPart(Jx_intra);
+            TDSEZ->currBuffer[cOff+7] = TDSEZ->charge * PetscRealPart(Jx_inter);
+            TDSEZ->currBuffer[cOff+9] = TDSEZ->charge * PetscRealPart(Jx_bc);
+        }
+
+        // autocorrelation Table [t, Re<Psi(0)|Psi(t)>, Im<Psi(0)|Psi(t)>]
+        // MUST be filled BEFORE the per-step flush below: the flush writes the
+        // autocorrelation dataset from acBuffer for the window
+        // [lastWrittenSteps, recordedSteps). If we incremented recordedSteps and
+        // flushed first, the current step's AC slot would be flushed as stale
+        // (zero) before it is computed -> silent all-zero autocorrelation
+        // whenever the flush fires every step (e.g. OutputStrideTS=1).
+        if (TDSEZParser::out_autocorr) {
+            PetscInt acOff = sIdx * 3;
+            TDSEZ->acBuffer[acOff+0] = t;
+            TDSEZ->acBuffer[acOff+1] = PetscRealPart(autocorr);
+            TDSEZ->acBuffer[acOff+2] = PetscImaginaryPart(autocorr);
+        }
+
+        TDSEZ->recordedSteps++;
+
+        // In-progress flush: write the new window every OutputStrideTS (if set)
+        // or every FLUSH_INTERVAL so RAM does not grow unbounded for long propagations.
+        if (TDSEZ->recordedSteps > 0) {
+            if (TDSEZ->FlushDue()) {
+                PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
+                PetscCallAbort(PETSC_COMM_WORLD,
+                               TDSEZ->WriteHDF5(TDSEZ->outputFilename));
+                PetscCall(PetscLogEventEnd(profile.eventHDF5Write, 0, 0, 0, 0));
+            }
+        }
+    }
+
+
+    // SNAPSHOT WFS
+    PetscInt snapshotStride = TDSEZParser::OutputStrideWFS;
+    if (TDSEZParser::out_wfs && snapshotStride > 0 && step % snapshotStride == 0)
+    {
+        PetscInt step_index = step / snapshotStride;
+        // WFSViewer is opened in COLLECTIVE mode, so VecView of the parallel
+        // psi Vec is a collective HDF5 operation that MUST be called by every
+        // rank. Gating it behind rank==0 deadlocked ranks 1..N (they wait
+        // forever for the collective write), which hung the whole run. Calling
+        // it collectively writes the full wavefunction correctly.
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->WFSViewer, step_index));
+        PetscObjectSetName((PetscObject)psi, "wavefunction");
+        PetscCall(VecView(psi, TDSEZ->WFSViewer));
+    }
+
+    // TS stride snapshot
+    PetscInt tsStride = TDSEZParser::OutputStrideTS;
+    if (ts && tsStride > 0 && step % tsStride == 0) {
+        PetscInt ts_index = step / tsStride;
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->TIMEViewer, ts_index));
+        PetscObjectSetName((PetscObject)ts, "timestepper");
+        PetscCall(TSView(ts, TDSEZ->TIMEViewer));
+    }
+
+
+    // ------------------------
+    // Logging
+    // ------------------------
+    if (TDSEZShouldLogProgress(step))
+    {
+        TDSEZProgressRow(step, t, normSq, totalEnergy);
+    }
+
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+/// 2D TS monitor: computes per-step observables and buffers them for HDF5.
+/**
+ * Extends the 1D monitor to two Cartesian axes (x, y): computes norm,
+ * energy, dipoles, accelerations, velocity-gauge currents (intra/inter/bc
+ * decomposition), Berry phase from population overlaps, Lz expectation,
+ * populations, and autocorrelation. Buffers results and flushes to HDF5.
+ *
+ * @param[in] ts   Time-stepper context.
+ * @param[in] step Current time-step index.
+ * @param[in] t    Current simulation time.
+ * @param[in] psi  Current state vector.
+ * @param[in] ctx  TDSEZManager providing operators and output buffers.
+ * @return PETSc error code.
+ */
+PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
+{
+    (void)ts; (void)step; (void)t; (void)psi;
+    PetscFunctionBeginUser;
+    TDSEZProfile &profile = TDSEZProfile::Get();
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePush(profile.stageObservables));
+    profile.steps = PetscMax(profile.steps, step);
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
+
+
+    /* ----------------------------------------------------------------
+       MatMults
+       ---------------------------------------------------------------- */
+    // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
+    // dipole (accel needs invMassAvg); they are skipped when neither is on.
+    const TDSEZMonitorNeeds need = TDSEZMonitorNeedsAt(TDSEZ, step);
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)need.kvmd, (PetscBool)need.m, (PetscBool)need.h));
+    const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
+
+    PetscInt nBatch = 5;
+    PetscInt idxDx=-1, idxDy=-1, idxAccX=-1, idxAccY=-1;
+    PetscInt idxVx=-1, idxVy=-1, idxLz=-1;
+
+    if (need.dip && TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::DipX, TDSEZ->Dx())) {
+        idxDx   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), psi, TDSEZ->tmpVec[idxDx]));
+        if (need.force && !TDSEZ->QuadForce(0)) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
+    }
+    if (need.dip && TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::DipY, TDSEZ->Dy())) {
+        idxDy   = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), psi, TDSEZ->tmpVec[idxDy]));
+        if (need.force && !TDSEZ->QuadForce(1)) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
+    }
+    if (need.vel && TDSEZ->hasX && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) {
+        idxVx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx]));
+    }
+    if (need.vel && TDSEZ->hasY && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) {
+        idxVy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy]));
+    }
+    if (need.cur && TDSEZ->Lz() != PETSC_NULLPTR) {
+        idxLz = nBatch++; PetscCall(MatMult(TDSEZ->Lz(), psi, TDSEZ->tmpVec[idxLz]));
+    }
+    
+
+    /* ----------------------------------------------------------------
+       fused reduction
+       ---------------------------------------------------------------- */
+    PetscScalar res[16];
+    PetscCall(VecMDot(psi, nBatch, TDSEZ->tmpVec, res));
+    TDSEZ->OverrideExpectations(res);   // quadrature expectation values
+
+    const PetscReal   normSq     = PetscRealPart(res[0]);
+    const PetscScalar expectH    = res[1];
+    const PetscScalar invMassAvg = need.kvmd ? res[2] : 0.0;
+    const PetscScalar kineticE   = (TDSEZParser::out_energy) ? res[3] : 0.0;
+    const PetscScalar potentialE = (TDSEZParser::out_energy) ? res[4] : 0.0;
+
+    PetscScalar laserEx=0,  laserEy=0;
+    PetscScalar projDx=0,   projDy=0;
+    PetscScalar dipoleMX=0, dipoleMY=0;
+    PetscScalar accelX=0,   accelY=0;
+    PetscScalar Jx_total=0, Jy_total=0;
+
+    if (TDSEZ->hasX) laserEx = TDSEZParser::Field(0, t);
+    if (TDSEZ->hasY) laserEy = TDSEZParser::Field(1, t);
+    if (idxDx >= 0) 
+    {
+        projDx   = res[idxDx];
+        dipoleMX = TDSEZ->charge * projDx;
+        accelX   = need.acc && (idxAccX >= 0 || TDSEZ->QuadForce(0))
+                   ? TDSEZ->charge * ((idxAccX >= 0 ? res[idxAccX] : TDSEZ->QuadForceValue(0)) - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
+    }
+
+    if (idxDy >= 0) {
+        projDy   = res[idxDy];
+        dipoleMY = TDSEZ->charge * projDy;
+        accelY   = need.acc && (idxAccY >= 0 || TDSEZ->QuadForce(1))
+                   ? TDSEZ->charge * ((idxAccY >= 0 ? res[idxAccY] : TDSEZ->QuadForceValue(1)) - invMassAvg * TDSEZParser::CarrierSign() * laserEy) : 0.0;
+    }
+    if (idxVx >= 0) Jx_total = res[idxVx];
+    else if (TDSEZ->hasX && TDSEZ->QuadVel(0)) Jx_total = TDSEZ->QuadVelValue(0);
+    if (idxVy >= 0) Jy_total = res[idxVy];
+    else if (TDSEZ->hasY && TDSEZ->QuadVel(1)) Jy_total = TDSEZ->QuadVelValue(1);
+
+    // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
+    // delta-like there, so take a(t) from the discrete equation of motion instead.
+    if (need.acc && useDiscAcc) {
+        PetscScalar acc[3];
+        PetscCall(TDSEZ->DiscreteAcceleration(t, psi, TDSEZ->tmpVec[1], acc));
+        accelX = acc[0]; accelY = acc[1];
+    }
+
+    PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
+    if (need.energy || need.log) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * (laserEx*projDx + laserEy*projDy) + fieldTermE;
+    const PetscScalar totalEnergy  = expectH + interactionE;
+
+    /* ----------------------------------------------------------------
+       autocorrelation  ⟨ψ(0)|M|ψ(t)⟩: tmpVec[0] = M*psi
+       ---------------------------------------------------------------- */
+    PetscScalar autocorr = 0.0;
+    if (TDSEZParser::out_autocorr && TDSEZ->psi0() != PETSC_NULLPTR)
+        PetscCall(VecDot(TDSEZ->tmpVec[0], TDSEZ->psi0(), &autocorr));
+
+    /* ---------------------------------------------------------------- 
+       population projections  c_n = ⟨φ_n|M|ψ⟩: tmpVec[0] = M*psi
+       (needed for population output AND current decomposition)
+       ---------------------------------------------------------------- */
+    if (TDSEZParser::out_population || TDSEZParser::out_current) {
+        PetscCall(VecMDot(TDSEZ->tmpVec[0], TDSEZ->NPOP,
+                          TDSEZ->boundstates.data(),
+                          TDSEZ->popDots.data()));
+    }
+
+    /* ---------------------------------------------------------------- 
+       Lz projections  m_n = ⟨φ_n|Lz|ψ⟩: tmpVec[0] = M*psi
+       ---------------------------------------------------------------- */
+        PetscScalar Lz_expect = 0.0;
+        if (TDSEZParser::out_current && idxLz >= 0) Lz_expect = res[idxLz];
+
+    /* ----------------------------------------------------------------
+    Berry phase — geometric phase from consecutive overlaps
+    Gamma_{step} = -arg⟨ψ_prev|M|ψ(t)⟩
+    Accumulated: Γ(t) = sum Gamma_{step}
+    Berry phase — from popDots coefficients, no VecCopy needed
+    Gamma_{step} = -arg( Sum_n c_n*(t-dt) · c_n(t) )
+    --------------------------------------------------------------- */
+    const PetscInt N = TDSEZ->NPOP;
+    PetscReal dGamma = 0.0;
+    if (TDSEZParser::out_current && !TDSEZ->popDots_prev.empty())
+    {
+        PetscScalar overlap = 0.0;
+        for (PetscInt n = 0; n < N; n++)
+            overlap += PetscConj(TDSEZ->popDots_prev[n]) * TDSEZ->popDots[n];
+
+        dGamma = -PetscAtan2Real(PetscImaginaryPart(overlap),
+                                        PetscRealPart(overlap));
+        TDSEZ->BerryPhase += dGamma;
+    }
+    if (TDSEZParser::out_current) TDSEZ->popDots_prev = TDSEZ->popDots;
+
+
+    /* ----------------------------------------------------------------
+       currents — reuse popDots, no extra MatMults
+       ---------------------------------------------------------------- */
+    PetscScalar Jx_intra=0, Jy_intra=0;
+    PetscScalar Jx_inter=0, Jy_inter=0;
+    PetscScalar Jx_bc=0,    Jy_bc=0;
+
+    const PetscBool doVx = ((idxVx >= 0 || TDSEZ->QuadVel(0)) && !TDSEZ->vMat_x.empty());
+    const PetscBool doVy = ((idxVy >= 0 || TDSEZ->QuadVel(1)) && !TDSEZ->vMat_y.empty());
+
+    if (doVx || doVy)
+    {
+        // intraband: Σ_n |c_n|^2 * v_nn
+        for (PetscInt n = 0; n < N; n++) {
+            PetscReal pop = PetscRealPart(PetscConj(TDSEZ->popDots[n]) * TDSEZ->popDots[n]);
+            if (doVx) Jx_intra += pop * TDSEZ->vMat_x[n*N+n];
+            if (doVy) Jy_intra += pop * TDSEZ->vMat_y[n*N+n];
+        }
+
+        // interband: Σ_{m≠n} c_m* * c_n * v_mn
+        for (PetscInt m = 0; m < N; m++)
+        for (PetscInt n = 0; n < N; n++) {
+            if (m == n) continue;
+            PetscScalar rho_mn = PetscConj(TDSEZ->popDots[m]) * TDSEZ->popDots[n];
+            if (doVx) Jx_inter += rho_mn * TDSEZ->vMat_x[m*N+n];
+            if (doVy) Jy_inter += rho_mn * TDSEZ->vMat_y[m*N+n];
+        }
+
+        // bound-continuum: remainder
+        if (doVx) Jx_bc = Jx_total - Jx_intra - Jx_inter;
+        if (doVy) Jy_bc = Jy_total - Jy_intra - Jy_inter;
+    }
+
+    /* ----------------------------------------------------------------
+       buffer (rank 0 only)
+       ---------------------------------------------------------------- */
+    if (TDSEZ->rank == 0)
+    {
+        PetscInt sIdx = TDSEZ->recordedSteps % TDSEZ->maxAllocatedSteps;
+        // time column of every dataset, also of the quantities not recorded
+        TDSEZ->dipBuffer[sIdx * TDSEZ->dipWidth]       = t;
+        TDSEZ->popBuffer[sIdx * TDSEZ->popWidth]       = t;
+        TDSEZ->energyBuffer[sIdx * TDSEZ->energyWidth] = t;
+        TDSEZ->currBuffer[sIdx * (TDSEZParser::Dimension == 3 ? 15 : 11)] = t;
+        TDSEZ->acBuffer[sIdx * 3]                      = t;
+
+        // Dipoles [t, Ex, Ey, Dx, Dy, Ax, Ay]
+        if (TDSEZParser::out_dipole || TDSEZParser::out_accel) {
+            PetscInt dOff = sIdx * 7;
+            TDSEZ->dipBuffer[dOff+0] = t;
+            TDSEZ->dipBuffer[dOff+1] = PetscRealPart(laserEx);
+            TDSEZ->dipBuffer[dOff+2] = PetscRealPart(laserEy);
+            TDSEZ->dipBuffer[dOff+3] = TDSEZParser::out_dipole ? PetscRealPart(dipoleMX) : 0.0;
+            TDSEZ->dipBuffer[dOff+4] = TDSEZParser::out_dipole ? PetscRealPart(dipoleMY) : 0.0;
+            TDSEZ->dipBuffer[dOff+5] = TDSEZParser::out_accel ? PetscRealPart(accelX) : 0.0;
+            TDSEZ->dipBuffer[dOff+6] = TDSEZParser::out_accel ? PetscRealPart(accelY) : 0.0;
+        }
+
+        // Populations [t, P0, P1, ..., P_{N-1}]
+        if (TDSEZParser::out_population) {
+            PetscInt pWidth = TDSEZ->NPOP + 1;
+            PetscInt pOff   = sIdx * pWidth;
+            TDSEZ->popBuffer[pOff+0] = t;
+            for (PetscInt i = 0; i < N; i++) {
+                PetscScalar dot = TDSEZ->popDots[i];
+                TDSEZ->popBuffer[pOff+i+1] = PetscRealPart(PetscConj(dot) * dot);
+            }
+        }
+
+        // Energy [t, Kin, Pot, Int, Tot, InvMass, Norm]
+        if (TDSEZParser::out_energy) {
+            PetscInt eOff = sIdx * 7;
+            TDSEZ->energyBuffer[eOff+0] = t;
+            TDSEZ->energyBuffer[eOff+1] = PetscRealPart(kineticE);
+            TDSEZ->energyBuffer[eOff+2] = PetscRealPart(potentialE);
+            TDSEZ->energyBuffer[eOff+3] = PetscRealPart(interactionE);
+            TDSEZ->energyBuffer[eOff+4] = PetscRealPart(totalEnergy);
+            TDSEZ->energyBuffer[eOff+5] = PetscRealPart(invMassAvg);
+            TDSEZ->energyBuffer[eOff+6] = (PetscScalar)normSq;
+        }
+
+        // Currents [t, Lz, dGamma, Jx_tot, Jy_tot, Jx_intra, Jy_intra, Jx_inter, Jy_inter, Jx_bc, Jy_bc]
+        if (TDSEZParser::out_current) {
+            PetscInt cOff = sIdx * 11;
+            TDSEZ->currBuffer[cOff+0] = t;
+            TDSEZ->currBuffer[cOff+1] = PetscRealPart(Lz_expect);
+            TDSEZ->currBuffer[cOff+2] = dGamma;  
+            TDSEZ->currBuffer[cOff+3] = TDSEZ->charge * PetscRealPart(Jx_total);
+            TDSEZ->currBuffer[cOff+4] = TDSEZ->charge * PetscRealPart(Jy_total);
+            TDSEZ->currBuffer[cOff+5] = TDSEZ->charge * PetscRealPart(Jx_intra);
+            TDSEZ->currBuffer[cOff+6] = TDSEZ->charge * PetscRealPart(Jy_intra);
+            TDSEZ->currBuffer[cOff+7] = TDSEZ->charge * PetscRealPart(Jx_inter);
+            TDSEZ->currBuffer[cOff+8] = TDSEZ->charge * PetscRealPart(Jy_inter);
+            TDSEZ->currBuffer[cOff+9] = TDSEZ->charge * PetscRealPart(Jx_bc);
+            TDSEZ->currBuffer[cOff+10] = TDSEZ->charge * PetscRealPart(Jy_bc);
+        }
+
+        TDSEZ->recordedSteps++;
+
+        // autocorrelation Table [t, Re<Psi(0)|Psi(t)>, Im<Psi(0)|Psi(t)>]
+        // Filled BEFORE the per-step flush (see 3D monitor for rationale).
+        if (TDSEZParser::out_autocorr) {
+            PetscInt acOff = sIdx * 3;
+            TDSEZ->acBuffer[acOff+0] = t;
+            TDSEZ->acBuffer[acOff+1] = PetscRealPart(autocorr);
+            TDSEZ->acBuffer[acOff+2] = PetscImaginaryPart(autocorr);
+        }
+
+        // In-progress flush: write the new window every OutputStrideTS (if set)
+        // or every FLUSH_INTERVAL so RAM does not grow unbounded for long propagations.
+        if (TDSEZ->recordedSteps > 0) {
+            if (TDSEZ->FlushDue()) {
+                PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
+                PetscCallAbort(PETSC_COMM_WORLD,
+                               TDSEZ->WriteHDF5(TDSEZ->outputFilename));
+                PetscCall(PetscLogEventEnd(profile.eventHDF5Write, 0, 0, 0, 0));
+            }
+        }
+    }
+
+    /* ----------------------------------------------------------------
+       wavefunction snapshot
+       ---------------------------------------------------------------- */
+    PetscInt snapshotStride = TDSEZParser::OutputStrideWFS;
+    if (TDSEZParser::out_wfs && snapshotStride > 0 && step % snapshotStride == 0) {
+        PetscInt step_index = step / snapshotStride;
+        // WFSViewer is opened in COLLECTIVE mode, so VecView of the parallel
+        // psi Vec is a collective HDF5 operation that MUST be called by every
+        // rank. Gating it behind rank==0 deadlocked ranks 1..N (they wait
+        // forever for the collective write), which hung the whole run. Calling
+        // it collectively writes the full wavefunction correctly.
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->WFSViewer, step_index));
+        PetscObjectSetName((PetscObject)psi, "wavefunction");
+        PetscCall(VecView(psi, TDSEZ->WFSViewer));
+    }
+
+    // TS stride snapshot
+    PetscInt tsStride = TDSEZParser::OutputStrideTS;
+    if (ts && tsStride > 0 && step % tsStride == 0) {
+        PetscInt ts_index = step / tsStride;
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->TIMEViewer, ts_index));
+        PetscObjectSetName((PetscObject)ts, "timestepper");
+        PetscCall(TSView(ts, TDSEZ->TIMEViewer));
+    }
+
+    // ------------------------
+    // Logging 
+    // ------------------------
+    if (TDSEZShouldLogProgress(step))
+    {
+        TDSEZProgressRow(step, t, normSq, totalEnergy);
+    }
+
+
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+
+
+/// 3D TS monitor: computes per-step observables and buffers them for HDF5.
+/**
+ * Extends the 2D monitor to three Cartesian axes (x, y, z): computes norm,
+ * energy, dipoles, accelerations, velocity-gauge currents (intra/inter/bc
+ * decomposition), Berry phase, Lz expectation, populations, and
+ * autocorrelation. Buffers results and flushes to HDF5.
+ *
+ * @param[in] ts   Time-stepper context.
+ * @param[in] step Current time-step index.
+ * @param[in] t    Current simulation time.
+ * @param[in] psi  Current state vector.
+ * @param[in] ctx  TDSEZManager providing operators and output buffers.
+ * @return PETSc error code.
+ */
+PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
+{
+    PetscFunctionBeginUser;
+    TDSEZProfile &profile = TDSEZProfile::Get();
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePush(profile.stageObservables));
+    profile.steps = PetscMax(profile.steps, step);
+    (void)ts; // unused callback parameter
+    auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
+    if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
+
+
+    // ------------------------
+    // Compute temporary vectors
+    // ------------------------
+    // tmpVec[0..4] = M, H, Md, K, V applied to psi. Md/K/V feed energy AND
+    // dipole (accel needs invMassAvg); they are skipped when neither is on.
+    const TDSEZMonitorNeeds need = TDSEZMonitorNeedsAt(TDSEZ, step);
+    PetscCall(TDSEZ->MonitorProducts(psi, (PetscBool)need.kvmd, (PetscBool)need.m, (PetscBool)need.h));
+    const PetscBool useDiscAcc = TDSEZ->UseDiscreteAcceleration();
+
+    PetscInt nBatch = 5;
+    PetscInt idxDx=-1, idxDy=-1, idxDz=-1, idxAccX=-1, idxAccY=-1, idxAccZ=-1;
+    PetscInt idxVx=-1, idxVy=-1, idxVz=-1, idxLz=-1;
+    if (TDSEZ->hasX) {
+        if (need.dip) { idxDx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipX, TDSEZ->Dx(), psi, TDSEZ->tmpVec[idxDx])); }
+        if (need.force && !TDSEZ->QuadForce(0)) { idxAccX = nBatch++; PetscCall(MatMult(TDSEZ->dVdx(), psi, TDSEZ->tmpVec[idxAccX])); }
+        if (need.vel && TDSEZ->HasOp(TDSEZTensorOps::VelX, TDSEZ->VelX())) { idxVx = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelX, TDSEZ->VelX(), psi, TDSEZ->tmpVec[idxVx])); }
+    }
+    if (TDSEZ->hasY) {
+        if (need.dip) { idxDy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipY, TDSEZ->Dy(), psi, TDSEZ->tmpVec[idxDy])); }
+        if (need.force && !TDSEZ->QuadForce(1)) { idxAccY = nBatch++; PetscCall(MatMult(TDSEZ->dVdy(), psi, TDSEZ->tmpVec[idxAccY])); }
+        if (need.vel && TDSEZ->HasOp(TDSEZTensorOps::VelY, TDSEZ->VelY())) { idxVy = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelY, TDSEZ->VelY(), psi, TDSEZ->tmpVec[idxVy])); }
+    }
+
+    if (TDSEZ->hasZ) {
+        if (need.dip) { idxDz = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::DipZ, TDSEZ->Dz(), psi, TDSEZ->tmpVec[idxDz])); }
+        if (need.force && !TDSEZ->QuadForce(2)) { idxAccZ = nBatch++; PetscCall(MatMult(TDSEZ->dVdz(), psi, TDSEZ->tmpVec[idxAccZ])); }
+        if (need.vel && TDSEZ->HasOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ())) { idxVz = nBatch++; PetscCall(TDSEZ->ApplyOp(TDSEZTensorOps::VelZ, TDSEZ->VelZ(), psi, TDSEZ->tmpVec[idxVz])); }
+    }
+    if (need.cur && TDSEZ->Lz() != PETSC_NULLPTR) {
+        idxLz = nBatch++; PetscCall(MatMult(TDSEZ->Lz(), psi, TDSEZ->tmpVec[idxLz]));
+    }
+
+    // ------------------------
+    // Fused reduction
+    // ------------------------
+    PetscScalar res[16]; 
+    PetscCall(VecMDot(psi, nBatch, TDSEZ->tmpVec, res));
+    TDSEZ->OverrideExpectations(res);   // quadrature expectation values
+
+    const PetscReal   normSq       = PetscRealPart(res[0]);
+    const PetscScalar expectationH = res[1];
+    const PetscScalar invMassAvg   = need.kvmd ? res[2] : 0.0;
+    const PetscScalar kineticE     = (TDSEZParser::out_energy) ? res[3] : 0.0;
+    const PetscScalar potentialE   = (TDSEZParser::out_energy) ? res[4] : 0.0;
+
+    PetscScalar laserEx=0.0, laserEy=0.0, laserEz=0.0;
+    PetscScalar dipoleMX=0.0, dipoleMY=0.0, dipoleMZ=0.0;
+    PetscScalar accelX=0.0, accelY=0.0, accelZ=0.0;
+    PetscScalar projDx=0.0, projDy=0.0, projDz=0.0;
+
+    if (TDSEZ->hasX) laserEx = TDSEZParser::Field(0, t);
+    if (idxDx >= 0) {
+        projDx   = res[idxDx];
+        dipoleMX = TDSEZ->charge * projDx;
+        accelX   = need.acc && (idxAccX >= 0 || TDSEZ->QuadForce(0))
+                   ? TDSEZ->charge * ((idxAccX >= 0 ? res[idxAccX] : TDSEZ->QuadForceValue(0)) - invMassAvg * TDSEZParser::CarrierSign() * laserEx) : 0.0;
+    }
+    if (TDSEZ->hasY) laserEy = TDSEZParser::Field(1, t);
+    if (idxDy >= 0) {
+        projDy   = res[idxDy];
+        dipoleMY = TDSEZ->charge * projDy;
+        accelY   = need.acc && (idxAccY >= 0 || TDSEZ->QuadForce(1))
+                   ? TDSEZ->charge * ((idxAccY >= 0 ? res[idxAccY] : TDSEZ->QuadForceValue(1)) - invMassAvg * TDSEZParser::CarrierSign() * laserEy) : 0.0;
+    }
+
+    if (TDSEZ->hasZ) laserEz = TDSEZParser::Field(2, t);
+    if (idxDz >= 0) {
+        projDz   = res[idxDz];
+        dipoleMZ = TDSEZ->charge * projDz;
+        accelZ   = need.acc && (idxAccZ >= 0 || TDSEZ->QuadForce(2))
+                   ? TDSEZ->charge * ((idxAccZ >= 0 ? res[idxAccZ] : TDSEZ->QuadForceValue(2)) - invMassAvg * TDSEZParser::CarrierSign() * laserEz) : 0.0;
+    }
+
+    // Sharp interfaces: the force operator needs grad(1/m) and grad(V), which are
+    // delta-like there, so take a(t) from the discrete equation of motion instead.
+    if (need.acc && useDiscAcc) {
+        PetscScalar acc[3];
+        PetscCall(TDSEZ->DiscreteAcceleration(t, psi, TDSEZ->tmpVec[1], acc));
+        accelX = acc[0]; accelY = acc[1]; accelZ = acc[2];
+    }
+
+    PetscScalar fieldTermE = 0.0;   // FieldTerms: sum_k s f_k(t) <G_k>
+    if (need.energy || need.log) PetscCall(TDSEZ->FieldTermEnergy(t, psi, &fieldTermE));
+    const PetscScalar interactionE = TDSEZParser::CarrierSign() * ((laserEx*projDx) + (laserEy*projDy) + (laserEz*projDz)) + fieldTermE;
+    const PetscScalar totalEnergy  = expectationH + interactionE;
+
+
+
+    // Compute TRUE autocorrelation: ⟨ψ(0)|M|ψ(t)⟩
+    // ------------------------
+    PetscScalar autocorr = 0.0;
+    if (TDSEZParser::out_autocorr && TDSEZ->psi0() != PETSC_NULLPTR)
+    {
+        PetscCall(VecDot(TDSEZ->tmpVec[0], TDSEZ->psi0(), &autocorr));  // ⟨ψ(0)| M |ψ(t)⟩
+    }
+
+    // ------------------------
+    // Population projection (needed for population output AND current decomposition)
+    // ------------------------
+    if (TDSEZParser::out_population || TDSEZParser::out_current) {
+        PetscCall(VecMDot(TDSEZ->tmpVec[0], TDSEZ->NPOP, TDSEZ->boundstates.data(), TDSEZ->popDots.data()));
+    }
+
+    /* ----------------------------------------------------------------
+       Lz projection  m = ⟨ψ|Lz|ψ⟩ (needed for current output)
+       ---------------------------------------------------------------- */
+    PetscScalar Lz_expect = 0.0;
+    if (TDSEZParser::out_current && idxLz >= 0) Lz_expect = res[idxLz];
+
+    /* ----------------------------------------------------------------
+       Berry phase — geometric phase from consecutive overlaps
+       ---------------------------------------------------------------- */
+    const PetscInt BerryN = TDSEZ->NPOP;
+    PetscReal dGamma = 0.0;
+    if (TDSEZParser::out_current && !TDSEZ->popDots_prev.empty()) {
+        PetscScalar overlap = 0.0;
+        for (PetscInt n = 0; n < BerryN; n++)
+            overlap += PetscConj(TDSEZ->popDots_prev[n]) * TDSEZ->popDots[n];
+        dGamma = -PetscAtan2Real(PetscImaginaryPart(overlap), PetscRealPart(overlap));
+        TDSEZ->BerryPhase += dGamma;
+    }
+    if (TDSEZParser::out_current) TDSEZ->popDots_prev = TDSEZ->popDots;
+
+    /* ----------------------------------------------------------------
+       currents — reuse popDots, no extra MatMults
+       ---------------------------------------------------------------- */
+    PetscScalar Jx_total=0, Jy_total=0, Jz_total=0;
+    if (idxVx >= 0) Jx_total = res[idxVx];
+    else if (TDSEZ->hasX && TDSEZ->QuadVel(0)) Jx_total = TDSEZ->QuadVelValue(0);
+    if (idxVy >= 0) Jy_total = res[idxVy];
+    else if (TDSEZ->hasY && TDSEZ->QuadVel(1)) Jy_total = TDSEZ->QuadVelValue(1);
+    if (idxVz >= 0) Jz_total = res[idxVz];
+    else if (TDSEZ->hasZ && TDSEZ->QuadVel(2)) Jz_total = TDSEZ->QuadVelValue(2);
+
+    PetscScalar Jx_intra=0, Jy_intra=0, Jz_intra=0;
+    PetscScalar Jx_inter=0, Jy_inter=0, Jz_inter=0;
+    PetscScalar Jx_bc=0,    Jy_bc=0,    Jz_bc=0;
+
+    const PetscBool doVx = ((idxVx >= 0 || TDSEZ->QuadVel(0)) && !TDSEZ->vMat_x.empty());
+    const PetscBool doVy = ((idxVy >= 0 || TDSEZ->QuadVel(1)) && !TDSEZ->vMat_y.empty());
+    const PetscBool doVz = ((idxVz >= 0 || TDSEZ->QuadVel(2)) && !TDSEZ->vMat_z.empty());
+
+    if (doVx || doVy || doVz) {
+        for (PetscInt n = 0; n < BerryN; n++) {
+            PetscReal pop = PetscRealPart(PetscConj(TDSEZ->popDots[n]) * TDSEZ->popDots[n]);
+            if (doVx) Jx_intra += pop * TDSEZ->vMat_x[n*BerryN+n];
+            if (doVy) Jy_intra += pop * TDSEZ->vMat_y[n*BerryN+n];
+            if (doVz) Jz_intra += pop * TDSEZ->vMat_z[n*BerryN+n];
+        }
+        for (PetscInt m = 0; m < BerryN; m++)
+        for (PetscInt n = 0; n < BerryN; n++) {
+            if (m == n) continue;
+            PetscScalar rho_mn = PetscConj(TDSEZ->popDots[m]) * TDSEZ->popDots[n];
+            if (doVx) Jx_inter += rho_mn * TDSEZ->vMat_x[m*BerryN+n];
+            if (doVy) Jy_inter += rho_mn * TDSEZ->vMat_y[m*BerryN+n];
+            if (doVz) Jz_inter += rho_mn * TDSEZ->vMat_z[m*BerryN+n];
+        }
+        if (doVx) Jx_bc = Jx_total - Jx_intra - Jx_inter;
+        if (doVy) Jy_bc = Jy_total - Jy_intra - Jy_inter;
+        if (doVz) Jz_bc = Jz_total - Jz_intra - Jz_inter;
+    }
+
+    if (TDSEZ->rank == 0) {
+        PetscInt sIdx = TDSEZ->recordedSteps % TDSEZ->maxAllocatedSteps;
+        // time column of every dataset, also of the quantities not recorded
+        TDSEZ->dipBuffer[sIdx * TDSEZ->dipWidth]       = t;
+        TDSEZ->popBuffer[sIdx * TDSEZ->popWidth]       = t;
+        TDSEZ->energyBuffer[sIdx * TDSEZ->energyWidth] = t;
+        TDSEZ->currBuffer[sIdx * (TDSEZParser::Dimension == 3 ? 15 : 11)] = t;
+        TDSEZ->acBuffer[sIdx * 3]                      = t;
+
+        // Dipoles Table [t, Ex, Ey, Ez, Dx, Dy, Dz, Ax, Ay, Az]
+        if (TDSEZParser::out_dipole || TDSEZParser::out_accel) {
+            PetscInt dOff = sIdx * 10;
+            TDSEZ->dipBuffer[dOff+0] = t;
+            TDSEZ->dipBuffer[dOff+1] = laserEx;
+            TDSEZ->dipBuffer[dOff+2] = laserEy;
+            TDSEZ->dipBuffer[dOff+3] = laserEz;
+            TDSEZ->dipBuffer[dOff+4] = TDSEZParser::out_dipole ? dipoleMX : 0.0;
+            TDSEZ->dipBuffer[dOff+5] = TDSEZParser::out_dipole ? dipoleMY : 0.0;
+            TDSEZ->dipBuffer[dOff+6] = TDSEZParser::out_dipole ? dipoleMZ : 0.0;
+            TDSEZ->dipBuffer[dOff+7] = TDSEZParser::out_accel ? accelX : 0.0;
+            TDSEZ->dipBuffer[dOff+8] = TDSEZParser::out_accel ? accelY : 0.0;
+            TDSEZ->dipBuffer[dOff+9] = TDSEZParser::out_accel ? accelZ : 0.0;
+        }
+
+        // Populations Table [t, P0, P1, P2, ...]
+        if (TDSEZParser::out_population) {
+            PetscInt pWidth = TDSEZ->NPOP + 1;
+            PetscInt pOff   = sIdx * pWidth;
+            TDSEZ->popBuffer[pOff+0] = t; 
+            for (PetscInt i=0; i < TDSEZ->NPOP; ++i) 
+            {
+                PetscScalar dot = TDSEZ->popDots[i];
+                TDSEZ->popBuffer[pOff + i + 1] = PetscAbsScalar(dot * PetscConj(dot));
+            }
+        }
+
+        // Energy Table [t, Kin, Pot, Int, Tot, Norm]
+        if (TDSEZParser::out_energy) {
+            PetscInt eOff = sIdx * 7;
+            TDSEZ->energyBuffer[eOff+0] = t;
+            TDSEZ->energyBuffer[eOff+1] = kineticE;
+            TDSEZ->energyBuffer[eOff+2] = potentialE;
+            TDSEZ->energyBuffer[eOff+3] = interactionE;
+            TDSEZ->energyBuffer[eOff+4] = totalEnergy;
+            TDSEZ->energyBuffer[eOff+5] = invMassAvg;
+            TDSEZ->energyBuffer[eOff+6] = (PetscScalar)normSq;
+        }
+        // autocorrelation Table [t, Re⟨Ψ(0)|Ψ(t)⟩, Im⟨Ψ(0)|Ψ(t)⟩]
+        // MUST be filled BEFORE the per-step flush below: the flush writes the
+        // autocorrelation dataset from acBuffer for the window
+        // [lastWrittenSteps, recordedSteps). If we incremented recordedSteps and
+        // flushed first, the current step's AC slot would be flushed as stale
+        // (zero) before it is computed -> silent all-zero autocorrelation
+        // whenever the flush fires every step (e.g. OutputStrideTS=1).
+        if (TDSEZParser::out_autocorr) {
+            PetscInt acOff = sIdx * 3;
+            TDSEZ->acBuffer[acOff+0] = t;
+            TDSEZ->acBuffer[acOff+1] = PetscRealPart(autocorr);
+            TDSEZ->acBuffer[acOff+2] = PetscImaginaryPart(autocorr);
+        }
+
+        // Stored before recordedSteps++ and the flush below: a row flushed
+        // on its own step must already hold its currents.
+        // Currents [t, Lz, dGamma, Jx_tot, Jy_tot, Jz_tot, Jx_intra, Jy_intra, Jz_intra, Jx_inter, Jy_inter, Jz_inter, Jx_bc, Jy_bc, Jz_bc]
+        if (TDSEZParser::out_current) {
+            PetscInt cOff = sIdx * 15;
+            TDSEZ->currBuffer[cOff+0]  = t;
+            TDSEZ->currBuffer[cOff+1]  = PetscRealPart(Lz_expect);
+            TDSEZ->currBuffer[cOff+2]  = dGamma;
+            TDSEZ->currBuffer[cOff+3]  = TDSEZ->charge * PetscRealPart(Jx_total);
+            TDSEZ->currBuffer[cOff+4]  = TDSEZ->charge * PetscRealPart(Jy_total);
+            TDSEZ->currBuffer[cOff+5]  = TDSEZ->charge * PetscRealPart(Jz_total);
+            TDSEZ->currBuffer[cOff+6]  = TDSEZ->charge * PetscRealPart(Jx_intra);
+            TDSEZ->currBuffer[cOff+7]  = TDSEZ->charge * PetscRealPart(Jy_intra);
+            TDSEZ->currBuffer[cOff+8]  = TDSEZ->charge * PetscRealPart(Jz_intra);
+            TDSEZ->currBuffer[cOff+9]  = TDSEZ->charge * PetscRealPart(Jx_inter);
+            TDSEZ->currBuffer[cOff+10] = TDSEZ->charge * PetscRealPart(Jy_inter);
+            TDSEZ->currBuffer[cOff+11] = TDSEZ->charge * PetscRealPart(Jz_inter);
+            TDSEZ->currBuffer[cOff+12] = TDSEZ->charge * PetscRealPart(Jx_bc);
+            TDSEZ->currBuffer[cOff+13] = TDSEZ->charge * PetscRealPart(Jy_bc);
+            TDSEZ->currBuffer[cOff+14] = TDSEZ->charge * PetscRealPart(Jz_bc);
+        }
+
+        TDSEZ->recordedSteps++;
+
+        // In-progress flush: write the new window every OutputStrideTS (if set)
+        // or every FLUSH_INTERVAL so RAM does not grow unbounded for long propagations.
+        if (TDSEZ->recordedSteps > 0) {
+            if (TDSEZ->FlushDue()) {
+                PetscCall(PetscLogEventBegin(profile.eventHDF5Write, 0, 0, 0, 0));
+                PetscCallAbort(PETSC_COMM_WORLD,
+                               TDSEZ->WriteHDF5(TDSEZ->outputFilename));
+                PetscCall(PetscLogEventEnd(profile.eventHDF5Write, 0, 0, 0, 0));
+            }
+        }
+
+    }
+
+    // SNAPSHOT WFS — set the timestep FIRST, then write ONCE (rank 0 only).
+    // The previous code set the timestep only AFTER a first VecView, so it wrote
+    // the field twice: once at the previous timestep index and once at the
+    // correct one, producing duplicate / mislabelled snapshots.
+    PetscInt snapshotStride = TDSEZParser::OutputStrideWFS;
+    if (TDSEZParser::out_wfs && snapshotStride > 0 && step % snapshotStride == 0)
+    {
+        PetscInt step_index = step / snapshotStride;
+        // WFSViewer is opened in COLLECTIVE mode, so VecView of the parallel
+        // psi Vec is a collective HDF5 operation that MUST be called by every
+        // rank. Gating it behind rank==0 deadlocked ranks 1..N (they wait
+        // forever for the collective write), which hung the whole run. Calling
+        // it collectively writes the full wavefunction correctly.
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->WFSViewer, step_index));
+        PetscObjectSetName((PetscObject)psi, "wavefunction");
+        PetscCall(VecView(psi, TDSEZ->WFSViewer));
+    }
+
+    // TS stride snapshot
+    PetscInt tsStride = TDSEZParser::OutputStrideTS;
+    if (ts && tsStride > 0 && step % tsStride == 0) {
+        PetscInt ts_index = step / tsStride;
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->TIMEViewer, ts_index));
+        PetscObjectSetName((PetscObject)ts, "timestepper");
+        PetscCall(TSView(ts, TDSEZ->TIMEViewer));
+    }
+
+
+    // -------------------------
+    // Logging 
+    // -------------------------
+    if (TDSEZShouldLogProgress(step))
+    {
+        TDSEZProgressRow(step, t, normSq, totalEnergy);
+    }
+    
+    if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+
+
+
+/*  TDSEZCore propagator class  */

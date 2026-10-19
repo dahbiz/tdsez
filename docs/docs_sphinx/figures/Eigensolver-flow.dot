@@ -1,0 +1,48 @@
+// Eigensolver control flow: TDSEZCore::Solve and TDSEZCanonicalEigenpairs (src/core.cpp)
+digraph EigensolverFlow {
+  graph [fontname="Helvetica", rankdir=TB, nodesep=0.35, ranksep=0.35, bgcolor="transparent"];
+  node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#3b6ea5"];
+  edge  [fontname="Helvetica", fontsize=10, color="#555555", fontcolor="#333333"];
+
+  nb0    [shape=diamond, style="filled", label="NBoundStates = 0?"];
+  skip   [label="Skip the eigensolver\n(analytic InitialState)"];
+  plan   [label="Inner-solver plan\n1. direct LU or FGMRES + ASM(1)/ILU(0)\n2. the other one (direct only if it fits)\n3. FGMRES + ASM(2)/ILU(1)"];
+  attempt[label="Krylov-Schur on (H - sigma M)^-1 M\nsigma = target - 1e-3 max(1, |target|)\nsubspace scale s = 1"];
+  err    [shape=diamond, style="filled", label="inner solve\nfailed?"];
+  conv   [shape=diamond, style="filled", label="converged pairs\n>= NBoundStates?"];
+  retry  [shape=diamond, style="filled", label="s = 1?"];
+  bigger [label="Retry with s = 2\n(2x subspace, 2x iterations)"];
+  berr   [shape=diamond, style="filled", label="max backward error\n<= 1e-8?"];
+  next   [label="Next inner solver in the plan"];
+  left   [shape=diamond, style="filled", label="plan\nexhausted?"];
+  none   [shape=diamond, style="filled", label="any pair\nconverged?"];
+  abort  [label="Abort", fillcolor="#fbeeee", color="#a53b3b"];
+  warn   [label="Warning: use the pairs\nof the last attempt"];
+  keep   [label="Order by |E - target|; keep NBoundStates,\nextended to the end of a degenerate level"];
+  shell  [label="Degenerate-shell check, if a degenerate level\nor every converged pair is kept\n(deflate, solve for the nearest remaining pair,\nadd it if it was missed)"];
+  canon  [label="Canonical basis inside each degenerate level,\nfixed phase for every state"];
+  done   [label="Eigenstates 0 .. N-1", fillcolor="#e8f5e9", color="#3b8a4a"];
+
+  nb0 -> skip   [label="yes"];
+  nb0 -> plan   [label="no"];
+  plan -> attempt;
+  attempt -> err;
+  err -> next   [label="yes"];
+  err -> conv   [label="no"];
+  conv -> berr  [label="yes"];
+  conv -> retry [label="no"];
+  retry -> bigger [label="yes"];
+  retry -> next   [label="no"];
+  bigger -> err;
+  berr -> keep  [label="yes (accepted)"];
+  berr -> next  [label="no"];
+  next -> left;
+  left -> attempt [label="no"];
+  left -> none    [label="yes"];
+  none -> abort [label="no"];
+  none -> warn  [label="yes"];
+  warn -> keep;
+  keep -> shell;
+  shell -> canon;
+  canon -> done;
+}
