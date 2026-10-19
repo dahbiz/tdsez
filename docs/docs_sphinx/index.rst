@@ -3,10 +3,10 @@ TDSE-Z: Time-Dependent Schrödinger Equation Solver
 
 |views| |clones|
 
-.. |views| image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fviews.json
+.. |views| image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fviews.json&cacheSeconds=3600
    :alt: Views
    :target: https://github.com/dahbiz/tdsez/tree/traffic/traffic
-.. |clones| image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fclones.json
+.. |clones| image:: https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdahbiz%2Ftdsez%2Ftraffic%2Ftraffic%2Fclones.json&cacheSeconds=3600
    :alt: Clones
    :target: https://github.com/dahbiz/tdsez/tree/traffic/traffic
 
