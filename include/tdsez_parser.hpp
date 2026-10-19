@@ -213,7 +213,7 @@ class TDSEZParser
         inline static PetscReal FieldTermCoupling(PetscInt k, PetscReal t) { return CarrierSign() * FieldTime(k, t); }
         /// @}
 
-        /// @name Nondipole coupling (Multipole = 2, 3: available very soon)
+        /// @name Nondipole coupling (Multipole = 2, 3: available on request)
         /// @{
         inline static PetscInt  Multipole = 1;                          ///< 1 dipole, 2 quadrupole, 3 octupole
         inline static PetscReal PropagationDir[3] = {0.0, 0.0, 0.0};    ///< n (normalised by the validation)

@@ -80,8 +80,8 @@ which the exporter averages over the quiver stored in the run.
    :language: text
    :caption: examples/gallery/kh_elliptical_2d.inp
 
-Nondipole coupling against an exact reference (Available very soon)
--------------------------------------------------------------------
+Nondipole coupling against an exact reference (Available on request)
+--------------------------------------------------------------------
 
 ``Multipole = 3`` (electric quadrupole and octupole, magnetic dipole and
 quadrupole, diamagnetic; :ref:`multipole-coupling`) on an anisotropic

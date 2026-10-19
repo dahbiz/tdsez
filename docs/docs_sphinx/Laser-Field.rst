@@ -22,7 +22,7 @@ where :math:`H_0` is the field-free Hamiltonian
 is :math:`-\mathbf E(t)`.
 
 ``Multipole = 2, 3`` adds the nondipole terms of a plane wave, up to the
-electric octupole (:ref:`multipole-coupling`; available very soon).
+electric octupole (:ref:`multipole-coupling`; available on request).
 ``Gauge = velocity`` uses :math:`(\mathbf p - q\mathbf A)^2/2m` instead
 (:ref:`velocity-gauge`).
 
@@ -243,8 +243,13 @@ every :math:`f_k` must vanish after ``FinalTime``.
 
 .. _multipole-coupling:
 
-Nondipole Coupling (Multipole) (Available very soon)
-----------------------------------------------------
+Nondipole Coupling (Multipole) (Available on request)
+-----------------------------------------------------
+
+.. note::
+
+   The nondipole coupling is not in the public release yet; it is available
+   from the author on request (zdahbi@outlook.es).
 
 ``Multipole = 2`` or ``3`` replaces the uniform field by a plane wave
 travelling along the unit vector :math:`\mathbf n` (``PropagationDirection``),
@@ -369,9 +374,9 @@ expanded in :math:`s = \mathbf n\cdot\mathbf r/c`, and, dropping the constant
      - terms
    * - dipole
      - :math:`-\frac{q}{m}\,\mathbf A\cdot\mathbf p`
-   * - :math:`1/c` (``Multipole = 2``, available very soon)
+   * - :math:`1/c` (``Multipole = 2``, available on request)
      - :math:`-\frac{q}{m}\,s\,\mathbf E\cdot\mathbf p + \frac{q^2}{m}\,s\,\mathbf A\cdot\mathbf E`
-   * - :math:`1/c^2` (``Multipole = 3``, available very soon)
+   * - :math:`1/c^2` (``Multipole = 3``, available on request)
      - :math:`+\frac{q}{2m}\,s^2\,\dot{\mathbf E}\cdot\mathbf p + \frac{q^2}{2m}\,s^2\,(E^2 - \mathbf A\cdot\dot{\mathbf E})`
 
 The fields are the same as those of the multipolar terms of

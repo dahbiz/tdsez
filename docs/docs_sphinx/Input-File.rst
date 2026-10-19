@@ -357,8 +357,8 @@ See :doc:`Laser-Field`.
      - ``length`` | ``velocity``
      - ``length``
      - ``velocity``: :math:`(\mathbf p - q\mathbf A)^2/2m` with :math:`\dot{\mathbf A} = -\mathbf E`
-       (and the :math:`1/c` expansion with ``Multipole``, available very soon). See :ref:`velocity-gauge`.
-   * - ``Multipole`` (Available very soon)
+       (and the :math:`1/c` expansion with ``Multipole``, available on request). See :ref:`velocity-gauge`.
+   * - ``Multipole`` (Available on request)
      - 1, 2, 3
      - 1
      - Order of the plane-wave coupling: 1 dipole, 2 adds the :math:`1/c`
@@ -366,16 +366,16 @@ See :doc:`Laser-Field`.
        terms (electric octupole, magnetic quadrupole, diamagnetic). See
        :ref:`multipole-coupling`. With ``Mode = kh``, 2 adds the figure-eight
        quiver along :math:`\mathbf n` (:ref:`kh-nondipole`).
-   * - ``PropagationDirection`` (Available very soon)
+   * - ``PropagationDirection`` (Available on request)
      - ``nx, ny, nz``
      - --
      - Propagation direction :math:`\mathbf n` of the wave, transverse to the
        polarised axes (normalised). Required for ``Multipole >= 2``.
-   * - ``MultipoleMagnetic`` (Available very soon)
+   * - ``MultipoleMagnetic`` (Available on request)
      - 0/1
      - 1
      - Include the magnetic and diamagnetic terms of ``Multipole``.
-   * - ``SpeedOfLight`` (Available very soon)
+   * - ``SpeedOfLight`` (Available on request)
      - real
      - 137.035999084
      - :math:`c` in atomic units, used by ``Multipole``.

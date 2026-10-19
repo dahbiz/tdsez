@@ -122,8 +122,8 @@ pulse) is required; the mass must be constant (the quiver of a free carrier);
 
 .. _kh-nondipole:
 
-Nondipole quiver (``Multipole = 2``) (Available very soon)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Nondipole quiver (``Multipole = 2``) (Available on request)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In a plane wave travelling along :math:`\mathbf n` (``PropagationDirection``)
 the magnetic force :math:`q\,\dot{\boldsymbol\alpha}\times\mathbf B`,

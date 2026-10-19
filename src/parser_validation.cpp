@@ -622,10 +622,11 @@ void TDSEZParser::ValidateOrThrow()
                 throw std::runtime_error("ValidateOrThrow: " + id + ": the profile uses " + std::string(1, "xyz"[d]) +
                     ", which does not exist in a " + std::to_string((int)Dimension) + "D problem");
     }
-    // Nondipole coupling (Multipole = 2, 3): available very soon
+    // Nondipole coupling (Multipole = 2, 3): available on request
     if (Multipole != 1)
         throw std::runtime_error("ValidateOrThrow: Multipole = " + std::to_string((int)Multipole) +
-                                 ": the nondipole coupling is available very soon; use Multipole = 1 (dipole)");
+                                 ": the nondipole coupling is not in the public release; it is available "
+                                 "on request (zdahbi@outlook.es). Use Multipole = 1 (dipole)");
     // Gauge = velocity: (p - qA)^2 / 2m through coupling terms (velocity_gauge.cpp)
     if (VelocityGauge) {
         if (KHFrame)

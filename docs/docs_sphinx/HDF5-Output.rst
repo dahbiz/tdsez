@@ -221,7 +221,7 @@ File ``static/<name>_eigen.h5``.
        ``Dimension``, ``SplineDegree``, ``Nelements``, ``LMinX`` ...
        ``LMaxZ``, ``Charge``, ``TargetEigenvalue``, ``NBoundStatesSave``,
        ``NBoundStates``, ``state_format``, ``Mode`` (``td`` or ``kh``) and
-       ``Multipole``; with ``Multipole >= 2`` (available very soon) also ``PropagationDirection_x/y/z``
+       ``Multipole``; with ``Multipole >= 2`` (available on request) also ``PropagationDirection_x/y/z``
        (normalised), ``SpeedOfLight`` and ``MultipoleMagnetic``; with
        ``Mode = kh`` ``KH_window_start``, ``KH_window_end``, ``KH_omega``,
        ``KH_alpha_x/y/z`` (largest :math:`|\alpha|`) and ``KH_samples``.
