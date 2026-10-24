@@ -26,7 +26,7 @@
 /// Thrown after -tdsez_estimate_memory has printed its report.
 struct TDSEZEstimateDone {};
 
-int main(int argc, char *argv[])
+static int RunTDSEZ(int argc, char *argv[])
 {
     // Filter custom CLI flags before SLEPc/PETSc processes argv.
     //
@@ -309,8 +309,14 @@ int main(int argc, char *argv[])
         return 0;
     }
     catch (const std::exception& e) {
-        TDSEZInfo().fatal("%s", e.what());
-        SlepcFinalize();
+        // often thrown on one rank only (std::bad_alloc): SlepcFinalize would wait for the others
+        // forever, so the message goes out from this rank and the whole job stops
+        PetscMPIInt rank = 0;
+        MPI_Comm_rank(PETSC_COMM_WORLD, &rank);
+        if (rank == 0) TDSEZInfo(PETSC_COMM_SELF).fatal("%s", e.what());
+        else fprintf(stderr, "[%d] TDSEZ FATAL: %s\n", (int)rank, e.what());
+        fflush(stdout); fflush(stderr);
+        MPI_Abort(PETSC_COMM_WORLD, 1);
         return 1;
     }
 
@@ -319,4 +325,20 @@ int main(int argc, char *argv[])
 
     SlepcFinalize();
     return 0;
+}
+
+/// An error returned on one rank (a PETSc error raised on PETSC_COMM_SELF, a rank out of memory)
+/// would leave the others waiting in their next collective until the walltime ends (srun keeps
+/// the remaining tasks unless --kill-on-bad-exit): stop them all.
+int main(int argc, char *argv[])
+{
+    const int rc = RunTDSEZ(argc, argv);
+    int init = 0, fin = 0;
+    MPI_Initialized(&init);
+    MPI_Finalized(&fin);
+    if (rc && init && !fin) {
+        fflush(stdout); fflush(stderr);
+        MPI_Abort(MPI_COMM_WORLD, rc);
+    }
+    return rc;
 }
