@@ -268,6 +268,12 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"SurffNk",           H{[](const std::string &v){ ParseAxisList(v, SurffNk); }}},
                 {"SurffMomenta",      S(SurffMomenta)},
                 {"OutputStrideSurff", I(OutputStrideSurff)},
+                // restart files
+                {"CheckpointStride",   I(CheckpointStride)},
+                {"CheckpointWallTime", R(CheckpointWallTime)},
+                {"Restart",            B(Restart)},
+                {"CheckpointFile",     S(CheckpointFile)},
+                {"CheckpointGuess",    B(CheckpointGuess)},
                 {"SurffQuadrature",   I(SurffQuadrature)},
                 {"SurffMassTolerance",      R(SurffMassTolerance)},
                 {"SurffPotentialTolerance", R(SurffPotentialTolerance)},

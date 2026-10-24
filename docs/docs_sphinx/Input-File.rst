@@ -609,6 +609,31 @@ See :doc:`Output-Control`, :doc:`Observables` and :doc:`HDF5-Output`.
      - int
      - 100
      - Wave-function snapshot interval (steps); 0 disables the snapshots.
+   * - ``CheckpointStride``
+     - int
+     - 0
+     - Write a restart file every N steps (0: none); see :ref:`restart-files`.
+   * - ``CheckpointWallTime``
+     - real
+     - 0
+     - Seconds since the start of the program after which the run writes a
+       restart file and stops cleanly (0: no limit). Set it below the job's
+       time limit.
+   * - ``Restart``
+     - 0/1
+     - 0
+     - Continue the run from the restart file: same input, any number of
+       ranks.
+   * - ``CheckpointFile``
+     - string
+     - ``td/<name>_checkpoint.h5``
+     - Path of the restart file.
+   * - ``CheckpointGuess``
+     - 0/1
+     - 0
+     - Also store the initial-guess history of the ``pade22``/``magnus4``
+       stage solves (about 12 more wavefunction-sized vectors); a restart on
+       the same ranks then equals the uninterrupted run to rounding.
    * - ``HDF5Compress``
      - bool
      - 0

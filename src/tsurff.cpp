@@ -1,6 +1,8 @@
 #include "tdsez_tsurff.hpp"
 #include "tdsez_info.hpp"
 #include "tdsez_parser.hpp"
+#include "tdsez_checkpoint.hpp"
+#include <petscviewerhdf5.h>
 #include <petscblaslapack.h>
 #include <hdf5.h>
 #include <algorithm>
@@ -299,6 +301,63 @@ PetscErrorCode TDSEZTSurff::Setup(IGA iga, Vec psi)
     TDSEZInfo(comm_).kv("t-SURFF surface", "|x_d| = %g, %" PetscInt_FMT " points (%" PetscInt_FMT
                           " per span), %" PetscInt_FMT " momenta (%s), stride %" PetscInt_FMT,
                           (double)R_, nGlobalPoints_, nq, nk_, grid_ ? "grid" : "list", TDSEZParser::OutputStrideSurff);
+    // restart files: the amplitudes summed over ranks (any rank count on
+    // restart) and the Volkov integrals at the checkpoint, which is always a
+    // sample time, so the next sample continues the trapezoid sum exactly
+    TDSEZCheckpointer &cp = TDSEZCheckpointer::Get();
+    cp.saveTSurff = [this](PetscViewer v) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        std::vector<PetscScalar> total(rank_ ? 0 : nk_);
+        PetscCallMPI(MPI_Reduce(amp_.data(), rank_ ? nullptr : total.data(), (int)nk_, MPIU_SCALAR, MPIU_SUM, 0, comm_));
+        Vec a;
+        PetscCall(VecCreateMPI(comm_, rank_ ? 0 : nk_, nk_, &a));
+        if (!rank_) {
+            PetscScalar *pa;
+            PetscCall(VecGetArray(a, &pa));
+            std::copy(total.begin(), total.end(), pa);
+            PetscCall(VecRestoreArray(a, &pa));
+        }
+        PetscCall(PetscObjectSetName((PetscObject)a, "tsurff_amplitude"));
+        PetscCall(VecView(a, v));
+        PetscCall(VecDestroy(&a));
+        const PetscReal vk[8] = {A_[0], A_[1], A_[2], B_[0], B_[1], B_[2], C_, volkovT_};
+        const char *names[8] = {"tsurff_A0", "tsurff_A1", "tsurff_A2", "tsurff_B0", "tsurff_B1", "tsurff_B2", "tsurff_C", "tsurff_volkov_t"};
+        for (int i = 0; i < 8; ++i) PetscCall(PetscViewerHDF5WriteAttribute(v, "/", names[i], PETSC_REAL, &vk[i]));
+        PetscCall(PetscViewerHDF5WriteAttribute(v, "/", "tsurff_samples", PETSC_INT, &nSamples_));
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
+    cp.loadTSurff = [this](PetscViewer v) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        PetscBool has;
+        PetscCall(PetscViewerHDF5HasAttribute(v, "/", "tsurff_samples", &has));
+        PetscCheck(has, comm_, PETSC_ERR_FILE_UNEXPECTED, "Restart with TSurff = 1: the checkpoint has no t-SURFF state");
+        Vec a;
+        PetscCall(VecCreateMPI(comm_, rank_ ? 0 : nk_, nk_, &a));
+        PetscCall(PetscObjectSetName((PetscObject)a, "tsurff_amplitude"));
+        PetscCall(VecLoad(a, v));
+        PetscInt n;
+        PetscCall(VecGetSize(a, &n));
+        PetscCheck(n == nk_, comm_, PETSC_ERR_FILE_UNEXPECTED, "Restart: t-SURFF momenta changed (%d, now %d)", (int)n, (int)nk_);
+        std::fill(amp_.begin(), amp_.end(), 0.0);
+        if (!rank_) {
+            const PetscScalar *pa;
+            PetscCall(VecGetArrayRead(a, &pa));
+            std::copy(pa, pa + nk_, amp_.begin());
+            PetscCall(VecRestoreArrayRead(a, &pa));
+        }
+        PetscCall(VecDestroy(&a));
+        PetscReal vk[8];
+        const char *names[8] = {"tsurff_A0", "tsurff_A1", "tsurff_A2", "tsurff_B0", "tsurff_B1", "tsurff_B2", "tsurff_C", "tsurff_volkov_t"};
+        for (int i = 0; i < 8; ++i) PetscCall(PetscViewerHDF5ReadAttribute(v, "/", names[i], PETSC_REAL, NULL, &vk[i]));
+        for (int d = 0; d < 3; ++d) { A_[d] = vk[d]; B_[d] = vk[3 + d]; }
+        C_ = vk[6];
+        volkovT_ = vk[7];
+        PetscCall(PetscViewerHDF5ReadAttribute(v, "/", "tsurff_samples", PETSC_INT, NULL, &nSamples_));
+        nSamples_ = PetscMax((PetscInt)0, nSamples_ - 1);   // the checkpoint's sample is taken again on restart
+        havePrev_ = false;                 // the first sample (at the checkpoint time) only sets prev_
+        finished_ = false;
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 

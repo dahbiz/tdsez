@@ -261,6 +261,8 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
         hsize_t dims[1] = {(hsize_t)kv.size()};
         hid_t space = H5Screate_simple(1, dims, NULL);
         if (space < 0) return -1;
+        if (H5Lexists(file, axis_names[d], H5P_DEFAULT) > 0)   // restarted run: same grid, replace
+            H5Ldelete(file, axis_names[d], H5P_DEFAULT);
         hid_t dset = H5Dcreate2(file, axis_names[d], H5T_NATIVE_DOUBLE, space,
                                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         if (dset < 0) { H5Sclose(space); return -1; }
@@ -433,7 +435,9 @@ static herr_t TDSEZWriteKnotsToH5(hid_t file, IGA iga, PetscInt dim, PetscInt pd
             // no-op (wavefunction dataset never written). Knots are embedded
             // instead in the destructor, AFTER WFSViewer is destroyed, when no
             // collective handle is live (see ~TDSEZManager).
-            if (rank == 0) {
+            // Restart: keep the snapshots of the first run (the restarted run
+            // overwrites the ones from the checkpoint step on).
+            if (rank == 0 && !(TDSEZParser::Restart && std::filesystem::exists(WFSFILE))) {
                 std::string absPath = std::filesystem::absolute(WFSFILE).string();
                 hid_t tf = H5Fcreate(absPath.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
                 if (tf >= 0) H5Fclose(tf);
@@ -1049,5 +1053,45 @@ PetscErrorCode TDSEZManager::FieldTermEnergy(PetscReal t, Vec psi, PetscScalar *
     if (m_G.empty()) PetscFunctionReturn(PETSC_SUCCESS);
     PetscCall(FieldTermProducts(psi));
     for (size_t k = 0; k < m_G.size(); ++k) *e += TDSEZParser::CouplingTerms_[k].coeff(t) * termExp_[k];
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode TDSEZManager::TruncateObservables(PetscReal t)
+{
+    PetscFunctionBeginUser;
+    if (rank == 0 && std::filesystem::exists(outputFilename)) {
+        const std::string absPath = std::filesystem::absolute(outputFilename).string();
+        hid_t file = H5Fopen(absPath.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+        PetscCheck(file >= 0, PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN, "Restart: could not open %s", absPath.c_str());
+        const PetscReal tol = 1e-9 * PetscMax((PetscReal)1, TDSEZParser::TimeStep);
+        PetscInt kept = -1;
+        for (const char *name : {"dipoles", "populations", "energies", "currents", "autocorrelation"}) {
+            hid_t dset = H5Dopen(file, name, H5P_DEFAULT);
+            if (dset < 0) continue;
+            hid_t space = H5Dget_space(dset);
+            hsize_t dims[2] = {0, 0};
+            H5Sget_simple_extent_dims(space, dims, NULL);
+            H5Sclose(space);
+            std::vector<double> tcol(dims[0]);
+            if (dims[0] > 0) {                         // column 0 is the time
+                hid_t fs = H5Dget_space(dset);
+                hsize_t start[2] = {0, 0}, count[2] = {dims[0], 1};
+                H5Sselect_hyperslab(fs, H5S_SELECT_SET, start, NULL, count, NULL);
+                hid_t ms = H5Screate_simple(2, count, NULL);
+                H5Dread(dset, H5T_NATIVE_DOUBLE, ms, fs, H5P_DEFAULT, tcol.data());
+                H5Sclose(ms);
+                H5Sclose(fs);
+            }
+            hsize_t n = 0;
+            while (n < dims[0] && tcol[n] < t - tol) ++n;          // rows strictly before t
+            hsize_t newDims[2] = {n, dims[1]};
+            PetscCheck(H5Dset_extent(dset, newDims) >= 0, PETSC_COMM_SELF, PETSC_ERR_LIB, "Restart: could not truncate %s", name);
+            H5Dclose(dset);
+            kept = (PetscInt)n;
+        }
+        H5Fclose(file);
+        if (kept >= 0) TDSEZInfo(PETSC_COMM_SELF).kv("Observables", "continued after %" PetscInt_FMT " rows (t < %.6g a.u.)", kept, (double)t);
+    }
+    PetscCallMPI(MPI_Barrier(PETSC_COMM_WORLD));
     PetscFunctionReturn(PETSC_SUCCESS);
 }

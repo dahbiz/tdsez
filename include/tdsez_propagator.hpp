@@ -79,6 +79,10 @@ private:
     /// @{
     /// Time loop for the rational propagators (Crank-Nicolson uses PETSc TS).
     PetscErrorCode EvolveRational();
+    /// Restart files: set up the checkpointer and its hooks for the guess history.
+    PetscErrorCode SetupRestartFiles(Vec psi);
+    /// Restart = 1: load the checkpoint into psi and continue the output files from it.
+    PetscErrorCode Restart(Vec psi, PetscInt *step, PetscReal *t);
     /// psi <- R22(-i h M^{-1} H_E) psi, H_E = H + sum_i c_i T_i, as two
     /// unitary Cayley-type stages with complex shifts.
     /// @p c holds the coefficients of terms_ (H_E = H + sum_i c_i terms_[i]).

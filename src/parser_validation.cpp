@@ -226,6 +226,14 @@ void TDSEZParser::ValidateOrThrow()
     if (Propagator != "cn" && Propagator != "pade22" && Propagator != "magnus4")
         throw std::runtime_error("ValidateOrThrow: Propagator must be 'cn', 'pade22' "
                                  "or 'magnus4' (got '" + Propagator + "')");
+    // restart files
+    if (CheckpointStride < 0 || CheckpointWallTime < 0)
+        throw std::runtime_error("ValidateOrThrow: CheckpointStride and CheckpointWallTime must be >= 0");
+    if ((CheckpointStride > 0 || CheckpointWallTime > 0 || Restart) && (!EnablePropagation || KHFrame))
+        throw std::runtime_error("ValidateOrThrow: checkpoints and Restart need a propagation (EnablePropagation = 1, Mode = td)");
+    if (TSurff && OutputStrideSurff > 0 && CheckpointStride > 0 && CheckpointStride % OutputStrideSurff != 0)
+        throw std::runtime_error("ValidateOrThrow: with TSurff = 1, CheckpointStride must be a multiple of OutputStrideSurff "
+                                 "(checkpoints are taken at t-SURFF samples)");
     if (Preconditioner != "asm" && Preconditioner != "mg" && Preconditioner != "gamg")
         throw std::runtime_error("ValidateOrThrow: Preconditioner must be 'asm', 'mg' or 'gamg' (got '" + Preconditioner + "')");
     if (!(TransverseElementFactor >= 1.0))

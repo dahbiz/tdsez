@@ -470,6 +470,81 @@ Without a CAP the norm is conserved to the solver tolerance by all three
 propagators. With ``EnableCAP = 1`` it decreases as the CAP absorbs outgoing
 flux; the decrease is the absorbed probability.
 
+.. _restart-files:
+
+Restart files
+-------------
+
+A long propagation can be split into several jobs. The run writes a restart
+file (checkpoint) during the propagation and a later run continues from it:
+
+.. list-table::
+   :widths: 28 72
+   :header-rows: 1
+
+   * - Key
+     - Effect
+   * - ``CheckpointStride = N``
+     - write a checkpoint every N steps
+   * - ``CheckpointWallTime = s``
+     - write a checkpoint and stop cleanly once ``s`` seconds have passed
+       since the program started
+   * - ``Restart = 1``
+     - continue from the checkpoint
+   * - ``CheckpointFile``
+     - path of the checkpoint (default ``td/<name>_checkpoint.h5``)
+   * - ``CheckpointGuess = 1``
+     - also store the guess history of the ``pade22``/``magnus4`` stage
+       solves
+
+**What a checkpoint holds.** The wavefunction in the natural ordering of the
+B-spline basis (independent of the number of ranks), the step and the time,
+the grid size, the time step and the propagator (checked on restart), and the
+state of the observers that integrate over time: the t-SURFF amplitudes,
+summed over the ranks, and the Volkov phase integrals. With
+``CheckpointGuess = 1`` also the initial-guess history of the stage solves.
+The file is written to ``<file>.tmp`` and renamed, so an interrupted write
+never destroys the previous checkpoint.
+
+**When it is written.** After the monitor of a step (the observables and the
+t-SURFF sample of that step are recorded first), at multiples of
+``CheckpointStride``; with ``TSurff = 1`` only at t-SURFF samples, so
+``CheckpointStride`` must be a multiple of ``OutputStrideSurff``. No
+checkpoint is written at the last step.
+
+**Restarting.** Run the same input with ``Restart = 1`` (any number of
+ranks). The set-up (grid, operators, eigenstates) is repeated; the
+wavefunction, step and time are read from the checkpoint; the observables
+file is cut back to the rows before the checkpoint time and continued, so it
+ends with the rows of an uninterrupted run; the wavefunction snapshots are
+continued in the same file. Both the Padé/Magnus and the Crank-Nicolson
+propagators restart. A run stopped by ``CheckpointWallTime`` skips the
+end-of-run t-SURFF spectrum; the restarted run writes it.
+
+**Accuracy.** A run that writes checkpoints is unchanged. A restarted run
+continues the uninterrupted one to the tolerance of the stage solves (the
+initial guesses of the first steps after the restart differ):
+``tests/test_restart.py``, 3D H\ :sub:`2`\ :sup:`+`, ``magnus4``,
+restart from step 30 of 40: observables equal to :math:`10^{-13}`, on the same
+ranks and on half as many; with ``CheckpointGuess = 1`` on the same ranks to
+:math:`4\times10^{-15}`; Crank-Nicolson with t-SURFF in 2D: the photoelectron
+amplitudes equal to :math:`2\times10^{-14}`.
+
+**Cost.** One wavefunction, :math:`16N` bytes for :math:`N` DOFs (about
+12 times more with ``CheckpointGuess = 1``). Laptop, 4 ranks, 55k and 64k
+DOFs: 0.8 and 1.0 MB, written in under 0.01 s, against 0.12 and 0.49 s per
+step. A restart repeats the set-up, which is dominated by the eigensolve.
+
+**A long run under a job time limit** (e.g. Slurm, 12 h): set
+``CheckpointWallTime`` a few minutes below the limit, and a modest
+``CheckpointStride`` against node failures::
+
+    CheckpointWallTime = 42600     # 11 h 50 min: checkpoint and stop
+    CheckpointStride   = 2000      # also every 2000 steps
+
+When the job stops, resubmit the same input with ``Restart = 1`` (keeping
+``CheckpointWallTime``) until the run reaches ``FinalTime``.
+
 Troubleshooting
 ---------------
 

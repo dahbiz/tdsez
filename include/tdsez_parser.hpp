@@ -378,6 +378,14 @@ class TDSEZParser
         /// force operator, needs smooth m and V), or "discrete"
         /// (a = d<v>/dt from the Galerkin equation of motion).
         inline static std::string           AccelerationMethod = "auto";
+        /// @name Restart files (src/checkpoint.cpp)
+        /// @{
+        inline static PetscInt              CheckpointStride   = 0;      ///< checkpoint every k steps (0: none)
+        inline static PetscReal             CheckpointWallTime = 0.0;    ///< s: checkpoint and stop when used (0: none)
+        inline static PetscBool             Restart            = PETSC_FALSE; ///< resume from the checkpoint file
+        inline static std::string           CheckpointFile     = "";     ///< default td/<name>_checkpoint.h5
+        inline static PetscBool             CheckpointGuess    = PETSC_FALSE; ///< also store the stage-solve guess history
+        /// @}
         /// Time propagator: "cn" (Crank-Nicolson, Pade(1,1), PETSc TS; default),
         /// "pade22" (exponential midpoint rule with a Pade(2,2) exponential) or
         /// "magnus4" (commutator-free 4th-order Magnus, Pade(2,2) exponentials).

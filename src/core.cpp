@@ -1627,12 +1627,7 @@ PetscErrorCode TDSEZCore::Output()
             if (rank == 0) {
                 PetscMkdir("td");
                 PetscMkdir("static");
-                std::filesystem::remove(TDSEZPaths::TD(inputFile, "observables.h5"));
-                std::filesystem::remove(TDSEZPaths::TD(inputFile, "wfs.h5"));
-                std::filesystem::remove(TDSEZPaths::TD(inputFile, "ts.h5"));
-                std::filesystem::remove(TDSEZPaths::Static(inputFile, "eigen.h5"));
             }
-            MPI_Barrier(PETSC_COMM_WORLD);
 
             // Parse the input file (replaces the former PULSE wrapper, which
             // existed only to call PrmReader + initParsers). Validation below
@@ -1651,6 +1646,18 @@ PetscErrorCode TDSEZCore::Output()
                 }
             }
             TDSEZParser::initParsers();
+
+            // Outputs of a previous run of this input. Restart = 1 continues its
+            // observables and snapshots (cut back to the checkpoint by the propagator).
+            if (rank == 0) {
+                if (!TDSEZParser::Restart) {
+                    std::filesystem::remove(TDSEZPaths::TD(inputFile, "observables.h5"));
+                    std::filesystem::remove(TDSEZPaths::TD(inputFile, "wfs.h5"));
+                }
+                std::filesystem::remove(TDSEZPaths::TD(inputFile, "ts.h5"));
+                std::filesystem::remove(TDSEZPaths::Static(inputFile, "eigen.h5"));
+            }
+            MPI_Barrier(PETSC_COMM_WORLD);
 
             // Validate the parsed input BEFORE touching PETSc/SLEPc. A bad input
             // (non-positive mass, inverted domain, etc.) would otherwise produce

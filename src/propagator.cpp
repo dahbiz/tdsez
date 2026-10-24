@@ -1,3 +1,5 @@
+#include "tdsez_checkpoint.hpp"
+#include <petscviewerhdf5.h>
 #include "tdsez_paths.hpp"
 #include "tdsez_internal.hpp"
 #include "tdsez_multigrid.hpp"
@@ -108,11 +110,16 @@ PetscErrorCode TDSEZPropagator::Evolve()
     ierr = MatSetOption(J_, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE); CHKERRQ(ierr);
 
     PetscInt dim = TDSEZParser::Dimension;
-    switch (dim) {
-        case 1: ierr = TSMonitorSet(ts_, TDSEZMonitorHDF5_1D, &manager_, PETSC_NULLPTR); CHKERRQ(ierr); break;
-        case 2: ierr = TSMonitorSet(ts_, TDSEZMonitorHDF5_2D, &manager_, PETSC_NULLPTR); CHKERRQ(ierr); break;
-        case 3: ierr = TSMonitorSet(ts_, TDSEZMonitorHDF5_3D, &manager_, PETSC_NULLPTR); CHKERRQ(ierr); break;
-        default: SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Unsupported dimension %d", (int)dim);
+    PetscCheck(dim >= 1 && dim <= 3, PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Unsupported dimension %d", (int)dim);
+    ierr = TSMonitorSet(ts_, TDSEZMonitorStep, &manager_, PETSC_NULLPTR); CHKERRQ(ierr);   // observers, restart files
+    // restart: the TS starts at the checkpoint's time and step number
+    PetscCall(SetupRestartFiles(tdse_.initialPsi));
+    if (TDSEZCheckpointer::Get().Restarting()) {
+        PetscInt step0;
+        PetscReal t0;
+        PetscCall(Restart(tdse_.initialPsi, &step0, &t0));
+        PetscCall(TSSetTime(ts_, t0));
+        PetscCall(TSSetStepNumber(ts_, step0));
     }
 
     // ---------------- SNES / KSP / PC ----------------
@@ -682,14 +689,9 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
     const size_t nt = terms_.size();
     Vec psi = tdse_.initialPsi;
 
-    PetscErrorCode (*monitor)(TS, PetscInt, PetscReal, Vec, void *) = NULL;
     const PetscInt dim = (PetscInt)TDSEZParser::Dimension;
-    switch (dim) {
-        case 1: monitor = TDSEZMonitorHDF5_1D; break;
-        case 2: monitor = TDSEZMonitorHDF5_2D; break;
-        case 3: monitor = TDSEZMonitorHDF5_3D; break;
-        default: SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Unsupported dimension");
-    }
+    PetscCheck(dim >= 1 && dim <= 3, PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "Unsupported dimension");
+    auto monitor = TDSEZMonitorStep;    // observers of the dimension, then the restart files
     auto field = [&](PetscReal t, std::vector<PetscScalar> &E) {
         // coefficients of the field terms in H: s E_a(t), then s f_k(t) (s = -Charge)
         manager_.TermCoefficients(t, E);
@@ -733,6 +735,8 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
     const PetscInt nSteps = (PetscInt)PetscCeilReal(endT / dt - 1e-9);
     PetscReal t = 0.0;
     PetscInt  step = 0;
+    PetscCall(SetupRestartFiles(psi));
+    if (TDSEZCheckpointer::Get().Restarting()) PetscCall(Restart(psi, &step, &t));
     PetscCall(monitor(NULL, step, t, psi, &manager_));
     std::vector<PetscScalar> Em, E1, E2, Ea(nt), Eb(nt);
     while (step < nSteps) {
@@ -756,6 +760,7 @@ PetscErrorCode TDSEZPropagator::EvolveRational()
         t = t1;
         ++step;
         PetscCall(monitor(NULL, step, t, psi, &manager_));
+        if (TDSEZCheckpointer::Get().Stopped()) break;   // CheckpointWallTime: written, continue with Restart = 1
     }
     TDSEZInfo().blank();
     TDSEZInfo().kv("Steps, stage solves", "%" PetscInt_FMT ", %" PetscInt_FMT " (%.2f GMRES its/solve)",
@@ -1537,8 +1542,63 @@ PetscErrorCode TDSEZOrthogonalizeDegenerates(TDSEZManager *TDSEZ)
     PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/// @brief Restart files (TDSEZCheckpointer): the run's time step and IGA, and,
+///        with CheckpointGuess = 1, the initial-guess history of the Pade/Magnus
+///        stage solves (guessDelta_, guessCount_) in the checkpoint, so that a
+///        restart on the same ranks repeats the uninterrupted run exactly.
+PetscErrorCode TDSEZPropagator::SetupRestartFiles(Vec psi)
+{
+    PetscFunctionBeginUser;
+    TDSEZCheckpointer &cp = TDSEZCheckpointer::Get();
+    PetscCall(cp.Setup(tdse_.iga, psi, tdse_.inputFile, TDSEZParser::TimeStep));
+    if (TDSEZParser::Propagator == "cn") PetscFunctionReturn(PETSC_SUCCESS);   // no guess history
+    cp.savePropagator = [this](PetscViewer v) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        TDSEZCheckpointer &c = TDSEZCheckpointer::Get();
+        for (int s = 0; s < 4; ++s) {
+            char name[32];
+            snprintf(name, sizeof(name), "guess_count_%d", s);
+            PetscCall(PetscViewerHDF5WriteAttribute(v, "/", name, PETSC_INT, &guessCount_[s]));
+            for (PetscInt j = 0; j < guessCount_[s]; ++j) {
+                snprintf(name, sizeof(name), "guess_%d_%d", s, (int)j);
+                PetscCall(c.WriteVec(v, name, guessDelta_[s][j]));
+            }
+        }
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
+    cp.loadPropagator = [this, psi](PetscViewer v) -> PetscErrorCode {
+        PetscFunctionBeginUser;
+        TDSEZCheckpointer &c = TDSEZCheckpointer::Get();
+        PetscBool has;
+        PetscCall(PetscViewerHDF5HasAttribute(v, "/", "guess_count_0", &has));
+        if (!has) PetscFunctionReturn(PETSC_SUCCESS);            // written without CheckpointGuess
+        for (int s = 0; s < 4; ++s) {
+            char name[32];
+            PetscInt n = 0;
+            snprintf(name, sizeof(name), "guess_count_%d", s);
+            PetscCall(PetscViewerHDF5ReadAttribute(v, "/", name, PETSC_INT, NULL, &n));
+            n = PetscMin(n, guessOrder_);
+            for (PetscInt j = 0; j < n; ++j) {
+                if (!guessDelta_[s][j]) PetscCall(VecDuplicate(psi, &guessDelta_[s][j]));
+                PetscBool found;
+                snprintf(name, sizeof(name), "guess_%d_%d", s, (int)j);
+                PetscCall(c.ReadVec(v, name, guessDelta_[s][j], &found));
+                PetscCheck(found, PETSC_COMM_WORLD, PETSC_ERR_FILE_UNEXPECTED, "checkpoint: %s missing", name);
+            }
+            guessCount_[s] = n;
+        }
+        PetscFunctionReturn(PETSC_SUCCESS);
+    };
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
 
-
-
-
-
+/// @brief Restart = 1: psi, step and time from the checkpoint; the observables
+///        file is cut back to the checkpoint time, so the restarted run appends
+///        exactly the rows the uninterrupted run would have written.
+PetscErrorCode TDSEZPropagator::Restart(Vec psi, PetscInt *step, PetscReal *t)
+{
+    PetscFunctionBeginUser;
+    PetscCall(TDSEZCheckpointer::Get().Read(psi, step, t));
+    PetscCall(manager_.TruncateObservables(*t));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}

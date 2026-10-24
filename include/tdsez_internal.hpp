@@ -437,6 +437,8 @@ PetscErrorCode TDSEZAssembleMatBatchTimed(IGA iga, PetscInt n, Mat **mats, TDSEZ
 PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx); ///< 1D monitor
 PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx); ///< 2D monitor
 PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx); ///< 3D monitor
+/// Monitor of every step: the observers of the dimension, then the restart files (checkpoint.cpp).
+PetscErrorCode TDSEZMonitorStep(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx);
 /// @}
 
 /// @brief Orthogonalize degenerate eigenstates using Lz (2D) or Gram-Schmidt.

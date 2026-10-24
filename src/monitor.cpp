@@ -1,5 +1,6 @@
 #include "tdsez_internal.hpp"
 #include "tdsez_tsurff.hpp"
+#include "tdsez_checkpoint.hpp"
 
 /**
  * @file monitor.cpp
@@ -1368,3 +1369,17 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
 
 
 /*  TDSEZCore propagator class  */
+
+/// The observers of the dimension, then a checkpoint when one is due (both
+/// propagators register this; see TDSEZCheckpointer).
+PetscErrorCode TDSEZMonitorStep(TS ts, PetscInt step, PetscReal t, Vec psi, void *ctx)
+{
+    PetscFunctionBeginUser;
+    switch ((int)TDSEZParser::Dimension) {
+    case 1: PetscCall(TDSEZMonitorHDF5_1D(ts, step, t, psi, ctx)); break;
+    case 2: PetscCall(TDSEZMonitorHDF5_2D(ts, step, t, psi, ctx)); break;
+    default: PetscCall(TDSEZMonitorHDF5_3D(ts, step, t, psi, ctx)); break;
+    }
+    PetscCall(TDSEZCheckpointer::Get().AfterStep(ts, step, t, psi));
+    PetscFunctionReturn(PETSC_SUCCESS);
+}

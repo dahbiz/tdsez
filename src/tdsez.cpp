@@ -2,6 +2,7 @@
 #include "tdsez_logo.hpp"
 #include "tdsez_internal.hpp"
 #include "tdsez_tsurff.hpp"
+#include "tdsez_checkpoint.hpp"
 #include <memory>
 
 /**
@@ -281,7 +282,10 @@ static int RunTDSEZ(int argc, char *argv[])
             // the stage matrices and their preconditioners are not needed any
             // more: free them before the t-SURFF end term factorises E M - H
             propagator.reset();
-            if (tsurff) {
+            if (TDSEZCheckpointer::Get().Stopped()) {      // CheckpointWallTime: the spectrum needs the end of the run
+                TDSEZInfo().kv("Stopped for a restart", "continue with Restart = 1 (%s)", TDSEZCheckpointer::Get().Path().c_str());
+                manager.tsurff = PETSC_NULLPTR;
+            } else if (tsurff) {
                 // Both propagators evolve TDSEZ.initialPsi in place up to FinalTime.
                 PetscLogDouble a, b;
                 PetscTime(&a);

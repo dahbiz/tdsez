@@ -544,6 +544,7 @@ set(TDSEZ_SOURCES
     src/diagnostics.cpp
     src/memory_estimate.cpp
     src/partition.cpp
+    src/checkpoint.cpp
     src/tdsez.cpp
 )
 

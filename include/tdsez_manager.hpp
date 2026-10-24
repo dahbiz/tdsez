@@ -100,6 +100,9 @@ class TDSEZManager
     ///        for this psi (state id) so the energy and the acceleration of one
     ///        monitor call share the products.
     PetscErrorCode FieldTermProducts(Vec psi);
+    /// Restart: drop the rows at or after time t from the observables file
+    /// (rank 0), so the restarted run appends from t on.
+    PetscErrorCode TruncateObservables(PetscReal t);
     /// Sum_k s f_k(t) <psi|G_k|psi> (the FieldTerm part of the interaction energy).
     PetscErrorCode FieldTermEnergy(PetscReal t, Vec psi, PetscScalar *e);
     std::vector<Vec>         termPsi_;          ///< G_k psi
