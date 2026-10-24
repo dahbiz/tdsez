@@ -89,6 +89,12 @@ Assembly and eigensolver flags
        :math:`2\cdot 10^6` rows; 3D with degree :math:`\ge 6` and at most
        :math:`3\cdot 10^4` rows), iterative otherwise. A failed attempt falls
        back to the next solver. See :doc:`Eigensolver`.
+   * - ``-tdsez_eps_extra <n>``
+     - int
+     - Converge :math:`n` eigenpairs beyond ``NBoundStates`` (default 0), so
+       the check for a degenerate shell cut by ``NBoundStates`` needs no second
+       solve. Worth it when the next level is close to the target; otherwise
+       converging it costs more than the check.
    * - ``-tdsez_degeneracy_tol <tol>``
      - real
      - Relative energy tolerance for treating eigenvalues as one degenerate

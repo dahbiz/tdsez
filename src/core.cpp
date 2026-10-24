@@ -892,7 +892,13 @@ PetscErrorCode TDSEZCore::Solve()
             PetscCall(EPSSetWhichEigenpairs(eps, EPS_TARGET_REAL));
             PetscCall(EPSSetTarget(eps, targetEV));
             PetscCall(EPSSetType(eps, EPSKRYLOVSCHUR));
-            PetscCall(EPSSetDimensions(eps, nev, ncv * scale, PETSC_DETERMINE));
+            // -tdsez_eps_extra n: n pairs beyond NBoundStates, so the degenerate-shell check
+            // (TDSEZCanonicalEigenpairs) needs no second solve. Default 0: the next level is often
+            // a degenerate shell farther from the target, and converging it fully costs more than
+            // the loose-tolerance check.
+            PetscInt extra = 0;
+            PetscCall(PetscOptionsGetInt(NULL, NULL, "-tdsez_eps_extra", &extra, NULL));
+            PetscCall(EPSSetDimensions(eps, nev + PetscMax(extra, (PetscInt)0), ncv * scale, PETSC_DETERMINE));
             PetscCall(EPSKrylovSchurSetRestart(eps, isHuge ? 0.3 : 0.5));
             PetscCall(EPSSetTolerances(eps, epsTol, epsMaxIt * scale));
 
