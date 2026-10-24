@@ -80,6 +80,19 @@ static int RunTDSEZ(int argc, char *argv[])
 
     SlepcInitialize(&argc, &argv, PETSC_NULLPTR, PETSC_NULLPTR);
 
+    // One BLAS thread per MPI rank unless the user chose otherwise: a threaded OpenBLAS or MKL
+    // otherwise starts one thread per core in every rank (40 ranks x 40 threads on a 40-core
+    // node), and with ranks bound to cores those threads share one core.
+#if PETSC_VERSION_GE(3, 20, 0)
+    {
+        PetscBool set = PETSC_FALSE;
+        PetscCallAbort(PETSC_COMM_WORLD, PetscOptionsHasName(NULL, NULL, "-blas_num_threads", &set));
+        if (!set && !getenv("OMP_NUM_THREADS") && !getenv("OPENBLAS_NUM_THREADS") && !getenv("MKL_NUM_THREADS") &&
+            !getenv("BLIS_NUM_THREADS"))
+            PetscCallAbort(PETSC_COMM_WORLD, PetscBLASSetNumThreads(1));
+    }
+#endif
+
     // --- Branding banner (TDSE-Z logo) ---------------------------------
     // Printed once on rank 0 at launch. The logo (src/TDSE-Z_logo.txt) is
     // embedded at build time (generated tdsez_logo.hpp), so it appears

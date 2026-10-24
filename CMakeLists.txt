@@ -448,8 +448,8 @@ endif()
 #  - MPI::MPI_CXX
 #  - OpenMP if available
 #  - LTO if supported
-#  - OPENBLAS_NUM_THREADS=1 (thread-safety: OpenBLAS must not spawn its own
-#    threads when OpenMP/MPI are already using the cores)
+#  (BLAS threads are set at run time, one per MPI rank, in tdsez.cpp: a
+#  compile definition cannot change them)
 #  - output to ${CMAKE_BINARY_DIR}
 #
 # Embed the TDSE-Z logo (src/TDSE-Z_logo.txt) in the binary so the launch
@@ -489,9 +489,6 @@ function(tdsez_add_target target)
     if(OpenMP_CXX_FOUND)
         target_link_libraries(${target} PRIVATE OpenMP::OpenMP_CXX)
     endif()
-
-    # OpenBLAS thread-safety: keep it single-threaded when OpenMP/MPI is active
-    target_compile_definitions(${target} PRIVATE OPENBLAS_NUM_THREADS=1)
 
     # LTO: enable per-target (check_ipo_supported is global)
     if(ENABLE_LTO)
