@@ -31,6 +31,31 @@
  * @author TDSEZ Project
  */
 
+/// @brief A number that is the whole value (spaces aside). std::stod/std::stoi read
+///        a leading number and drop the rest, so "NSplines = 100, 16, 16" became 100 and
+///        "NBoundStates = 4.5" became 4 without a word; these throw instead (the caller
+///        reports the key and the value).
+static double StrictReal(const std::string &v)
+{
+    const size_t a = v.find_first_not_of(" \t\r"), b = v.find_last_not_of(" \t\r");
+    if (a == std::string::npos) throw std::invalid_argument("empty value, a number is expected");
+    const std::string t = v.substr(a, b - a + 1);
+    size_t pos = 0;
+    const double x = std::stod(t, &pos);
+    if (pos != t.size())
+        throw std::invalid_argument("'" + t + "' is not a single number" +
+                                    (t.find(',') != std::string::npos ? " (this key takes one value, not a list)" : ""));
+    return x;
+}
+
+/// @brief An integer that is the whole value; an integral real such as "4.0" is accepted.
+static long StrictInt(const std::string &v)
+{
+    const double x = StrictReal(v);
+    if (x != std::floor(x) || std::abs(x) > 2e9) throw std::invalid_argument("'" + v + "' is not an integer");
+    return (long)x;
+}
+
 /// @brief Parse a comma-separated per-axis list "a,b,c" into arr[0..2]. A
 ///        single token replicates to all axes (as for the hydrogenic keys).
 template <typename T>
@@ -42,8 +67,8 @@ static void ParseAxisList(const std::string &val, T (&arr)[3])
     while (p < s.size() && n < 3) {
         const size_t c = s.find(',', p);
         const std::string tok = (c == std::string::npos) ? s.substr(p) : s.substr(p, c - p);
-        if constexpr (std::is_integral_v<T>) arr[n++] = (T)std::stol(tok);
-        else                                 arr[n++] = (T)std::stod(tok);
+        if constexpr (std::is_integral_v<T>) arr[n++] = (T)StrictInt(tok);
+        else                                 arr[n++] = (T)StrictReal(tok);
         if (c == std::string::npos) break;
         p = c + 1;
     }
@@ -69,7 +94,7 @@ axisListHandler(PetscReal &x, PetscReal &y, PetscReal &z)
         while (p < s.size()) {
             size_t c = s.find(',', p);
             std::string tok = (c == std::string::npos) ? s.substr(p) : s.substr(p, c - p);
-            v.push_back(std::stod(tok));
+            v.push_back(StrictReal(tok));
             if (c == std::string::npos) break;
             p = c + 1;
         }
@@ -134,13 +159,13 @@ void TDSEZParser::PrmReader(const std::string &prm)
         static const auto &table = []() -> const std::unordered_map<std::string, H>&
         {
             // small helpers to keep entries terse (generic: deduce target type)
-            static const auto I  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = std::stoi(v); }}; };
-            static const auto R  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = std::stod(v); }}; };
+            static const auto I  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = StrictInt(v); }}; };
+            static const auto R  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = StrictReal(v); }}; };
             static const auto B  = [](auto &dst){ return H{[&dst](const std::string &v){
                 std::string l = v; for (auto &c : l) c = (char)std::tolower((unsigned char)c);
                 if      (l == "true" || l == "yes" || l == "on")  dst = PETSC_TRUE;
                 else if (l == "false" || l == "no" || l == "off") dst = PETSC_FALSE;
-                else dst = static_cast<PetscBool>(std::stoi(v) != 0); }}; };
+                else dst = static_cast<PetscBool>(StrictInt(v) != 0); }}; };
             static const auto S  = [](auto &dst){ return H{[&dst](const std::string &v){ dst = v; }}; };
 
             static const std::unordered_map<std::string, H> m =
@@ -161,7 +186,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
                         }
                         auto parsePair = [](const std::string &p, PetscReal &lo, PetscReal &hi){
                             size_t c = p.find(',');
-                            if (c != std::string::npos) { lo = std::stod(p.substr(0, c)); hi = std::stod(p.substr(c + 1)); } };
+                            if (c != std::string::npos) { lo = StrictReal(p.substr(0, c)); hi = StrictReal(p.substr(c + 1)); } };
                         if (pairs.size() >= 1) parsePair(pairs[0], LMinX, LMaxX);
                         if (pairs.size() >= 2) parsePair(pairs[1], LMinY, LMaxY); else { LMinY = LMinX; LMaxY = LMaxX; }
                         if (pairs.size() >= 3) parsePair(pairs[2], LMinZ, LMaxZ); else { LMinZ = LMinX; LMaxZ = LMaxX; }
@@ -174,7 +199,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
                         while (p <= s.size()) {
                             const size_t c = s.find(',', p);
                             const std::string tok = s.substr(p, c == std::string::npos ? std::string::npos : c - p);
-                            if (!tok.empty()) v.push_back(std::stod(tok));
+                            if (!tok.empty()) v.push_back(StrictReal(tok));
                             if (c == std::string::npos) break;
                             p = c + 1;
                         }
@@ -293,7 +318,7 @@ void TDSEZParser::PrmReader(const std::string &prm)
                     std::string s = v; s.erase(std::remove_if(s.begin(), s.end(), ::isspace), s.end());
                     const size_t c = s.find(',');
                     if (c == std::string::npos) throw std::runtime_error("KHWindow must be 't0, t1'");
-                    KHWindow[0] = std::stod(s.substr(0, c)); KHWindow[1] = std::stod(s.substr(c + 1)); }}},
+                    KHWindow[0] = StrictReal(s.substr(0, c)); KHWindow[1] = StrictReal(s.substr(c + 1)); }}},
                 {"KHSamples",          I(KHSamples)},
                 {"StructuredField", H{AddFieldTerm}},   // intuitive alias
                 // nondipole coupling of a plane wave E(t - n.r/c)

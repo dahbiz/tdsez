@@ -465,6 +465,23 @@ def test_guard_unknown_key():
     _expect_fatal(text, "unknown_key")
 
 
+def test_guard_number_list_for_one_value():
+    """A list given to a one-value key is an error, not its first entry
+    (NSplines = 80, 16, 16 used to run with 80 on every axis)."""
+    text = BOX1D.replace("NSplines          = 80", "NSplines          = 80, 16, 16")
+    _expect_fatal(text, "number_list")
+
+
+def test_guard_fraction_for_integer():
+    """NBoundStates = 2.5 is an error, not 2 (an integral 3.0 is accepted)."""
+    _expect_fatal(BOX1D.replace("NBoundStates      = 3", "NBoundStates      = 2.5"), "fraction_for_integer")
+
+
+def test_guard_trailing_text_after_number():
+    """TimeStep = 0.01 a.u. is an error, not 0.01 with the rest ignored."""
+    _expect_fatal(BOX1D + "TimeStep = 0.01 a.u.\n", "trailing_text")
+
+
 def test_guard_inverted_domain():
     """Verify LMax <= LMin is rejected."""
     text = BOX1D.replace("Domain            = -20.0, 20.0", "Domain            = 20.0, -20.0")
