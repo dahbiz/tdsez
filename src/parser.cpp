@@ -352,6 +352,8 @@ void TDSEZParser::PrmReader(const std::string &prm)
                 {"BoundaryType",       S(BoundaryType)},
                 {"Boundary",          S(BoundaryType)},   // intuitive alias
                 {"OutputStrideWFS",    I(OutputStrideWFS)},
+                {"OutputStrideObs",    I(OutputStrideObs)},
+                {"ObservableStride",   I(OutputStrideObs)},   // alias
                 {"OutputStrideTS",     I(OutputStrideTS)},
                 {"HDF5Compress",       B(HDF5Compress)},
                 {"HDF5CompressLevel",  I(HDF5CompressLevel)},

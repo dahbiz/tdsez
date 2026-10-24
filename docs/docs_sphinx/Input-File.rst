@@ -609,6 +609,22 @@ See :doc:`Output-Control`, :doc:`Observables` and :doc:`HDF5-Output`.
      - int
      - 100
      - Wave-function snapshot interval (steps); 0 disables the snapshots.
+   * - ``OutputStrideObs``
+     - int
+     - 1
+     - Observables (dipole, acceleration, energies, populations, currents,
+       autocorrelation) computed and recorded every N steps (rows at multiples
+       of N, uniform in time). The propagation is unchanged; t-SURFF and the
+       snapshots keep their own strides. The observables cost ~20% of a 3D
+       step; for HHG a sampling interval :math:`N\Delta t\le\pi/\omega_{\max}`
+       suffices (e.g. N = 10 at :math:`\Delta t=0.03` up to
+       :math:`\omega_{\max}=10` a.u.). At start-up the run prints the
+       resolved frequency :math:`\pi/(N\Delta t)` and warns when it is below
+       twice the HHG cutoff :math:`I_p+3.17U_p` (above-cutoff emission can
+       alias into the plateau), below the cutoff itself (the harmonic spectrum
+       is wrong), or, without a pulse estimate or with the autocorrelation,
+       below (twice) the binding energy; the warning gives the largest safe
+       N. Alias ``ObservableStride``.
    * - ``CheckpointStride``
      - int
      - 0

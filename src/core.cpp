@@ -395,6 +395,79 @@ static void TDSEZCheckFieldResolution(IGA iga)
     }
 }
 
+/// Sampling of the recorded observables (OutputStrideObs = N): the series
+/// resolves frequencies up to omega_N = pi / (N dt). Warns when that is below
+/// what the run's physics emits: twice the HHG cutoff Ip + 3.17 Up (the
+/// above-cutoff tail must not alias into the plateau; checked on 1D H2+, where
+/// N = 10 at dt = 0.03 changes the spectrum by 1e-3 decades), the cutoff itself
+/// (the harmonic spectrum is then wrong), and, with the autocorrelation, the
+/// binding energy (its Fourier transform gives the state energies).
+static void TDSEZCheckObservableStride()
+{
+    const PetscInt N = TDSEZParser::OutputStrideObs;
+    if (N <= 1 || !TDSEZParser::EnablePropagation) return;
+    const PetscReal dt = TDSEZParser::TimeStep, dtObs = N * dt, wNyq = PETSC_PI / dtObs;
+    const TDSEZFieldScales &f = TDSEZEstimateFieldScales();
+    TDSEZInfo info;
+    info.section("OBSERVABLE SAMPLING");
+    info.kv("OutputStrideObs", "%d steps: every %.4g a.u., frequencies up to %.4g a.u.", (int)N, (double)dtObs, (double)wNyq);
+    auto maxStride = [&](PetscReal w) { return (int)PetscMax((PetscReal)1, PetscFloorReal(PETSC_PI / (w * dt))); };
+    bool ok = true;
+    if (f.valid) {
+        const PetscReal cut = f.Ip + 3.17 * f.Up;
+        info.kv("HHG cutoff", "%.4g a.u. (harmonic %.1f); resolved up to harmonic %.0f", (double)cut,
+                (double)(cut / f.omega), (double)(wNyq / f.omega));
+        if (wNyq < cut) {
+            ok = false;
+            info.warn("OutputStrideObs = %d samples the observables every %.4g a.u.: frequencies above %.4g a.u. "
+                "(harmonic %.1f) are aliased, below the HHG cutoff %.4g a.u. (harmonic %.1f). The harmonic spectrum, "
+                "the time-frequency maps and the acceleration/dipole comparison are wrong. Use OutputStrideObs <= %d "
+                "(<= %d for a margin of 2).", (int)N, (double)dtObs, (double)wNyq, (double)(wNyq / f.omega),
+                (double)cut, (double)(cut / f.omega), maxStride(cut), maxStride(2 * cut));
+        } else if (wNyq < 2 * cut) {
+            ok = false;
+            info.warn("OutputStrideObs = %d resolves frequencies up to %.4g a.u., less than twice the HHG cutoff "
+                "%.4g a.u.: emission above the cutoff can alias into the plateau. Use OutputStrideObs <= %d.",
+                (int)N, (double)wNyq, (double)cut, maxStride(2 * cut));
+        }
+    }
+    if (TDSEZParser::out_autocorr) {
+        const PetscReal E = PetscAbsReal(PetscRealPart(TDSEZParser::TargetEigenvalue));
+        if (E > 0 && wNyq < 2 * E) {
+            ok = false;
+            info.warn("OutputStrideObs = %d: the autocorrelation resolves energies up to %.4g a.u., less than twice "
+                "the binding energy %.4g a.u. of the target state; its spectrum is aliased. Use OutputStrideObs <= %d.",
+                (int)N, (double)wNyq, (double)E, maxStride(2 * E));
+        }
+    }
+    if (!f.valid) {
+        // no pulse estimate (e.g. fewer than three carrier zero crossings): the
+        // bound-state transitions reach the binding energy of the target state
+        const PetscReal Ip = PetscAbsReal(PetscRealPart(TDSEZParser::TargetEigenvalue));
+        if (Ip > 0) {
+            info.kv("Energy scale", "binding energy %.4g a.u. (no pulse estimate)", (double)Ip);
+            if (wNyq < Ip) {
+                ok = false;
+                info.warn("OutputStrideObs = %d resolves frequencies only up to %.4g a.u., below the binding energy "
+                    "%.4g a.u.: bound-state transitions and the response at the laser frequency are aliased. Use "
+                    "OutputStrideObs <= %d (<= %d for a margin of 2).", (int)N, (double)wNyq, (double)Ip,
+                    maxStride(Ip), maxStride(2 * Ip));
+            } else if (wNyq < 2 * Ip && !TDSEZParser::out_autocorr) {
+                ok = false;
+                info.warn("OutputStrideObs = %d resolves frequencies up to %.4g a.u., less than twice the binding "
+                    "energy %.4g a.u.: harmonics and transitions above it can alias. Use OutputStrideObs <= %d.",
+                    (int)N, (double)wNyq, (double)Ip, maxStride(2 * Ip));
+            }
+        } else {
+            info.kv("Check", "no energy scale to compare with: choose N dt <= pi / omega_max of the analysis");
+        }
+    }
+    if (ok)
+        info.kv("Check", "resolved (frequencies up to %.1f x the highest physical scale)",
+                (double)(wNyq / PetscMax(f.valid ? f.Ip + 3.17 * f.Up : (PetscReal)0,
+                                         PetscMax(PetscAbsReal(PetscRealPart(TDSEZParser::TargetEigenvalue)), (PetscReal)1e-300))));
+}
+
 /// Backward error of an eigenpair of the pencil (H, M):
 /// ||H v - E M v|| / ((||H|| + |E| ||M||) ||v||), infinity norms of H and M.
 /// Unlike ||r|| / (|E| ||v||) it stays meaningful for E -> 0.
@@ -1998,6 +2071,7 @@ PetscErrorCode TDSEZCore::Output()
                 info.kv("Degrees of freedom", "%" PetscInt_FMT, ndof);
             }
             TDSEZCheckFieldResolution(iga);
+            TDSEZCheckObservableStride();
         }
 
         TDSEZCore::~TDSEZCore() 

@@ -52,6 +52,33 @@ static TDSEZMonitorNeeds TDSEZMonitorNeedsAt(const TDSEZManager *TDSEZ, PetscInt
     return n;
 }
 
+/// Steps between recorded observables (OutputStrideObs). On the other steps
+/// only t-SURFF, the wavefunction and time-stepper snapshots run, so the
+/// recorded series stays uniformly sampled (rows at multiples of the stride).
+static bool TDSEZRecordObservables(PetscInt step)
+{
+    return TDSEZParser::OutputStrideObs <= 1 || step % TDSEZParser::OutputStrideObs == 0;
+}
+
+/// Wavefunction and time-stepper snapshots (their own strides).
+static PetscErrorCode TDSEZMonitorSnapshots(TS ts, PetscInt step, Vec psi, TDSEZManager *TDSEZ)
+{
+    PetscFunctionBeginUser;
+    const PetscInt snapshotStride = TDSEZParser::OutputStrideWFS;
+    if (TDSEZParser::out_wfs && snapshotStride > 0 && step % snapshotStride == 0) {
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->WFSViewer, step / snapshotStride));
+        PetscObjectSetName((PetscObject)psi, "wavefunction");
+        PetscCall(VecView(psi, TDSEZ->WFSViewer));
+    }
+    const PetscInt tsStride = TDSEZParser::OutputStrideTS;
+    if (ts && tsStride > 0 && step % tsStride == 0) {
+        PetscCall(PetscViewerHDF5SetTimestep(TDSEZ->TIMEViewer, step / tsStride));
+        PetscObjectSetName((PetscObject)ts, "timestepper");
+        PetscCall(TSView(ts, TDSEZ->TIMEViewer));
+    }
+    PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /// One progress row (the column header before the first one).
 static void TDSEZProgressRow(PetscInt step, PetscReal t, PetscScalar normSq, PetscScalar energy)
 {
@@ -493,6 +520,11 @@ PetscErrorCode TDSEZMonitorHDF5_1D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
     if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
+    if (!TDSEZRecordObservables(step)) {                 // OutputStrideObs: skip the observables
+        PetscCall(TDSEZMonitorSnapshots(ts, step, psi, TDSEZ));
+        if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
 
 
     // ------------------------
@@ -746,6 +778,11 @@ PetscErrorCode TDSEZMonitorHDF5_2D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     profile.steps = PetscMax(profile.steps, step);
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
     if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
+    if (!TDSEZRecordObservables(step)) {                 // OutputStrideObs: skip the observables
+        PetscCall(TDSEZMonitorSnapshots(ts, step, psi, TDSEZ));
+        if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
 
 
     /* ----------------------------------------------------------------
@@ -1063,6 +1100,11 @@ PetscErrorCode TDSEZMonitorHDF5_3D(TS ts, PetscInt step, PetscReal t, Vec psi, v
     (void)ts; // unused callback parameter
     auto *TDSEZ = static_cast<TDSEZManager*>(ctx);
     if (TDSEZ->tsurff) PetscCall(TDSEZ->tsurff->Sample(step, t, psi));
+    if (!TDSEZRecordObservables(step)) {                 // OutputStrideObs: skip the observables
+        PetscCall(TDSEZMonitorSnapshots(ts, step, psi, TDSEZ));
+        if (profile.stageObservables >= 0) PetscCall(PetscLogStagePop());
+        PetscFunctionReturn(PETSC_SUCCESS);
+    }
 
 
     // ------------------------

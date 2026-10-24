@@ -348,6 +348,7 @@ class TDSEZParser
         inline static PetscReal             CAPWidth          = 0.0;
         /// Output stride (in steps) for wavefunction snapshots.
         inline static PetscInt              OutputStrideWFS       = 100;
+        inline static PetscInt              OutputStrideObs       = 1;    ///< observables every k steps (1: every step)
         /// Output stride (in steps) for time-series diagnostics.
         inline static PetscInt              OutputStrideTS       = 0;
         /// Whether to apply HDF5 chunk compression (default false).

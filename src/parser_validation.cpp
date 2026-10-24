@@ -226,6 +226,8 @@ void TDSEZParser::ValidateOrThrow()
     if (Propagator != "cn" && Propagator != "pade22" && Propagator != "magnus4")
         throw std::runtime_error("ValidateOrThrow: Propagator must be 'cn', 'pade22' "
                                  "or 'magnus4' (got '" + Propagator + "')");
+    if (OutputStrideObs < 1)
+        throw std::runtime_error("ValidateOrThrow: OutputStrideObs must be >= 1 (got " + std::to_string(OutputStrideObs) + ")");
     // restart files
     if (CheckpointStride < 0 || CheckpointWallTime < 0)
         throw std::runtime_error("ValidateOrThrow: CheckpointStride and CheckpointWallTime must be >= 0");
