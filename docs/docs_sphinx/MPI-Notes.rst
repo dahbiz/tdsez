@@ -19,6 +19,26 @@ process competes for it, which slows the run down severely. Disable binding:
 The test suite launches ``tdsez.x`` in the same way (``_run`` in
 ``tests/test_tdsez.py``).
 
+BLAS threads
+------------
+
+A threaded BLAS (OpenBLAS, MKL, BLIS) starts one thread per core in every
+process, so 40 ranks on a 40-core node would run 1600 threads, and with ranks
+bound to cores those threads share one core each. TDSE-Z therefore sets one
+BLAS thread per rank at start-up (PETSc :math:`\ge` 3.20) unless the user has
+chosen a number: ``OMP_NUM_THREADS``, ``OPENBLAS_NUM_THREADS``,
+``MKL_NUM_THREADS``, ``BLIS_NUM_THREADS`` or the PETSc option
+``-blas_num_threads``. Set one of these to use several threads per rank, for
+example with fewer ranks than cores.
+
+Errors on one rank
+------------------
+
+An error raised on one rank only (out of memory on that rank, a PETSc error on
+``PETSC_COMM_SELF``) stops the whole job with ``MPI_Abort``; the message is
+printed by that rank (``[r] TDSEZ FATAL: ...``). The other ranks would
+otherwise wait in their next collective operation until the job's time limit.
+
 Load balance
 ------------
 

@@ -95,8 +95,8 @@ Output Strides
 --------------
 
 The time series of :doc:`Observables`, including the autocorrelation, are
-recorded at every step in ``td/<name>_observables.h5``, independently
-of the strides below.
+recorded in ``td/<name>_observables.h5`` every ``OutputStrideObs`` steps
+(default 1: every step), independently of the other strides below.
 
 .. list-table::
    :widths: 22 8 10 60
@@ -106,6 +106,17 @@ of the strides below.
      - Type
      - Default
      - Description
+   * - OutputStrideObs
+     - int
+     - 1
+     - Compute and record the observables every N steps (rows at multiples of
+       N); the propagation is unchanged. The run warns when the sampling
+       frequency :math:`\pi/(N\Delta t)` is too low for the harmonic spectrum
+       and prints the largest safe N (:doc:`Input-File`).
+   * - CheckpointStride
+     - int
+     - 0
+     - Write a restart file every N steps (:ref:`restart-files`).
    * - OutputStrideWFS
      - int
      - 100

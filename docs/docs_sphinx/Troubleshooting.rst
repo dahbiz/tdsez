@@ -44,6 +44,12 @@ value, for example:
   message gives the largest admissible radius on that axis); see
   :doc:`TSurff`.
 
+A number must be the whole value: ``NSplines = 100, 16, 16`` for a key with one
+value, ``NBoundStates = 4.5`` or ``TimeStep = 0.05a`` stop the run with
+``'...' is not a single number`` or ``'...' is not an integer`` (an integral
+real such as ``4.0`` is accepted where an integer is expected). Earlier versions
+kept the leading number and dropped the rest without a warning.
+
 The ``tests/inputs/bad_*.inp`` decks reproduce several of these errors
 (:doc:`Examples`).
 
@@ -160,8 +166,20 @@ Slow Runs under MPI
 -------------------
 
 OpenMPI binds each rank to one core by default, so the threads of the BLAS
-library compete for that core; the slowdown is typically 8-10×. Always launch
-with ``mpiexec -n N --bind-to none`` (:doc:`MPI-Notes`).
+library compete for that core; the slowdown is typically 8-10×. TDSE-Z uses
+one BLAS thread per rank unless ``OMP_NUM_THREADS`` (or the variable of the
+BLAS library) is set; if you set it, keep ranks × threads within the cores of
+the node. Launch with ``mpiexec -n N --bind-to none`` (:doc:`MPI-Notes`).
+
+A Job Stops on One Rank, or Hangs
+---------------------------------
+
+An error on a single rank (for example out of memory, ``std::bad_alloc``)
+ends the whole job with ``MPI_Abort`` and ``[r] TDSEZ FATAL: ...`` from that
+rank, instead of leaving the other ranks waiting until the time limit. Look for
+the first ``FATAL`` or ``PETSC ERROR`` line in the error output of all ranks.
+For a long run under a time limit use restart files
+(:ref:`restart-files`).
 
 Performance in 3D
 -----------------

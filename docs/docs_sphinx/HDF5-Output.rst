@@ -9,7 +9,8 @@ results, ``td/`` the time-dependent ones. Files of earlier versions
 are still read by zkit and the post-processing tools. At start-up TDSE-Z removes ``td/<name>_observables.h5``,
 ``td/<name>_wfs.h5``, ``td/<name>_ts.h5`` and
 ``static/<name>_eigen.h5`` left by a previous run with the same input
-file. :numref:`fig-hdf5-output-dataflow` shows which phase writes each file
+file; with ``Restart = 1`` the observables and snapshots are kept and
+continued (:ref:`restart-files`). :numref:`fig-hdf5-output-dataflow` shows which phase writes each file
 and which tools read it.
 
 .. figure:: figures/HDF5-Output-dataflow.svg
@@ -41,6 +42,9 @@ and which tools read it.
      - with ``OutputStrideTS > 0``
    * - ``td/<name>_surff.h5``
      - at the end of the propagation, with ``TSurff = 1``
+   * - ``td/<name>_checkpoint.h5``
+     - with ``CheckpointStride > 0`` or ``CheckpointWallTime > 0``; read with
+       ``Restart = 1`` (:ref:`restart-files`)
 
 Time Evolution Data
 -------------------

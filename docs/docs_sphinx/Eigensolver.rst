@@ -188,7 +188,10 @@ with :math:`\varepsilon_{\mathrm{deg}}` set by ``-tdsez_degeneracy_tol``
    farther from the target than the last kept state, or has the energy of a
    kept level, it was missed: it is recomputed at the full tolerance, added,
    and the check repeats (``Degenerate-shell check: added ...``). Each check
-   costs about one extra eigensolve.
+   costs about one extra eigensolve. ``-tdsez_eps_extra n`` converges
+   :math:`n` pairs beyond ``NBoundStates`` in the main solve, so the check
+   finds the next level already converged; it pays off when that level lies
+   close to the target (:doc:`CLI-Flags`).
 3. **Canonical basis.** Inside each degenerate level the states are
    :math:`M`-orthonormalised and rotated to diagonalise a fixed position
    weight (a generic quadratic polynomial of the coordinates at the Greville

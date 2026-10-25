@@ -84,6 +84,7 @@ td/                         — time-dependent output
   <name>_wfs.h5             — wavefunction snapshots
   <name>_surff.h5           — t-SURFF spectrum (TSurff = 1)
   <name>_ts.h5              — time-stepper snapshots (OutputStrideTS > 0)
+  <name>_checkpoint.h5      — restart file (CheckpointStride or CheckpointWallTime)
 static/                     — stationary output
   <name>_eigen.h5           — energy spectrum + eigenstates
   <name>_tdm.txt            — transition dipoles and oscillator strengths
@@ -158,6 +159,11 @@ Keys that accept multi-axis values follow a standard convention:
 | `EnablePropagation` | bool | 1 | Whether to run time propagation. Set to 0 for TISE-only (ground-state / eigenvalue computation) |
 | `TimeStep` / `TimeStepSize` | real | 0.01 | Time step dt in atomic units |
 | `FinalTime` / `TotalTime` | real | 100.0 | Total propagation time in atomic units |
+| `CheckpointStride` | int | 0 | Write a restart file every N steps. 0 = none |
+| `CheckpointWallTime` | real | 0 | Seconds after the program start at which the run writes a restart file and stops cleanly (set below the job time limit). 0 = no limit |
+| `Restart` | bool | 0 | Continue from the restart file (same input, any number of ranks) |
+| `CheckpointFile` | string | `td/<name>_checkpoint.h5` | Path of the restart file |
+| `CheckpointGuess` | bool | 0 | Also store the stage-solver guess history (pade22/magnus4): a restart on the same ranks then equals the uninterrupted run to rounding |
 
 ### 4.5 Laser Field
 
@@ -224,6 +230,7 @@ OuterElements = 47, 47, 152
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| `OutputStrideObs` / `ObservableStride` | int | 1 | Compute and record the observables every N steps; warns when N is too large for the harmonic spectrum |
 | `OutputStrideTS` | int | 0 | Output stride (in steps) for time-series diagnostics. 0 = disabled |
 | `OutputStrideWFS` | int | 100 | Output stride (in steps) for wavefunction snapshots. 0 = disabled |
 | `OutputStrideAC` | int | 0 | Output stride (in steps) for autocorrelation diagnostics. 0 = disabled |
@@ -297,6 +304,8 @@ Computed only with `TSurff = 1`; output in `td/<name>_surff.h5`.
 | `-save_dipole <axes>` | Save dipole operator axes at runtime | `-save_dipole xyz` |
 | `-mat_type <type>` | PETSc matrix type for IGA matrices | `-mat_type mpiaij` |
 | `-vec_type <type>` | PETSc vector type for IGA vectors | `-vec_type mpi` |
+| `-tdsez_eps_extra <n>` | Converge n eigenpairs beyond `NBoundStates` (saves the second solve of the degenerate-shell check) | `-tdsez_eps_extra 4` |
+| `-blas_num_threads <n>` | BLAS threads per rank (default 1 unless `OMP_NUM_THREADS` etc. is set) | `-blas_num_threads 4` |
 
 CLI flags are processed before PETSc/SLEPc initialization and stripped from argv. The `-mat_type` and `-vec_type` flags are re-injected as `-iga_mat_type` and `-iga_vec_type` to reach PetIGA.
 
