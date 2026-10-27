@@ -1,0 +1,35 @@
+# 3D H2+ HHG at 4e14 W/cm^2, 800 nm, R = 2, magnus4, dt = 0.03: box 60 x 60 x 110, p 3, h 1.0/0.5 (larger box)
+Verbose = 1
+Dimension = 3
+Domain = -60, 60, -60, 60, -110, 110
+SplineDegree = 3
+NQuadratures = 6
+KnotSequence = hydrogenic
+HydrogenicInnerSpacing  = 0.1, 0.1, 0.1
+HydrogenicInnerElements = 15, 15, 15
+HydrogenicMaxSpacing    = 1.0, 1.0, 0.5
+Mass = 1.0
+Charge = -1.0
+UseDirectSolve = 0
+TargetEigenvalue = -1.10
+NBoundStates = 2
+NBoundStatesSave = 1
+Potential = -1 / sqrt(x^2 + y^2 + (z + 1.0)^2) - 1 / sqrt(x^2 + y^2 + (z - 1.0)^2)
+PotentialDerivativeX = x / (x^2 + y^2 + (z + 1.0)^2)^1.5 + x / (x^2 + y^2 + (z - 1.0)^2)^1.5
+PotentialDerivativeY = y / (x^2 + y^2 + (z + 1.0)^2)^1.5 + y / (x^2 + y^2 + (z - 1.0)^2)^1.5
+PotentialDerivativeZ = (z + 1.0) / (x^2 + y^2 + (z + 1.0)^2)^1.5 + (z - 1.0) / (x^2 + y^2 + (z - 1.0)^2)^1.5
+Ampz = 0.107
+Omegaz = 0.057
+Polarization = z
+ObserveAllAxes = 0
+LaserZ = ((t < 2*pi/Omegaz) ? (3*(t*Omegaz/(2*pi))^2 - 2*(t*Omegaz/(2*pi))^3) : ((t < 10*pi/Omegaz) ? 1.0 : ((t <= 12*pi/Omegaz) ? (3*(6 - t*Omegaz/(2*pi))^2 - 2*(6 - t*Omegaz/(2*pi))^3) : 0.0))) * Ampz * sin(Omegaz*t)
+TimeStep = 0.03
+FinalTime = 771.6
+EnablePropagation = 1
+Propagator = magnus4
+EnableCAP = 1
+CAPLayerWidth = 15
+OutputStrideWFS = 0
+OutputStrideObs = 10
+PhysicsOutput = dipole, acceleration, energy
+AccelerationMethod = operator

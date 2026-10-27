@@ -1,0 +1,17 @@
+# DQW w_b = 4 nm, p = 7, 12 elements, knots interface
+Verbose = 0
+Dimension = 1
+Domain = -283.4595000000, 283.4595000000
+SplineDegree = 7
+NQuadratures = 10
+KnotSequence = interface
+NSplines = 12
+BoundaryType = Neumann
+Mass = (abs(x) < 37.7946000000) ? 0.0879 : ((abs(x) < 188.9730000000) ? 0.067 : 0.0879)
+MassIsConstant = 0
+Potential = (abs(x) < 37.7946000000) ? 0.00893 : ((abs(x) < 188.9730000000) ? 0.0 : 0.00893)
+UseDirectSolve = 1
+TargetEigenvalue = 0
+NBoundStates = 2
+NBoundStatesSave = 1
+EnablePropagation = 0

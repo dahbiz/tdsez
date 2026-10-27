@@ -1,0 +1,33 @@
+# Kylstra et al., PRL 85, 1835 (2000), w = 1.0, E0 = 4, NDP (Multipole = 2)
+Verbose = 1
+Dimension = 2
+Domain = -64, 64, -60, 60
+KnotSequence = hydrogenic
+HydrogenicR1 = 0.1, 0.1
+HydrogenicNLin = 4
+HydrogenicNExp = 12
+HydrogenicHMax = 0.5, 0.5
+SplineDegree = 6
+NQuadratures = 8
+Potential = -1/sqrt(x*x + y*y + 0.64)
+PotentialDerivativeX = x/(x*x + y*y + 0.64)^1.5
+PotentialDerivativeY = y/(x*x + y*y + 0.64)^1.5
+NBoundStates = 200
+NBoundStatesSave = 1
+TargetEigenvalue = -0.6
+InitialState = ground
+EnablePropagation = 1
+EnableCAP = 1
+CAPKmin = 0.6
+Propagator = pade22
+TimeStep = 0.01
+FinalTime = 75.3982236862
+OutputStrideWFS = 7540
+PhysicsOutput = population, energy, wfs
+Gauge = velocity
+Multipole = 2
+PropagationDirection = 0, 1, 0
+Variables = w=1.0, E0=4, Tc=6.2831853072, Tr=18.8495559215, Tf=56.5486677646, Te=75.3982236862
+Polarization = x
+Omegax = 1.0
+LaserX = t < Tr ? -(E0/w)*(sin(w*t)/Tr + w*(t/Tr)*cos(w*t)) : (t < Tf ? -E0*cos(w*t) : (t < Te ? -(E0/w)*(-sin(w*t)/Tr + w*((Te - t)/Tr)*cos(w*t)) : 0))

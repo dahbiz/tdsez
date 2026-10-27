@@ -1,0 +1,27 @@
+# driven mass step (m = 1 | 4 at x = 0), acceleration method operator
+Verbose = 0
+Dimension = 1
+Domain = -1, 1
+SplineDegree = 7
+NQuadratures = 10
+KnotSequence = interface
+NSplines = 2000
+BoundaryType = Dirichlet
+Mass = x < 0 ? 1 : 4
+MassIsConstant = 0
+Potential = 0
+PotentialDerivativeX = 0
+AccelerationMethod = operator
+NBoundStates = 4
+NBoundStatesSave = 1
+TargetEigenvalue = 0
+InitialState = sup: 0.7071067811865476*0 + 0.7071067811865476*1
+EnablePropagation = 1
+Propagator = cn
+TimeStep = 0.001
+FinalTime = 9.51
+OutputStrideWFS = 50
+PhysicsOutput = dipole, acceleration, energy
+Polarization = x
+Omegax = 0.6616
+LaserX = t < 9.51 ? 0.012*sin(pi*t/9.51)^2*sin(0.6616*t) : 0

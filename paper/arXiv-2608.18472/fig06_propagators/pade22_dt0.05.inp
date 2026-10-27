@@ -1,0 +1,23 @@
+# driven harmonic oscillator, E(t) = cos(0.6 t), T = 50; propagator pade22, dt = 0.05
+Verbose = 0
+Dimension = 1
+Domain = -60, 60
+SplineDegree = 7
+NQuadratures = 10
+KnotSequence = uniform
+NSplines = 1200
+Mass = 1.0
+Potential = 0.5*x*x
+PotentialDerivativeX = x
+NBoundStates = 2
+TargetEigenvalue = 0
+InitialState = ground
+EnablePropagation = 1
+Propagator = pade22
+TimeStep = 0.05
+FinalTime = 50
+OutputStrideWFS = 0
+PhysicsOutput = dipole, energy
+Polarization = x
+Omegax = 0.6
+LaserX = cos(0.6*t)

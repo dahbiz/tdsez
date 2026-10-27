@@ -1,0 +1,13 @@
+# knot sequence 'interfaces' on [-50, 50], p = 5, 100 elements (static run, only the knot vector is used)
+Verbose = 0
+Dimension = 1
+Domain = -50, 50
+SplineDegree = 5
+KnotSequence = interfaces
+NSplines = 100
+
+Mass = (abs(x) < 10) ? 1.0 : ((abs(x) < 30) ? 2.0 : 1.0)
+Potential = (abs(x) < 10) ? 0.0 : ((abs(x) < 30) ? 0.1 : 0.0)
+NBoundStates = 1
+TargetEigenvalue = -1
+EnablePropagation = 0

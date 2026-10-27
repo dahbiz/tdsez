@@ -1,0 +1,17 @@
+# mass step m = 1 | 4 at x = 0, p = 7, 1000 elements, knots uniform
+Verbose = 0
+Dimension = 1
+Domain = -1, 1
+SplineDegree = 7
+NQuadratures = 10
+KnotSequence = uniform
+NSplines = 1000
+BoundaryType = Dirichlet
+Mass = x < 0 ? 1 : 4
+MassIsConstant = 0
+Potential = 0
+UseDirectSolve = 1
+TargetEigenvalue = 0
+NBoundStates = 2
+NBoundStatesSave = 0
+EnablePropagation = 0

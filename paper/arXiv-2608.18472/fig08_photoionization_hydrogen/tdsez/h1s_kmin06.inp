@@ -1,0 +1,39 @@
+# Quick TDSE-Z vs SCID-TDSE benchmark: H(1s), w = 0.4, E0 = 0.05, 6-cycle sin^2 A along z.
+# A(t) = A0 cos^2(pi tau/W) sin(w tau), tau = t - W/2 (SCID 'z Sin2'); E = -dA/dt.
+# Coulomb tail switched off with SCID's Becke-3 mask between r0 = 5.0 and rx = 10.0.
+Verbose            = 0
+Dimension          = 3
+Domain             = [-22.5,22.5],[-22.5,22.5],[-22.5,22.5]
+SplineDegree       = 3
+NQuadratures       = 6
+KnotSequence       = hydrogenic
+HydrogenicR1       = 0.1
+HydrogenicNLin     = 4
+HydrogenicNExp     = 10
+HydrogenicHMax     = 0.8, 0.8, 0.8
+Charge             = -1.0
+Mass               = 1.0
+Potential          = -1.0/sqrt(x*x+y*y+z*z)*(sqrt(x*x+y*y+z*z) <= 5.0 ? 1 : sqrt(x*x+y*y+z*z) >= 10.0 ? 0 : 0.5-0.5*(1.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)-0.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)^3))
+PotentialDerivativeX = ((sqrt(x*x+y*y+z*z) <= 5.0 ? 1 : sqrt(x*x+y*y+z*z) >= 10.0 ? 0 : 0.5-0.5*(1.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)-0.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)^3))/(sqrt(x*x+y*y+z*z)*sqrt(x*x+y*y+z*z)) - (sqrt(x*x+y*y+z*z) <= 5.0 ? 0 : sqrt(x*x+y*y+z*z) >= 10.0 ? 0 : -0.5*(1.5-1.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)^2)*(1.5-1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^2)*(1.5-1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^2)*0.4)/sqrt(x*x+y*y+z*z))*x/sqrt(x*x+y*y+z*z)
+PotentialDerivativeY = ((sqrt(x*x+y*y+z*z) <= 5.0 ? 1 : sqrt(x*x+y*y+z*z) >= 10.0 ? 0 : 0.5-0.5*(1.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)-0.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)^3))/(sqrt(x*x+y*y+z*z)*sqrt(x*x+y*y+z*z)) - (sqrt(x*x+y*y+z*z) <= 5.0 ? 0 : sqrt(x*x+y*y+z*z) >= 10.0 ? 0 : -0.5*(1.5-1.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)^2)*(1.5-1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^2)*(1.5-1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^2)*0.4)/sqrt(x*x+y*y+z*z))*y/sqrt(x*x+y*y+z*z)
+PotentialDerivativeZ = ((sqrt(x*x+y*y+z*z) <= 5.0 ? 1 : sqrt(x*x+y*y+z*z) >= 10.0 ? 0 : 0.5-0.5*(1.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)-0.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)^3))/(sqrt(x*x+y*y+z*z)*sqrt(x*x+y*y+z*z)) - (sqrt(x*x+y*y+z*z) <= 5.0 ? 0 : sqrt(x*x+y*y+z*z) >= 10.0 ? 0 : -0.5*(1.5-1.5*(1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)-0.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^3)^2)*(1.5-1.5*(1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)-0.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^3)^2)*(1.5-1.5*(2*(sqrt(x*x+y*y+z*z)-5.0)/(10.0-5.0)-1)^2)*0.4)/sqrt(x*x+y*y+z*z))*z/sqrt(x*x+y*y+z*z)
+TargetEigenvalue   = -0.6
+NBoundStates       = 6
+InitialState       = ground
+ObserveAllAxes     = 0
+Variables          = A0=0.125, w=0.4, W=94.24777960769379
+Polarization       = z
+LaserZ             = t < W ? -A0*( -(pi/W)*sin(2*pi*(t-W/2)/W)*sin(w*(t-W/2)) + w*cos(pi*(t-W/2)/W)^2*cos(w*(t-W/2)) ) : 0
+EnablePropagation  = 1
+Propagator         = pade22
+TimeStep           = 0.05
+FinalTime          = 174.2477796076938
+EnableCAP          = 1
+CAPKmin            = 0.6
+OutputStrideWFS    = 1000000
+TSurff             = 1
+SurffEndTerm       = 1
+SurffRadius        = 11.041971778324383
+SurffKmax          = 1.5, 0.0, 1.5
+SurffKmin          = 0.0, 0.0, -1.5
+SurffNk            = 151, 1, 301

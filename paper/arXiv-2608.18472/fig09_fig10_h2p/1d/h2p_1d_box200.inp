@@ -1,0 +1,28 @@
+# 1D H2+ (soft core 1.472, Ip = 1.1026), same pulse as the 3D runs (E0 = 0.107, omega = 0.057, 1+4+1-cycle envelope, one field-free cycle), magnus4, dt = 0.03, electron
+Verbose           = 1
+Dimension         = 1
+Domain            = -200, 200
+SplineDegree      = 7
+NQuadratures      = 10
+KnotSequence      = hydrogenic
+NSplines          = 1500
+Mass              = 1.0
+Charge            = -1.0
+UseDirectSolve    = 1
+TargetEigenvalue  = -2
+NBoundStates      = 20
+NBoundStatesSave  = 1
+Potential            = -1 / sqrt((x + 1.0)^2 + 1.472) - 1 / sqrt((x - 1.0)^2 + 1.472)
+PotentialDerivativeX = (x - 1.0) / ((x - 1.0)^2 + 1.472)^1.5 + (x + 1.0) / ((x + 1.0)^2 + 1.472)^1.5
+Ampx              = 0.107
+Omegax            = 0.057
+Polarization      = x
+LaserX            = ((t < 2*pi/Omegax) ? (3*(t*Omegax/(2*pi))^2 - 2*(t*Omegax/(2*pi))^3) : ((t < 10*pi/Omegax) ? 1.0 : ((t <= 12*pi/Omegax) ? (3*(6 - t*Omegax/(2*pi))^2 - 2*(6 - t*Omegax/(2*pi))^3) : 0.0))) * Ampx * sin(Omegax*t)
+Propagator        = magnus4
+TimeStep          = 0.03
+FinalTime         = 771.6
+EnablePropagation = 1
+EnableCAP         = 1
+CAPLayerWidth     = 15
+OutputStrideWFS   = 0
+PhysicsOutput     = dipole, acceleration, population, energy

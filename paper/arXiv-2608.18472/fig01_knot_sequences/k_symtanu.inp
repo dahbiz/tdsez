@@ -1,0 +1,13 @@
+# knot sequence 'symtanu' on [-50, 50], p = 5, 100 elements (static run, only the knot vector is used)
+Verbose = 0
+Dimension = 1
+Domain = -50, 50
+SplineDegree = 5
+KnotSequence = symtanu
+NSplines = 100
+
+Mass = 1.0
+Potential = 0.5*x*x
+NBoundStates = 1
+TargetEigenvalue = -1
+EnablePropagation = 0
